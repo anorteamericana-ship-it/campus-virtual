@@ -2,8 +2,11 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 import { buildConapeV44DryRunSummary } from './conape_v44_publisher.mjs';
-
-const VERSION = 'V4.4.3-PUBLISHER-DRYRUN-DOM-DIAG';
+import {
+  downloadProspectCsvViaDialog,
+  verifyDoubleCsv,
+} from './conape_v444_csv.mjs';
+const VERSION = 'V4.4.4-PUBLISHER-DRYRUN-APEX-CSV-DOUBLE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1473,36 +1476,9 @@ async function readDownloadUtf8(download) {
 }
 
 async function downloadProspectCsv(p) {
-  const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
-  if (!(await actions.count())) return { ok:false, reason:'ACTIONS_NOT_FOUND', columns_ok:false, rows:[] };
-  let download = null;
-  try {
-    await actions.click({ timeout:5_000 });
-    await sleep(120);
-    const downloadItem = p.getByRole('menuitem', { name:/download|descargar/i }).first();
-    if (!(await downloadItem.count())) return { ok:false, reason:'DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
-    const direct = p.waitForEvent('download', { timeout:2_000 }).catch(() => null);
-    await downloadItem.click({ timeout:5_000 });
-    download = await direct;
-    if (!download) {
-      await sleep(150);
-      let csv = p.getByRole('link', { name:/^CSV$/i }).first();
-      if (!(await csv.count())) csv = p.getByRole('button', { name:/^CSV$/i }).first();
-      if (!(await csv.count())) csv = p.locator('a,button,[role="button"]').filter({ hasText:/^\s*CSV\s*$/i }).first();
-      if (!(await csv.count())) return { ok:false, reason:'CSV_CONTROL_NOT_FOUND', columns_ok:false, rows:[] };
-      const pending = p.waitForEvent('download', { timeout:7_000 }).catch(() => null);
-      await csv.click({ timeout:5_000 });
-      download = await pending;
-    }
-    if (!download) return { ok:false, reason:'CSV_DOWNLOAD_NOT_OBSERVED', columns_ok:false, rows:[] };
-    const raw = await readDownloadUtf8(download);
-    return parseProspectCsv(raw);
-  } catch {
-    return { ok:false, reason:'CSV_DOWNLOAD_FAILED', columns_ok:false, rows:[] };
-  } finally {
-    try { await download?.delete(); } catch {}
-  }
+  return downloadProspectCsvViaDialog(p, parseProspectCsv);
 }
+
 
 async function readProspectListPage(p) {
   return p.evaluate(({ fields, required, phoneFields }) => {
@@ -1732,100 +1708,168 @@ async function openProspectListHome(p, sessionId) {
 }
 
 async function resetProspectListReport(p, sessionId) {
-  // V4.3.2: V4.1 leía esta Friendly Home directamente. No salir de ella si
-  // la sesión ya viene sin filtros; el gate real reportó ir_filters_before=0.
-  await openProspectListHome(p, sessionId);
+  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
+    waitUntil:'domcontentloaded',
+    timeout:30_000,
+  });
+
+  await waitForApexDynamicAction(p);
+
   const ir_filters_before = await countIrFilters(p);
-  if (ir_filters_before > 0) {
-    await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
-    await waitForApexDynamicAction(p);
-    await waitProspectListReady(p);
-  }
+
+  await p.goto(prospectListResetUrl(sessionId), {
+    waitUntil:'domcontentloaded',
+    timeout:30_000,
+  });
+
+  await waitForApexDynamicAction(p);
+
   return ir_filters_before;
 }
 
 async function listProspectsFromHome() {
   const started = Date.now();
   let pages = 0;
-  let method = 'HTML_PAGED';
+  let method = 'CSV_DOWNLOAD';
   let columnsOk = false;
   let irFiltersBefore = 0;
   let rowsCsv = null;
   let rowsHtmlAll = null;
   let countsMatch = false;
+  const verificationMethod = 'CSV_DOUBLE';
   const rowsByCedula = new Map();
+
   try {
     const p = await ConapeSession.browserPage();
     await ConapeSession.login(p);
+
     const sessionId = await readApexSession(p);
-    if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'LIST');
+
+    if (!sessionId) {
+      throw new AppError(
+        'CONAPE_APEX_SESSION_MISSING',
+        'CONAPE no expuso una sesión válida.',
+        409,
+        'LIST'
+      );
+    }
 
     irFiltersBefore = await resetProspectListReport(p, sessionId);
-    const csv = await downloadProspectCsv(p);
-    if (csv.ok && csv.columns_ok) {
-      const csvRows = new Map();
-      addProspectRows(csvRows, csv.rows);
-      rowsCsv = csvRows.size;
-      method = 'CSV_DOWNLOAD';
-      pages = 1;
 
-      // Verificación de integridad contra la misma pantalla en Rows=All.
-      await openProspectListHome(p, sessionId);
-      if (!(await setProspectRowsAll(p))) throw new AppError('CONAPE_LIST_ROWS_ALL_UNAVAILABLE', 'CONAPE no permitió verificar Rows=All.', 503, 'LIST');
-      const html = await readProspectListPage(p);
-      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], required_fields:PROSPECT_LIST_REQUIRED_FIELDS.length, phone_column_required:true, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato de columnas esperado.', 503, 'LIST'); }
-      if ((await prospectNextPageIndex(p)) >= 0) throw new AppError('CONAPE_LIST_ROWS_ALL_INCOMPLETE', 'Rows=All todavía expuso paginación.', 503, 'LIST');
-      const htmlRows = new Map();
-      addProspectRows(htmlRows, html.rows);
-      rowsHtmlAll = htmlRows.size;
-      columnsOk = true;
-      const csvKeys = [...csvRows.keys()].sort();
-      const htmlKeys = [...htmlRows.keys()].sort();
-      countsMatch = rowsCsv === rowsHtmlAll && sha(csvKeys.join('|')) === sha(htmlKeys.join('|'));
-      if (!countsMatch) {
-        const mismatch = new AppError('LIST_COUNT_MISMATCH', 'CSV y Rows=All no devolvieron el mismo conjunto de prospectos.', 503, 'LIST');
-        Object.assign(mismatch, { rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:false, columns_ok:true, method:'CSV_DOWNLOAD', ms:Date.now()-started, ir_filters_before:irFiltersBefore });
-        throw mismatch;
-      }
-      for (const row of csvRows.values()) rowsByCedula.set(row.cedula, row);
-    } else {
-      // El menú de descarga no es requisito para continuidad: Rows=All es el respaldo preferido.
-      await openProspectListHome(p, sessionId);
-      const rowsAll = await setProspectRowsAll(p);
-      if (rowsAll) {
-        const html = await readProspectListPage(p);
-        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], required_fields:PROSPECT_LIST_REQUIRED_FIELDS.length, phone_column_required:true, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato de columnas esperado.', 503, 'LIST'); }
-        const hasNext = (await prospectNextPageIndex(p)) >= 0;
-        if (!hasNext) {
-          const normalizedHtmlRows = normalizeProspectRows(html.rows);
-          rowsHtmlAll = normalizedHtmlRows.length;
-          addProspectRows(rowsByCedula, normalizedHtmlRows);
-          method = 'HTML_ROWS_ALL';
-          pages = 1;
-          columnsOk = true;
-          countsMatch = false;
-        }
-      }
-      if (!columnsOk) {
-        // Último respaldo únicamente: paginación legacy sobre la misma Friendly Home.
-        await openProspectListHome(p, sessionId);
-        pages = await readPagedProspects(p, rowsByCedula);
-        method = 'HTML_PAGED';
-        columnsOk = true;
-      }
+    const csvA = await downloadProspectCsv(p);
+
+    if (!csvA?.ok || csvA?.columns_ok !== true) {
+      const error = new AppError(
+        'CONAPE_LIST_CSV_A_NOT_READY',
+        'CONAPE no permitió obtener la primera exportación CSV válida.',
+        503,
+        'LIST'
+      );
+      error.reason = txt(csvA?.reason || 'UNKNOWN');
+      throw error;
+    }
+
+    await p.goto(prospectListResetUrl(sessionId), {
+      waitUntil:'domcontentloaded',
+      timeout:30_000,
+    });
+
+    await waitForApexDynamicAction(p);
+
+    const csvB = await downloadProspectCsv(p);
+
+    if (!csvB?.ok || csvB?.columns_ok !== true) {
+      const error = new AppError(
+        'CONAPE_LIST_CSV_B_NOT_READY',
+        'CONAPE no permitió obtener la segunda exportación CSV válida.',
+        503,
+        'LIST'
+      );
+      error.reason = txt(csvB?.reason || 'UNKNOWN');
+      throw error;
+    }
+
+    let verified;
+
+    try {
+      verified = verifyDoubleCsv(csvA, csvB);
+    } catch (cause) {
+      const code = txt(
+        cause?.code ||
+        cause?.message ||
+        'CONAPE_V444_CSV_DOUBLE_MISMATCH'
+      );
+
+      const mismatch = new AppError(
+        code,
+        'Las dos exportaciones CSV de CONAPE no coincidieron.',
+        503,
+        'LIST'
+      );
+
+      Object.assign(mismatch, {
+        rows_csv:Number(cause?.rows_csv_a ?? csvA?.rows?.length ?? 0),
+        rows_html_all:Number(cause?.rows_csv_b ?? csvB?.rows?.length ?? 0),
+        counts_match:false,
+        columns_ok:true,
+        method:'CSV_DOWNLOAD',
+        verification_method:verificationMethod,
+        ms:Date.now() - started,
+        ir_filters_before:irFiltersBefore,
+      });
+
+      throw mismatch;
+    }
+
+    const csvRows = new Map();
+    addProspectRows(csvRows, verified.rows);
+
+    rowsCsv = verified.rows_csv_a;
+
+    // Campo legacy conservado para no cambiar todavía el contrato HMAC.
+    // En V4.4.4 contiene el conteo de la segunda exportación CSV.
+    rowsHtmlAll = verified.rows_csv_b;
+
+    countsMatch = verified.counts_match === true;
+    columnsOk = verified.columns_ok === true;
+    pages = 1;
+
+    for (const row of csvRows.values()) {
+      rowsByCedula.set(row.cedula, row);
     }
 
     ConapeSession.state = 'CONNECTED';
     ConapeSession.lastActivity = nowIso();
+
     return {
-      ok:true, code:'PROSPECT_LIST_READY', rows:[...rowsByCedula.values()], row_count:rowsByCedula.size,
-      pages, method, rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:countsMatch,
-      columns_ok:columnsOk, ms:Date.now()-started, ir_filters_before:irFiltersBefore, captured_at:nowIso(),
+      ok:true,
+      code:'PROSPECT_LIST_READY',
+      rows:[...rowsByCedula.values()],
+      row_count:rowsByCedula.size,
+      pages,
+      method,
+      rows_csv:rowsCsv,
+      rows_html_all:rowsHtmlAll,
+      counts_match:countsMatch,
+      columns_ok:columnsOk,
+      verification_method:verificationMethod,
+      ms:Date.now() - started,
+      ir_filters_before:irFiltersBefore,
+      captured_at:nowIso(),
     };
   } finally {
     console.log(JSON.stringify({
-      event:'conape_list_dump', method, rows:rowsByCedula.size, rows_csv:rowsCsv, rows_html_all:rowsHtmlAll, counts_match:countsMatch, columns_ok:columnsOk,
-      ms:Date.now()-started, ir_filters_before:irFiltersBefore, pii:false,
+      event:'conape_list_dump',
+      method,
+      rows:rowsByCedula.size,
+      rows_csv:rowsCsv,
+      rows_html_all:rowsHtmlAll,
+      counts_match:countsMatch,
+      columns_ok:columnsOk,
+      verification_method:verificationMethod,
+      ms:Date.now() - started,
+      ir_filters_before:irFiltersBefore,
+      pii:false,
     }));
   }
 }
