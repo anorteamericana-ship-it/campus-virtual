@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 import { buildConapeV44DryRunSummary } from './conape_v44_publisher.mjs';
 
-const VERSION = 'V4.4.0-PUBLISHER-DRYRUN';
+const VERSION = 'V4.4.1-PUBLISHER-DRYRUN-IRWAIT';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -368,7 +368,7 @@ async function readHomeNavDebug(p) {
     const labels = await frame.evaluate(() => {
       const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
       const safeLabel = el => String([el.textContent||'',el.value||'',el.getAttribute('aria-label')||'',el.getAttribute('title')||''].join(' '))
-        .replace(/\S+@\S+/g,'[MAIL]')
+        .replace(/\S+@\S*/g,'[MAIL]')
         .replace(/\d{5,}/g,'[NUM]')
         .replace(/\s+/g,' ')
         .trim()
@@ -1541,6 +1541,25 @@ async function readProspectListPage(p) {
   }, { fields:PROSPECT_LIST_FIELDS, required:PROSPECT_LIST_REQUIRED_FIELDS, phoneFields:PROSPECT_LIST_PHONE_FIELDS }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
 }
 
+async function waitProspectListReady(p, timeoutMs = 8_000) {
+  const started = Date.now();
+  const until = started + Math.max(1_000, Number(timeoutMs || 8_000));
+  let last = { ok:false, reason:'REPORT_NOT_FOUND', missing:[] };
+  while (Date.now() < until) {
+    last = await readProspectListPage(p);
+    if (last.ok) return last;
+    await sleep(200);
+  }
+  console.log(JSON.stringify({
+    event:'conape_list_ready_timeout', version:VERSION,
+    reason:txt(last?.reason || 'UNKNOWN'),
+    missing:Array.isArray(last?.missing) ? last.missing : [],
+    timeout_ms:Date.now()-started,
+    pii:false,
+  }));
+  throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato de columnas esperado.', 503, 'LIST');
+}
+
 async function setProspectRowsAll(p) {
   const selectCandidate = await p.locator('select').evaluateAll(nodes => {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
@@ -1559,7 +1578,7 @@ async function setProspectRowsAll(p) {
     try {
       await p.locator('select').nth(selectCandidate.index).selectOption(selectCandidate.value);
       await waitForApexDynamicAction(p);
-      await sleep(150);
+      await waitProspectListReady(p);
       return true;
     } catch {}
   }
@@ -1581,7 +1600,7 @@ async function setProspectRowsAll(p) {
     if (index < 0) return false;
     await menuItems.nth(index).click({ timeout:5_000 });
     await waitForApexDynamicAction(p);
-    await sleep(150);
+    await waitProspectListReady(p);
     return true;
   } catch {
     return false;
@@ -1607,7 +1626,7 @@ async function maximizeProspectRows(p) {
   if (candidate) {
     await p.locator('select').nth(candidate.index).selectOption(candidate.value).catch(() => {});
     await waitForApexDynamicAction(p);
-    await sleep(150);
+    await waitProspectListReady(p);
     return true;
   }
   return false;
@@ -1646,7 +1665,7 @@ async function readPagedProspects(p, rowsByCedula) {
   const pageFingerprints = new Set();
   for (let guard = 0; guard < 100; guard += 1) {
     const snapshot = await readProspectListPage(p);
-    if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST');
+    if (!snapshot.ok) throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato de columnas esperado.', 503, 'LIST');
     const normalizedRows = normalizeProspectRows(snapshot.rows);
     const fingerprint = sha(normalizedRows.map(row => row.cedula).join('|'));
     if (pageFingerprints.has(fingerprint)) break;
@@ -1680,7 +1699,7 @@ function prospectListResetUrl(sessionId) {
 async function openProspectListHome(p, sessionId) {
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
   await waitForApexDynamicAction(p);
-  await sleep(100);
+  return waitProspectListReady(p);
 }
 
 async function resetProspectListReport(p, sessionId) {
@@ -1691,7 +1710,7 @@ async function resetProspectListReport(p, sessionId) {
   if (ir_filters_before > 0) {
     await p.goto(prospectListResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     await waitForApexDynamicAction(p);
-    await sleep(100);
+    await waitProspectListReady(p);
   }
   return ir_filters_before;
 }
@@ -1725,7 +1744,7 @@ async function listProspectsFromHome() {
       await openProspectListHome(p, sessionId);
       if (!(await setProspectRowsAll(p))) throw new AppError('CONAPE_LIST_ROWS_ALL_UNAVAILABLE', 'CONAPE no permitió verificar Rows=All.', 503, 'LIST');
       const html = await readProspectListPage(p);
-      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST'); }
+      if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], required_fields:PROSPECT_LIST_REQUIRED_FIELDS.length, phone_column_required:true, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato de columnas esperado.', 503, 'LIST'); }
       if ((await prospectNextPageIndex(p)) >= 0) throw new AppError('CONAPE_LIST_ROWS_ALL_INCOMPLETE', 'Rows=All todavía expuso paginación.', 503, 'LIST');
       const htmlRows = new Map();
       addProspectRows(htmlRows, html.rows);
@@ -1746,7 +1765,7 @@ async function listProspectsFromHome() {
       const rowsAll = await setProspectRowsAll(p);
       if (rowsAll) {
         const html = await readProspectListPage(p);
-        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], expected_columns:15, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso las 15 columnas esperadas.', 503, 'LIST'); }
+        if (!html.ok) { console.log(JSON.stringify({ event:'conape_list_schema', reason:txt(html.reason || 'UNKNOWN'), missing:Array.isArray(html.missing)?html.missing:[], required_fields:PROSPECT_LIST_REQUIRED_FIELDS.length, phone_column_required:true, pii:false })); throw new AppError('CONAPE_LIST_SCHEMA_NOT_READY', 'La lista CONAPE no expuso el contrato de columnas esperado.', 503, 'LIST'); }
         const hasNext = (await prospectNextPageIndex(p)) >= 0;
         if (!hasNext) {
           const normalizedHtmlRows = normalizeProspectRows(html.rows);

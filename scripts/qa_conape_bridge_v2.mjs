@@ -107,7 +107,8 @@ const checks = [
   ['V4.3.2 contrato de lista conserva 15 columnas incluyendo teléfono y celular separados', listFields.length === 15 && listFields.includes('telefono') && listFields.includes('celular') && server.includes("['TELEFONO','telefono'],['CELULAR','celular']")],
   ['V4.3.2 permanece en Friendly Home cuando no hay filtros y solo usa RR si existen', listBlock.includes('async function openProspectListHome') && /if \(ir_filters_before > 0\)/.test(listBlock) && /await openProspectListHome\(p, sessionId\)/.test(listBlock)],
   ['V4.3.2 fallbacks de lectura vuelven a Friendly Home y no a la URL RR', listBlock.includes('paginación legacy sobre la misma Friendly Home') && !/Último respaldo[\s\S]{0,240}prospectListResetUrl/.test(listBlock)],
-  ['V4.3.2 diagnóstico de schema es seguro y no registra filas', server.includes("event:'conape_list_schema'") && server.includes('expected_columns:15') && server.includes('pii:false')],
+  ['V4.3.3 diagnóstico de schema refleja contrato flexible y no registra filas', server.includes("event:'conape_list_schema'") && server.includes('required_fields:PROSPECT_LIST_REQUIRED_FIELDS.length') && server.includes('phone_column_required:true') && server.includes('pii:false')],
+  ['V4.4.1 espera IR válido de forma acotada antes de continuar', /async function waitProspectListReady\(p, timeoutMs = 8_000\)/.test(listBlock) && /while \(Date\.now\(\) < until\)/.test(listBlock) && /await sleep\(200\)/.test(listBlock) && /event:'conape_list_ready_timeout'/.test(listBlock) && /return waitProspectListReady\(p\)/.test(listBlock)],
   ['V4.3.1 lista completa queda restringida a admin/superadmin', server.includes("fullListRole = roleOf(auth.session)") && server.includes("['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)")],
   ['V4.3.1 sales-status usa scope real de getDashboardVentas', /\/v1\/prospects\/sales-status/.test(server) && /listProspectStatusesForSales\(body\)/.test(server) && salesStatusBlock.includes("fn:'getDashboardVentas'") && salesStatusBlock.includes('allowedCedulas')],
   ['V4.3.1 sales-status minimiza campos devueltos', ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'].every(v=>salesStatusBlock.includes(`'${v}'`)) && !/nombre|apellido|correo|telefono|usuario_registro/i.test(salesStatusBlock)],
@@ -122,4 +123,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.3.2 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.4.1 QA PASS · ${checks.length}/${checks.length}`);
