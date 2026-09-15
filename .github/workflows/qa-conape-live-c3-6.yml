@@ -32,6 +32,10 @@ jobs:
         run: node --check services/conape-bridge/server.mjs
       - name: Node syntax · bridge V2
         run: node --check services/conape-bridge/server_v2.mjs
+      - name: Node syntax · CONAPE V4.4 publisher
+        run: node --check services/conape-bridge/conape_v44_publisher.mjs
+      - name: Node syntax · CONAPE V4.4 publisher QA
+        run: node --check services/conape-bridge/conape_v44_publisher.test.mjs
       - name: Node syntax · CONAPE session UI
         run: node --check src/conape_session_ui_c3_7.js
       - name: Node syntax · CONAPE comparison UI
@@ -46,5 +50,7 @@ jobs:
         run: node scripts/qa_conape_bridge_v2.mjs
       - name: CONAPE phone contract V4.3.3 gate
         run: node scripts/qa_conape_phone_contract_v4_3_3.mjs
+      - name: CONAPE V4.4 publisher dry-run gate
+        run: node services/conape-bridge/conape_v44_publisher.test.mjs
       - name: Diff hygiene
         run: git diff --check origin/main...HEAD
