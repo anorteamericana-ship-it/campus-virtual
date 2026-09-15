@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { csvCedulaFingerprint, verifyDoubleCsv } from './conape_v444_csv.mjs';
+import { csvCedulaFingerprint, verifyDoubleCsv, normalizeDownloadLink } from './conape_v444_csv.mjs';
 
 const row = (cedula, estado = 'EN PROCESO') => ({ cedula, estado });
 const parsed = rows => ({ ok:true, columns_ok:true, rows });
@@ -44,6 +44,21 @@ const parsed = rows => ({ ok:true, columns_ok:true, rows });
   assert.throws(
     () => verifyDoubleCsv({ ok:false, reason:'X', columns_ok:false, rows:[] }, parsed([row('111111111')])),
     error => error?.code === 'CONAPE_V444_CSV_A_INVALID' && error?.reason === 'X',
+  );
+}
+
+{
+  const link = normalizeDownloadLink(
+    '/apex/r/conaweb/prospectaci%C3%B3n-reclutador/home?request=PLUGIN%3Dabc&session=123456789&x01=FILE_ID%3Dxyz&cs=1234567890abcdef',
+    'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/home?session=123456789',
+  );
+  assert.match(link, /^https:\/\/online\.conape\.go\.cr\/apex\/r\/conaweb\//);
+  assert.throws(
+    () => normalizeDownloadLink(
+      'https://example.com/apex/r/conaweb/prospectaci%C3%B3n-reclutador/home?request=PLUGIN%3Dabc&session=123456789&x01=FILE_ID%3Dxyz&cs=1234567890abcdef',
+      'https://online.conape.go.cr/',
+    ),
+    /CSV_DOWNLOAD_LINK_ORIGIN_INVALID/,
   );
 }
 
