@@ -18,6 +18,16 @@ assert.equal(IR_WIDGET_ID, '204246013985361544');
 assert.equal(IR_REPORT_ID, '205107064996977403');
 assert.match(helperSource, /apexServer\.pluginUrl\(ajaxIdentifier/);
 assert.match(helperSource, /p_widget_action', 'GET_DOWNLOAD_LINK'/);
+assert.match(helperSource, /R\$\{regionId\}_data_only/);
+assert.match(helperSource, /R\$\{regionId\}_pdf_page_size/);
+assert.match(helperSource, /R\$\{regionId\}_pdf_orientation/);
+assert.match(helperSource, /R\$\{regionId\}_strip_rich_text/);
+assert.match(helperSource, /R\$\{regionId\}_accessible/);
+assert.match(helperSource, /APEX_REGION_OBJECT/);
+assert.match(helperSource, /APEX_WIDGET_DATA/);
+assert.match(helperSource, /REGION_DOM_DATA/);
+assert.match(helperSource, /event:'conape_csv_v446'/);
+assert.match(helperSource, /credentials:'same-origin'/);
 assert.match(helperSource, /return downloadProspectCsvViaApexDirect\(page, parseProspectCsv\)/);
 {
   const start = helperSource.indexOf('async function downloadProspectCsvViaDialog');
@@ -85,4 +95,4 @@ assert.match(helperSource, /return downloadProspectCsvViaApexDirect\(page, parse
   );
 }
 
-console.log('CONAPE V4.4.5 direct APEX CSV helper QA: PASS');
+console.log('CONAPE V4.4.6 APEX region discovery QA: PASS');
