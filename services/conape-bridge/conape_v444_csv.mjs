@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 const MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024;
+const CONAPE_ORIGIN = 'https://online.conape.go.cr';
 
 const text = value => String(value == null ? '' : value).trim();
 const digits = value => text(value).replace(/\D/g, '');
@@ -67,17 +68,21 @@ function verifyDoubleCsv(first, second) {
   };
 }
 
-async function readDownloadUtf8(download) {
-  const stream = await download.createReadStream();
-  if (!stream) throw new Error('DOWNLOAD_STREAM_UNAVAILABLE');
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of stream) {
-    size += chunk.length;
-    if (size > MAX_DOWNLOAD_BYTES) throw new Error('DOWNLOAD_TOO_LARGE');
-    chunks.push(chunk);
+function normalizeDownloadLink(raw, baseUrl) {
+  let value = text(raw);
+  if (!value) throw new Error('CSV_DOWNLOAD_LINK_EMPTY');
+  if (value.startsWith('"') && value.endsWith('"')) {
+    try { value = JSON.parse(value); } catch {}
   }
-  return Buffer.concat(chunks).toString('utf8');
+  const url = new URL(value, baseUrl);
+  const decodedPath = decodeURIComponent(url.pathname || '');
+  if (url.origin !== CONAPE_ORIGIN) throw new Error('CSV_DOWNLOAD_LINK_ORIGIN_INVALID');
+  if (!decodedPath.endsWith('/apex/r/conaweb/prospectación-reclutador/home')) throw new Error('CSV_DOWNLOAD_LINK_PATH_INVALID');
+  if (!text(url.searchParams.get('request')).startsWith('PLUGIN=')) throw new Error('CSV_DOWNLOAD_LINK_REQUEST_INVALID');
+  if (!/^\d{4,}$/.test(text(url.searchParams.get('session')))) throw new Error('CSV_DOWNLOAD_LINK_SESSION_INVALID');
+  if (!text(url.searchParams.get('x01')).startsWith('FILE_ID=')) throw new Error('CSV_DOWNLOAD_LINK_FILE_INVALID');
+  if (text(url.searchParams.get('cs')).length < 16) throw new Error('CSV_DOWNLOAD_LINK_CHECKSUM_INVALID');
+  return url.href;
 }
 
 async function firstVisible(locator) {
@@ -94,7 +99,6 @@ async function downloadProspectCsvViaDialog(page, parseProspectCsv) {
     return { ok:false, reason:'CSV_V444_ARGUMENT_INVALID', columns_ok:false, rows:[] };
   }
 
-  let download = null;
   try {
     const actions = await firstVisible(page.getByRole('button', { name:/actions|acciones/i }));
     if (!actions) return { ok:false, reason:'ACTIONS_NOT_FOUND', columns_ok:false, rows:[] };
@@ -122,13 +126,41 @@ async function downloadProspectCsvViaDialog(page, parseProspectCsv) {
     if (!finalDownload) finalDownload = await firstVisible(page.getByRole('button', { name:/^(download|descargar)$/i }));
     if (!finalDownload) return { ok:false, reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
 
-    const pending = page.waitForEvent('download', { timeout:10_000 }).catch(() => null);
-    await finalDownload.click({ timeout:5_000 });
-    download = await pending;
-    if (!download) return { ok:false, reason:'CSV_DOWNLOAD_NOT_OBSERVED', columns_ok:false, rows:[] };
+    const linkResponsePromise = page.waitForResponse(response => {
+      try {
+        const request = response.request();
+        return request.method() === 'POST'
+          && /\/wwv_flow\.ajax(?:\?|$)/.test(response.url())
+          && String(request.postData() || '').includes('GET_DOWNLOAD_LINK');
+      } catch {
+        return false;
+      }
+    }, { timeout:10_000 }).catch(() => null);
 
-    const raw = await readDownloadUtf8(download);
-    return parseProspectCsv(raw);
+    await finalDownload.click({ timeout:5_000 });
+    const linkResponse = await linkResponsePromise;
+    if (!linkResponse) return { ok:false, reason:'CSV_DOWNLOAD_LINK_NOT_OBSERVED', columns_ok:false, rows:[] };
+    if (linkResponse.status() !== 200) return { ok:false, reason:'CSV_DOWNLOAD_LINK_HTTP', columns_ok:false, rows:[] };
+
+    const signedLink = normalizeDownloadLink(await linkResponse.text(), page.url());
+    const csvResponse = await page.context().request.get(signedLink, {
+      timeout:15_000,
+      failOnStatusCode:false,
+    });
+    if (csvResponse.status() !== 200) return { ok:false, reason:'CSV_FILE_HTTP', columns_ok:false, rows:[] };
+
+    const headers = csvResponse.headers();
+    const contentType = text(headers['content-type']).toLowerCase();
+    const disposition = text(headers['content-disposition']).toLowerCase();
+    if (!contentType.includes('text/csv')) return { ok:false, reason:'CSV_FILE_CONTENT_TYPE', columns_ok:false, rows:[] };
+    if (!disposition.includes('attachment') || !disposition.includes('.csv')) {
+      return { ok:false, reason:'CSV_FILE_DISPOSITION', columns_ok:false, rows:[] };
+    }
+
+    const body = await csvResponse.body();
+    if (!body?.length) return { ok:false, reason:'CSV_FILE_EMPTY', columns_ok:false, rows:[] };
+    if (body.length > MAX_DOWNLOAD_BYTES) return { ok:false, reason:'CSV_FILE_TOO_LARGE', columns_ok:false, rows:[] };
+    return parseProspectCsv(body.toString('utf8'));
   } catch (error) {
     return {
       ok:false,
@@ -136,13 +168,12 @@ async function downloadProspectCsvViaDialog(page, parseProspectCsv) {
       columns_ok:false,
       rows:[],
     };
-  } finally {
-    try { await download?.delete(); } catch {}
   }
 }
 
 export {
   csvCedulaFingerprint,
   verifyDoubleCsv,
+  normalizeDownloadLink,
   downloadProspectCsvViaDialog,
 };
