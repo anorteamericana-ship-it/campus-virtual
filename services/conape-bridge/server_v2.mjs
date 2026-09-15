@@ -1478,36 +1478,7 @@ async function readDownloadUtf8(download) {
 async function downloadProspectCsv(p) {
   return downloadProspectCsvViaDialog(p, parseProspectCsv);
 }
-const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
-  if (!(await actions.count())) return { ok:false, reason:'ACTIONS_NOT_FOUND', columns_ok:false, rows:[] };
-  let download = null;
-  try {
-    await actions.click({ timeout:5_000 });
-    await sleep(120);
-    const downloadItem = p.getByRole('menuitem', { name:/download|descargar/i }).first();
-    if (!(await downloadItem.count())) return { ok:false, reason:'DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
-    const direct = p.waitForEvent('download', { timeout:2_000 }).catch(() => null);
-    await downloadItem.click({ timeout:5_000 });
-    download = await direct;
-    if (!download) {
-      await sleep(150);
-      let csv = p.getByRole('link', { name:/^CSV$/i }).first();
-      if (!(await csv.count())) csv = p.getByRole('button', { name:/^CSV$/i }).first();
-      if (!(await csv.count())) csv = p.locator('a,button,[role="button"]').filter({ hasText:/^\s*CSV\s*$/i }).first();
-      if (!(await csv.count())) return { ok:false, reason:'CSV_CONTROL_NOT_FOUND', columns_ok:false, rows:[] };
-      const pending = p.waitForEvent('download', { timeout:7_000 }).catch(() => null);
-      await csv.click({ timeout:5_000 });
-      download = await pending;
-    }
-    if (!download) return { ok:false, reason:'CSV_DOWNLOAD_NOT_OBSERVED', columns_ok:false, rows:[] };
-    const raw = await readDownloadUtf8(download);
-    return parseProspectCsv(raw);
-  } catch {
-    return { ok:false, reason:'CSV_DOWNLOAD_FAILED', columns_ok:false, rows:[] };
-  } finally {
-    try { await download?.delete(); } catch {}
-  }
-}
+
 
 async function readProspectListPage(p) {
   return p.evaluate(({ fields, required, phoneFields }) => {
