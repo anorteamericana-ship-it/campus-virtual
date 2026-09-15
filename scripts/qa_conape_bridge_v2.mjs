@@ -1,7 +1,9 @@
 import fs from 'node:fs';
+import '../services/conape-bridge/conape_v444_csv.test.mjs';
 
 const server = fs.readFileSync('services/conape-bridge/server_v2.mjs','utf8');
 const docker = fs.readFileSync('services/conape-bridge/Dockerfile','utf8');
+const csvV444 = fs.readFileSync('services/conape-bridge/conape_v444_csv.mjs','utf8');
 const railway = JSON.parse(fs.readFileSync('services/conape-bridge/railway.json','utf8'));
 const connectStart = server.indexOf('  async connect() {');
 const statusStart = server.indexOf('  async status() {', connectStart);
@@ -9,6 +11,9 @@ const connectBlock = connectStart >= 0 && statusStart > connectStart ? server.sl
 const listReadStart = server.indexOf('async function readProspectListPage');
 const listEnd = server.indexOf('function categoryStatus', listReadStart);
 const listBlock = listReadStart >= 0 && listEnd > listReadStart ? server.slice(listReadStart, listEnd) : '';
+const listProspectsStart = server.indexOf('async function listProspectsFromHome()');
+const listProspectsEnd = server.indexOf('const SALES_STATUS_FIELDS', listProspectsStart);
+const listProspectsBlock = listProspectsStart >= 0 && listProspectsEnd > listProspectsStart ? server.slice(listProspectsStart, listProspectsEnd) : '';
 const listTelemetryMatches = server.match(/event:'conape_list_dump'/g) || [];
 const salesStatusStart = server.indexOf('const SALES_STATUS_FIELDS');
 const salesStatusEnd = server.indexOf('function categoryStatus', salesStatusStart);
@@ -93,26 +98,26 @@ const checks = [
   ['logs operativos declaran pii:false', /console\.log\(JSON\.stringify\(\{ rid, action/.test(server) && /pii:false/.test(server)],
   ['self-test NAV está protegido por sesión Campus y no usa cédula/CREATE', /\/v1\/selftest\/nav/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server) && /runNavSelftest/.test(server) && /login:'FAIL'/.test(server) && /recruit_click:'FAIL'/.test(server) && /form_ready:'FAIL'/.test(server)],
   ['prospects/list es GET y exige la misma sesión Campus', /req\.method === 'GET' && url\.pathname === '\/v1\/prospects\/list'/.test(server) && /action = 'prospects_list'/.test(server) && /authorizeCampusSession\(campusTokenFromRequest\(req\)\)/.test(server)],
-  ['prospects/list expone exactamente las 14 columnas contractuales', listFields.every(field => listBlock.includes(`'${field}'`)) && /PROSPECT_LIST_READY/.test(listBlock)],
-  ['prospects/list permanece en Friendly Home, limpia RR y prioriza CSV -> Rows=All -> paginado', /function prospectListResetUrl\(sessionId\)/.test(listBlock) && /new URL\(CONAPE_FRIENDLY_HOME\)/.test(listBlock) && /searchParams\.set\('session', cleanSession\)/.test(listBlock) && /searchParams\.set\('clear', 'RR'\)/.test(listBlock) && /resetProspectListReport/.test(listBlock) && listBlock.includes('prospectListResetUrl(sessionId)') && !listBlock.includes('confirmationResetUrl(sessionId)') && /downloadProspectCsv/.test(server) && /setProspectRowsAll/.test(server) && /readPagedProspects/.test(server) && server.includes("method = 'CSV_DOWNLOAD';") && server.includes("method = 'HTML_ROWS_ALL';") && server.includes("pages = await readPagedProspects(p, rowsByCedula);") && server.includes("method = 'HTML_PAGED';")],
-  ['prospects/list CSV queda solo en memoria y se elimina al terminar', /waitForEvent\('download'/.test(server) && /download\.createReadStream\(\)/.test(server) && /download\?\.delete\(\)/.test(server) && !/saveAs|savePath|writeFile.*csv/i.test(server)],
-  ['prospects/list valida CSV contra 14 columnas y Rows=All antes de aceptarlo', /PROSPECT_LIST_FIELDS/.test(server) && /PROSPECT_LIST_HEADER_ALIASES/.test(server) && /LIST_COUNT_MISMATCH/.test(server) && /CONAPE_LIST_ROWS_ALL_INCOMPLETE/.test(server)],
-  ['prospects/list nunca usa Save Report', !/SAVE REPORT|SAVE_REPORT|guardar informe|guardar reporte/i.test(listBlock)],
-  ['prospects/list es solo lectura y nunca entra al CREATE', !!listBlock && !/clickCreateOnce|fillContacts|nativeSetValue|CREAR NUEVO PROSPECTO|\/v1\/recruit\/execute/.test(listBlock)],
-  ['prospects/list falla cerrado si no reconoce el esquema', /CONAPE_LIST_SCHEMA_NOT_READY/.test(listBlock) && /REQUIRED_COLUMN_MISSING/.test(listBlock)],
-  ['prospects/list telemetría solo expone método, conteos, esquema, tiempo y filtros', listTelemetryMatches.length === 1 && ['method','rows:rowsByCedula.size','columns_ok:columnsOk','ms:Date.now()-started','ir_filters_before:irFiltersBefore','pii:false'].every(v => listBlock.includes(v)) && !/console\.log.*(?:cedula|nombre|correo|telefono)/i.test(listBlock)],
-  ['V4.2.9 expone conteos CSV y Rows=All y falla cerrado en mismatch', ['rows_csv','rows_html_all','counts_match'].every(v=>server.includes(v)) && server.includes('LIST_COUNT_MISMATCH') && server.includes('Object.assign(mismatch')],
+  ['prospects/list conserva contrato de 15 campos con teléfono/celular flexibles', listFields.length === 15 && listFields.every(field => listBlock.includes(`'${field}'`)) && /PROSPECT_LIST_READY/.test(listBlock)],
+  ['V4.4.4 prospects/list limpia RR y usa doble CSV sin fallback HTML', /function prospectListResetUrl\(sessionId\)/.test(listBlock) && /new URL\(CONAPE_FRIENDLY_HOME\)/.test(listBlock) && /searchParams\.set\('session', cleanSession\)/.test(listBlock) && /searchParams\.set\('clear', 'RR'\)/.test(listBlock) && /resetProspectListReport/.test(listProspectsBlock) && /downloadProspectCsv\(p\)/.test(listProspectsBlock) && /verifyDoubleCsv\(csvA, csvB\)/.test(listProspectsBlock) && listProspectsBlock.includes("const verificationMethod = 'CSV_DOUBLE'") && listProspectsBlock.includes("let method = 'CSV_DOWNLOAD'") && !/setProspectRowsAll|readPagedProspects|readProspectListPage|HTML_ROWS_ALL|HTML_PAGED/.test(listProspectsBlock)],
+  ['V4.4.4 CSV usa GET_DOWNLOAD_LINK + GET firmado y no persiste archivos', /GET_DOWNLOAD_LINK/.test(csvV444) && /page\.context\(\)\.request\.get\(signedLink/.test(csvV444) && /text\/csv/.test(csvV444) && /content-disposition/.test(csvV444) && !/saveAs|savePath|writeFile.*csv/i.test(csvV444)],
+  ['V4.4.4 valida dos CSV con contrato de columnas antes de aceptar', /PROSPECT_LIST_FIELDS/.test(server) && /PROSPECT_LIST_HEADER_ALIASES/.test(server) && /parseProspectCsv/.test(server) && /verifyDoubleCsv\(csvA, csvB\)/.test(listProspectsBlock) && /rows_csv_a/.test(csvV444) && /rows_csv_b/.test(csvV444)],
+  ['prospects/list nunca usa Save Report', !/SAVE REPORT|SAVE_REPORT|guardar informe|guardar reporte/i.test(listProspectsBlock)],
+  ['prospects/list es solo lectura y nunca entra al CREATE', !!listProspectsBlock && !/clickCreateOnce|fillContacts|nativeSetValue|CREAR NUEVO PROSPECTO|\/v1\/recruit\/execute/.test(listProspectsBlock)],
+  ['V4.4.4 prospects/list falla cerrado si CSV A/B es inválido o no coincide', ['CONAPE_LIST_CSV_A_NOT_READY','CONAPE_LIST_CSV_B_NOT_READY'].every(v => listProspectsBlock.includes(v)) && /CONAPE_V444_CSV_DOUBLE_MISMATCH/.test(csvV444) && /throw mismatch/.test(listProspectsBlock)],
+  ['prospects/list telemetría solo expone método, conteos, verificación, tiempo y filtros', listTelemetryMatches.length === 1 && ['method','rows:rowsByCedula.size','columns_ok:columnsOk','verification_method:verificationMethod','ms:Date.now() - started','ir_filters_before:irFiltersBefore','pii:false'].every(v => listProspectsBlock.includes(v)) && !/console\.log.*(?:cedula|nombre|correo|telefono)/i.test(listProspectsBlock)],
+  ['V4.4.4 expone conteos CSV A/B bajo contrato legacy y falla cerrado en mismatch', ['rows_csv','rows_html_all','counts_match','verification_method'].every(v => listProspectsBlock.includes(v)) && /Object\.assign\(mismatch/.test(listProspectsBlock) && /rows_csv_a/.test(csvV444) && /rows_csv_b/.test(csvV444)],
   ['V4.2.9 summary=1 no devuelve filas con PII al navegador', server.includes('summaryOnly') && server.includes("url.searchParams.get('summary')") && server.includes('const payload = summaryOnly ? {')],
-  ['V4.2.9 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','ir_filters_before','pii:false'].every(v=>server.includes(v))],
+  ['V4.4.4 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','verification_method','ir_filters_before','pii:false'].every(v=>server.includes(v))],
   ['V4.3.2 contrato de lista conserva 15 columnas incluyendo teléfono y celular separados', listFields.length === 15 && listFields.includes('telefono') && listFields.includes('celular') && server.includes("['TELEFONO','telefono'],['CELULAR','celular']")],
-  ['V4.3.2 permanece en Friendly Home cuando no hay filtros y solo usa RR si existen', listBlock.includes('async function openProspectListHome') && /if \(ir_filters_before > 0\)/.test(listBlock) && /await openProspectListHome\(p, sessionId\)/.test(listBlock)],
-  ['V4.3.2 fallbacks de lectura vuelven a Friendly Home y no a la URL RR', listBlock.includes('paginación legacy sobre la misma Friendly Home') && !/Último respaldo[\s\S]{0,240}prospectListResetUrl/.test(listBlock)],
-  ['V4.3.3 diagnóstico de schema refleja contrato flexible y no registra filas', server.includes("event:'conape_list_schema'") && server.includes('required_fields:PROSPECT_LIST_REQUIRED_FIELDS.length') && server.includes('phone_column_required:true') && server.includes('pii:false')],
-  ['V4.4.1 espera IR válido de forma acotada antes de continuar', /async function waitProspectListReady\(p, timeoutMs = 8_000\)/.test(listBlock) && /while \(Date\.now\(\) < until\)/.test(listBlock) && /await sleep\(200\)/.test(listBlock) && /event:'conape_list_ready_timeout'/.test(listBlock) && /return waitProspectListReady\(p\)/.test(listBlock)],
+  ['V4.4.4 resetea RR determinísticamente antes de cada exportación', /async function resetProspectListReport/.test(listBlock) && (listBlock.match(/prospectListResetUrl\(sessionId\)/g) || []).length >= 2 && /const csvA = await downloadProspectCsv\(p\)/.test(listProspectsBlock) && /const csvB = await downloadProspectCsv\(p\)/.test(listProspectsBlock)],
+  ['V4.4.4 listProspectsFromHome no vuelve al lector HTML', !/setProspectRowsAll|readPagedProspects|readProspectListPage|HTML_ROWS_ALL|HTML_PAGED/.test(listProspectsBlock)],
+  ['V4.4.4 valida origen, ruta, PLUGIN, FILE_ID, sesión y checksum de la URL firmada', ['CSV_DOWNLOAD_LINK_ORIGIN_INVALID','CSV_DOWNLOAD_LINK_PATH_INVALID','CSV_DOWNLOAD_LINK_REQUEST_INVALID','CSV_DOWNLOAD_LINK_SESSION_INVALID','CSV_DOWNLOAD_LINK_FILE_INVALID','CSV_DOWNLOAD_LINK_CHECKSUM_INVALID'].every(v => csvV444.includes(v)) && /CONAPE_ORIGIN/.test(csvV444)],
+  ['V4.4.4 runtime importa helper CSV firmado y doble verificación', /from '\.\/conape_v444_csv\.mjs'/.test(server) && /downloadProspectCsvViaDialog/.test(server) && /verifyDoubleCsv/.test(server)],
   ['V4.3.1 lista completa queda restringida a admin/superadmin', server.includes("fullListRole = roleOf(auth.session)") && server.includes("['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(fullListRole)")],
   ['V4.3.1 sales-status usa scope real de getDashboardVentas', /\/v1\/prospects\/sales-status/.test(server) && /listProspectStatusesForSales\(body\)/.test(server) && salesStatusBlock.includes("fn:'getDashboardVentas'") && salesStatusBlock.includes('allowedCedulas')],
   ['V4.3.1 sales-status minimiza campos devueltos', ['cedula','estado','fecha_estado','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'].every(v=>salesStatusBlock.includes(`'${v}'`)) && !/nombre|apellido|correo|telefono|usuario_registro/i.test(salesStatusBlock)],
-  ['Docker contiene solo server_v2 + self-test, sin patcher runtime', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`)) && !/hotfix_v4_2_4|RUN node hotfix/i.test(docker)],
+  ['Docker incluye runtime canónico, helper V4.4.4 y su QA sin patcher', /COPY server_v2\.mjs/.test(docker) && /COPY nav_selftest\.mjs/.test(docker) && /COPY conape_v444_csv\.mjs/.test(docker) && /COPY conape_v444_csv\.test\.mjs/.test(docker) && /RUN node conape_v444_csv\.test\.mjs/.test(docker) && legacyCopies.every(name => !docker.includes(`COPY ${name} ./`)) && !/hotfix_v4_2_4|RUN node hotfix/i.test(docker)],
   ['Docker arranca server_v2 canónico', /CMD \["node", "server_v2\.mjs"\]/.test(docker)],
   ['Railway fija startCommand canónico', railway?.deploy?.startCommand === 'node server_v2.mjs'],
 ];
@@ -123,4 +128,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.4.1 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.4.4 QA PASS · ${checks.length}/${checks.length}`);
