@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { chromium } from 'playwright';
 import { buildConapeV44DryRunSummary } from './conape_v44_publisher.mjs';
 
-const VERSION = 'V4.4.1-PUBLISHER-DRYRUN-IRWAIT';
+const VERSION = 'V4.4.2-PUBLISHER-DRYRUN-APEX-TH';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1220,7 +1220,7 @@ async function readConfirmationProspectPage(p) {
     const text = v => String(v || '').replace(/\s+/g,' ').trim();
     let best = null;
     for (const table of Array.from(document.querySelectorAll('table'))) {
-      let headerNodes = Array.from(table.querySelectorAll('thead th,thead td'));
+      let headerNodes = Array.from(table.querySelectorAll('th,thead td'));
       if (!headerNodes.length) headerNodes = Array.from(table.querySelectorAll('tr:first-child th,tr:first-child td'));
       const headers = headerNodes.map(node => norm(node.textContent));
       const cedulaIndex = headers.findIndex(h => h === 'CEDULA' || h.includes('CEDULA'));
@@ -1517,7 +1517,7 @@ async function readProspectListPage(p) {
     ]);
     let best = null;
     for (const table of Array.from(document.querySelectorAll('table'))) {
-      const headers = Array.from(table.querySelectorAll('thead th')).map(th => aliases.get(norm(th.textContent)) || null);
+      const headers = Array.from(table.querySelectorAll('th')).map(th => aliases.get(norm(th.textContent)) || null);
       const phoneOk = phoneFields.some(key => headers.includes(key));
       const score = required.filter(key => headers.includes(key)).length + (phoneOk ? 1 : 0);
       if (!best || score > best.score) best = { table, headers, score };
@@ -1639,7 +1639,7 @@ async function prospectNextPageIndex(p) {
     const visible = el => { try { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; } catch { return false; } };
     const reportRegion = el => el.closest('.a-IRR,.a-IRR-region,.t-Region');
     const hasProspectTable = region => Array.from((region || document).querySelectorAll('table')).some(table => {
-      const headers = Array.from(table.querySelectorAll('thead th')).map(th => norm(th.textContent));
+      const headers = Array.from(table.querySelectorAll('th')).map(th => norm(th.textContent));
       return headers.some(h => h.includes('CEDULA')) && headers.some(h => h === 'ESTADO');
     });
     return nodes.findIndex(el => {
