@@ -92,14 +92,61 @@ function safeReason(error, fallback) {
   return text(error?.code || error?.message || fallback).slice(0,80);
 }
 
-async function parseSignedCsvResponse(page, signedLink, parseProspectCsv) {
-  const csvResponse = await page.context().request.get(signedLink, {
+function csvDiag(step, extra = {}) {
+  const safe = {
+    event:'conape_csv_v446',
+    step:text(step).slice(0,48),
+    ...(typeof extra.source === 'string' ? { source:text(extra.source).slice(0,48) } : {}),
+    ...(typeof extra.reason === 'string' ? { reason:text(extra.reason).slice(0,80) } : {}),
+    ...(typeof extra.http_status === 'number' ? { http_status:extra.http_status } : {}),
+    ...(typeof extra.apex_present === 'boolean' ? { apex_present:extra.apex_present } : {}),
+    ...(typeof extra.region_dom_present === 'boolean' ? { region_dom_present:extra.region_dom_present } : {}),
+    ...(typeof extra.region_api_present === 'boolean' ? { region_api_present:extra.region_api_present } : {}),
+    pii:false,
+  };
+  console.log(JSON.stringify(safe));
+}
+
+async function browserFetch(page, url) {
+  return page.evaluate(async target => {
+    const response = await fetch(target, {
+      method:'GET',
+      credentials:'same-origin',
+      cache:'no-store',
+      redirect:'follow',
+    });
+    const headers = {};
+    for (const [key, value] of response.headers.entries()) headers[key.toLowerCase()] = value;
+    const buffer = await response.arrayBuffer();
+    const bytes = Array.from(new Uint8Array(buffer));
+    return { status:response.status, headers, bytes };
+  }, url);
+}
+
+async function contextFetchSignedCsv(page, signedLink) {
+  const response = await page.context().request.get(signedLink, {
     timeout:15_000,
     failOnStatusCode:false,
   });
-  if (csvResponse.status() !== 200) return { ok:false, reason:'CSV_FILE_HTTP', columns_ok:false, rows:[] };
+  return {
+    status:response.status(),
+    headers:response.headers(),
+    bytes:Array.from(await response.body()),
+  };
+}
 
-  const headers = csvResponse.headers();
+async function parseSignedCsvResponse(page, signedLink, parseProspectCsv) {
+  let csvResponse;
+  try {
+    csvResponse = await browserFetch(page, signedLink);
+  } catch {
+    csvResponse = await contextFetchSignedCsv(page, signedLink);
+  }
+  if (Number(csvResponse?.status || 0) !== 200) {
+    return { ok:false, reason:'CSV_FILE_HTTP', columns_ok:false, rows:[] };
+  }
+
+  const headers = csvResponse?.headers || {};
   const contentType = text(headers['content-type']).toLowerCase();
   const disposition = text(headers['content-disposition']).toLowerCase();
   if (!contentType.includes('text/csv')) return { ok:false, reason:'CSV_FILE_CONTENT_TYPE', columns_ok:false, rows:[] };
@@ -107,15 +154,15 @@ async function parseSignedCsvResponse(page, signedLink, parseProspectCsv) {
     return { ok:false, reason:'CSV_FILE_DISPOSITION', columns_ok:false, rows:[] };
   }
 
-  const body = await csvResponse.body();
-  if (!body?.length) return { ok:false, reason:'CSV_FILE_EMPTY', columns_ok:false, rows:[] };
-  if (body.length > MAX_DOWNLOAD_BYTES) return { ok:false, reason:'CSV_FILE_TOO_LARGE', columns_ok:false, rows:[] };
-  const parsed = parseProspectCsv(body.toString('utf8'));
-  return { ...parsed, transport:'APEX_DIRECT' };
+  const bytes = Array.isArray(csvResponse?.bytes) ? csvResponse.bytes : [];
+  if (!bytes.length) return { ok:false, reason:'CSV_FILE_EMPTY', columns_ok:false, rows:[] };
+  if (bytes.length > MAX_DOWNLOAD_BYTES) return { ok:false, reason:'CSV_FILE_TOO_LARGE', columns_ok:false, rows:[] };
+  const parsed = parseProspectCsv(Buffer.from(bytes).toString('utf8'));
+  return { ...parsed, transport:'APEX_DIRECT_BROWSER_FETCH' };
 }
 
 async function discoverWorksheetAjaxIdentifier(page) {
-  return page.evaluate(({ regionId }) => {
+  return page.evaluate(({ regionId, widgetId }) => {
     const clean = value => String(value == null ? '' : value).trim();
     const decodeRegionToken = token => {
       try {
@@ -135,45 +182,98 @@ async function discoverWorksheetAjaxIdentifier(page) {
       return token && valid(token) ? token : '';
     };
 
+    const state = {
+      identifier:'',
+      source:'NONE',
+      apex_present:!!window.apex,
+      region_dom_present:!!(
+        document.getElementById(`R${regionId}`) ||
+        document.getElementById(regionId) ||
+        document.getElementById(widgetId)
+      ),
+      region_api_present:false,
+    };
+
+    const accept = (value, source) => {
+      const token = candidateFrom(value);
+      if (!token) return false;
+      state.identifier = token;
+      state.source = source;
+      return true;
+    };
+
+    const scanObject = (root, source, maxDepth = 4) => {
+      const seen = new WeakSet();
+      const visit = (value, depth) => {
+        if (state.identifier || value == null || depth > maxDepth) return;
+        if (typeof value === 'string') {
+          accept(value, source);
+          return;
+        }
+        if ((typeof value !== 'object' && typeof value !== 'function') || value === window || value === document) return;
+        if (seen.has(value)) return;
+        seen.add(value);
+        let keys = [];
+        try { keys = Object.keys(value).slice(0,120); } catch { return; }
+        for (const key of keys) {
+          if (state.identifier) return;
+          if (/password|credential|cookie|session/i.test(key)) continue;
+          let child;
+          try { child = value[key]; } catch { continue; }
+          visit(child, depth + 1);
+        }
+      };
+      visit(root, 0);
+    };
+
     try {
       const ids = [`R${regionId}`, regionId];
       for (const id of ids) {
         const region = window.apex?.region?.(id);
-        const candidates = [
-          region?.ajaxIdentifier,
-          region?.ajax_identifier,
-          region?.widget?.()?.ajaxIdentifier,
-          region?.widget?.()?.ajax_identifier,
-        ];
+        if (!region) continue;
+        state.region_api_present = true;
+        const candidates = [region?.ajaxIdentifier, region?.ajax_identifier];
         for (const candidate of candidates) {
-          const token = candidateFrom(candidate);
-          if (token) return token;
+          if (accept(candidate, 'APEX_REGION_DIRECT')) return state;
         }
+        scanObject(region, 'APEX_REGION_OBJECT');
+        if (state.identifier) return state;
+
+        try {
+          const widget = region.widget?.();
+          scanObject(widget, 'APEX_REGION_WIDGET');
+          if (state.identifier) return state;
+          const node = widget?.[0];
+          const jq = window.apex?.jQuery;
+          if (node && jq) {
+            scanObject(jq(node).data?.() || {}, 'APEX_WIDGET_DATA');
+            if (state.identifier) return state;
+          }
+        } catch {}
+      }
+    } catch {}
+
+    try {
+      const jq = window.apex?.jQuery;
+      const nodes = [
+        document.getElementById(`R${regionId}`),
+        document.getElementById(regionId),
+        document.getElementById(widgetId),
+      ].filter(Boolean);
+      for (const node of nodes) {
+        if (jq) {
+          scanObject(jq(node).data?.() || {}, 'REGION_DOM_DATA');
+          if (state.identifier) return state;
+        }
+        scanObject(node.dataset || {}, 'REGION_DATASET');
+        if (state.identifier) return state;
       }
     } catch {}
 
     try {
       const regions = window.apex?.regions || {};
-      for (const [key, region] of Object.entries(regions)) {
-        const candidates = [
-          region?.ajaxIdentifier,
-          region?.ajax_identifier,
-          region?.widget?.()?.ajaxIdentifier,
-          region?.widget?.()?.ajax_identifier,
-        ];
-        for (const candidate of candidates) {
-          const token = candidateFrom(candidate);
-          if (token) return token;
-        }
-        const elementId = clean(region?.element?.attr?.('id') || region?.element?.[0]?.id || '');
-        const regionKey = clean(region?.id || region?.regionId || key);
-        if (elementId.includes(regionId) || regionKey.includes(regionId)) {
-          for (const candidate of candidates) {
-            const token = normalize(candidate);
-            if (token) return token;
-          }
-        }
-      }
+      scanObject(regions, 'APEX_REGISTRY');
+      if (state.identifier) return state;
     } catch {}
 
     const html = String(document.documentElement?.outerHTML || '').replace(/&amp;/g, '&');
@@ -188,12 +288,11 @@ async function discoverWorksheetAjaxIdentifier(page) {
       while ((match = pattern.exec(html))) {
         let token = clean(match[1] || match[0]);
         try { token = decodeURIComponent(token); } catch {}
-        token = normalize(token);
-        if (valid(token)) return token;
+        if (accept(token, 'HTML_SOURCE')) return state;
       }
     }
-    return '';
-  }, { regionId:IR_REGION_ID });
+    return state;
+  }, { regionId:IR_REGION_ID, widgetId:IR_WIDGET_ID });
 }
 
 async function buildDirectDownloadLinkRequestUrl(page, ajaxIdentifier) {
@@ -234,38 +333,64 @@ async function buildDirectDownloadLinkRequestUrl(page, ajaxIdentifier) {
 
 async function downloadProspectCsvViaApexDirect(page, parseProspectCsv) {
   if (!page || typeof parseProspectCsv !== 'function') {
-    return { ok:false, reason:'CSV_V445_ARGUMENT_INVALID', columns_ok:false, rows:[] };
+    csvDiag('FAIL', { reason:'CSV_V446_ARGUMENT_INVALID' });
+    return { ok:false, reason:'CSV_V446_ARGUMENT_INVALID', columns_ok:false, rows:[] };
   }
   try {
-    const ajaxIdentifier = text(await discoverWorksheetAjaxIdentifier(page));
-    if (!ajaxIdentifier) return { ok:false, reason:'CSV_V445_AJAX_IDENTIFIER_NOT_FOUND', columns_ok:false, rows:[] };
+    const discovery = await discoverWorksheetAjaxIdentifier(page);
+    const ajaxIdentifier = text(discovery?.identifier);
+    if (!ajaxIdentifier) {
+      csvDiag('DISCOVERY_FAIL', {
+        reason:'CSV_V446_AJAX_IDENTIFIER_NOT_FOUND',
+        apex_present:discovery?.apex_present === true,
+        region_dom_present:discovery?.region_dom_present === true,
+        region_api_present:discovery?.region_api_present === true,
+      });
+      return { ok:false, reason:'CSV_V446_AJAX_IDENTIFIER_NOT_FOUND', columns_ok:false, rows:[] };
+    }
+    csvDiag('DISCOVERY_OK', {
+      source:discovery?.source || 'UNKNOWN',
+      apex_present:discovery?.apex_present === true,
+      region_dom_present:discovery?.region_dom_present === true,
+      region_api_present:discovery?.region_api_present === true,
+    });
 
     const requestUrl = text(await buildDirectDownloadLinkRequestUrl(page, ajaxIdentifier));
-    if (!requestUrl) return { ok:false, reason:'CSV_V445_PLUGIN_URL_NOT_BUILT', columns_ok:false, rows:[] };
+    if (!requestUrl) {
+      csvDiag('LINK_BUILD_FAIL', { reason:'CSV_V446_PLUGIN_URL_NOT_BUILT' });
+      return { ok:false, reason:'CSV_V446_PLUGIN_URL_NOT_BUILT', columns_ok:false, rows:[] };
+    }
     const parsedRequestUrl = new URL(requestUrl);
     if (parsedRequestUrl.origin !== CONAPE_ORIGIN || !/\/wwv_flow\.ajax$/.test(parsedRequestUrl.pathname)) {
-      return { ok:false, reason:'CSV_V445_PLUGIN_URL_INVALID', columns_ok:false, rows:[] };
+      csvDiag('LINK_BUILD_FAIL', { reason:'CSV_V446_PLUGIN_URL_INVALID' });
+      return { ok:false, reason:'CSV_V446_PLUGIN_URL_INVALID', columns_ok:false, rows:[] };
     }
 
-    const linkResponse = await page.context().request.get(requestUrl, {
-      timeout:15_000,
-      failOnStatusCode:false,
-    });
-    if (linkResponse.status() !== 200) return { ok:false, reason:'CSV_V445_LINK_HTTP', columns_ok:false, rows:[] };
+    const linkResponse = await browserFetch(page, requestUrl);
+    if (Number(linkResponse?.status || 0) !== 200) {
+      csvDiag('LINK_HTTP_FAIL', { reason:'CSV_V446_LINK_HTTP', http_status:Number(linkResponse?.status || 0) });
+      return { ok:false, reason:'CSV_V446_LINK_HTTP', columns_ok:false, rows:[] };
+    }
 
-    const signedLink = normalizeDownloadLink(await linkResponse.text(), page.url());
-    return await parseSignedCsvResponse(page, signedLink, parseProspectCsv);
+    const linkText = Buffer.from(Array.isArray(linkResponse?.bytes) ? linkResponse.bytes : []).toString('utf8');
+    const signedLink = normalizeDownloadLink(linkText, page.url());
+    const result = await parseSignedCsvResponse(page, signedLink, parseProspectCsv);
+    if (!result?.ok) csvDiag('CSV_FAIL', { reason:result?.reason || 'CSV_V446_PARSE_FAILED' });
+    else csvDiag('CSV_OK');
+    return result;
   } catch (error) {
+    const reason = safeReason(error, 'CSV_V446_DIRECT_FAILED');
+    csvDiag('EXCEPTION', { reason });
     return {
       ok:false,
-      reason:safeReason(error, 'CSV_V445_DIRECT_FAILED'),
+      reason,
       columns_ok:false,
       rows:[],
     };
   }
 }
 
-// Nombre legacy conservado para no tocar todavía el contrato del runtime.
+// Nombre legacy conservado para no cambiar todavía el contrato del runtime.
 // Desde V4.4.5 NO abre Actions/Download/CSV ni depende de controles DOM.
 async function downloadProspectCsvViaDialog(page, parseProspectCsv) {
   return downloadProspectCsvViaApexDirect(page, parseProspectCsv);
