@@ -1220,7 +1220,7 @@ async function readConfirmationProspectPage(p) {
     const text = v => String(v || '').replace(/\s+/g,' ').trim();
     let best = null;
     for (const table of Array.from(document.querySelectorAll('table'))) {
-      let headerNodes = Array.from(table.querySelectorAll('th,thead td'));
+      let headerNodes = Array.from(table.querySelectorAll('thead th,thead td'));
       if (!headerNodes.length) headerNodes = Array.from(table.querySelectorAll('tr:first-child th,tr:first-child td'));
       const headers = headerNodes.map(node => norm(node.textContent));
       const cedulaIndex = headers.findIndex(h => h === 'CEDULA' || h.includes('CEDULA'));
