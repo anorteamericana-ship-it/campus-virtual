@@ -123,8 +123,25 @@ async function browserFetch(page, url) {
   }, url);
 }
 
+async function contextFetchSignedCsv(page, signedLink) {
+  const response = await page.context().request.get(signedLink, {
+    timeout:15_000,
+    failOnStatusCode:false,
+  });
+  return {
+    status:response.status(),
+    headers:response.headers(),
+    bytes:Array.from(await response.body()),
+  };
+}
+
 async function parseSignedCsvResponse(page, signedLink, parseProspectCsv) {
-  const csvResponse = await browserFetch(page, signedLink);
+  let csvResponse;
+  try {
+    csvResponse = await browserFetch(page, signedLink);
+  } catch {
+    csvResponse = await contextFetchSignedCsv(page, signedLink);
+  }
   if (Number(csvResponse?.status || 0) !== 200) {
     return { ok:false, reason:'CSV_FILE_HTTP', columns_ok:false, rows:[] };
   }
