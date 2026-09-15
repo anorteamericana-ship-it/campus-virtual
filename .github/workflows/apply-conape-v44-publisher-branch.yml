@@ -1,0 +1,49 @@
+name: Apply CONAPE V4.4 publisher branch patch
+
+on:
+  push:
+    branches:
+      - feature/conape-v44-bridge-publisher
+    paths:
+      - 'scripts/apply_conape_v44_publisher_server_patch.mjs'
+      - 'services/conape-bridge/conape_v44_publisher.mjs'
+      - 'services/conape-bridge/conape_v44_publisher.test.mjs'
+      - '.github/workflows/apply-conape-v44-publisher-branch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/conape-v44-bridge-publisher
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact source patch
+        run: node scripts/apply_conape_v44_publisher_server_patch.mjs
+      - name: Syntax checks
+        run: |
+          node --check services/conape-bridge/server_v2.mjs
+          node --check services/conape-bridge/conape_v44_publisher.mjs
+          node --check services/conape-bridge/conape_v44_publisher.test.mjs
+      - name: Publisher dry-run QA
+        run: node services/conape-bridge/conape_v44_publisher.test.mjs
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Commit generated server source
+        shell: bash
+        run: |
+          if git diff --quiet -- services/conape-bridge/server_v2.mjs; then
+            echo 'server_v2.mjs already patched'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add services/conape-bridge/server_v2.mjs
+          git commit -m 'CONAPE V4.4: conectar publisher dry-run al bridge'
+          git push origin HEAD:feature/conape-v44-bridge-publisher
