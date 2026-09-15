@@ -129,16 +129,49 @@ async function discoverWorksheetAjaxIdentifier(page) {
       }
     };
     const valid = token => decodeRegionToken(token).includes(`REGION TYPE~~${regionId}`);
+    const normalize = token => clean(token).replace(/^PLUGIN=/i, '');
+    const candidateFrom = value => {
+      const token = normalize(value);
+      return token && valid(token) ? token : '';
+    };
+
+    try {
+      const ids = [`R${regionId}`, regionId];
+      for (const id of ids) {
+        const region = window.apex?.region?.(id);
+        const candidates = [
+          region?.ajaxIdentifier,
+          region?.ajax_identifier,
+          region?.widget?.()?.ajaxIdentifier,
+          region?.widget?.()?.ajax_identifier,
+        ];
+        for (const candidate of candidates) {
+          const token = candidateFrom(candidate);
+          if (token) return token;
+        }
+      }
+    } catch {}
 
     try {
       const regions = window.apex?.regions || {};
       for (const [key, region] of Object.entries(regions)) {
-        const ajax = clean(region?.ajaxIdentifier || region?.ajax_identifier || '');
-        if (ajax && valid(ajax)) return ajax.replace(/^PLUGIN=/i, '');
+        const candidates = [
+          region?.ajaxIdentifier,
+          region?.ajax_identifier,
+          region?.widget?.()?.ajaxIdentifier,
+          region?.widget?.()?.ajax_identifier,
+        ];
+        for (const candidate of candidates) {
+          const token = candidateFrom(candidate);
+          if (token) return token;
+        }
         const elementId = clean(region?.element?.attr?.('id') || region?.element?.[0]?.id || '');
         const regionKey = clean(region?.id || region?.regionId || key);
-        if (ajax && (elementId.includes(regionId) || regionKey.includes(regionId))) {
-          return ajax.replace(/^PLUGIN=/i, '');
+        if (elementId.includes(regionId) || regionKey.includes(regionId)) {
+          for (const candidate of candidates) {
+            const token = normalize(candidate);
+            if (token) return token;
+          }
         }
       }
     } catch {}
@@ -155,7 +188,7 @@ async function discoverWorksheetAjaxIdentifier(page) {
       while ((match = pattern.exec(html))) {
         let token = clean(match[1] || match[0]);
         try { token = decodeURIComponent(token); } catch {}
-        token = token.replace(/^PLUGIN=/i, '');
+        token = normalize(token);
         if (valid(token)) return token;
       }
     }
@@ -167,11 +200,22 @@ async function buildDirectDownloadLinkRequestUrl(page, ajaxIdentifier) {
   return page.evaluate(({ ajaxIdentifier, regionId, widgetId, reportId }) => {
     const apexServer = window.apex?.server;
     if (!apexServer || typeof apexServer.pluginUrl !== 'function') return '';
+
+    const f01 = [
+      `R${regionId}_download_format`,
+      `R${regionId}_data_only`,
+      `R${regionId}_pdf_page_size`,
+      `R${regionId}_pdf_orientation`,
+      `R${regionId}_strip_rich_text`,
+      `R${regionId}_accessible`,
+    ];
+    const f02 = ['CSV', '', 'LETTER', 'HORIZONTAL', '', ''];
+
     const generated = apexServer.pluginUrl(ajaxIdentifier, {
       x01:widgetId,
       x02:reportId,
-      f01:[`R${regionId}_download_format`],
-      f02:['CSV'],
+      f01,
+      f02,
     });
     if (!generated) return '';
     const url = new URL(generated, window.location.href);
@@ -199,7 +243,7 @@ async function downloadProspectCsvViaApexDirect(page, parseProspectCsv) {
     const requestUrl = text(await buildDirectDownloadLinkRequestUrl(page, ajaxIdentifier));
     if (!requestUrl) return { ok:false, reason:'CSV_V445_PLUGIN_URL_NOT_BUILT', columns_ok:false, rows:[] };
     const parsedRequestUrl = new URL(requestUrl);
-    if (parsedRequestUrl.origin !== CONAPE_ORIGIN || !/\/wwv_flow\.ajax(?:$|\?)/.test(parsedRequestUrl.pathname + parsedRequestUrl.search)) {
+    if (parsedRequestUrl.origin !== CONAPE_ORIGIN || !/\/wwv_flow\.ajax$/.test(parsedRequestUrl.pathname)) {
       return { ok:false, reason:'CSV_V445_PLUGIN_URL_INVALID', columns_ok:false, rows:[] };
     }
 
@@ -221,73 +265,10 @@ async function downloadProspectCsvViaApexDirect(page, parseProspectCsv) {
   }
 }
 
-async function firstVisible(locator) {
-  const count = await locator.count().catch(() => 0);
-  for (let i = 0; i < count; i += 1) {
-    const candidate = locator.nth(i);
-    if (await candidate.isVisible().catch(() => false)) return candidate;
-  }
-  return null;
-}
-
+// Nombre legacy conservado para no tocar todavía el contrato del runtime.
+// Desde V4.4.5 NO abre Actions/Download/CSV ni depende de controles DOM.
 async function downloadProspectCsvViaDialog(page, parseProspectCsv) {
-  if (!page || typeof parseProspectCsv !== 'function') {
-    return { ok:false, reason:'CSV_V444_ARGUMENT_INVALID', columns_ok:false, rows:[] };
-  }
-
-  try {
-    const actions = await firstVisible(page.getByRole('button', { name:/actions|acciones/i }));
-    if (!actions) return { ok:false, reason:'ACTIONS_NOT_FOUND', columns_ok:false, rows:[] };
-    await actions.click({ timeout:5_000 });
-
-    const downloadItem = await firstVisible(page.getByRole('menuitem', { name:/download|descargar/i }));
-    if (!downloadItem) return { ok:false, reason:'DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
-    await downloadItem.click({ timeout:5_000 });
-
-    const dialogCandidates = page.locator('[role="dialog"],.ui-dialog,.a-Dialog');
-    let dialog = await firstVisible(dialogCandidates);
-    if (!dialog) {
-      await page.waitForTimeout(150);
-      dialog = await firstVisible(dialogCandidates);
-    }
-    const scope = dialog || page;
-
-    let csv = await firstVisible(scope.getByRole('button', { name:/^CSV$/i }));
-    if (!csv) csv = await firstVisible(scope.getByRole('link', { name:/^CSV$/i }));
-    if (!csv) csv = await firstVisible(scope.getByText(/^CSV$/i));
-    if (!csv) return { ok:false, reason:'CSV_CONTROL_NOT_FOUND', columns_ok:false, rows:[] };
-    await csv.click({ timeout:5_000 });
-
-    let finalDownload = await firstVisible(scope.getByRole('button', { name:/^(download|descargar)$/i }));
-    if (!finalDownload) finalDownload = await firstVisible(page.getByRole('button', { name:/^(download|descargar)$/i }));
-    if (!finalDownload) return { ok:false, reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
-
-    const linkResponsePromise = page.waitForResponse(response => {
-      try {
-        const request = response.request();
-        return request.method() === 'POST'
-          && /\/wwv_flow\.ajax(?:\?|$)/.test(response.url())
-          && String(request.postData() || '').includes('GET_DOWNLOAD_LINK');
-      } catch {
-        return false;
-      }
-    }, { timeout:10_000 }).catch(() => null);
-
-    await finalDownload.click({ timeout:5_000 });
-    const linkResponse = await linkResponsePromise;
-    if (!linkResponse) return { ok:false, reason:'CSV_DOWNLOAD_LINK_NOT_OBSERVED', columns_ok:false, rows:[] };
-    if (linkResponse.status() !== 200) return { ok:false, reason:'CSV_DOWNLOAD_LINK_HTTP', columns_ok:false, rows:[] };
-
-    const signedLink = normalizeDownloadLink(await linkResponse.text(), page.url());
-    return await parseSignedCsvResponse(page, signedLink, parseProspectCsv);
-  } catch (error) {
-    return {
-      ok:false,
-      reason:safeReason(error, 'CSV_V444_DOWNLOAD_FAILED'),
-      columns_ok:false,
-      rows:[],
-    };
-  }
+  return downloadProspectCsvViaApexDirect(page, parseProspectCsv);
 }
 
 export {
