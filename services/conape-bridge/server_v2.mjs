@@ -1,8 +1,9 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
+import { buildConapeV44DryRunSummary } from './conape_v44_publisher.mjs';
 
-const VERSION = 'V4.3.3';
+const VERSION = 'V4.4.0-PUBLISHER-DRYRUN';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2046,6 +2047,19 @@ const server = http.createServer(async (req, res) => {
       const result = await serial(() => runNavSelftest());
       console.log(JSON.stringify({ rid, action, result:'OK', ms:Date.now()-started, pii:false }));
       sendJson(res, 200, result, origin);
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/v1/prospects/v44-publisher-preview') {
+      action = 'v44_publisher_preview';
+      const auth = await authorizeCampusSession(campusTokenFromRequest(req));
+      const previewRole = roleOf(auth.session);
+      if (!['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(previewRole)) {
+        throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para preparar el publisher V4.4.', 403, 'CAMPUS');
+      }
+      const result = await serial(() => listProspectsFromHome());
+      const payload = buildConapeV44DryRunSummary(result, process.env);
+      console.log(JSON.stringify({ rid, action, result:payload.code, method:payload.method, rows_csv:payload.rows_csv, rows_html_all:payload.rows_html_all, counts_match:payload.counts_match, columns_ok:payload.columns_ok, apply_enabled:false, ms:Date.now()-started, pii:false }));
+      sendJson(res, 200, payload, origin);
       return;
     }
     if (req.method === 'GET' && url.pathname === '/v1/prospects/list') {
