@@ -557,6 +557,272 @@ function ChipGrupo({ grupo, seleccionado, onClick }) {
 // ─────────────────────────────────────────────────────────────────────────
 // BADGE DE ESTADO
 // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// SUPERADMIN · MIS GRUPOS · AGENDA SEMANAL (CS21A143)
+// Solo lectura y orden. No escribe datos. No sobrescribe globales.
+// Modalidad: campo de GRUPOS primero; letra del código (-C#-/-B#-) solo si falta.
+// Días: LM=L/Mi · KJ=K/J · LJ y L4=L a J · SA/SAB=S.
+// Hora: formato viejo 69 (6-9pm) / 94 (9am) o formato nuevo = hora militar de inicio (18, 09...).
+// ─────────────────────────────────────────────────────────────────────────
+const AGD_DIAS = [
+  { key:1, label:'LUNES' }, { key:2, label:'MARTES' }, { key:3, label:'MIÉRCOLES' },
+  { key:4, label:'JUEVES' }, { key:5, label:'VIERNES' }, { key:6, label:'SÁBADO' },
+  { key:0, label:'DOMINGO' },
+];
+const AGD_NIVEL_RANK = { B1:0, B2:1, I1:2, I2:3 };
+const AGD_FRANJAS = [
+  { id:'MANANA', label:'Mañana' },
+  { id:'TARDE',  label:'Tarde' },
+  { id:'NOCHE',  label:'Noche' },
+  { id:'SIN',    label:'Sin hora' },
+];
+
+function agdCode(g) { return String(g?.code || g?.cod_grupo || g?.codigo || '').trim().toUpperCase(); }
+
+function agdNorm(v) {
+  let s = String(v == null ? '' : v);
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+  return s.toUpperCase().replace(/\s+/g, ' ').trim();
+}
+
+// Nivel real desde el dato. Si falta, '?' (nunca inferir del prefijo: todos dicen B1).
+function agdNivel(g) {
+  const s = agdNorm(g?.nivel || g?.nivelId || g?.nivel_actual);
+  const map = { 'B1':'B1','BASICO I':'B1','BASICO 1':'B1','B2':'B2','BASICO II':'B2','BASICO 2':'B2',
+    'I1':'I1','INTERMEDIO I':'I1','INTERMEDIO 1':'I1','I2':'I2','INTERMEDIO II':'I2','INTERMEDIO 2':'I2' };
+  return map[s] || '?';
+}
+
+function agdActivos(g) {
+  const n = Number(g?.estudiantes_activos ?? g?.activos ?? g?.estudiantes ?? g?.students ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+// Devuelve { tipo:'cuatrimestre'|'bimestre'|'', fuente:'grupos'|'codigo'|'' }
+function agdModalidad(g) {
+  const campos = [g?.modalidad, g?.tipo_modalidad, g?.tipoModalidad, g?.programa_modalidad, g?.periodo_label, g?.periodo];
+  for (const c of campos) {
+    const s = agdNorm(c);
+    if (!s) continue;
+    if (s.includes('SUPER') || s.includes('BIMESTRE') || /^B\d/.test(s)) return { tipo:'bimestre', fuente:'grupos' };
+    if (s.includes('INTENSIVO') || s.includes('CUATRIMESTRE') || /^C\d/.test(s)) return { tipo:'cuatrimestre', fuente:'grupos' };
+  }
+  const code = agdCode(g);
+  if (/-B\d+-/.test(code)) return { tipo:'bimestre', fuente:'codigo' };
+  if (/-C\d+-/.test(code)) return { tipo:'cuatrimestre', fuente:'codigo' };
+  return { tipo:'', fuente:'' };
+}
+
+// Segmento de horario: LM69, KJ18, LJ69, LJ18, L469, SA94, SAB09...
+function agdSegmento(g) {
+  const seg = (agdCode(g).split('-')[1] || '');
+  const m = seg.match(/^(LJ|L4|LM|KJ|SAB|SA|L|K|M|J|V|D)(\d{1,2})?$/);
+  return m ? { dias: m[1], hora: m[2] || '' } : { dias: '', hora: '' };
+}
+
+function agdDiasKeys(g) {
+  const map = { LM:[1,3], KJ:[2,4], LJ:[1,2,3,4], L4:[1,2,3,4], SA:[6], SAB:[6], L:[1], K:[2], M:[3], J:[4], V:[5], D:[0] };
+  return map[agdSegmento(g).dias] || [];
+}
+
+// Hora de inicio (0-23) o null.
+function agdHoraInicio(g) {
+  const h = agdSegmento(g).hora;
+  if (h === '69') return 18;
+  if (h === '94') return 9;
+  if (h !== '') {
+    const n = Number(h);
+    if (Number.isInteger(n) && n >= 0 && n <= 23) return n;
+  }
+  const txt = String(g?.schedule || g?.horario || g?.hora || '');
+  const m = txt.match(/(\d{1,2})\s*(?::\d{2})?\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)?/i);
+  if (m) {
+    let n = Number(m[1]);
+    const suf = String(m[2] || '').toLowerCase().replace(/[\s.]/g, '');
+    if (suf === 'pm' && n < 12) n += 12;
+    if (suf === 'am' && n === 12) n = 0;
+    if (n >= 0 && n <= 23) return n;
+  }
+  return null;
+}
+
+function agdFranja(g) {
+  const h = agdHoraInicio(g);
+  if (h == null) return 'SIN';
+  if (h < 12) return 'MANANA';
+  if (h < 17) return 'TARDE';
+  return 'NOCHE';
+}
+
+function agdHoraLabel(g) {
+  const txt = String(g?.schedule || g?.horario || '').trim();
+  if (txt && txt !== '—') return txt;
+  const h = agdHoraInicio(g);
+  if (h == null) return 'Hora pendiente';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `Inicia ${h12}${h < 12 ? 'am' : 'pm'}`;
+}
+
+function agdSort(a, b) {
+  const ra = AGD_NIVEL_RANK[agdNivel(a)] ?? 9;
+  const rb = AGD_NIVEL_RANK[agdNivel(b)] ?? 9;
+  if (ra !== rb) return ra - rb;
+  const ea = agdActivos(a), eb = agdActivos(b);
+  if (ea !== eb) return eb - ea;
+  return agdCode(a).localeCompare(agdCode(b), 'es', { numeric:true });
+}
+
+function AgdTarjeta({ grupo, seleccionado, resaltado, atenuado, onSelect, onHover }) {
+  const code = agdCode(grupo);
+  const nivel = agdNivel(grupo);
+  const cfg = NIVEL_CONFIG[nivel] || { nombre:'Nivel ?', color:'#6B7280', bg:'rgba(107,114,128,0.10)' };
+  const activos = agdActivos(grupo);
+  const docente = String(grupo?.docente || grupo?.teacher || '').trim();
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(code)}
+      onMouseEnter={() => onHover(code)}
+      onMouseLeave={() => onHover(null)}
+      onFocus={() => onHover(code)}
+      onBlur={() => onHover(null)}
+      title={`${code} · ${cfg.nombre} · ${docente || 'Docente pendiente'}`}
+      style={{
+        width:'100%', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+        background: seleccionado ? cfg.color : cfg.bg,
+        color: seleccionado ? '#FFF' : 'var(--an-navy,#14213D)',
+        border:`1.5px solid ${resaltado || seleccionado ? cfg.color : 'transparent'}`,
+        borderRadius:8, padding:'6px 8px',
+        opacity: atenuado ? 0.35 : 1,
+        transition:'opacity .12s, border-color .12s',
+      }}
+    >
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:6 }}>
+        <span style={{ fontFamily:'var(--f-mono,monospace)', fontSize:12, fontWeight:800 }}>{code.split('-').pop()}</span>
+        <span style={{ fontSize:10, fontWeight:800, color: seleccionado ? '#FFF' : cfg.color }}>{nivel}</span>
+      </div>
+      <div style={{ fontSize:10.5, marginTop:2, opacity:0.85, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+        {docente || 'Docente pendiente'}
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:3, gap:6 }}>
+        <span style={{ fontSize:11, fontWeight:700 }}>{activos} act.</span>
+        {activos < 5 && (
+          <span style={{ fontSize:9, fontWeight:800, color: seleccionado ? '#FFF' : '#C0392B' }}>BAJO MÍN.</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function AgdTablero({ titulo, subtitulo, grupos, grupoSel, onSelect }) {
+  const [hover, setHover] = React.useState(null);
+  const enGrilla = grupos.filter(g => agdActivos(g) > 0 && agdDiasKeys(g).length > 0);
+  const revisar = grupos.filter(g => !(agdActivos(g) > 0 && agdDiasKeys(g).length > 0));
+  const usaDomingo = enGrilla.some(g => agdDiasKeys(g).includes(0));
+  const dias = AGD_DIAS.filter(d => d.key !== 0 || usaDomingo);
+  const franjas = AGD_FRANJAS.filter(f => enGrilla.some(g => agdFranja(g) === f.id));
+  const activosTotal = enGrilla.reduce((s, g) => s + agdActivos(g), 0);
+  const desdeCodigo = grupos.filter(g => agdModalidad(g).fuente === 'codigo').length;
+
+  return (
+    <section style={{ background:'#FFF', border:'1px solid var(--line,#e6e0d8)', borderRadius:12, overflow:'hidden' }}>
+      <div style={{ padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:10, flexWrap:'wrap', borderBottom:'1px solid var(--line,#e6e0d8)' }}>
+        <div>
+          <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:20, fontWeight:600, color:'var(--an-navy,#14213D)' }}>{titulo}</div>
+          <div style={{ fontSize:11, color:'var(--ink-3,#8b8178)', marginTop:2 }}>{subtitulo}</div>
+        </div>
+        <div style={{ fontSize:12, fontWeight:700, color:'var(--an-navy,#14213D)' }}>
+          {enGrilla.length} grupos · {activosTotal} activos
+        </div>
+      </div>
+
+      {enGrilla.length === 0 ? (
+        <div style={{ padding:20, textAlign:'center', fontSize:12, color:'var(--ink-3,#8b8178)' }}>
+          No hay grupos con estudiantes activos en este tablero.
+        </div>
+      ) : (
+        <div style={{ overflowX:'auto' }}>
+          <div style={{ minWidth: 90 + dias.length * 130, display:'grid', gridTemplateColumns:`90px repeat(${dias.length}, minmax(120px,1fr))`, gap:4, padding:8 }}>
+            <div />
+            {dias.map(d => (
+              <div key={d.key} style={{ fontSize:10, fontWeight:800, letterSpacing:'.06em', textAlign:'center', padding:'6px 0', background:'#F7F3EC', borderRadius:6, color:'var(--ink-2,#6f665e)' }}>{d.label}</div>
+            ))}
+            {franjas.map(f => (
+              <React.Fragment key={f.id}>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--ink-2,#6f665e)', padding:'8px 4px' }}>{f.label}</div>
+                {dias.map(d => {
+                  const celda = enGrilla
+                    .filter(g => agdFranja(g) === f.id && agdDiasKeys(g).includes(d.key))
+                    .sort(agdSort);
+                  return (
+                    <div key={`${f.id}-${d.key}`} style={{ minHeight:54, background:'#FCFAF7', border:'1px dashed #ECE6DD', borderRadius:8, padding:4, display:'grid', gap:4, alignContent:'start' }}>
+                      {celda.map(g => {
+                        const c = agdCode(g);
+                        return (
+                          <AgdTarjeta
+                            key={`${f.id}-${d.key}-${c}`}
+                            grupo={g}
+                            seleccionado={String(grupoSel || '').toUpperCase() === c}
+                            resaltado={hover === c}
+                            atenuado={!!hover && hover !== c}
+                            onSelect={onSelect}
+                            onHover={setHover}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {revisar.length > 0 && (
+        <div style={{ padding:'10px 14px', borderTop:'1px solid var(--line,#e6e0d8)', background:'#FFF8E1' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'#8A5A00', marginBottom:6 }}>Revisar (0 activos o sin día reconocido)</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {revisar.sort(agdSort).map(g => {
+              const c = agdCode(g);
+              return (
+                <button key={`rev-${c}`} type="button" onClick={() => onSelect(c)}
+                  style={{ fontFamily:'var(--f-mono,monospace)', fontSize:11, padding:'4px 8px', borderRadius:6, border:'1px dashed #D9B45A', background:'#FFF', cursor:'pointer', color:'#6B4A00' }}>
+                  {c} · {agdNivel(g)} · {agdActivos(g)} act.
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {desdeCodigo > 0 && (
+        <div style={{ padding:'6px 14px', borderTop:'1px solid var(--line,#e6e0d8)', fontSize:10.5, color:'var(--ink-3,#8b8178)' }}>
+          {desdeCodigo} grupo(s) sin modalidad en GRUPOS: clasificados por la letra del código.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AgdMisGrupos({ grupos, grupoSel, onSelect }) {
+  const lista = Array.isArray(grupos) ? grupos : [];
+  const cuatri = lista.filter(g => agdModalidad(g).tipo === 'cuatrimestre');
+  const bime   = lista.filter(g => agdModalidad(g).tipo === 'bimestre');
+  const sinMod = lista.filter(g => !agdModalidad(g).tipo);
+  return (
+    <div style={{ display:'grid', gap:14 }}>
+      <AgdTablero titulo="Cuatrimestres" subtitulo="Intensivo · 2 días por semana" grupos={cuatri} grupoSel={grupoSel} onSelect={onSelect} />
+      <AgdTablero titulo="Bimestres" subtitulo="Súper intensivo" grupos={bime} grupoSel={grupoSel} onSelect={onSelect} />
+      {sinMod.length > 0 && (
+        <div style={{ padding:'10px 14px', borderRadius:10, background:'#FDECEC', color:'#8A1F1F', fontSize:11.5 }}>
+          Sin modalidad reconocida: {sinMod.map(agdCode).join(', ')}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EstadoBadge({ estado }) {
   const map = {
     CA:  { label:'Cursando',   bg:'#E3F2FD', color:'#1565C0' },
@@ -2694,7 +2960,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       <style>{`@keyframes an-spin { to { transform: rotate(360deg); } }`}</style>
       {!embebidoCalGrupo && <PageHeader
         kicker="Administración"
-        title={<>Grupos <em>activos</em></>}
+        title={<>Mis <em>grupos</em></>}
         sub="Click en un grupo para ver su radiografía completa"
       />}
 
@@ -2722,13 +2988,13 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap', marginBottom:14 }}>
               <div style={{ minWidth:260, flex:'1 1 320px' }}>
                 <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.16em', textTransform:'uppercase', color:'var(--ink-3,#8b8178)', marginBottom:4 }}>
-                  Consulta administrativa
+                  Agenda administrativa
                 </div>
                 <div style={{ fontFamily:'var(--f-serif,serif)', fontSize:24, lineHeight:1.05, color:'var(--an-navy,#14213D)', fontWeight:600 }}>
-                  Estudiantes por grupo
+                  Grupos por modalidad
                 </div>
                 <div style={{ fontSize:12, color:'var(--ink-2,#6f665e)', marginTop:5, lineHeight:1.45 }}>
-                  Esta vista queda para búsqueda, mora, CONAPE y ficha administrativa. La operación diaria del calendario ahora vive en <strong>Calendario de Grupo</strong>.
+                  Cuatrimestres y bimestres en tableros separados. En cada día: franja, luego nivel, luego estudiantes activos. Tocá un grupo para ver su radiografía abajo.
                 </div>
               </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
@@ -2772,19 +3038,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
             </div>
           </div>
 
-          <div style={{
-            display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(230px, 1fr))', gap:10,
-            maxHeight:360, overflowY:'auto', paddingRight:4,
-          }}>
-            {gruposFiltrados.map(g => (
-              <ChipGrupo
-                key={g.code}
-                grupo={g}
-                seleccionado={grupoSel === g.code}
-                onClick={() => setGrupoSel(g.code)}
-              />
-            ))}
-          </div>
+          <AgdMisGrupos grupos={gruposFiltrados} grupoSel={grupoSel} onSelect={setGrupoSel} />
 
           {!gruposFiltrados.length && (
             <div style={{ padding:'22px', textAlign:'center', color:'var(--ink-3,#999)', fontSize:13, border:'1px dashed var(--line,#ddd)', borderRadius:12, marginTop:8 }}>
