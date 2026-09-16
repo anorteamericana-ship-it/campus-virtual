@@ -198,6 +198,7 @@
   function diasCodeDe(g) {
     const code = String(g.codigo || '').toUpperCase();
     const seg = code.split('-')[1] || '';
+    if (/^L4/.test(seg)) return 'LJ';
     const fromCode = (seg.match(/^[LKMJVS]+/) || [''])[0];
     if (fromCode) return fromCode;
     return String(g.dias || '').toUpperCase().replace(/[^LKMJVS]/g, '');
