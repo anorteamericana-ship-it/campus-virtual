@@ -878,6 +878,7 @@
     const [grupoCod, setGrupoCod] = useState('');
     const [becaEstadoLocal, setBecaEstadoLocal] = useState('');
     const [becasActivas, setBecasActivas] = useState([]); // Fase 3.8: % dinámicos
+    const [becasEstado, setBecasEstado] = useState('loading'); // loading | ok | error
     const [submitting, setSubmitting] = useState(false);
 
     // Carga del prospecto (self-contained, igual que los otros modales admin).
@@ -902,8 +903,23 @@
       // FIX-MATRICULAS-ADMIN-001: getBecas por POST text/plain (apiPost), no por
       // GET — así no se dispara el Error CORS al abrir el modal de matrícula.
       apiPost({ fn: 'getBecas', solo_activas: true })
-        .then(r => { if (!cancel && r && r.ok) setBecasActivas(r.becas || []); })
-        .catch(() => {});
+        .then(r => {
+          if (cancel) return;
+          if (r && r.ok && Array.isArray(r.becas)) {
+            setBecasActivas(r.becas);
+            setBecasEstado('ok');
+          } else {
+            console.warn('[Matrículas] CONFIG_BECAS no devolvió una respuesta válida.', r);
+            setBecasActivas([]);
+            setBecasEstado('error');
+          }
+        })
+        .catch(e => {
+          if (cancel) return;
+          console.error('[Matrículas] No se pudo cargar CONFIG_BECAS.', e);
+          setBecasActivas([]);
+          setBecasEstado('error');
+        });
       return () => { cancel = true; };
     }, []);
 
@@ -933,29 +949,36 @@
     const grupoSel = compat.find(g => g.codigo === grupoCod) || null;
 
     // ── Preview de precios (frontend) ──
-    // Fase 3.8 — % por rubro dinámicos: buscamos la beca del prospecto en
-    // CONFIG_BECAS. Si no se encuentra (beca vieja), fallback histórico
-    // (MUJER 50% / otras 25%). Matrícula y cuota pueden tener % distintos.
-    const becaDef = becasActivas.find(b => String(b.id || '').toUpperCase() === beca
-      || String(b.nombre || '').toUpperCase().replace(/^BECA\s+/, '') === beca);
+    // CONFIG_BECAS es la única fuente de verdad para porcentajes.
+    // Nunca inferimos descuentos por el nombre de la beca.
+    const becaKey = String(beca || '').toUpperCase().trim().replace(/^BECA\s+/, '');
+    const becaDef = becasActivas.find(b => {
+      const id = String(b.id || '').toUpperCase().trim().replace(/^BECA\s+/, '');
+      const nombreBeca = String(b.nombre || '').toUpperCase().trim().replace(/^BECA\s+/, '');
+      return id === becaKey || nombreBeca === becaKey;
+    });
     const aprobada = becaEstadoLocal === 'APROBADA';
-    const fbPct = beca === 'MUJER' ? 50 : 25;
-    const pctMatricula = aprobada ? (becaDef ? becaDef.pct_matricula : fbPct) : 0;
-    const pctCuota = aprobada ? (becaDef ? becaDef.pct_cuota : fbPct) : 0;
+    const pctMatriculaDef = becaDef ? (Number(becaDef.pct_matricula) || 0) : 0;
+    const pctCuotaDef = becaDef ? (Number(becaDef.pct_cuota) || 0) : 0;
+    const pctMatricula = aprobada ? pctMatriculaDef : 0;
+    const pctCuota = aprobada ? pctCuotaDef : 0;
+    const becaConfigLista = !beca || (becasEstado === 'ok' && !!becaDef);
+    const becaAprobadaSinConfig = aprobada && !becaConfigLista;
+    const becaResumen = becaDef
+      ? (pctMatriculaDef === pctCuotaDef
+        ? `Descuento de ${pctCuotaDef}% en cuota y matrícula.`
+        : `Descuento de ${pctCuotaDef}% en cuota y ${pctMatriculaDef}% en matrícula.`)
+      : (becasEstado === 'loading'
+        ? 'Cargando condiciones desde CONFIG_BECAS…'
+        : 'No se pudo validar esta beca en CONFIG_BECAS.');
     const precioCuota = Number(grupoSel?.precio_cuota) || 0;
     const precioMatricula = Number(grupoSel?.precio_matricula) || 0;
     const precioCertificado = Number(grupoSel?.precio_certificado) || 0;
     const totalCuotas = modalidad === 'SUPER_INTENSIVO' ? 8 : 16;
     const cuotaFinal = Math.round(precioCuota * (1 - pctCuota / 100));
     const matriculaFinal = Math.round(precioMatricula * (1 - pctMatricula / 100));
-    const certificadoFinal = precioCertificado; // SIN descuento
+    const certificadoFinal = precioCertificado;
     const costoCurso = cuotaFinal * totalCuotas;
-    // % a mostrar en los textos (representativo): el de cuota, o matrícula si cuota=0.
-    const descPct = becaDef ? (becaDef.pct_cuota || becaDef.pct_matricula) : fbPct;
-    // FIX-GENERAR-MATRICULA-CONSOLIDADO: `descuento` se usaba en el Preview de
-    // precios (gm-strike / gm-disc) pero NUNCA estaba declarado → ReferenceError
-    // al renderizar el modal "Generar matrícula" → PANTALLA EN BLANCO. Es el
-    // descuento efectivo (>0 si la beca aprobada aplica % a cuota o matrícula).
     const descuento = Math.max(pctMatricula || 0, pctCuota || 0);
 
     const tieneCompat = compat.length > 0;
@@ -963,6 +986,10 @@
 
     const generar = async () => {
       if (!grupoSel || submitting) return;
+      if (becaAprobadaSinConfig) {
+        onToast('No se puede generar la matrícula: falta validar la configuración vigente de la beca.', 'err');
+        return;
+      }
       setSubmitting(true);
       try {
         // FIX-ADMIN-STABILITY-004/005: helper local apiPost (POST text/plain, sin
@@ -999,7 +1026,7 @@
       <>
         <button className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancelar</button>
         <button className="btn btn-primary" onClick={generar}
-          disabled={submitting || !grupoSel}
+          disabled={submitting || !grupoSel || becaAprobadaSinConfig}
           style={{ background: 'var(--an-navy)', borderColor: 'var(--an-navy)' }}>
           {submitting ? 'Generando…' : 'Generar matrícula'}
         </button>
@@ -1061,16 +1088,18 @@
                   <div className="gm-beca">
                     <div className="gm-beca-info">
                       <span className="gm-beca-tipo">Beca {beca}</span>
-                      <span className="gm-beca-desc">Descuento de {descPct}% sobre cuota y matrícula (no aplica al certificado).</span>
+                      <span className="gm-beca-desc">{becaResumen}</span>
                     </div>
                     <div className="gm-beca-actions">
                       <button className="btn btn-ghost gm-reject" onClick={() => setBecaEstadoLocal('RECHAZADA')}>Rechazar beca</button>
-                      <button className="btn btn-primary gm-approve" onClick={() => setBecaEstadoLocal('APROBADA')}>Aprobar beca</button>
+                      <button className="btn btn-primary gm-approve"
+                        disabled={becasEstado !== 'ok' || !becaDef}
+                        onClick={() => setBecaEstadoLocal('APROBADA')}>Aprobar beca</button>
                     </div>
                   </div>
                 ) : becaEstadoLocal === 'APROBADA' ? (
                   <div className="gm-beca-state gm-beca-ok">
-                    <div><b>Beca {beca} aprobada</b> · −{descPct}% en cuota y matrícula</div>
+                    <div><b>Beca {beca} aprobada</b> · {becaResumen}</div>
                     {becaEstadoOrig === 'SOLICITADA' && (
                       <button className="gm-link" onClick={() => setBecaEstadoLocal('SOLICITADA')}>Cambiar</button>
                     )}
