@@ -198,6 +198,7 @@
   function diasCodeDe(g) {
     const code = String(g.codigo || '').toUpperCase();
     const seg = code.split('-')[1] || '';
+    if (/^L4/.test(seg)) return 'LJ';
     const fromCode = (seg.match(/^[LKMJVS]+/) || [''])[0];
     if (fromCode) return fromCode;
     return String(g.dias || '').toUpperCase().replace(/[^LKMJVS]/g, '');
@@ -855,7 +856,7 @@
 
   // Etiqueta una opción de grupo: "B1-LM18-C3-0726 · Lun/Mié · 6pm a 9pm · Inicia 14 sep 2026"
   function labelGrupo(g) {
-    const dias = decodeDiasLocal(g.dias);
+    const dias = decodeDiasLocal(diasCodeDe(g));
     const horario = [g.hora_ini, g.hora_fin].filter(Boolean).join(' a ');
     const inicia = g.fecha_inicio ? `Inicia ${fmtFechaCorta(g.fecha_inicio)}` : '';
     return [g.codigo, dias, horario, inicia].filter(Boolean).join(' · ');
