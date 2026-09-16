@@ -855,7 +855,7 @@
 
   // Etiqueta una opción de grupo: "B1-LM18-C3-0726 · Lun/Mié · 6pm a 9pm · Inicia 14 sep 2026"
   function labelGrupo(g) {
-    const dias = decodeDiasLocal(g.dias);
+    const dias = decodeDiasLocal(diasCodeDe(g));
     const horario = [g.hora_ini, g.hora_fin].filter(Boolean).join(' a ');
     const inicia = g.fecha_inicio ? `Inicia ${fmtFechaCorta(g.fecha_inicio)}` : '';
     return [g.codigo, dias, horario, inicia].filter(Boolean).join(' · ');
