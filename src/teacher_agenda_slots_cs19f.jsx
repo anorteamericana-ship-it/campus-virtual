@@ -108,7 +108,7 @@
     if (!original) return [];
     const normalized = upper(original).replace(/[.;|]+/g, ',').replace(/\s+Y\s+/g, ',');
     const exact = {
-      LM:[1,3], KJ:[2,4], LJ:[1,4], L4:[1,2,3,4],
+      LM:[1,3], KJ:[2,4], LJ:[1,2,3,4], L4:[1,2,3,4],
       SA:[6], SAB:[6], S:[6],
       L:[1], K:[2], M:[3], X:[3], MI:[3], MIE:[3], MIERCOLES:[3],
       J:[4], V:[5], D:[0], DOM:[0], DOMINGO:[0]
