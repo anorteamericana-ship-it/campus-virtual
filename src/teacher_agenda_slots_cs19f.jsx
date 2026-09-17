@@ -180,8 +180,15 @@
       .filter(sl => { const k = `${sl.day}-${sl.hora_i}-${sl.hora_f}-${sl.hourLabel}`; if (seen.has(k)) return false; seen.add(k); return true; });
   }
   function slotsFor(g, riel){
+    const sched = scheduleFromCode(codeOf(g));
+    const declaredCourseDays = upper(first(g && (g.dias || g.diasCode || g.dias_code), sched.dias));
+    const codeCourseDays = upper(sched.dias);
+    const canonicalCourseDays = ['LJ','L4'].includes(codeCourseDays)
+      ? codeCourseDays
+      : (['LJ','L4'].includes(declaredCourseDays) ? declaredCourseDays : '');
+    const forceOfficialCourse = riel !== 'ican' && !!canonicalCourseDays;
     const agendaSlots = slotsFromAgendaArrays(g, riel);
-    if (agendaSlots.length) return agendaSlots;
+    if (agendaSlots.length && !forceOfficialCourse) return agendaSlots;
     const isIcan = riel === 'ican';
     if (isIcan) {
       const slotArrays = [g && g.ican_slots, g && g.ican_horarios, g && g.horarios_ican, g && g.icanSlots].filter(Array.isArray);
@@ -195,8 +202,11 @@
       const days = dayIndexes(first(g && g.dias_ican, g && g.diasIcan, g && g.dias_ican_code, g && g.diasIcanCode));
       return days.map(d => normalizeSlot({ dia_index:d, dia_label:DAY_LABEL[d] }, '', g && (g.hora_i_ican || g.hora_inicio_ican), g && (g.hora_f_ican || g.hora_fin_ican))).filter(Boolean);
     }
-    const sched = scheduleFromCode(codeOf(g));
-    const days = dayIndexes(first(g && (g.dias || g.diasCode || g.dias_code), sched.dias));
+    const days = dayIndexes(
+      forceOfficialCourse
+        ? canonicalCourseDays
+        : first(g && (g.dias || g.diasCode || g.dias_code), sched.dias)
+    );
     return days.map(d => normalizeSlot({ dia_index:d, dia_label:DAY_LABEL[d] }, '', g && (g.hora_i || g.hora_inicio) || sched.hora_i, g && (g.hora_f || g.hora_fin) || sched.hora_f)).filter(Boolean);
   }
   function groupDaysLabel(g){
@@ -221,6 +231,17 @@
     const nh = minutes(nx.hora_inicio || nx.hora_i || nx.HORA_INICIO || nx.hora || '');
     if (nh != null && slot.start !== 9999 && Math.abs(nh - slot.start) > 90) return false;
     return true;
+  }
+  function isPendingCloseNext(g, riel){
+    const nx = nextFor(g, riel);
+    if (!nx) return false;
+    const raw = clean(nx.fecha || nx.date || nx.FECHA).slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+    const d = new Date(raw + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    return d < today;
   }
   function canOperate(g, riel){
     const nx = nextFor(g, riel);
@@ -312,17 +333,20 @@
       const sessionHere = upper(activeSession && (activeSession.ESTADO || activeSession.estado)) === 'ABIERTA' && String(activeSession && (activeSession.COD_GRUPO || activeSession.cod_grupo || activeSession.grupo || '')) === String(cod) && aRiel === riel;
       const dark = isIcan ? '#57217F' : pal.dark;
       const light = isIcan ? '#EADCF5' : pal.light;
-      const explicitNext = isNextSlot(g, riel, slot);
-      const nextHere = explicitNext || autoNextKeys.has(itemKey(it));
+      const matchesExplicitSlot = isNextSlot(g, riel, slot);
+      const hasPendingClose = isPendingCloseNext(g, riel);
+      const pendingClose = hasPendingClose && matchesExplicitSlot;
+      const explicitNext = !hasPendingClose && matchesExplicitSlot;
+      const nextHere = !hasPendingClose && (explicitNext || autoNextKeys.has(itemKey(it)));
       const daysLabel = isIcan ? 'Club I CAN' : groupDaysLabel(g);
       const hourLabel = slot.hourLabel || 'Horario pendiente';
       const title = isIcan ? `Club I CAN · ${slot.dayLabel} de ${hourLabel} - ${cicloOf(g)}` : `${groupDaysLabel(g)} de ${hourLabel} - ${cicloOf(g)}`;
       const palette = isIcan ? ICAN_COLOR : { dark:pal.dark, light:pal.light, border:pal.border || pal.dark, badge:pal.dark };
-      const badge = sessionHere ? 'ACTIVA' : nextHere ? 'PRÓXIMA' : active ? 'SELECCIONADO' : '';
-      const badgeBg = sessionHere ? STATUS_COLOR.active : nextHere ? STATUS_COLOR.next : (isIcan ? ICAN_COLOR.badge : STATUS_COLOR.selected);
+      const badge = sessionHere ? 'ACTIVA' : pendingClose ? 'PENDIENTE DE CIERRE' : nextHere ? 'PRÓXIMA' : active ? 'SELECCIONADO' : '';
+      const badgeBg = sessionHere ? STATUS_COLOR.active : pendingClose ? '#A45D00' : nextHere ? STATUS_COLOR.next : (isIcan ? ICAN_COLOR.badge : STATUS_COLOR.selected);
       const actionLine = nextHere && canOperate(g, riel) ? (isIcan ? 'Activar / pasar lista' : 'Activar clase') : '';
-      const bg = sessionHere ? '#FFF1F1' : (active || nextHere ? palette.light : (isIcan ? '#FFFBFF' : '#FFFFFF'));
-      const borderColor = sessionHere ? STATUS_COLOR.active : (active || nextHere ? palette.border : 'rgba(15,23,42,.12)');
+      const bg = sessionHere ? '#FFF1F1' : pendingClose ? '#FFF8E8' : (active || nextHere ? palette.light : (isIcan ? '#FFFBFF' : '#FFFFFF'));
+      const borderColor = sessionHere ? STATUS_COLOR.active : pendingClose ? '#A45D00' : (active || nextHere ? palette.border : 'rgba(15,23,42,.12)');
       const shadow = sessionHere
         ? '0 0 0 2px rgba(198,40,40,.12), 0 8px 18px rgba(198,40,40,.08)'
         : nextHere

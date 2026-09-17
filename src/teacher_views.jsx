@@ -113,7 +113,7 @@ function calcularLeccionSugerida(startDate, diasCode) {
 
   // Días de clase según código (0=Dom, 1=Lun, ..., 6=Sáb)
   const diasMap = {
-    'LM': [1,3], 'KJ': [2,4], 'LJ': [1,4],
+    'LM': [1,3], 'KJ': [2,4], 'LJ': [1,2,3,4], 'L4': [1,2,3,4],
     'SA': [6],   'LM94': [1,3],
   };
   const codigo = (diasCode || '').replace(/\d/g,'').toUpperCase();
@@ -126,7 +126,7 @@ function calcularLeccionSugerida(startDate, diasCode) {
     cursor.setDate(cursor.getDate() + 1);
   }
   if (codigo === 'SA') leccion = leccion * 2;
-  if (codigo === 'LJ') leccion = leccion * 2;
+  // LJ/L4 ya cuentan una lección por cada día de lunes a jueves.
 
   return String(Math.min(Math.max(leccion, 1), 32));
 }
@@ -207,7 +207,7 @@ function tvScheduleFromCode(code){
 }
 function tvDiasLabel(code){
   const d=tvUpper(code);
-  return ({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábado',SAB:'Sábado',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingo'}[d]) || d || 'Horario';
+  return ({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes a jueves',L4:'Lunes a jueves',SA:'Sábado',SAB:'Sábado',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingo'}[d]) || d || 'Horario';
 }
 function tvHoraLabel(g){
   const code = tvGroupCode(g) || tvGroupCode(g?.code || g?.cod_grupo || '');
@@ -510,7 +510,7 @@ const TV_WEEK_DAYS_F82 = [
 function tvGroupDayIndexesF82(g) {
   const code = tvUpper(g?.dias || g?.diasCode || tvScheduleFromCode(tvGroupCode(g)).dias || '');
   const exact = {
-    LM:[1,3], KJ:[2,4], LJ:[1,4], L4:[1,2,3,4], SA:[6], SAB:[6],
+    LM:[1,3], KJ:[2,4], LJ:[1,2,3,4], L4:[1,2,3,4], SA:[6], SAB:[6],
     L:[1], K:[2], M:[3], J:[4], V:[5], D:[0],
   };
   if (exact[code]) return exact[code];
@@ -995,8 +995,12 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
     return allLessons;
   },[allLessons,viewMode]);
   const pickNextLesson=React.useCallback((rows)=>{
-    const upcoming=(rows||[]).find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
-    return upcoming||(rows||[]).find(l=>tvUpper(l.estado)!=='CERRADA')||(rows||[])[(rows||[]).length-1]||null;
+    const list=rows||[];
+    const upcoming=list.find(l=>String(l.fecha||'')>=todayIso&&tvUpper(l.estado)!=='CERRADA');
+    if(upcoming)return {...upcoming,__tvNextState:'upcoming'};
+    const pendingClose=list.find(l=>String(l.fecha||'')!==''&&String(l.fecha||'')<todayIso&&tvUpper(l.estado)!=='CERRADA');
+    if(pendingClose)return {...pendingClose,__tvNextState:'pending_close'};
+    return list[list.length-1]||null;
   },[todayIso]);
   const nextCourseLesson=React.useMemo(()=>pickNextLesson(allLessons.filter(l=>!tvIsIcanEventF96(l))),[allLessons,pickNextLesson]);
   const nextIcanLesson=React.useMemo(()=>pickNextLesson(allLessons.filter(tvIsIcanEventF96)),[allLessons,pickNextLesson]);
@@ -1004,7 +1008,11 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   const nextKey=nextLesson?`${tvLessonKeyF97(nextLesson)}|${String(nextLesson.fecha||'')}`:'';
   const isRailNext=React.useCallback((lesson)=>{
     const target=tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson;
-    return !!target&&tvLessonKeyF97(lesson)===tvLessonKeyF97(target)&&String(lesson.fecha||'')===String(target.fecha||'')&&tvUpper(lesson.estado)!=='CERRADA';
+    return !!target&&target.__tvNextState!=='pending_close'&&tvLessonKeyF97(lesson)===tvLessonKeyF97(target)&&String(lesson.fecha||'')===String(target.fecha||'')&&tvUpper(lesson.estado)!=='CERRADA';
+  },[nextCourseLesson,nextIcanLesson]);
+  const isRailPendingClose=React.useCallback((lesson)=>{
+    const target=tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson;
+    return !!target&&target.__tvNextState==='pending_close'&&tvLessonKeyF97(lesson)===tvLessonKeyF97(target)&&String(lesson.fecha||'')===String(target.fecha||'')&&tvUpper(lesson.estado)!=='CERRADA';
   },[nextCourseLesson,nextIcanLesson]);
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
   const calendarRef=React.useRef(null), topScrollRef=React.useRef(null), positionedRef=React.useRef('');
@@ -1088,7 +1096,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
                   <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontWeight:750,lineHeight:1.2,fontSize:12,whiteSpace:'normal'}}>{r.name}</div>
-                    <div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · Asistencia {att?.pct!=null?`${att.pct}%`:'—'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
+                    <div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
                   </div>
                 </div>
               </td>
@@ -1100,6 +1108,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
           {!lessons.length?<div style={{minHeight:HEADER_H+(Math.max(1,roster.length)*ROW_H),display:'flex',alignItems:'center',justifyContent:'center',padding:28,textAlign:'center',background:viewMode==='ican'?'#FBF7FE':'#FFF',color:viewMode==='ican'?'#6A3D91':'var(--ink-3)',fontWeight:850,fontSize:12,borderBottom:'1px solid var(--line)'}}>{viewMode==='ican'?'Todavía no hay sesiones I CAN programadas para este grupo.':'No hay actividades programadas en esta vista.'}</div>:<table className="teacher-roster-fixed-table teacher-roster-calendar-table" style={{...tableBase,width:Math.max(COL_W,lessons.length*COL_W),minWidth:Math.max(COL_W,lessons.length*COL_W)}}>
             <thead><tr>{lessons.map(l=>{
               const isNext=isRailNext(l);
+              const isPendingClose=isRailPendingClose(l);
               const isToday=String(l.fecha||'')===todayIso;
               const isIcan=tvIsIcanEventF96(l), isPC=tvIsProgressCheckF96(l);
               const isActive=activeCode===tvGroupCode(meta)&&activeLec===Number(l.leccion)&&activeRiel===tvLessonRielF97(l);
@@ -1108,7 +1117,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
                 <div style={{fontSize:10.5,fontWeight:900,color:isIcan?'#57217F':isPC?'#8A5500':undefined}}>{isIcan?`I CAN ${String(l.leccion).padStart(2,'0')}`:isPC?'Progress Check':tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>
                 {!isIcan&&(tvEvalLabelF86(l.tipo,l.leccion)||isPC)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}
                 <div style={{fontSize:8.5,color:isNext?(isIcan?'#57217F':'#003B7A'):'var(--ink-3)',marginTop:2,fontWeight:isNext?850:500}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
-                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PRÓXIMA LECCIÓN</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
+                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PRÓXIMA LECCIÓN</div>:isPendingClose?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:'#A45D00',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PENDIENTE DE CIERRE</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
                 {isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}
               </th>;
             })}</tr></thead>

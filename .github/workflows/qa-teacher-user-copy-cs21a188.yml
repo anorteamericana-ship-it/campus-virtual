@@ -25,4 +25,4 @@ jobs:
       - name: Regress CS21A186 teacher session safe errors
         run: node scripts/qa_teacher_session_safe_errors_cs21a186.mjs
       - name: Diff hygiene
-        run: git diff --check "origin/fix/teacher-action-safe-errors-cs21a187...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'

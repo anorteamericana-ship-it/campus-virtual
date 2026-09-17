@@ -570,7 +570,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
       return;
     }
 
-    return postCronoGrupo('getFechasGrupo', { cod_grupo: codGrupo, nivel })
+    return postCronoGrupo('getFechasGrupo', { cod_grupo: codGrupo, nivel, ...(esStudent ? { riel:'curso' } : {}) })
       .then(d => {
         if (seq !== loadSeqRef.current) return;
         if (d?.ok && Array.isArray(d.lecciones)) {

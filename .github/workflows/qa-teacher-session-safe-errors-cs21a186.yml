@@ -26,4 +26,4 @@ jobs:
       - name: Regress CS21A184 teacher profile
         run: node scripts/qa_sec002_teacher_profile_source_cs21a184.mjs
       - name: Diff hygiene
-        run: git diff --check "origin/security/teacher-material-access-safe-errors-cs21a185...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'
+        run: git diff --check "origin/${{ github.base_ref }}...HEAD" -- . ':(exclude)00_DOCUMENTACION/**'

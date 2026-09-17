@@ -250,7 +250,7 @@ function useProximasLecciones(codGrupo, nivel) {
     if (!codGrupo || !nivel) { setLecciones([]); return; }
     let cancelled = false;
     setLecciones(null);
-    postStudentDash('getFechasGrupo', { cod_grupo: codGrupo, nivel })
+    postStudentDash('getFechasGrupo', { cod_grupo: codGrupo, nivel, riel:'curso' })
       .then(d => {
         if (cancelled) return;
         if (d?.ok && Array.isArray(d.lecciones)) setLecciones(d.lecciones);
