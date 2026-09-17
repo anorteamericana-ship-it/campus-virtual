@@ -63,4 +63,8 @@ jobs:
       - name: Regress AS BCR wiring boundary
         run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
       - name: Diff hygiene
-        run: git diff --check ed458ff9715338cb2fcd75f9896f2753d8d019b9
+        run: |
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base_sha" ]; then base_sha="${{ github.event.before }}"; fi
+          test -n "$base_sha"
+          git diff --check "$base_sha...HEAD"
