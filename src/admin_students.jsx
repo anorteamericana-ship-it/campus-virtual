@@ -722,7 +722,6 @@ function AgdTablero({ titulo, subtitulo, grupos, grupoSel, onSelect }) {
   const dias = AGD_DIAS.filter(d => d.key !== 0 || usaDomingo);
   const franjas = AGD_FRANJAS.filter(f => enGrilla.some(g => agdFranja(g) === f.id));
   const activosTotal = enGrilla.reduce((s, g) => s + agdActivos(g), 0);
-  const desdeCodigo = grupos.filter(g => agdModalidad(g).fuente === 'codigo').length;
 
   return (
     <section style={{ background:'#FFF', border:'1px solid var(--line,#e6e0d8)', borderRadius:12, overflow:'hidden' }}>
@@ -796,11 +795,6 @@ function AgdTablero({ titulo, subtitulo, grupos, grupoSel, onSelect }) {
         </div>
       )}
 
-      {desdeCodigo > 0 && (
-        <div style={{ padding:'6px 14px', borderTop:'1px solid var(--line,#e6e0d8)', fontSize:10.5, color:'var(--ink-3,#8b8178)' }}>
-          {desdeCodigo} grupo(s) sin modalidad en GRUPOS: clasificados por la letra del código.
-        </div>
-      )}
     </section>
   );
 }
@@ -812,7 +806,7 @@ function AgdMisGrupos({ grupos, grupoSel, onSelect }) {
   const sinMod = lista.filter(g => !agdModalidad(g).tipo);
   return (
     <div style={{ display:'grid', gap:14 }}>
-      <AgdTablero titulo="Cuatrimestres" subtitulo="Intensivo · 2 días por semana" grupos={cuatri} grupoSel={grupoSel} onSelect={onSelect} />
+      <AgdTablero titulo="Cuatrimestres" subtitulo="Intensivo" grupos={cuatri} grupoSel={grupoSel} onSelect={onSelect} />
       <AgdTablero titulo="Bimestres" subtitulo="Súper intensivo" grupos={bime} grupoSel={grupoSel} onSelect={onSelect} />
       {sinMod.length > 0 && (
         <div style={{ padding:'10px 14px', borderRadius:10, background:'#FDECEC', color:'#8A1F1F', fontSize:11.5 }}>
