@@ -37,15 +37,34 @@ jobs:
         run: |
           set -o pipefail
           test "$(git hash-object scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs)" = "1f8c3ba22af2745eb153473c1e321cb61f430819"
-          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ay.txt
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base_sha" ]; then base_sha="${{ github.event.before }}"; fi
+          test -n "$base_sha"
+          git worktree add --detach /tmp/v3-base-ay "$base_sha"
+          (cd /tmp/v3-base-ay && node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs) | tee /tmp/v3-ay-base.txt
+          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ay-head.txt
           node - <<'NODE'
-          const fs=require('fs'); const s=fs.readFileSync('/tmp/v3-ay.txt','utf8');
-          const f=Number((s.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
-          const n=Number((s.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
-          if(!Number.isFinite(f)||f>44) throw new Error(`V3 findings regressed: ${f} > 44`);
-          if(!Number.isFinite(n)||n>12) throw new Error(`V3 files regressed: ${n} > 12`);
-          console.log(`V3 non-regression PASS findings=${f} files=${n}`);
+          const fs=require('fs');
+          const read=p=>fs.readFileSync(p,'utf8');
+          const metric=(s,key)=>Number((s.match(new RegExp('^'+key+'=(\\d+)
+      - name: Regress AX public enrollment boundary
+        run: node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
+      - name: Regress AT shared app boundary
+        run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
+      - name: Regress AS BCR wiring boundary
+        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
+      - name: Diff hygiene
+        run: git diff --check ed458ff9715338cb2fcd75f9896f2753d8d019b9
+,'m'))||[])[1]);
+          const base=read('/tmp/v3-ay-base.txt'), head=read('/tmp/v3-ay-head.txt');
+          const bf=metric(base,'DIRECT_RAW_SINK_FINDINGS'), bn=metric(base,'FILES_WITH_FINDINGS');
+          const hf=metric(head,'DIRECT_RAW_SINK_FINDINGS'), hn=metric(head,'FILES_WITH_FINDINGS');
+          for(const [name,value] of Object.entries({bf,bn,hf,hn})) if(!Number.isFinite(value)) throw new Error(`V3 metric missing: ${name}`);
+          if(hf>bf) throw new Error(`V3 findings regressed vs PR base: ${hf} > ${bf}`);
+          if(hn>bn) throw new Error(`V3 files regressed vs PR base: ${hn} > ${bn}`);
+          console.log(`V3 non-regression PASS base=${bf}/${bn} head=${hf}/${hn}`);
           NODE
+          git worktree remove --force /tmp/v3-base-ay
       - name: Regress AX public enrollment boundary
         run: node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
       - name: Regress AT shared app boundary
