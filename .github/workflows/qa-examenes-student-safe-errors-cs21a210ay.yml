@@ -46,16 +46,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const read=p=>fs.readFileSync(p,'utf8');
-          const metric=(s,key)=>Number((s.match(new RegExp('^'+key+'=(\\d+)
-      - name: Regress AX public enrollment boundary
-        run: node scripts/qa_inscripcion_public_safe_errors_cs21a210ax.mjs
-      - name: Regress AT shared app boundary
-        run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
-      - name: Regress AS BCR wiring boundary
-        run: node scripts/qa_importador_bcr_wiring_cs21a210as.mjs
-      - name: Diff hygiene
-        run: git diff --check ed458ff9715338cb2fcd75f9896f2753d8d019b9
-,'m'))||[])[1]);
+          const metric=(s,key)=>Number((s.match(new RegExp('^'+key+'=(\\d+)$','m'))||[])[1]);
           const base=read('/tmp/v3-ay-base.txt'), head=read('/tmp/v3-ay-head.txt');
           const bf=metric(base,'DIRECT_RAW_SINK_FINDINGS'), bn=metric(base,'FILES_WITH_FINDINGS');
           const hf=metric(head,'DIRECT_RAW_SINK_FINDINGS'), hn=metric(head,'FILES_WITH_FINDINGS');
