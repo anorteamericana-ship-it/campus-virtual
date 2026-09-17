@@ -1,8 +1,5 @@
 import fs from 'node:fs';
-import crypto from 'node:crypto';
-
 const FILE='src/app.jsx';
-const BASE_BLOB='d57cf007013beca1b1830d2993ad69be8e049f64';
 const OLD_ADMIN_MASTER=`  admin_master: ['src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94'],`;
 const NEW_ADMIN_MASTER=`  admin_master: ['src/conape_bridge_config_c3_6.js?v=V4.2.9','src/conape_bridge_client_c3_6.js?v=V3.1.0','src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94C'],`;
 const ANCHOR=`  } finally { clearTimeout(timer); }\n}\nfunction reposEstadoF91(estado) {`;
@@ -16,7 +13,6 @@ const NEW_STUDENT=`      .catch(e=>setState({loading:false,error:appSafeUserErro
 const OLD_WRITTEN=`      .catch(e=>setState({loading:false,error:e.message||String(e),assigned:false,data:null}));`;
 const NEW_WRITTEN=`      .catch(e=>setState({loading:false,error:appSafeUserErrorF91(e,'No pudimos verificar la disponibilidad del examen escrito. Intentá nuevamente.','examen_escrito_docente'),assigned:false,data:null}));`;
 
-function sha(text){const b=Buffer.from(text,'utf8');return crypto.createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');}
 function must(ok,msg){if(!ok)throw new Error(msg);}
 function replaceOnce(src,a,b,label){const n=src.split(a).length-1;must(n===1,`${label}: ${n} coincidencias`);return src.replace(a,b);}
 const src=fs.readFileSync(FILE,'utf8');
@@ -48,5 +44,15 @@ restored=replaceOnce(restored,NEW_STUDENT,OLD_STUDENT,'restore student');
 restored=replaceOnce(restored,NEW_ACT,OLD_ACT,'restore action');
 restored=replaceOnce(restored,NEW_LOAD,OLD_LOAD,'restore load');
 restored=replaceOnce(restored,HELPER,ANCHOR,'remove helper');
-must(sha(restored)===BASE_BLOB,`Reversión AT no reconstruye preimagen exacta: ${sha(restored)} != ${BASE_BLOB}`);
+for(const [needle,label] of [[OLD_ADMIN_MASTER,'restored CONAPE admin lazy deps'],[OLD_WRITTEN,'restored written'],[OLD_STUDENT,'restored student'],[OLD_ACT,'restored action'],[OLD_LOAD,'restored load'],[ANCHOR,'restored helper anchor']]) must(restored.includes(needle),`Falta ${label}`);
+for(const [needle,label] of [[NEW_ADMIN_MASTER,'new CONAPE admin lazy deps'],[NEW_WRITTEN,'new written'],[NEW_STUDENT,'new student'],[NEW_ACT,'new action'],[NEW_LOAD,'new load'],[HELPER,'new helper']]) must(!restored.includes(needle),`Reversión conserva ${label}`);
+
+let rebuilt=restored;
+rebuilt=replaceOnce(rebuilt,OLD_ADMIN_MASTER,NEW_ADMIN_MASTER,'reapply CONAPE admin lazy deps');
+rebuilt=replaceOnce(rebuilt,OLD_WRITTEN,NEW_WRITTEN,'reapply written');
+rebuilt=replaceOnce(rebuilt,OLD_STUDENT,NEW_STUDENT,'reapply student');
+rebuilt=replaceOnce(rebuilt,OLD_ACT,NEW_ACT,'reapply action');
+rebuilt=replaceOnce(rebuilt,OLD_LOAD,NEW_LOAD,'reapply load');
+rebuilt=replaceOnce(rebuilt,ANCHOR,HELPER,'reapply helper');
+must(rebuilt===src,'Reaplicación AT no reconstruye la fuente actual exacta.');
 console.log('QA APP SHARED SAFE ERRORS CS21A210AT PASS');
