@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const read = path => fs.readFileSync(path, 'utf8');
 const fail = [];
@@ -57,6 +58,57 @@ check(
   freeMenu.includes("label: 'Mi Campus'") && freeMenu.includes("label: 'English LAB'"),
   'Prematrícula conserva únicamente las entradas útiles del Campus'
 );
+
+// HOTFIX 2026-09-19 · ejecutar el normalizador real con una respuesta MIXTA.
+// Este fixture reproduce la clase de fallo del drawer: identidad ya venía en
+// minúsculas, pero teléfono/correo/dirección/documentos seguían con headers de
+// PROSPECTOS. El test evalúa la función extraída del source; no reimplementa la lógica.
+const siNoMatch = ventasData.match(/const siNoV = [^\n]+;/);
+const fmtStart = ventasData.indexOf('function fmtCedulaV2(raw) {');
+const normStart = ventasData.indexOf('function normalizarProspecto(P) {');
+const normEnd = ventasData.indexOf('\n}\n// Mapea el resumen', normStart);
+const fmtBlock = fmtStart >= 0 && normStart > fmtStart ? ventasData.slice(fmtStart, normStart) : '';
+const normBlock = normStart >= 0 && normEnd > normStart ? ventasData.slice(normStart, normEnd + 2) : '';
+check(!!siNoMatch && !!fmtBlock && !!normBlock, 'Se pudo extraer el normalizador real de Ventas para fixture ejecutable');
+if (siNoMatch && fmtBlock && normBlock) {
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(
+    `${siNoMatch[0]}\n${fmtBlock}\n${normBlock}\nglobalThis.__normalizarProspecto = normalizarProspecto;`,
+    sandbox
+  );
+  const fixture = {
+    cedula: '1-1111-1111',
+    nombre: 'PERSONA PRUEBA',
+    CORREO: 'fixture@example.test',
+    TELEFONO: '88887777',
+    PROVINCIA: 'SAN JOSE',
+    DIRECCION: 'DIRECCION FIXTURE',
+    FINANCIAMIENTO: 'CONAPE',
+    CONAPE_EQUIPO: 'NINGUNO',
+    CONAPE_SOSTENIMIENTO: 'NO',
+    ETAPA: 'LEAD',
+    CED_FRENTE_FILE_ID: 'fixture-frente-id',
+    DOC_IDENTIDAD_FILE_ID: 'fixture-identidad-id',
+    TITULO_FILE_ID: 'fixture-titulo-id',
+    EXTRA_NO_MAPEADO: 'preservar',
+  };
+  const out = sandbox.__normalizarProspecto(fixture);
+  check(out.cedula === '1-1111-1111' && out.nombre === 'PERSONA PRUEBA', 'Normalizador conserva identidad minúscula existente');
+  check(out.correo === 'fixture@example.test' && out.telefono === '88887777', 'Normalizador recupera contacto mayúsculo en respuesta mixta');
+  check(out.provincia === 'SAN JOSE' && out.direccion === 'DIRECCION FIXTURE', 'Normalizador recupera ubicación mayúscula en respuesta mixta');
+  check(out.financiamiento === 'CONAPE' && out.conape?.equipo === 'NINGUNO', 'Normalizador recupera financiamiento CONAPE mixto');
+  check(out.ced_frente_file_id === 'fixture-frente-id' && out.titulo_file_id === 'fixture-titulo-id', 'Normalizador recupera FILE_ID privados mixtos');
+  check(out.EXTRA_NO_MAPEADO === 'preservar', 'Normalizador conserva campos adicionales del backend');
+
+  const yaNormalizado = sandbox.__normalizarProspecto({
+    cedula:'2-2222-2222', nombre:'OTRA PRUEBA', correo:'lower@example.test', telefono:'81112222',
+    financiamiento:'CONAPE', conape:{ equipo:'LAPTOP_319', toeic:true, sostenimiento:'SI' },
+    notas:[{ texto:'fixture' }], docs_extra:[{ file_id:'extra-1' }], etapa:'CONAPE_SOLICITUD'
+  });
+  check(yaNormalizado.correo === 'lower@example.test' && yaNormalizado.conape?.equipo === 'LAPTOP_319', 'Normalizador no pisa la forma minúscula ya canónica');
+  check(Array.isArray(yaNormalizado.notas) && yaNormalizado.notas.length === 1 && Array.isArray(yaNormalizado.docs_extra), 'Normalizador conserva arrays ya normalizados');
+}
 
 console.log('QA PROSPECTOS / VENTAS · CS21A151');
 for (const item of pass) console.log(`PASS · ${item}`);
