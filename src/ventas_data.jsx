@@ -401,6 +401,16 @@ function normalizarProspecto(P) {
     foto_ced_frente: g('FOTO_CED_FRENTE'),
     foto_ced_dorso: g('FOTO_CED_DORSO'),
     foto_titulo: g('FOTO_TITULO'),
+    // HOTFIX 2026-09-19: las inscripciones nuevas guardan documentos privados
+    // por FILE_ID y dejan vacías las columnas FOTO_* legacy. Exponer los IDs
+    // normalizados permite que el drawer distinga "guardado" de "sin archivo"
+    // sin convertir documentos privados en enlaces públicos.
+    ced_frente_file_id: g('CED_FRENTE_FILE_ID'),
+    ced_dorso_file_id: g('CED_DORSO_FILE_ID'),
+    doc_identidad_file_id: g('DOC_IDENTIDAD_FILE_ID'),
+    titulo_file_id: g('TITULO_FILE_ID'),
+    doc_identidad_modo: g('DOC_IDENTIDAD_MODO'),
+    titulo_modo: g('TITULO_MODO'),
     // Comisión pendiente solo aplica a estudiantes ya ACTIVOS sin comisión pagada.
     comision_pendiente: etapa === 'ACTIVO' && !siNoV(g('COMISION_PAGADA')),
     codigo: g('CODIGO_ESTUDIANTE'),
