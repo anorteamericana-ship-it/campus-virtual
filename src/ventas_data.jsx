@@ -356,20 +356,49 @@ function fmtCedulaV2(raw) {
 }
 function normalizarProspecto(P) {
   if (!P || typeof P !== 'object') return P;
-  // Si ya viene en minúsculas (datos demo o ya normalizado) → no tocar.
-  if (P.cedula !== undefined || P.nombre !== undefined) return P;
-  const g = (...ks) => { for (const k of ks) { if (P[k] != null && P[k] !== '') return P[k]; } return ''; };
+
+  // HOTFIX 2026-09-19 B: getProspectoDetalle puede devolver una forma mixta:
+  // algunos campos ya normalizados en minúscula (cedula/nombre) y otros todavía
+  // con encabezado de PROSPECTOS en mayúscula. La salida debe ser canónica aunque
+  // exista solo una parte en minúscula; por eso ya no hacemos early-return.
+  const ci = {};
+  Object.entries(P).forEach(([rawKey, value]) => {
+    const key = String(rawKey || '').toLowerCase();
+    if (!key) return;
+    const current = ci[key];
+    const valueHasData = value != null && value !== '';
+    const rawIsLower = rawKey === key;
+    if (!(key in ci) || current == null || current === '' || (rawIsLower && valueHasData)) {
+      ci[key] = value;
+    }
+  });
+  const g = (...ks) => {
+    for (const k of ks) {
+      const v = ci[String(k || '').toLowerCase()];
+      if (v != null && v !== '') return v;
+    }
+    return '';
+  };
+
   const esMenor = siNoV(g('ES_MENOR'));
   const tutorNombre = g('TUTOR_NOMBRE');
+  const tutorActual = P.tutor && typeof P.tutor === 'object' ? P.tutor : null;
   const equipo = g('CONAPE_EQUIPO');
   const fin = g('FINANCIAMIENTO');
   const etapa = g('ETAPA');
+  const conapeActual = P.conape && typeof P.conape === 'object' ? P.conape : null;
+  const notasRaw = g('NOTAS');
+  const eventosRaw = g('CONAPE_EVENTOS');
+  const docsExtraRaw = g('DOCS_EXTRA');
+  const comisionPendienteRaw = g('COMISION_PENDIENTE');
+
   return {
+    ...P,
     cedula: fmtCedulaV2(g('CEDULA')),
     nombre: g('NOMBRE'),
-    correo: g('CORREO'),
-    telefono: g('TELEFONO'),
-    whatsapp: g('WHATSAPP', 'TELEFONO'),
+    correo: g('CORREO', 'EMAIL', 'CORREO_ELECTRONICO'),
+    telefono: g('TELEFONO', 'TEL1', 'TELEFONO_1', 'WHATSAPP'),
+    whatsapp: g('WHATSAPP', 'TELEFONO', 'TEL1', 'TELEFONO_1'),
     tipo_id: g('TIPO_ID'),
     sexo: g('SEXO'),
     provincia: g('PROVINCIA'),
@@ -378,30 +407,30 @@ function normalizarProspecto(P) {
     direccion: g('DIRECCION'),
     fecha_nac: g('FECHA_NAC'),
     es_menor: esMenor,
-    tutor: (esMenor || tutorNombre)
+    tutor: tutorActual || ((esMenor || tutorNombre)
       ? { nombre: tutorNombre, cedula: g('TUTOR_CEDULA'), correo: g('TUTOR_CORREO'), tel: g('TUTOR_TEL') }
-      : null,
+      : null),
     programa: g('PROGRAMA'),
     modalidad: g('MODALIDAD'),
     financiamiento: fin,
     beca: g('BECA'),
     beca_estado: g('BECA_ESTADO'),
     grupo_tentativo: g('GRUPO_TENTATIVO'),
-    conape: (/conape/i.test(fin) || (equipo && equipo !== 'NINGUNO'))
+    conape: conapeActual || ((/conape/i.test(fin) || (equipo && equipo !== 'NINGUNO'))
       ? { equipo: equipo || 'NINGUNO', toeic: siNoV(g('CONAPE_TOEIC')), sostenimiento: g('CONAPE_SOSTENIMIENTO') }
-      : null,
+      : null),
     como_entero: g('COMO_ENTERO'),
     asesor_ref: g('ASESOR_REF'),
     conocimientos_previos: g('CONOCIMIENTOS_PREVIOS'),
     estado_cuenta: g('ESTADO_CUENTA'),
-    notas: Array.isArray(P.NOTAS) ? P.NOTAS : (Array.isArray(P.notas) ? P.notas : []),
+    notas: Array.isArray(notasRaw) ? notasRaw : [],
     etapa: etapa,
-    fecha_registro: g('TIMESTAMP', 'F_LEAD'),
-    fecha_activacion: g('F_ACTIVO'),
+    fecha_registro: g('FECHA_REGISTRO', 'TIMESTAMP', 'F_LEAD'),
+    fecha_activacion: g('FECHA_ACTIVACION', 'F_ACTIVO'),
     foto_ced_frente: g('FOTO_CED_FRENTE'),
     foto_ced_dorso: g('FOTO_CED_DORSO'),
     foto_titulo: g('FOTO_TITULO'),
-    // HOTFIX 2026-09-19: las inscripciones nuevas guardan documentos privados
+    // HOTFIX 2026-09-19 A: las inscripciones nuevas guardan documentos privados
     // por FILE_ID y dejan vacías las columnas FOTO_* legacy. Exponer los IDs
     // normalizados permite que el drawer distinga "guardado" de "sin archivo"
     // sin convertir documentos privados en enlaces públicos.
@@ -411,13 +440,16 @@ function normalizarProspecto(P) {
     titulo_file_id: g('TITULO_FILE_ID'),
     doc_identidad_modo: g('DOC_IDENTIDAD_MODO'),
     titulo_modo: g('TITULO_MODO'),
-    // Comisión pendiente solo aplica a estudiantes ya ACTIVOS sin comisión pagada.
-    comision_pendiente: etapa === 'ACTIVO' && !siNoV(g('COMISION_PAGADA')),
-    codigo: g('CODIGO_ESTUDIANTE'),
+    // Comisión pendiente solo aplica a estudiantes ya ACTIVOS sin comisión pagada,
+    // salvo que el backend ya haya enviado explícitamente el valor canónico.
+    comision_pendiente: comisionPendienteRaw !== ''
+      ? siNoV(comisionPendienteRaw)
+      : etapa === 'ACTIVO' && !siNoV(g('COMISION_PAGADA')),
+    codigo: g('CODIGO', 'CODIGO_ESTUDIANTE', 'REC_M'),
     proforma_url: g('PROFORMA_URL'),
     proforma_equipo_url: g('PROFORMA_EQUIPO_URL'),
-    conape_eventos: Array.isArray(P.conape_eventos) ? P.conape_eventos : [],
-    docs_extra: Array.isArray(P.docs_extra) ? P.docs_extra : [],
+    conape_eventos: Array.isArray(eventosRaw) ? eventosRaw : [],
+    docs_extra: Array.isArray(docsExtraRaw) ? docsExtraRaw : [],
   };
 }
 // Mapea el resumen del backend ({ total_prospectos, por_etapa, activados_mes,
