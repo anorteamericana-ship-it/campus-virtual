@@ -335,15 +335,24 @@ function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
 }
 
 function DocsBlock({ detalle, onView, onSubirManual }) {
+  // SEC-002 CS21A174: se conserva el consumidor legacy FOTO_* hasta que exista
+  // entrega privada específica de identidad/título. El mapa FILE_ID solo evita
+  // presentar como ausente un archivo que el backend ya tiene registrado.
   const docs = [
-    { key:'foto_ced_frente', privateKeys:['ced_frente_file_id','doc_identidad_file_id'], cap:'Cédula · frente' },
-    { key:'foto_ced_dorso',  privateKeys:['ced_dorso_file_id','doc_identidad_file_id'], cap:'Cédula · dorso' },
-    { key:'foto_titulo',     privateKeys:['titulo_file_id'], cap:'Título' },
+    ['foto_ced_frente', 'Cédula · frente'],
+    ['foto_ced_dorso',  'Cédula · dorso'],
+    ['foto_titulo',     'Título'],
   ];
+  const privateKeysByLegacy = {
+    foto_ced_frente: ['ced_frente_file_id','doc_identidad_file_id'],
+    foto_ced_dorso:  ['ced_dorso_file_id','doc_identidad_file_id'],
+    foto_titulo:     ['titulo_file_id'],
+  };
   return (
     <div className="vx-docs">
-      {docs.map(({ key, privateKeys, cap }) => {
+      {docs.map(([key, cap]) => {
         const src = detalle[key];
+        const privateKeys = privateKeysByLegacy[key] || [];
         const privateFileId = privateKeys.map(k => String(detalle[k] || '').trim()).find(Boolean) || '';
         if (src) {
           return <VxDocPhoto key={key} src={src} cap={cap} docKey={key} onView={onView} onSubirManual={onSubirManual} />;
