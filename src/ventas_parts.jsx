@@ -336,16 +336,28 @@ function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
 
 function DocsBlock({ detalle, onView, onSubirManual }) {
   const docs = [
-    ['foto_ced_frente', 'Cédula · frente'],
-    ['foto_ced_dorso',  'Cédula · dorso'],
-    ['foto_titulo',     'Título'],
+    { key:'foto_ced_frente', privateKeys:['ced_frente_file_id','doc_identidad_file_id'], cap:'Cédula · frente' },
+    { key:'foto_ced_dorso',  privateKeys:['ced_dorso_file_id','doc_identidad_file_id'], cap:'Cédula · dorso' },
+    { key:'foto_titulo',     privateKeys:['titulo_file_id'], cap:'Título' },
   ];
   return (
     <div className="vx-docs">
-      {docs.map(([key, cap]) => {
+      {docs.map(({ key, privateKeys, cap }) => {
         const src = detalle[key];
+        const privateFileId = privateKeys.map(k => String(detalle[k] || '').trim()).find(Boolean) || '';
         if (src) {
           return <VxDocPhoto key={key} src={src} cap={cap} docKey={key} onView={onView} onSubirManual={onSubirManual} />;
+        }
+        if (privateFileId) {
+          return (
+            <div key={key} className="vx-doc-empty" data-private-document="true">
+              <div className="vx-doc-ph">Archivo guardado</div>
+              <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
+              <div style={{ fontSize: 11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35 }}>
+                Documento privado registrado
+              </div>
+            </div>
+          );
         }
         return (
           <div key={key} className="vx-doc-empty">
