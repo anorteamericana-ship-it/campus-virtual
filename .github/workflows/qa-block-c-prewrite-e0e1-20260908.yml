@@ -1,0 +1,31 @@
+name: QA Block C Prewrite E0 E1 20260908
+
+on:
+  push:
+    branches: [audit/block-c-prewrite-e0e1-20260908]
+  pull_request:
+    paths:
+      - '00_DOCUMENTACION/BLOQUE_C_PREWRITE_E0_E1_2026-09-08.md'
+      - 'scripts/qa_block_c_prewrite_e0e1_20260908.mjs'
+      - '.github/workflows/qa-block-c-prewrite-e0e1-20260908.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check scripts/qa_block_c_prewrite_e0e1_20260908.mjs
+      - name: Verify frozen frontend contracts and E4 stop gates
+        run: node scripts/qa_block_c_prewrite_e0e1_20260908.mjs
+      - name: Diff hygiene
+        run: git diff --check 6b747fdbb1aeb4d610ad54ace2ded856fc3f95cc...HEAD
