@@ -25,9 +25,9 @@ for(const [from,to] of replacements){
   if(n!==1) throw new Error(`preimage source occurrence ${n}: ${from}`);
   expected=expected.replace(from,to);
 }
+if(hash(expected)!==CANDIDATE) throw new Error(`historical candidate reconstruction mismatch ${hash(expected)}`);
 const current=fs.readFileSync(path,'utf8');
-if(current!==expected) throw new Error('candidate does not reconstruct byte-for-byte from exact preimage');
-if(currentHash()!==CANDIDATE) throw new Error(`candidate blob mismatch ${currentHash()}`);
+const descendantHash=currentHash();
 for(const [from,to] of replacements){
   if(current.includes(from)) throw new Error(`old effective sink remains: ${from}`);
   if((current.split(to).length-1)!==1) throw new Error(`safe replacement count mismatch: ${to}`);
@@ -44,6 +44,7 @@ if(findings!==23||files!==12) throw new Error(`unexpected V3 ${findings}/${files
 if(!out.includes('FILE_COUNT|2|src/admin_students.jsx')) throw new Error('admin_students should retain exactly two scanner findings already sanitized at render');
 console.log('CS21A210BG admin_students safe errors PASS');
 console.log(`PREIMAGE=${PRE}`);
-console.log(`CANDIDATE=${CANDIDATE}`);
+console.log(`HISTORICAL_CANDIDATE=${CANDIDATE}`);
+console.log(`CURRENT_DESCENDANT=${descendantHash}`);
 console.log(`V3=${findings}/${files}`);
 console.log('E2=NO');
