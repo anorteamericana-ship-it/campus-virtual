@@ -4858,7 +4858,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
           {!loading && contexto && (
             <>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:9,marginBottom:12}}>
-                <AgIndMetric label="Estado actual" value={contexto?.actual?.estatus || '—'} warn={!['CA','REP'].includes(contexto?.actual?.estatus)} sub={contexto?.actual?.periodo_corto || ''}/>
+                <AgIndMetric label="Estado actual" value={contexto?.actual?.estatus || '—'} warn={!!(contexto?.bloqueos || []).length} sub={contexto?.actual?.periodo_corto || ''}/>
                 <AgIndMetric label="Grupo actual" value={contexto?.actual?.grupo || '—'} sub={contexto?.actual?.modalidad || ''}/>
                 <AgIndMetric label="Intento" value={contexto?.actual?.numero_intento || 1} sub={contexto?.actual?.intento_id || 'Intento histórico'}/>
                 <AgIndMetric label="Cuota actual" value={contexto?.actual?.cuota != null ? agIndMoney(contexto.actual.cuota) : '—'} sub={contexto?.actual?.cantidad_cuotas != null ? String(contexto.actual.cantidad_cuotas)+' cuotas' : ''}/>
