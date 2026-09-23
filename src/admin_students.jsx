@@ -4788,7 +4788,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
               <AgIndMetric label="Comprobantes" value={contexto?.financiero?.total_comprobantes || 0} sub={`Aplicado ${money(contexto?.financiero?.total_monto)}`}/>
             </div>
 
-            {actividad?.actividad_total > 0 && <div style={{marginBottom:12,padding:'11px 13px',borderRadius:10,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}><div style={{fontWeight:950,fontSize:11.5}}>Tiene asistencia/notas previas · Debe convalidarse trayectoria académica · Revisión administrativa requerida</div><div style={{fontSize:9.5,marginTop:4}}>Notas: {actividad.actividad_notas || 0} · Asistencia: {actividad.actividad_asistencia || 0} · Presentes: {actividad.asistencia_presentes || 0} · Ausentes: {actividad.asistencia_ausentes || 0}</div></div>}
+            {actividad?.actividad_total > 0 && <div style={{marginBottom:12,padding:'11px 13px',borderRadius:10,background:'#F7F4EF',border:'1px solid #DDD6CE',color:'#615850'}}><div style={{fontWeight:950,fontSize:11.5}}>Actividad académica previa detectada</div><div style={{fontSize:9.5,marginTop:4}}>Notas: {actividad.actividad_notas || 0} · Asistencia: {actividad.actividad_asistencia || 0} · Presentes: {actividad.asistencia_presentes || 0} · Ausentes: {actividad.asistencia_ausentes || 0}</div><div style={{fontSize:9.2,marginTop:4,color:'#756D65'}}>La consecuencia administrativa se mostrará al simular, usando las advertencias que devuelva el backend.</div></div>}
             {!!(contexto.bloqueos || []).length && <div style={{marginBottom:14,padding:'12px 14px',borderRadius:10,background:'#FFEBEE',border:'1px solid #F2B8B8',color:'#B42318'}}><b>Expediente bloqueado.</b>{(contexto.bloqueos||[]).map((x,i)=><div key={i} style={{marginTop:5,fontSize:11.5}}>• {x}</div>)}</div>}
 
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:14 }}>
@@ -4867,6 +4867,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }
   const [docBusy,setDocBusy]=React.useState('');
   const [approveBusy,setApproveBusy]=React.useState('');
   const [closeConapeBusy,setCloseConapeBusy]=React.useState('');
+  const [closeConapeConfirm,setCloseConapeConfirm]=React.useState(null);
   const [formBusy,setFormBusy]=React.useState('');
   function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]});}).catch(e=>setEstado({loading:false,error:adminStudentsSafeUserError(e?.message||String(e),'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]}));}
   React.useEffect(cargar,[codigo]);
@@ -5021,22 +5022,24 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }
       cargar();onReverted?.(resp);
     }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setApproveBusy('');}
   }
-  async function cerrarConapeNoContinuo(r){
+  function prepararCierreConapeNoContinuo(r){
     const codigoFila=String(r?.CODIGO||codigo||'').trim();
     if(!codigoFila){alert('No se pudo identificar el código del estudiante.');return;}
-    const confirmacion=prompt(`Esta acción cerrará únicamente la gestión CONAPE como NO CONTINUÓ. No modifica datos académicos ni financieros.\n\nPara confirmar el expediente ${codigoFila}, escribí exactamente su código:`,'');
-    if(confirmacion===null)return;
-    if(String(confirmacion).trim()!==codigoFila){alert('El código no coincide. No se cerró la gestión CONAPE.');return;}
-    if(!confirm('Se marcará esta solicitud CONAPE como NO CONTINUÓ y se liberará el pendiente. No se modificará DATOS, ESTATUS, INTENTOS ni pagos. ¿Continuar?'))return;
-    setCloseConapeBusy(r.CAMBIO_ID);
+    setCloseConapeConfirm({cambio_id:r.CAMBIO_ID,codigo:codigoFila,confirmacion:''});
+  }
+  async function confirmarCierreConapeNoContinuo(){
+    const x=closeConapeConfirm;
+    if(!x||String(x.confirmacion||'').trim()!==String(x.codigo||''))return;
+    setCloseConapeBusy(x.cambio_id);
     try{
       const resp=await postAdminStudents('cerrarCambioConapeNoContinuo',{
-        cambio_id:r.CAMBIO_ID,
-        codigo:codigoFila,
-        confirmacion_individual:codigoFila,
+        cambio_id:x.cambio_id,
+        codigo:x.codigo,
+        confirmacion_individual:x.codigo,
         motivo:'Estudiante no continuó'
       },45000);
       if(!resp?.ok)throw new Error(resp?.error||resp?.mensaje||'No se pudo cerrar la gestión CONAPE.');
+      setCloseConapeConfirm(null);
       alert(resp?.mensaje||'Gestión CONAPE cerrada como NO CONTINUÓ. No se modificó información académica ni financiera.');
       cargar();
       onConapeClosed?.(resp);
@@ -5075,10 +5078,20 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }
           {!simple&&r.CARTA_CONAPE_URL&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-R`} onClick={()=>regenerarCarta(r)}>{docBusy===`${r.CAMBIO_ID}-R`?'Recalculando…':'↻ Recalcular carta'}</AkActionButton>}
           {!simple&&<AkActionButton disabled={formBusy===`${r.CAMBIO_ID}-F`} onClick={()=>descargarFormularioConape(r)}>{formBusy===`${r.CAMBIO_ID}-F`?'Preparando…':'⬇ Descargar formulario CONAPE'}</AkActionButton>}
           {!simple&&conapePendienteActivo&&<AkActionButton disabled={approveBusy===r.CAMBIO_ID} onClick={()=>aprobarConape(r)}>{approveBusy===r.CAMBIO_ID?'Publicando…':'✓ CONAPE aprobó · Publicar plan'}</AkActionButton>}
-          {puedeCerrarNoContinuo&&<AkActionButton danger disabled={closeConapeBusy===r.CAMBIO_ID} title="Cierra únicamente la gestión CONAPE; no modifica información académica ni financiera." onClick={()=>cerrarConapeNoContinuo(r)}>{closeConapeBusy===r.CAMBIO_ID?'Cerrando…':'✕ No continuó · cerrar CONAPE'}</AkActionButton>}
+          {puedeCerrarNoContinuo&&<AkActionButton danger disabled={closeConapeBusy===r.CAMBIO_ID} title="Cierra únicamente la gestión CONAPE; no modifica información académica ni financiera." onClick={()=>prepararCierreConapeNoContinuo(r)}>{closeConapeBusy===r.CAMBIO_ID?'Cerrando…':'✕ No continuó · cerrar CONAPE'}</AkActionButton>}
           {simple&&r.PDF_TRASLADO_URL&&String(r.PDF_TRASLADO_ESTADO||'').toUpperCase()!=='ENTREGADO_AL_ESTUDIANTE'&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-E`} onClick={()=>marcarEntregado(r)}>{docBusy===`${r.CAMBIO_ID}-E`?'Guardando…':'✓ Marcar entregado'}</AkActionButton>}
           <AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID||String(r.REVERSIBLE||'').toUpperCase()!=='SI'} title={String(r.REVERSIBLE||'').toUpperCase()==='SI'?'Reversión automática disponible':'Este cambio requiere revisión asistida; no se revierte desde el botón.'} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':String(r.REVERSIBLE||'').toUpperCase()==='SI'?'↶ Deshacer':'Revisión asistida'}</AkActionButton>
         </div>
+        {closeConapeConfirm?.cambio_id===r.CAMBIO_ID&&<div style={{gridColumn:'1 / -1',padding:'12px 13px',borderRadius:10,background:'#FFF6F4',border:'1px solid #E8B8B1'}}>
+          <div style={{fontSize:11.5,fontWeight:950,color:'#8A2D22'}}>Cerrar gestión CONAPE como NO CONTINUÓ</div>
+          <div style={{fontSize:10,color:'#6B544F',lineHeight:1.45,marginTop:4}}>Esta acción cierra únicamente la gestión CONAPE y libera el pendiente. No modifica DATOS, ESTATUS, INTENTOS ni pagos.</div>
+          <label style={{display:'block',fontSize:9.5,fontWeight:900,color:'#5C4742',marginTop:9}}>Escribí exactamente el código {closeConapeConfirm.codigo}</label>
+          <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap',marginTop:5}}>
+            <input autoFocus value={closeConapeConfirm.confirmacion} onChange={e=>setCloseConapeConfirm(v=>v?{...v,confirmacion:e.target.value.replace(/[^0-9]/g,'')}:v)} disabled={closeConapeBusy===r.CAMBIO_ID} style={{minWidth:210,padding:'8px 9px',borderRadius:8,border:'1px solid #C7B6B2',fontFamily:'var(--f-mono,monospace)',fontWeight:900}}/>
+            <button type="button" onClick={()=>setCloseConapeConfirm(null)} disabled={closeConapeBusy===r.CAMBIO_ID} style={{padding:'8px 10px',borderRadius:8,border:'1px solid #C9D2DE',background:'white',fontWeight:850,cursor:'pointer'}}>Cancelar</button>
+            <button type="button" onClick={confirmarCierreConapeNoContinuo} disabled={closeConapeBusy===r.CAMBIO_ID||String(closeConapeConfirm.confirmacion||'').trim()!==String(closeConapeConfirm.codigo)} style={{padding:'8px 11px',borderRadius:8,border:'1px solid #B42318',background:'#B42318',color:'white',fontWeight:950,cursor:(closeConapeBusy===r.CAMBIO_ID||String(closeConapeConfirm.confirmacion||'').trim()!==String(closeConapeConfirm.codigo))?'not-allowed':'pointer',opacity:(closeConapeBusy===r.CAMBIO_ID||String(closeConapeConfirm.confirmacion||'').trim()!==String(closeConapeConfirm.codigo))?.55:1}}>{closeConapeBusy===r.CAMBIO_ID?'Cerrando…':'Confirmar NO CONTINUÓ'}</button>
+          </div>
+        </div>}
       </div>;
     })}</div>}</div>
   </div></div>;
