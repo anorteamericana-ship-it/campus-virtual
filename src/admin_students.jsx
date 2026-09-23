@@ -4776,7 +4776,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 
           {!loading && contexto && <>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:9,marginBottom:12}}>
-              <AgIndMetric label="Estado actual" value={contexto?.actual?.estatus || '—'} warn={!['CA','REP'].includes(contexto?.actual?.estatus)} sub={contexto?.actual?.periodo_corto || ''}/>
+              <AgIndMetric label="Estado actual" value={contexto?.actual?.estatus || '—'} warn={!['CA','REP','APR','CNV'].includes(contexto?.actual?.estatus)} sub={contexto?.actual?.periodo_corto || ''}/>
               <AgIndMetric label="Grupo actual" value={contexto?.actual?.grupo || '—'} sub={contexto?.actual?.modalidad || ''}/>
               <AgIndMetric label="Intento" value={contexto?.actual?.numero_intento || 1} sub={contexto?.actual?.intento_id || 'Intento histórico'}/>
               <AgIndMetric label="Cuota actual" value={money(contexto?.actual?.cuota)} sub={`${contexto?.actual?.cantidad_cuotas || '—'} cuota(s)`}/>
@@ -4789,7 +4789,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
             <div style={{ display:'grid', gridTemplateColumns:'minmax(250px,.88fr) minmax(300px,1.12fr)', gap:14 }}>
               <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
                 <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>1. Tipo de movimiento</div>
-                <div style={{display:'grid',gap:8}}>{casosVisibles.map(c => <button key={c.codigo} type="button" disabled={!c.habilitado} onClick={()=>c.habilitado&&cambiarCaso(c.codigo)} style={{textAlign:'left',padding:'10px 11px',borderRadius:10,border:`1px solid ${tipoCaso===c.codigo?'#174E8C':'#D8E0EA'}`,background:tipoCaso===c.codigo?'#EAF3FF':'white',color:c.habilitado?'#14213D':'#8B929A',cursor:c.habilitado?'pointer':'not-allowed',opacity:c.habilitado?1:.62}}><div style={{fontSize:11.5,fontWeight:950}}>{c.label}</div><div style={{fontSize:9.8,lineHeight:1.35,marginTop:3,color:c.habilitado?'#667085':'#9AA1A8'}}>{c.habilitado?c.descripcion:c.razon}</div></button>)}</div>
+                {!casoSoloVariante&&<div style={{display:'grid',gap:8}}>{casosVisibles.map(c => <button key={c.codigo} type="button" disabled={!c.habilitado} onClick={()=>c.habilitado&&cambiarCaso(c.codigo)} style={{textAlign:'left',padding:'10px 11px',borderRadius:10,border:`1px solid ${tipoCaso===c.codigo?'#174E8C':'#D8E0EA'}`,background:tipoCaso===c.codigo?'#EAF3FF':'white',color:c.habilitado?'#14213D':'#8B929A',cursor:c.habilitado?'pointer':'not-allowed',opacity:c.habilitado?1:.62}}><div style={{fontSize:11.5,fontWeight:950}}>{c.label}</div><div style={{fontSize:9.8,lineHeight:1.35,marginTop:3,color:c.habilitado?'#667085':'#9AA1A8'}}>{c.habilitado?c.descripcion:c.razon}</div></button>)}</div>}
                 {casoSoloVariante&&<div style={{marginTop:10,padding:'10px 11px',borderRadius:9,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:10.2,lineHeight:1.45}}><b>{casoSoloVariante.label}</b><div style={{marginTop:3}}>{casoSoloVariante.descripcion}</div></div>}
                 {!casoSoloVariante&&casoInfo.descripcion&&<div style={{marginTop:10,padding:'9px 10px',borderRadius:8,background:'#F7F4EF',fontSize:10.5,color:'#615850',lineHeight:1.45}}>{casoInfo.descripcion}</div>}
 
