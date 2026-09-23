@@ -1,0 +1,38 @@
+name: QA Admin Cambio Academico Motor 20260922
+
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'scripts/qa_admin_cambio_academico_motor_frontend_20260922.mjs'
+      - '.github/workflows/qa-admin-cambio-academico-motor-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install JSX parser
+        run: npm install --no-save @babel/parser@7.28.4
+      - name: Parse admin_students JSX
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=require('@babel/parser');
+          p.parse(fs.readFileSync('src/admin_students.jsx','utf8'),{
+            sourceType:'script',
+            plugins:['jsx','optionalChaining','nullishCoalescingOperator']
+          });
+          console.log('admin_students JSX parse PASS');
+          NODE
+      - name: Verify cambio academico frontend contract
+        run: node scripts/qa_admin_cambio_academico_motor_frontend_20260922.mjs
+      - name: Diff hygiene
+        run: git diff --check origin/main...HEAD
