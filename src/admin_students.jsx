@@ -4712,13 +4712,18 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 
   async function ejecutar() {
     if (!simulacion || confirmacion.trim() !== String(codigo)) return;
+    const expectedIntentoId = String(simulacion?.antes?.intento_id || '').trim();
+    if (!expectedIntentoId) {
+      setError('La simulación no identificó el intento académico esperado. Refrescá el expediente y volvé a simular antes de aplicar.');
+      return;
+    }
     setEjecutando(true); setError('');
     try {
       const r = await postAdminStudents('ejecutarCambioGrupo', {
         codigo, nivel, tipo_caso:tipoCaso, variante_pago:simulacion?.variante_pago || variantePago || 'CONVALIDA_PAGOS',
         grupo_origen:simulacion?.antes?.grupo || contexto?.actual?.grupo || '',
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
-        expected_intento_id:simulacion?.antes?.intento_id || contexto?.actual?.intento_id || '',
+        expected_intento_id:expectedIntentoId,
         confirmacion_individual:String(codigo),
       }, 45000);
       if (!r?.ok) { setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No fue posible ejecutar el movimiento. Intentá de nuevo.', 'ejecutar_cambio_grupo')); return; }
@@ -4828,7 +4833,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
               {simulacion.variante_pago==='SIN_CONVALIDAR_PAGOS'&&<div style={{padding:'13px 14px',borderRadius:11,background:'#FFF8E8',border:'1px solid #E8C67A'}}><div style={{fontSize:10,fontWeight:950,letterSpacing:'.1em',textTransform:'uppercase',color:'#7A4A00'}}>Variante B · nuevo contrato sin heredar pagos históricos</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8,marginTop:9}}><AgIndMetric label="Lista matrícula" value={money(fin.precio_lista?.matricula)} warn={false}/><AgIndMetric label="Lista cuota" value={money(fin.precio_lista?.cuota)} sub={`${fin.precio_lista?.num_cuotas || '—'} cuota(s)`} warn={false}/><AgIndMetric label="Lista certificado" value={money(fin.precio_lista?.certificado)} warn={false}/><AgIndMetric label="Nuevo total nivel" value={money(fin.total_nivel_a_pagar)} warn={false}/><AgIndMetric label="Histórico no aplicado" value={money(fin.pagos_historicos_no_aplican?.monto)} warn={true}/><AgIndMetric label="Diferencia vs pagado" value={money(fin.diferencia_contra_pagado)} warn={Number(fin.diferencia_contra_pagado||0)>0}/></div><div style={{marginTop:9,fontSize:9.5,color:'#6B5A45'}}><b>Descuento efectivo conservado:</b> matrícula {fin.descuento_aplicado?.matricula_pct ?? '—'}% · cuota {fin.descuento_aplicado?.cuota_pct ?? '—'}% · certificado {fin.descuento_aplicado?.certificado_pct ?? '—'}%</div><div style={{marginTop:9,paddingTop:8,borderTop:'1px dashed #D6B56C'}}><div style={{fontSize:9,fontWeight:950,color:'#7A4A00',marginBottom:5}}>Recibos históricos que permanecen registrados pero dejan de contar en este nivel</div>{(fin.pagos_historicos_no_aplican?.comprobantes||[]).length ? (fin.pagos_historicos_no_aplican.comprobantes||[]).map((p,i)=><div key={`${p.recibo||p.documento||'p'}-${i}`} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,fontSize:8.8,color:'#615850',marginTop:i?4:0}}><span>{p.tipo||p.concepto||'PAGO'} · Grupo {p.grupo||'—'} · Rec. {p.recibo||'—'} · Doc. {p.documento||'—'}</span><b>{money(p.monto)}</b></div>) : <div style={{fontSize:8.8,color:'#8A8178'}}>No hay comprobantes históricos listados por el backend.</div>}</div></div>}
 
               {!!(simulacion.warnings||[]).length&&<div style={{padding:'12px 14px',borderRadius:11,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}><div style={{fontSize:10,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:6}}>Advertencias</div>{simulacion.warnings.map((w,i)=><div key={i} style={{fontSize:11.5,fontWeight:700,marginTop:i?5:0}}>• {w}</div>)}</div>}
-              {conape.requiere_modificacion&&<div style={{padding:'11px 13px',borderRadius:10,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:11.5,lineHeight:1.5}}><b>Este caso requiere gestión CONAPE.</b> Estado indicado por backend: <b>{conape.estado || 'PENDIENTE'}</b>{(conape.formularios||[]).length ? ` · Formularios: ${(conape.formularios||[]).join(', ')}` : ''}. La pantalla no modifica CONAPE directamente.</div>}
+              {conape.requiere_modificacion&&<div style={{padding:'11px 13px',borderRadius:10,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:11.5,lineHeight:1.5}}><div style={{fontSize:9.5,fontWeight:950,letterSpacing:'.08em',textTransform:'uppercase',opacity:.78}}>Gestión CONAPE</div><div style={{fontSize:12.5,fontWeight:950,marginTop:3}}>{conape.estado || 'PENDIENTE'}</div>{(conape.formularios||[]).length>0&&<div style={{marginTop:5}}>Formularios: <b>{(conape.formularios||[]).join(' · ')}</b></div>}<div style={{marginTop:5,fontSize:10,color:'#536B8A'}}>La consecuencia académica mostrada arriba proviene de la simulación del backend; esta pantalla no modifica CONAPE directamente.</div></div>}
 
               <div style={{padding:'12px 13px',borderRadius:10,background:'white',border:'1px solid #D7DEE7'}}><label style={{display:'block',fontSize:10.5,fontWeight:900,color:'#344054'}}>Confirmación individual</label><div style={{fontSize:10,color:'#667085',margin:'4px 0 7px'}}>Revisá la simulación y escribí exactamente el código <b>{codigo}</b>. Solo se modificará este expediente.</div><input value={confirmacion} onChange={e=>setConfirmacion(e.target.value.replace(/[^0-9]/g,''))} style={{width:'100%',boxSizing:'border-box',padding:'10px 11px',borderRadius:9,border:'1px solid #BFC9D6',fontFamily:'var(--f-mono)',fontWeight:900}}/></div>
               <div style={{display:'flex',justifyContent:'flex-end',gap:9}}><button type="button" onClick={onClose} disabled={ejecutando} style={{padding:'10px 15px',borderRadius:9,border:'1px solid #C9D2DE',background:'white',color:'#344054',fontWeight:900,cursor:'pointer'}}>Cancelar</button><button type="button" onClick={ejecutar} disabled={confirmacion.trim()!==String(codigo)||ejecutando} style={{padding:'10px 17px',borderRadius:9,border:'none',background:'#B42318',color:'white',fontWeight:900,cursor:(confirmacion.trim()!==String(codigo)||ejecutando)?'not-allowed':'pointer',opacity:(confirmacion.trim()!==String(codigo)||ejecutando)?.55:1}}>{ejecutando?'Aplicando expediente…':'Aplicar únicamente a este estudiante'}</button></div>
@@ -4856,11 +4861,12 @@ function AkComentarioAdminModal({ codigo, comentarioAdmin, onClose, onSaved }) {
   return <div style={{position:'fixed',inset:0,zIndex:2750,background:'rgba(7,20,40,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}><div style={{width:'min(620px,94vw)',background:'white',borderRadius:14,boxShadow:'0 24px 70px rgba(0,0,0,.35)',overflow:'hidden'}}><div style={{padding:'13px 15px',background:'#173A67',color:'white',fontWeight:950}}>Comentario interno · {codigo}</div><div style={{padding:15}}><div style={{fontSize:10,color:'#667085',marginBottom:7}}>Este comentario es interno y queda asociado al expediente del estudiante. Solo administración autorizada puede leerlo o modificarlo.</div><textarea value={comentarioValue} onChange={e=>setComentarioValue(e.target.value)} maxLength={3000} rows={7} style={{width:'100%',resize:'vertical',border:'1px solid #CCD6E2',borderRadius:9,padding:10,fontFamily:'inherit',fontSize:12,lineHeight:1.45,boxSizing:'border-box'}}/><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:10}}><span style={{fontSize:9,color:'#8A8178'}}>{comentarioValue.length}/3000</span><div style={{display:'flex',gap:7}}><button type="button" onClick={onClose} disabled={comentarioBusy} style={{padding:'8px 11px',borderRadius:8,border:'1px solid #CCD6E2',background:'white',fontWeight:850,cursor:'pointer'}}>Cancelar</button><button type="button" onClick={guardarComentario} disabled={comentarioBusy} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #173A67',background:'#173A67',color:'white',fontWeight:950,cursor:'pointer'}}>{comentarioBusy?'Guardando…':'Guardar comentario'}</button></div></div></div></div></div>;
 }
 
-function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
+function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }) {
   const [estado,setEstado]=React.useState({loading:true,error:'',rows:[]});
   const [busy,setBusy]=React.useState('');
   const [docBusy,setDocBusy]=React.useState('');
   const [approveBusy,setApproveBusy]=React.useState('');
+  const [closeConapeBusy,setCloseConapeBusy]=React.useState('');
   const [formBusy,setFormBusy]=React.useState('');
   function cargar(){setEstado({loading:true,error:'',rows:[]});postAdminStudents('getHistorialCambiosGrupo',{codigo}).then(r=>{if(r?.ok)setEstado({loading:false,error:'',rows:r.historial||[]});else setEstado({loading:false,error:adminStudentsSafeUserError(r?.error||r?.mensaje,'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]});}).catch(e=>setEstado({loading:false,error:adminStudentsSafeUserError(e?.message||String(e),'No se pudo cargar el historial. Intentá de nuevo.','cargar_historial'),rows:[]}));}
   React.useEffect(cargar,[codigo]);
@@ -5015,6 +5021,29 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
       cargar();onReverted?.(resp);
     }catch(e){alert(adminStudentsSafeUserError(e?.message||String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));}finally{setApproveBusy('');}
   }
+  async function cerrarConapeNoContinuo(r){
+    const codigoFila=String(r?.CODIGO||codigo||'').trim();
+    if(!codigoFila){alert('No se pudo identificar el código del estudiante.');return;}
+    const confirmacion=prompt(`Esta acción cerrará únicamente la gestión CONAPE como NO CONTINUÓ. No modifica datos académicos ni financieros.\n\nPara confirmar el expediente ${codigoFila}, escribí exactamente su código:`,'');
+    if(confirmacion===null)return;
+    if(String(confirmacion).trim()!==codigoFila){alert('El código no coincide. No se cerró la gestión CONAPE.');return;}
+    if(!confirm('Se marcará esta solicitud CONAPE como NO CONTINUÓ y se liberará el pendiente. No se modificará DATOS, ESTATUS, INTENTOS ni pagos. ¿Continuar?'))return;
+    setCloseConapeBusy(r.CAMBIO_ID);
+    try{
+      const resp=await postAdminStudents('cerrarCambioConapeNoContinuo',{
+        cambio_id:r.CAMBIO_ID,
+        codigo:codigoFila,
+        confirmacion_individual:codigoFila,
+        motivo:'Estudiante no continuó'
+      },45000);
+      if(!resp?.ok)throw new Error(resp?.error||resp?.mensaje||'No se pudo cerrar la gestión CONAPE.');
+      alert(resp?.mensaje||'Gestión CONAPE cerrada como NO CONTINUÓ. No se modificó información académica ni financiera.');
+      cargar();
+      onConapeClosed?.(resp);
+    }catch(e){
+      alert(adminStudentsSafeUserError(e?.message||String(e),'No se pudo cerrar la gestión CONAPE. Intentá de nuevo.','cerrar_conape_no_continuo'));
+    }finally{setCloseConapeBusy('');}
+  }
   async function marcarEntregado(r){
     if(!confirm('¿Confirmar que la constancia fue entregada al estudiante?'))return;
     const key=`${r.CAMBIO_ID}-E`;setDocBusy(key);
@@ -5026,6 +5055,8 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
     <div style={{padding:17}}>{estado.loading?<div style={{padding:25,textAlign:'center'}}>Cargando historial…</div>:estado.error?<div style={{padding:12,background:'#FFEBEE',color:'#B42318',borderRadius:9}}>{estado.error}</div>:!estado.rows.length?<div style={{padding:25,textAlign:'center',color:'#667085'}}>No existen cambios registrados.</div>:<div style={{display:'grid',gap:9}}>{estado.rows.map(r=>{
       const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
       const docKey=`${r.CAMBIO_ID}-${simple?'T':'C'}`;
+      const conapeEstado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
+      const puedeCerrarNoContinuo=['PENDIENTE_APROBACION','DOCUMENTOS_EN_PREPARACION','ENVIADO_CONAPE'].includes(conapeEstado)&&!r.REVERSADO_EN;
       return <div key={r.CAMBIO_ID} style={{border:'1px solid #E0E6ED',borderRadius:11,padding:12,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}>
         <div>
           <div style={{fontWeight:900,color:'#14213D'}}>{r.NIVEL} · {r.GRUPO_ORIGEN} → {r.GRUPO_DESTINO}</div>
@@ -5043,6 +5074,7 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted }) {
           {!simple&&r.CARTA_CONAPE_URL&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-R`} onClick={()=>regenerarCarta(r)}>{docBusy===`${r.CAMBIO_ID}-R`?'Recalculando…':'↻ Recalcular carta'}</AkActionButton>}
           {!simple&&<AkActionButton disabled={formBusy===`${r.CAMBIO_ID}-F`} onClick={()=>descargarFormularioConape(r)}>{formBusy===`${r.CAMBIO_ID}-F`?'Preparando…':'⬇ Descargar formulario CONAPE'}</AkActionButton>}
           {!simple&&String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase()!=='APLICADO_CONAPE'&&<AkActionButton disabled={approveBusy===r.CAMBIO_ID} onClick={()=>aprobarConape(r)}>{approveBusy===r.CAMBIO_ID?'Publicando…':'✓ CONAPE aprobó · Publicar plan'}</AkActionButton>}
+          {puedeCerrarNoContinuo&&<AkActionButton danger disabled={closeConapeBusy===r.CAMBIO_ID} title="Cierra únicamente la gestión CONAPE; no modifica información académica ni financiera." onClick={()=>cerrarConapeNoContinuo(r)}>{closeConapeBusy===r.CAMBIO_ID?'Cerrando…':'✕ No continuó · cerrar CONAPE'}</AkActionButton>}
           {simple&&r.PDF_TRASLADO_URL&&String(r.PDF_TRASLADO_ESTADO||'').toUpperCase()!=='ENTREGADO_AL_ESTUDIANTE'&&<AkActionButton disabled={docBusy===`${r.CAMBIO_ID}-E`} onClick={()=>marcarEntregado(r)}>{docBusy===`${r.CAMBIO_ID}-E`?'Guardando…':'✓ Marcar entregado'}</AkActionButton>}
           <AkActionButton danger disabled={!!r.REVERSADO_EN||busy===r.CAMBIO_ID||String(r.REVERSIBLE||'').toUpperCase()!=='SI'} title={String(r.REVERSIBLE||'').toUpperCase()==='SI'?'Reversión automática disponible':'Este cambio requiere revisión asistida; no se revierte desde el botón.'} onClick={()=>revertir(r.CAMBIO_ID)}>{busy===r.CAMBIO_ID?'Revisando…':String(r.REVERSIBLE||'').toUpperCase()==='SI'?'↶ Deshacer':'Revisión asistida'}</AkActionButton>
         </div>
@@ -5129,7 +5161,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
     <div style={{marginTop:8,fontSize:9.5,color:'var(--ink-3,#81776f)'}}>La columna financiera separa comprobantes por intento. Los excedentes se informan, pero no se aplican automáticamente. PE y SIN REGISTRO se presentan como NO APLICA.</div>
     {modalEstado&&<ModalEstatus estudiante={{...estudianteBase,...est,codigo,display:nombre,grupo:modalEstado.info.grupo,estatus:modalEstado.info.estatus,nota:modalEstado.info.nota}} nivel={modalEstado.nivel} onClose={()=>setModalEstado(null)} onSuccess={()=>refrescar('Estado actualizado.')}/>} 
     {modalCambio&&<AkCambioAcademicoWizard codigo={codigo} nivel={modalCambio.nivel} infoNivel={modalCambio.info} onClose={()=>setModalCambio(null)} onSuccess={()=>refrescar('Cambio académico individual aplicado. Revisá grupo, intento, pagos y estado CONAPE.')}/>} 
-    {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')}/>} 
+    {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')} onConapeClosed={()=>refrescar('Gestión CONAPE cerrada como NO CONTINUÓ; sin cambios académicos ni financieros.')}/>} 
     {comentarioOpen&&<AkComentarioAdminModal codigo={codigo} comentarioAdmin={comentarioAdmin} onClose={()=>setComentarioOpen(false)} onSaved={(comentario)=>{setEstado(v=>({...v,comentarioAdmin:comentario||''}));setToast('Comentario administrativo actualizado.');setTimeout(()=>setToast(''),4500);}}/>}
   </div>;
 }
