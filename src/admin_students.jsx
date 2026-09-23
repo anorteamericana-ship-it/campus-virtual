@@ -4615,11 +4615,80 @@ function agCambioOpcionGrupo(g) {
   return `${nivel} · ${tipo} · ${periodo} · inicia ${inicio} · ${horario} · ${agCambioEstadoGrupo(g?.comentario)} · ${g?.cupo ?? 0} cupos · ${g?.grupo || ''}`;
 }
 
+function AgCambioPaymentStateStrip({ estado }) {
+  const e = estado || {};
+  const items = [
+    { key:'desembolso_detectado', label:'Desembolso CONAPE detectado', detail:e.desembolso },
+    { key:'movimiento_bancario_identificado', label:'Movimiento bancario identificado', detail:e.movimiento_bancario },
+    { key:'pago_aplicado', label:'Pago aplicado en el Campus', detail:{ monto:e.pago_aplicado_monto } },
+    { key:'conape_sincronizado', label:'CONAPE sincronizado', detail:e.conape_sync },
+  ];
+  function statusOf(v) {
+    if (v === true) return { label:'SÍ', bg:'#E8F5E9', fg:'#2E7D32', bd:'#BFE4C3' };
+    if (v === false) return { label:'NO', bg:'#F4F1EC', fg:'#756D65', bd:'#DED7CF' };
+    return { label:'PENDIENTE', bg:'#FFF8E1', fg:'#9A6200', bd:'#F1D18A' };
+  }
+  function detailText(detail) {
+    if (!detail || typeof detail !== 'object') return '';
+    const parts = [];
+    if (detail.numero) parts.push('Desembolso ' + detail.numero);
+    if (detail.fecha) parts.push(detail.fecha);
+    if (detail.documento) parts.push('Doc. ' + detail.documento);
+    if (detail.monto != null && detail.monto !== '') parts.push(agIndMoney(detail.monto));
+    if (detail.conape_sync) parts.push('Sync ' + detail.conape_sync);
+    if (detail.actualizado_en) parts.push(detail.actualizado_en);
+    return parts.join(' · ');
+  }
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8}}>
+      {items.map(item => {
+        const tone = statusOf(e[item.key]);
+        const detail = detailText(item.detail);
+        return <div key={item.key} style={{padding:'10px 11px',borderRadius:10,background:tone.bg,border:'1px solid '+tone.bd}}>
+          <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
+            <div style={{fontSize:9.5,fontWeight:950,lineHeight:1.3,color:'#344054'}}>{item.label}</div>
+            <span style={{padding:'3px 6px',borderRadius:999,background:'white',border:'1px solid '+tone.bd,color:tone.fg,fontSize:8.5,fontWeight:950}}>{tone.label}</span>
+          </div>
+          {detail && <div style={{fontSize:8.7,color:'#667085',marginTop:5,lineHeight:1.35}}>{detail}</div>}
+        </div>;
+      })}
+    </div>
+  );
+}
+
+function AgCambioCompareCard({ title, data, tone, nivel }) {
+  const d = data || {};
+  const displayNivel = d.aplica_desde_nivel || nivel;
+  const displayEstatus = d.nivel_actual_sin_cambio ? 'CONTINUIDAD FUTURA' : (d.estatus || '—');
+  const rows = [
+    ['Grupo', d.grupo || '—'],
+    ['Modalidad', d.modalidad || '—'],
+    ['Tipo de periodo', d.tipo_periodo || '—'],
+    ['Periodo', d.periodo_corto || '—'],
+    ['Cuota individual', d.cuota != null ? agIndMoney(d.cuota) : '—'],
+    ['Cantidad de cuotas', d.cantidad_cuotas != null ? String(d.cantidad_cuotas) : '—'],
+    ['Total contractual', d.total_contractual != null ? agIndMoney(d.total_contractual) : '—'],
+    ['Número de intento', d.numero_intento != null ? String(d.numero_intento) : '—'],
+  ];
+  return (
+    <div style={{padding:14,border:'1px solid '+tone.bd,borderRadius:12,background:tone.bg,color:tone.fg}}>
+      <div style={{fontSize:10,fontWeight:950,letterSpacing:'.12em'}}>{title}</div>
+      <div style={{fontSize:12,fontWeight:950,marginTop:5}}>{NIVEL_LABEL_P[displayNivel] || displayNivel} · {displayEstatus}</div>
+      <div style={{marginTop:9,display:'grid',gap:5}}>
+        {rows.map(([label,value]) => <div key={label} style={{display:'grid',gridTemplateColumns:'minmax(120px,.8fr) minmax(120px,1.2fr)',gap:9,fontSize:10.5,lineHeight:1.35}}><span style={{opacity:.8}}>{label}</span><b style={{textAlign:'right',overflowWrap:'anywhere'}}>{value}</b></div>)}
+      </div>
+      {d.aplica_desde_nivel && <div style={{marginTop:9,paddingTop:7,borderTop:'1px dashed '+tone.bd,fontSize:10,fontWeight:900}}>Aplica desde: {NIVEL_LABEL_P[d.aplica_desde_nivel] || d.aplica_desde_nivel}</div>}
+      {d.nivel_actual_sin_cambio && <div style={{marginTop:6,fontSize:9.5,fontWeight:900}}>El nivel e intento actual quedan sin cambio.</div>}
+    </div>
+  );
+}
+
 function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess }) {
   const [contexto, setContexto] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
   const [tipoCaso, setTipoCaso] = React.useState('');
+  const [variantePago, setVariantePago] = React.useState('');
   const [grupoDestino, setGrupoDestino] = React.useState('');
   const [motivo, setMotivo] = React.useState('');
   const [detalleOtro, setDetalleOtro] = React.useState('');
@@ -4627,23 +4696,49 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
   const [simulando, setSimulando] = React.useState(false);
   const [ejecutando, setEjecutando] = React.useState(false);
   const [confirmacion, setConfirmacion] = React.useState('');
+  const [resultado, setResultado] = React.useState(null);
 
+  function tipoInfo(ctx, codigoCaso) {
+    return (ctx?.tipos_caso || []).find(x => x.codigo === codigoCaso) || null;
+  }
+  function variantesCaso(ctx, codigoCaso) {
+    return (ctx?.variantes_pago || []).filter(v => (v.tipos_caso || []).includes(codigoCaso));
+  }
+  function varianteHabilitada(ctx, codigoCaso, variante) {
+    if (!variante) return false;
+    const target = variante.candidatos_key || codigoCaso;
+    const tipoTarget = tipoInfo(ctx, target);
+    return !!(tipoTarget && tipoTarget.habilitado);
+  }
+  function casoSeleccionable(ctx, caso) {
+    if (!caso || caso.solo_variante) return false;
+    if (caso.habilitado) return true;
+    return variantesCaso(ctx, caso.codigo).some(v => v.candidatos_key && varianteHabilitada(ctx, caso.codigo, v));
+  }
   function seleccionarCaso(ctx, codigoCaso) {
-    const habilitado = (ctx?.tipos_caso || []).find(x => x.codigo === codigoCaso && x.habilitado);
-    const caso = habilitado ? codigoCaso : ((ctx?.tipos_caso || []).find(x => x.habilitado)?.codigo || '');
-    setTipoCaso(caso);
-    const candidatos = ctx?.candidatos_por_caso?.[caso] || [];
-    setGrupoDestino((candidatos.find(x => x.seleccionable) || candidatos[0] || {}).grupo || '');
-    const motivos = ctx?.motivos_por_caso?.[caso] || [];
+    const casos = (ctx?.tipos_caso || []).filter(x => !x.solo_variante);
+    const solicitado = casos.find(x => x.codigo === codigoCaso && casoSeleccionable(ctx, x));
+    const caso = solicitado || casos.find(x => casoSeleccionable(ctx, x)) || null;
+    const codigo = caso?.codigo || '';
+    const vars = variantesCaso(ctx, codigo);
+    const variante = vars.find(v => varianteHabilitada(ctx, codigo, v)) || null;
+    const varianteCodigo = variante?.codigo || '';
+    const target = variante?.candidatos_key || codigo;
+    const candidatos = ctx?.candidatos_por_caso?.[target] || [];
+    const motivos = ctx?.motivos_por_caso?.[target] || [];
+    setTipoCaso(codigo);
+    setVariantePago(varianteCodigo);
+    setGrupoDestino((candidatos.find(x => x.seleccionable) || {}).grupo || '');
     setMotivo(motivos.length === 1 ? motivos[0] : '');
     setDetalleOtro('');
     setSimulacion(null);
     setConfirmacion('');
+    setResultado(null);
   }
 
   React.useEffect(() => {
     let activo = true;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setResultado(null);
     postAdminStudents('getCambioGrupoContexto', { codigo, nivel })
       .then(r => {
         if (!activo) return;
@@ -4656,13 +4751,27 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
     return () => { activo = false; };
   }, [codigo, nivel]);
 
-  const candidatos = contexto?.candidatos_por_caso?.[tipoCaso] || [];
-  const motivos = contexto?.motivos_por_caso?.[tipoCaso] || [];
+  const casosVisibles = (contexto?.tipos_caso || []).filter(x => !x.solo_variante);
+  const variantes = variantesCaso(contexto, tipoCaso);
+  const varianteInfo = variantes.find(v => v.codigo === variantePago) || null;
+  const casoEfectivo = varianteInfo?.candidatos_key || tipoCaso;
+  const candidatos = contexto?.candidatos_por_caso?.[casoEfectivo] || [];
+  const motivos = contexto?.motivos_por_caso?.[casoEfectivo] || [];
   const casoInfo = (contexto?.tipos_caso || []).find(x => x.codigo === tipoCaso) || {};
   const candidato = candidatos.find(x => x.grupo === grupoDestino);
 
   function cambiarCaso(caso) {
     seleccionarCaso(contexto, caso);
+  }
+  function cambiarVariante(codigoVariante) {
+    setVariantePago(codigoVariante);
+    setGrupoDestino('');
+    setMotivo('');
+    setDetalleOtro('');
+    setSimulacion(null);
+    setConfirmacion('');
+    setResultado(null);
+    setError('');
   }
 
   async function simular() {
@@ -4670,14 +4779,20 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
       setError('Seleccioná el tipo de movimiento, el grupo destino y el motivo.');
       return;
     }
+    if (variantes.length && !variantePago) {
+      setError('Seleccioná el tratamiento financiero A, B o C.');
+      return;
+    }
     if (motivo === 'Otro' && (detalleOtro.trim().length < 15 || detalleOtro.trim().length > 500)) {
       setError('La explicación de “Otro” debe tener entre 15 y 500 caracteres.');
       return;
     }
-    setSimulando(true); setError(''); setSimulacion(null); setConfirmacion('');
+    setSimulando(true); setError(''); setSimulacion(null); setConfirmacion(''); setResultado(null);
     try {
       const r = await postAdminStudents('simularCambioGrupo', {
         codigo, nivel, tipo_caso:tipoCaso,
+        variante_pago:variantePago,
+        expected_intento_id:contexto?.actual?.intento_id || '',
         grupo_origen:contexto?.actual?.grupo || infoNivel?.grupo || '',
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
       }, 45000);
@@ -4692,18 +4807,19 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 
   async function ejecutar() {
     if (!simulacion || confirmacion.trim() !== String(codigo)) return;
-    setEjecutando(true); setError('');
+    setEjecutando(true); setError(''); setResultado(null);
     try {
       const r = await postAdminStudents('ejecutarCambioGrupo', {
         codigo, nivel, tipo_caso:tipoCaso,
+        variante_pago:simulacion?.variante_pago || variantePago,
+        expected_intento_id:simulacion?.antes?.intento_id || contexto?.actual?.intento_id || '',
         grupo_origen:simulacion?.antes?.grupo || contexto?.actual?.grupo || '',
         grupo_destino:grupoDestino, motivo, detalle_otro:detalleOtro.trim(),
         confirmacion_individual:String(codigo),
       }, 45000);
       if (!r?.ok) { setError(adminStudentsSafeUserError(r?.error || r?.mensaje, 'No fue posible ejecutar el movimiento. Intentá de nuevo.', 'ejecutar_cambio_grupo')); return; }
-      alert(adminStudentsSafeUserError(r?.mensaje, r?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.', 'resultado_cambio_grupo'));
+      setResultado(r);
       onSuccess?.(r);
-      onClose();
     } catch(e) {
       setError(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo completar la operación. Intentá de nuevo.', 'admin_operacion'));
     } finally {
@@ -4715,109 +4831,197 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
   const conape = simulacion?.conape || {};
   const antes = simulacion?.antes || {};
   const despues = simulacion?.despues || {};
+  const actividad = simulacion?.actividad || contexto?.actividad || {};
+  const estadoPago = simulacion?.estado_pago_conape || contexto?.estado_pago_conape || {};
+  const varianteSim = (contexto?.variantes_pago || []).find(v => v.codigo === simulacion?.variante_pago) || varianteInfo;
+  const esVarianteB = simulacion?.variante_pago === 'SIN_CONVALIDAR_PAGOS';
+  const esSoloFuturo = simulacion?.variante_pago === 'SOLO_FUTURO';
+  const recibosNoAplican = fin?.pagos_historicos_no_aplican?.comprobantes || [];
+  const descuento = fin?.descuento_aplicado || {};
+  const precioLista = fin?.precio_lista || {};
+  const pendingConape = conape?.requiere_modificacion === true;
+  const puedeSimular = !!tipoCaso && !!grupoDestino && !!motivo && !(contexto?.bloqueos || []).length && (!variantes.length || !!variantePago);
+  const pagosHistoricosLabel = esSoloFuturo ? 'NIVEL ACTUAL SIN CAMBIO' : fin.convalida_pagos ? 'CONSERVADOS' : esVarianteB || fin.nuevo_intento ? 'NO HEREDADOS' : 'SEGÚN EL CASO';
+  const resultadoMensaje = resultado ? adminStudentsSafeUserError(resultado?.mensaje, resultado?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.', 'resultado_cambio_grupo') : '';
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:2500, background:'rgba(7,20,40,.72)', display:'flex', alignItems:'center', justifyContent:'center', padding:18 }}>
-      <div style={{ width:'min(1080px,96vw)', maxHeight:'92vh', overflowY:'auto', background:'#F8F6F2', borderRadius:16, boxShadow:'0 28px 80px rgba(0,0,0,.35)', border:'1px solid #DDE4EC' }}>
+    <div role="dialog" aria-modal="true" aria-label={'Evaluar cambio académico de '+codigo} style={{ position:'fixed', inset:0, zIndex:2500, background:'rgba(7,20,40,.72)', display:'flex', alignItems:'center', justifyContent:'center', padding:18 }}>
+      <div style={{ width:'min(1120px,96vw)', maxHeight:'92vh', overflowY:'auto', background:'#F8F6F2', borderRadius:16, boxShadow:'0 28px 80px rgba(0,0,0,.35)', border:'1px solid #DDE4EC' }}>
         <div style={{ padding:'18px 20px', background:'#0D2B51', color:'white', borderRadius:'16px 16px 0 0', display:'flex', justifyContent:'space-between', gap:16, alignItems:'center' }}>
           <div>
             <div style={{ fontSize:10, letterSpacing:'.15em', fontWeight:900, textTransform:'uppercase', opacity:.72 }}>Expediente individual</div>
             <div style={{ fontSize:21, fontWeight:900, marginTop:3 }}>Evaluar cambio académico · {NIVEL_LABEL_P[nivel]}</div>
             <div style={{ fontSize:11.5, opacity:.82, marginTop:3 }}>Estudiante {codigo} · ninguna acción masiva disponible</div>
           </div>
-          <button type="button" onClick={onClose} disabled={ejecutando} style={{ width:34, height:34, borderRadius:999, border:'1px solid rgba(255,255,255,.4)', background:'rgba(255,255,255,.1)', color:'white', fontSize:20, cursor:'pointer' }}>×</button>
+          <button type="button" aria-label="Cerrar" onClick={onClose} disabled={ejecutando} style={{ width:34, height:34, borderRadius:999, border:'1px solid rgba(255,255,255,.4)', background:'rgba(255,255,255,.1)', color:'white', fontSize:20, cursor:'pointer' }}>×</button>
         </div>
 
         <div style={{ padding:20 }}>
           {loading && <div style={{ padding:35, textAlign:'center', color:'#667085', fontWeight:800 }}>Preparando expediente académico, grupo, intentos y pagos…</div>}
-          {error && <div style={{ marginBottom:14, padding:'11px 13px', borderRadius:10, background:'#FFEBEE', border:'1px solid #F2B8B8', color:'#B42318', fontSize:12, fontWeight:800 }}>{error}</div>}
+          {error && <div role="alert" style={{ marginBottom:14, padding:'11px 13px', borderRadius:10, background:'#FFEBEE', border:'1px solid #F2B8B8', color:'#B42318', fontSize:12, fontWeight:800 }}>{error}</div>}
 
           {!loading && contexto && (
             <>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:9,marginBottom:14}}>
-                <AgIndMetric label="Estado actual" value={contexto?.actual?.estatus || '—'} warn={!['CA','REP'].includes(contexto?.actual?.estatus)} sub={contexto?.actual?.periodo_corto || ''}/>
-                <AgIndMetric label="Grupo actual" value={contexto?.actual?.grupo || '—'} sub={contexto?.actual?.tipo_periodo ? `Periodo ${contexto.actual.tipo_periodo}` : ''}/>
-                <AgIndMetric label="Intentos" value={contexto?.actual?.numero_intento || 1} sub={contexto?.actual?.intento_id || 'Intento histórico'}/>
-                <AgIndMetric label="Comprobantes nivel" value={contexto?.financiero?.total_comprobantes || 0} sub={`Matr. ${contexto?.financiero?.matricula_count||0} · Cuotas ${contexto?.financiero?.cuota_count||0} · Cert. ${contexto?.financiero?.certificado_count||0}`}/>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:9,marginBottom:12}}>
+                <AgIndMetric label="Estado actual" value={contexto?.actual?.estatus || '—'} warn={!!(contexto?.bloqueos || []).length} sub={contexto?.actual?.periodo_corto || ''}/>
+                <AgIndMetric label="Grupo actual" value={contexto?.actual?.grupo || '—'} sub={contexto?.actual?.modalidad || ''}/>
+                <AgIndMetric label="Intento" value={contexto?.actual?.numero_intento || 1} sub={contexto?.actual?.intento_id || 'Intento histórico'}/>
+                <AgIndMetric label="Cuota actual" value={contexto?.actual?.cuota != null ? agIndMoney(contexto.actual.cuota) : '—'} sub={contexto?.actual?.cantidad_cuotas != null ? String(contexto.actual.cantidad_cuotas)+' cuotas' : ''}/>
+                <AgIndMetric label="Comprobantes nivel" value={contexto?.financiero?.total_comprobantes || 0} sub={'Aplicado '+agIndMoney(contexto?.financiero?.total_monto || 0)}/>
               </div>
+
+              <div style={{marginBottom:14,padding:'12px 13px',borderRadius:11,background:'white',border:'1px solid #DDE4EC'}}>
+                <div style={{fontSize:9.5,fontWeight:950,letterSpacing:'.1em',textTransform:'uppercase',color:'#667085',marginBottom:8}}>CONAPE / Banco / Campus</div>
+                <AgCambioPaymentStateStrip estado={estadoPago}/>
+              </div>
+
+              {Number(actividad?.actividad_total || 0) > 0 && <div style={{marginBottom:14,padding:'12px 14px',borderRadius:10,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}>
+                <div style={{fontWeight:950,fontSize:11.5}}>Tiene asistencia/notas previas · Debe convalidarse trayectoria académica · Revisión administrativa requerida</div>
+                <div style={{fontSize:10.5,marginTop:5,lineHeight:1.45}}>Notas/evaluaciones: <b>{actividad.actividad_notas || 0}</b> · registros de asistencia: <b>{actividad.actividad_asistencia || 0}</b> · presentes: <b>{actividad.asistencia_presentes || 0}</b> · ausentes: <b>{actividad.asistencia_ausentes || 0}</b>.</div>
+                <div style={{fontSize:9.5,marginTop:5,fontWeight:800}}>La actividad por sí sola no bloquea la simulación; el backend decidirá si el expediente puede aplicarse.</div>
+              </div>}
 
               {!!(contexto.bloqueos || []).length && <div style={{marginBottom:14,padding:'12px 14px',borderRadius:10,background:'#FFEBEE',border:'1px solid #F2B8B8',color:'#B42318'}}><b>Expediente bloqueado.</b>{(contexto.bloqueos||[]).map((x,i)=><div key={i} style={{marginTop:5,fontSize:11.5}}>• {x}</div>)}</div>}
 
-              <div style={{ display:'grid', gridTemplateColumns:'minmax(250px,.9fr) minmax(280px,1.1fr)', gap:14 }}>
-                <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
-                  <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>1. Tipo de movimiento</div>
-                  <div style={{display:'grid',gap:8}}>
-                    {(contexto.tipos_caso || []).map(c => <button key={c.codigo} type="button" disabled={!c.habilitado} onClick={()=>c.habilitado&&cambiarCaso(c.codigo)} style={{textAlign:'left',padding:'10px 11px',borderRadius:10,border:`1px solid ${tipoCaso===c.codigo?'#174E8C':'#D8E0EA'}`,background:tipoCaso===c.codigo?'#EAF3FF':'white',color:c.habilitado?'#14213D':'#8B929A',cursor:c.habilitado?'pointer':'not-allowed',opacity:c.habilitado?1:.62}}><div style={{fontSize:11.5,fontWeight:950}}>{c.label}</div><div style={{fontSize:9.8,lineHeight:1.35,marginTop:3,color:c.habilitado?'#667085':'#9AA1A8'}}>{c.habilitado?c.descripcion:c.razon}</div></button>)}
+              {!resultado && <>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(285px,1fr))', gap:14 }}>
+                  <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
+                    <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>1. Tipo de movimiento académico</div>
+                    <div style={{display:'grid',gap:8}}>
+                      {casosVisibles.map(c => {
+                        const habilitado = casoSeleccionable(contexto, c);
+                        return <button key={c.codigo} type="button" disabled={!habilitado} onClick={()=>habilitado&&cambiarCaso(c.codigo)} style={{textAlign:'left',padding:'10px 11px',borderRadius:10,border:'1px solid '+(tipoCaso===c.codigo?'#174E8C':'#D8E0EA'),background:tipoCaso===c.codigo?'#EAF3FF':'white',color:habilitado?'#14213D':'#8B929A',cursor:habilitado?'pointer':'not-allowed',opacity:habilitado?1:.62}}><div style={{fontSize:11.5,fontWeight:950}}>{c.label}</div><div style={{fontSize:9.8,lineHeight:1.35,marginTop:3,color:habilitado?'#667085':'#9AA1A8'}}>{habilitado?c.descripcion:c.razon}</div></button>;
+                      })}
+                    </div>
+                    {casoInfo.descripcion&&<div style={{marginTop:10,padding:'9px 10px',borderRadius:8,background:'#F7F4EF',fontSize:10.5,color:'#615850',lineHeight:1.45}}>{casoInfo.descripcion}</div>}
                   </div>
-                  {casoInfo.descripcion&&<div style={{marginTop:10,padding:'9px 10px',borderRadius:8,background:'#F7F4EF',fontSize:10.5,color:'#615850',lineHeight:1.45}}>{casoInfo.descripcion}</div>}
+
+                  <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
+                    <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>2. Tratamiento financiero</div>
+                    {variantes.length ? <div style={{display:'grid',gap:8}}>{variantes.map(v => {
+                      const habilitada = varianteHabilitada(contexto, tipoCaso, v);
+                      const selected = variantePago === v.codigo;
+                      return <button key={v.codigo} type="button" disabled={!habilitada} onClick={()=>habilitada&&cambiarVariante(v.codigo)} style={{textAlign:'left',padding:'11px 12px',borderRadius:11,border:'1px solid '+(selected?'#174E8C':'#D8E0EA'),background:selected?'#EAF3FF':'white',color:habilitada?'#14213D':'#8B929A',cursor:habilitada?'pointer':'not-allowed',opacity:habilitada?1:.58}}><div style={{display:'flex',gap:8,alignItems:'center'}}><span style={{width:24,height:24,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:selected?'#174E8C':'#F1F4F8',color:selected?'white':'#344054',fontSize:10,fontWeight:950}}>{v.letra || '•'}</span><b style={{fontSize:11.2}}>{v.label}</b></div><div style={{fontSize:9.8,lineHeight:1.4,marginTop:5,color:habilitada?'#667085':'#9AA1A8'}}>{v.descripcion}</div></button>;
+                    })}</div> : <div style={{padding:'10px 11px',borderRadius:9,background:'#F7F4EF',fontSize:10.5,color:'#615850'}}>Este caso no requiere seleccionar una variante financiera.</div>}
+                  </div>
                 </div>
 
-                <div style={{ background:'white', border:'1px solid #E0E6ED', borderRadius:13, padding:15 }}>
-                  <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>2. Destino y motivo</div>
+                <div style={{marginTop:14,background:'white',border:'1px solid #E0E6ED',borderRadius:13,padding:15}}>
+                  <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'#667085', marginBottom:10 }}>3. Destino y motivo</div>
                   <label style={{display:'block',fontSize:10,fontWeight:900,marginBottom:5}}>Grupo destino</label>
-                  <select value={grupoDestino} onChange={e=>{setGrupoDestino(e.target.value);setSimulacion(null);setConfirmacion('');}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
-                    {!candidatos.length&&<option value="">Sin destinos compatibles</option>}
+                  <select value={grupoDestino} onChange={e=>{setGrupoDestino(e.target.value);setSimulacion(null);setConfirmacion('');setResultado(null);}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
+                    <option value="">{candidatos.length?'Seleccionar destino…':'Sin destinos compatibles'}</option>
                     {candidatos.map(g => <option key={g.grupo} value={g.grupo} disabled={!g.seleccionable}>{agCambioOpcionGrupo(g)}</option>)}
                   </select>
-                  {candidato&&<div style={{marginTop:9,padding:'11px 12px',borderRadius:10,background:candidato.seleccionable?'#E8F5E9':'#FFF3E0',border:`1px solid ${candidato.seleccionable?'#BFE4C3':'#F0C27B'}`,color:candidato.seleccionable?'#246B2A':'#8A5200'}}>
+                  {candidato&&<div style={{marginTop:9,padding:'11px 12px',borderRadius:10,background:candidato.seleccionable?'#E8F5E9':'#FFF3E0',border:'1px solid '+(candidato.seleccionable?'#BFE4C3':'#F0C27B'),color:candidato.seleccionable?'#246B2A':'#8A5200'}}>
                     <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:8}}>
                       <span style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid currentColor',fontSize:9,fontWeight:950}}>{candidato.nivel_nombre || NIVEL_LABEL_P[candidato.nivel] || candidato.nivel}</span>
                       <span style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid currentColor',fontSize:9,fontWeight:950}}>{candidato.tipo_periodo_nombre || agCambioTipoPeriodo(candidato.tipo_periodo)}</span>
                       <span style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid currentColor',fontSize:9,fontWeight:950}}>{agCambioEstadoGrupo(candidato.comentario)}</span>
-                      {candidato.cambio_tipo_periodo&&<span style={{padding:'4px 7px',borderRadius:999,background:'#FFF7DF',border:'1px solid #D9AF50',color:'#7A4A00',fontSize:9,fontWeight:950}}>Cambio de periodo permitido</span>}
                     </div>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(150px,1fr))',gap:'6px 14px',fontSize:10.5,lineHeight:1.35}}>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'6px 14px',fontSize:10.5,lineHeight:1.35}}>
                       <div><b>Periodo:</b> {candidato.periodo_corto || 'Sin definir'}</div>
                       <div><b>Inicio:</b> {agCambioFecha(candidato.fecha_inicio)}</div>
                       <div><b>Horario:</b> {agCambioDias(candidato.dias)} · {agCambioHora12(candidato.hora_ini)}–{agCambioHora12(candidato.hora_fin)}</div>
                       <div><b>Docente:</b> {candidato.docente || 'Sin docente'}</div>
                       <div><b>Código:</b> {candidato.grupo}</div>
                       <div><b>Cupo:</b> {candidato.cupo} disponible(s) de {candidato.capacidad}</div>
+                      {candidato.aplica_desde_nivel&&<div><b>Aplica desde:</b> {NIVEL_LABEL_P[candidato.aplica_desde_nivel] || candidato.aplica_desde_nivel}</div>}
                     </div>
                     <div style={{marginTop:8,paddingTop:7,borderTop:'1px dashed currentColor',fontSize:10.5,fontWeight:850,lineHeight:1.4}}>{candidato.recomendacion}</div>
                   </div>}
 
                   <label style={{display:'block',fontSize:10,fontWeight:900,margin:'12px 0 5px'}}>Motivo oficial</label>
-                  <select value={motivo} onChange={e=>{setMotivo(e.target.value);setSimulacion(null);setConfirmacion('');}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
+                  <select value={motivo} onChange={e=>{setMotivo(e.target.value);setSimulacion(null);setConfirmacion('');setResultado(null);}} style={{ width:'100%', padding:'10px 11px', borderRadius:9, border:'1px solid #BFC9D6', background:'white', fontWeight:800, color:'#14213D' }}>
                     <option value="">Seleccionar motivo…</option>
                     {motivos.map(m=><option key={m} value={m}>{m}</option>)}
                   </select>
-                  {motivo==='Otro'&&<textarea value={detalleOtro} onChange={e=>setDetalleOtro(e.target.value)} rows={3} maxLength={500} placeholder="Explique el motivo (15–500 caracteres)" style={{width:'100%',boxSizing:'border-box',marginTop:8,padding:9,borderRadius:9,border:'1px solid #BFC9D6',resize:'vertical',fontFamily:'inherit'}}/>}
-                </div>
-              </div>
-
-              <div style={{display:'flex',justifyContent:'flex-end',marginTop:13}}>
-                <button type="button" onClick={simular} disabled={simulando||!tipoCaso||!grupoDestino||!motivo||!!(contexto.bloqueos||[]).length} style={{padding:'10px 16px',borderRadius:9,border:'none',background:'#14213D',color:'white',fontWeight:900,cursor:simulando?'wait':'pointer',opacity:(!tipoCaso||!grupoDestino||!motivo||!!(contexto.bloqueos||[]).length)?.55:1}}>{simulando?'Analizando…':'Simular antes y después'}</button>
-              </div>
-
-              {simulacion&&<div style={{marginTop:16,display:'grid',gap:13}}>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(260px,1fr))',gap:12}}>
-                  {[['ANTES',antes,'#FFF7E6','#7A4A00'],['DESPUÉS',despues,'#E8F5E9','#246B2A']].map(([label,obj,bg,fg])=><div key={label} style={{padding:14,border:'1px solid #DDE4EC',borderRadius:12,background:bg,color:fg}}><div style={{fontSize:10,fontWeight:950,letterSpacing:'.12em'}}>{label}</div><div style={{marginTop:7,fontSize:12,lineHeight:1.55}}><b>{obj.estatus||'—'} · {NIVEL_LABEL_P[nivel]}</b><br/>Grupo: {obj.grupo||'—'}<br/>Periodo: {obj.periodo_corto||'—'}{obj.numero_intento?` · intento ${obj.numero_intento}`:''}</div></div>)}
+                  {motivo==='Otro'&&<textarea value={detalleOtro} onChange={e=>{setDetalleOtro(e.target.value);setSimulacion(null);setConfirmacion('');}} rows={3} maxLength={500} placeholder="Explique el motivo (15–500 caracteres)" style={{width:'100%',boxSizing:'border-box',marginTop:8,padding:9,borderRadius:9,border:'1px solid #BFC9D6',resize:'vertical',fontFamily:'inherit'}}/>}
                 </div>
 
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:9}}>
-                  <AgIndMetric label="Nuevo intento" value={fin.nuevo_intento?'SÍ':'NO'} warn={false}/>
-                  <AgIndMetric label="Matrícula nueva" value={fin.nueva_matricula?'SÍ':'NO'} warn={false}/>
-                  <AgIndMetric label="Cuotas nuevas" value={fin.nuevas_cuotas?'SÍ':'NO'} warn={false}/>
-                  <AgIndMetric label="Certificado" value={fin.certificado_convalidado?'CONVALIDADO':fin.certificado_nuevo?'PENDIENTE':'SIN CAMBIO'} warn={false}/>
-                  <AgIndMetric label="Pagos anteriores" value={fin.convalida_pagos?'CONSERVADOS':'NO HEREDADOS'} warn={false}/>
-                  <AgIndMetric label="CONAPE" value={conape.estado||'—'} warn={conape.requiere_modificacion===true} sub={(conape.formularios||[]).join(' · ')}/>
+                <div style={{display:'flex',justifyContent:'flex-end',marginTop:13}}>
+                  <button type="button" onClick={simular} disabled={simulando||!puedeSimular} style={{padding:'10px 16px',borderRadius:9,border:'none',background:'#14213D',color:'white',fontWeight:900,cursor:(simulando||!puedeSimular)?'not-allowed':'pointer',opacity:(simulando||!puedeSimular)?.55:1}}>{simulando?'Analizando…':'Simular antes y después'}</button>
                 </div>
 
-                {!!(simulacion.warnings||[]).length&&<div style={{padding:'12px 14px',borderRadius:11,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}><div style={{fontSize:10,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:6}}>Advertencias</div>{simulacion.warnings.map((w,i)=><div key={i} style={{fontSize:11.5,fontWeight:700,marginTop:i?5:0}}>• {w}</div>)}</div>}
+                {simulacion&&<div style={{marginTop:16,display:'grid',gap:13}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:12}}>
+                    <AgCambioCompareCard title="ANTES" data={antes} tone={{bg:'#FFF7E6',fg:'#7A4A00',bd:'#E8C67A'}} nivel={nivel}/>
+                    <AgCambioCompareCard title={esSoloFuturo?'DESPUÉS · CONTINUIDAD FUTURA':'DESPUÉS'} data={despues} tone={{bg:'#E8F5E9',fg:'#246B2A',bd:'#BFE4C3'}} nivel={nivel}/>
+                  </div>
 
-                {conape.requiere_modificacion&&<div style={{padding:'11px 13px',borderRadius:10,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:11.5,lineHeight:1.5}}><b>El nuevo plan no se actualizará todavía en CONAPE.</b> El expediente quedará <b>PENDIENTE DE APROBACIÓN</b> y la sincronización individual será bloqueada hasta resolver el trámite.</div>}
+                  <div style={{padding:'12px 13px',borderRadius:11,background:'white',border:'1px solid #DDE4EC'}}>
+                    <div style={{fontSize:9.5,fontWeight:950,letterSpacing:'.1em',textTransform:'uppercase',color:'#667085',marginBottom:8}}>Resultado financiero simulado</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:9}}>
+                      <AgIndMetric label="Variante" value={varianteSim ? ((varianteSim.letra ? varianteSim.letra+' · ' : '')+varianteSim.label) : 'NO APLICA'} warn={false}/>
+                      <AgIndMetric label="Pagos históricos" value={pagosHistoricosLabel} warn={false}/>
+                      <AgIndMetric label="Nuevo intento" value={fin.nuevo_intento?'SÍ':'NO'} warn={false}/>
+                      <AgIndMetric label="Matrícula nueva" value={fin.nueva_matricula?'SÍ':'NO'} warn={false}/>
+                      <AgIndMetric label="Cuotas nuevas" value={fin.nuevas_cuotas?'SÍ':'NO'} warn={false}/>
+                      <AgIndMetric label="CONAPE" value={conape.estado||'—'} warn={pendingConape} sub={(conape.formularios||[]).join(' · ')}/>
+                    </div>
+                  </div>
 
-                <div style={{padding:'12px 13px',borderRadius:10,background:'white',border:'1px solid #D7DEE7'}}>
-                  <label style={{display:'block',fontSize:10.5,fontWeight:900,color:'#344054'}}>Confirmación individual</label>
-                  <div style={{fontSize:10,color:'#667085',margin:'4px 0 7px'}}>Escribí exactamente el código <b>{codigo}</b>. Solo se modificará este expediente.</div>
-                  <input value={confirmacion} onChange={e=>setConfirmacion(e.target.value.replace(/[^0-9]/g,''))} style={{width:'100%',boxSizing:'border-box',padding:'10px 11px',borderRadius:9,border:'1px solid #BFC9D6',fontFamily:'var(--f-mono)',fontWeight:900}}/>
-                </div>
+                  {esVarianteB && <div style={{padding:'13px 14px',borderRadius:11,background:'#FFFDF8',border:'1px solid #E5D5B0'}}>
+                    <div style={{fontSize:10,fontWeight:950,letterSpacing:'.1em',textTransform:'uppercase',color:'#7A4A00'}}>Variante B · nuevo cálculo del grupo destino</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:10,marginTop:10}}>
+                      <div style={{padding:10,borderRadius:9,background:'white',border:'1px solid #E7E0D6'}}><div style={{fontSize:9,fontWeight:950,color:'#667085',marginBottom:6}}>Precio de lista</div><div style={{display:'grid',gap:4,fontSize:10}}><div>Matrícula: <b>{agIndMoney(precioLista.matricula)}</b></div><div>Cuota: <b>{agIndMoney(precioLista.cuota)}</b> × <b>{precioLista.num_cuotas ?? 0}</b></div><div>Certificado: <b>{agIndMoney(precioLista.certificado)}</b></div><div>Total lista: <b>{agIndMoney(precioLista.total)}</b></div></div></div>
+                      <div style={{padding:10,borderRadius:9,background:'white',border:'1px solid #E7E0D6'}}><div style={{fontSize:9,fontWeight:950,color:'#667085',marginBottom:6}}>Descuento aplicado</div><div style={{display:'grid',gap:4,fontSize:10}}><div>Matrícula: <b>{Number(descuento.matricula_pct || 0)}%</b></div><div>Cuota: <b>{Number(descuento.cuota_pct || 0)}%</b></div><div>Certificado: <b>{Number(descuento.certificado_pct || 0)}%</b></div></div></div>
+                      <div style={{padding:10,borderRadius:9,background:'white',border:'1px solid #E7E0D6'}}><div style={{fontSize:9,fontWeight:950,color:'#667085',marginBottom:6}}>Nuevo nivel</div><div style={{fontSize:10}}>Total a pagar: <b>{agIndMoney(fin.total_nivel_a_pagar)}</b></div><div style={{fontSize:10,marginTop:5}}>Diferencia vs. pagado: <b>{agIndMoney(fin.diferencia_contra_pagado)}</b></div></div>
+                    </div>
+                    <div style={{marginTop:11,padding:'10px 11px',borderRadius:9,background:'#FFF3E0',border:'1px solid #F0C27B'}}>
+                      <div style={{fontSize:10,fontWeight:950,color:'#7A4400'}}>Pagos históricos que NO se aplican a este nivel: {agIndMoney(fin?.pagos_historicos_no_aplican?.monto || 0)}</div>
+                      <div style={{marginTop:7,overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:9.5,minWidth:520}}><thead><tr><th style={{textAlign:'left',padding:'5px 6px',borderBottom:'1px solid #E5C98F'}}>Tipo</th><th style={{textAlign:'left',padding:'5px 6px',borderBottom:'1px solid #E5C98F'}}>Recibo</th><th style={{textAlign:'left',padding:'5px 6px',borderBottom:'1px solid #E5C98F'}}>Grupo</th><th style={{textAlign:'right',padding:'5px 6px',borderBottom:'1px solid #E5C98F'}}>Monto</th></tr></thead><tbody>{recibosNoAplican.length ? recibosNoAplican.map((p,i)=><tr key={(p.recibo||'r')+'-'+i}><td style={{padding:'5px 6px'}}>{p.tipo||p.concepto||'—'}</td><td style={{padding:'5px 6px'}}>{p.recibo||'—'}</td><td style={{padding:'5px 6px'}}>{p.grupo||'—'}</td><td style={{padding:'5px 6px',textAlign:'right',fontWeight:900}}>{agIndMoney(p.monto)}</td></tr>) : <tr><td colSpan="4" style={{padding:'7px 6px',color:'#81776F'}}>Sin comprobantes históricos en el payload.</td></tr>}</tbody></table></div>
+                    </div>
+                  </div>}
 
-                <div style={{display:'flex',justifyContent:'flex-end',gap:9}}>
-                  <button type="button" onClick={onClose} disabled={ejecutando} style={{padding:'10px 15px',borderRadius:9,border:'1px solid #C9D2DE',background:'white',color:'#344054',fontWeight:900,cursor:'pointer'}}>Cancelar</button>
-                  <button type="button" onClick={ejecutar} disabled={confirmacion.trim()!==String(codigo)||ejecutando} style={{padding:'10px 17px',borderRadius:9,border:'none',background:'#B42318',color:'white',fontWeight:900,cursor:(confirmacion.trim()!==String(codigo)||ejecutando)?'not-allowed':'pointer',opacity:(confirmacion.trim()!==String(codigo)||ejecutando)?.55:1}}>{ejecutando?'Aplicando expediente…':'Aplicar únicamente a este estudiante'}</button>
-                </div>
+                  {!!(simulacion.warnings||[]).length&&<div style={{padding:'12px 14px',borderRadius:11,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}><div style={{fontSize:10,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:6}}>Advertencias del backend</div>{simulacion.warnings.map((w,i)=><div key={i} style={{fontSize:11.5,fontWeight:700,marginTop:i?5:0}}>• {w}</div>)}</div>}
+
+                  <div style={{padding:'12px 13px',borderRadius:11,background:'white',border:'1px solid #DDE4EC'}}>
+                    <div style={{fontSize:9.5,fontWeight:950,letterSpacing:'.1em',textTransform:'uppercase',color:'#667085',marginBottom:8}}>Estado CONAPE / Banco esperado</div>
+                    <AgCambioPaymentStateStrip estado={estadoPago}/>
+                  </div>
+
+                  {pendingConape&&<div style={{padding:'11px 13px',borderRadius:10,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:11.5,lineHeight:1.5}}><b>Este movimiento requiere gestión CONAPE.</b> Estado informado por backend: <b>{conape.estado || 'PENDIENTE'}</b>. La pantalla no asumirá que un desembolso equivale a pago ni anticipará el resultado académico; el resultado definitivo será el que devuelva el backend al aplicar.{!!(conape.formularios||[]).length&&<div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:8}}>{conape.formularios.map(f=><span key={f} style={{padding:'4px 7px',borderRadius:999,background:'white',border:'1px solid #9CB7DB',fontSize:9,fontWeight:900}}>{f}</span>)}</div>}</div>}
+
+                  <div style={{padding:'12px 13px',borderRadius:10,background:'#F7FAFC',border:'1px solid #D7DEE7'}}>
+                    <div style={{fontSize:10,fontWeight:950,color:'#344054',marginBottom:7}}>Resumen antes de aplicar</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'6px 12px',fontSize:10.5,lineHeight:1.4}}>
+                      <div><b>Estudiante:</b> {contexto?.estudiante?.nombre || codigo} · {codigo}</div>
+                      <div><b>Caso:</b> {simulacion.caso_label || casoInfo.label || tipoCaso}</div>
+                      <div><b>Variante:</b> {varianteSim ? ((varianteSim.letra ? varianteSim.letra+' · ' : '')+varianteSim.label) : 'No aplica'}</div>
+                      <div><b>Movimiento:</b> {antes.grupo || '—'} → {despues.grupo || '—'}</div>
+                      <div><b>Intento:</b> {fin.nuevo_intento ? 'crea un nuevo intento' : 'conserva el intento actual'}</div>
+                      <div><b>Pagos:</b> {pagosHistoricosLabel}</div>
+                      <div><b>CONAPE:</b> {conape.estado || '—'}</div>
+                    </div>
+                  </div>
+
+                  <div style={{padding:'12px 13px',borderRadius:10,background:'white',border:'1px solid #D7DEE7'}}>
+                    <label style={{display:'block',fontSize:10.5,fontWeight:900,color:'#344054'}}>Confirmación individual</label>
+                    <div style={{fontSize:10,color:'#667085',margin:'4px 0 7px'}}>Escribí exactamente el código <b>{codigo}</b>. Solo se modificará este expediente.</div>
+                    <input value={confirmacion} onChange={e=>setConfirmacion(e.target.value.replace(/[^0-9]/g,''))} style={{width:'100%',boxSizing:'border-box',padding:'10px 11px',borderRadius:9,border:'1px solid #BFC9D6',fontFamily:'var(--f-mono)',fontWeight:900}}/>
+                  </div>
+
+                  <div style={{display:'flex',justifyContent:'flex-end',gap:9}}>
+                    <button type="button" onClick={onClose} disabled={ejecutando} style={{padding:'10px 15px',borderRadius:9,border:'1px solid #C9D2DE',background:'white',color:'#344054',fontWeight:900,cursor:'pointer'}}>Cancelar</button>
+                    <button type="button" onClick={ejecutar} disabled={confirmacion.trim()!==String(codigo)||ejecutando} style={{padding:'10px 17px',borderRadius:9,border:'none',background:'#B42318',color:'white',fontWeight:900,cursor:(confirmacion.trim()!==String(codigo)||ejecutando)?'not-allowed':'pointer',opacity:(confirmacion.trim()!==String(codigo)||ejecutando)?.55:1}}>{ejecutando?'Aplicando expediente…':'Aplicar únicamente a este estudiante'}</button>
+                  </div>
+                </div>}
+              </>}
+
+              {resultado&&<div style={{padding:'15px 16px',borderRadius:12,background:'#E8F5E9',border:'1px solid #BFE4C3',color:'#245F2B'}}>
+                <div style={{fontSize:12,fontWeight:950}}>Resultado del backend</div>
+                <div style={{marginTop:6,fontSize:11.5,lineHeight:1.5}}>{resultadoMensaje}</div>
+                {resultado.ya_aplicado&&<div style={{marginTop:6,fontSize:10.5,fontWeight:900}}>El backend indicó que este movimiento ya estaba aplicado.</div>}
+                {resultado.resultado&&<div style={{marginTop:8,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:7,fontSize:10}}>
+                  {resultado.resultado.cambio_id&&<div><b>Cambio:</b> {resultado.resultado.cambio_id}</div>}
+                  {resultado.resultado.tipo_caso&&<div><b>Caso:</b> {resultado.resultado.tipo_caso}</div>}
+                  {resultado.resultado.variante_pago&&<div><b>Variante:</b> {resultado.resultado.variante_pago}</div>}
+                  {resultado.resultado.grupo_origen&&<div><b>Origen:</b> {resultado.resultado.grupo_origen}</div>}
+                  {resultado.resultado.grupo_destino&&<div><b>Destino:</b> {resultado.resultado.grupo_destino}</div>}
+                  {resultado.resultado.conape_estado&&<div><b>CONAPE:</b> {resultado.resultado.conape_estado}</div>}
+                </div>}
+                <div style={{display:'flex',justifyContent:'flex-end',marginTop:12}}><button type="button" onClick={onClose} style={{padding:'9px 14px',borderRadius:9,border:'none',background:'#245F2B',color:'white',fontWeight:900,cursor:'pointer'}}>Cerrar y volver al expediente</button></div>
               </div>}
             </>
           )}
@@ -4826,7 +5030,6 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
     </div>
   );
 }
-
 
 function AkComentarioAdminModal({ codigo, comentarioAdmin, onClose, onSaved }) {
   const [comentarioValue,setComentarioValue]=React.useState(comentarioAdmin||'');
@@ -5106,7 +5309,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
               <span style={{width:25,height:25,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:abierto?color:'#F1EEE9',color:abierto?'white':'#6B625A',fontSize:14,fontWeight:900,transform:abierto?'rotate(180deg)':'none'}}>⌄</span>
             </button>
             {abierto&&<div style={{padding:'8px 12px 12px 16px',borderTop:'1px solid #EAE4DC',background:'#FBFAF8'}}>
-              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica} title={!finanzas.aplica?'El nivel no tiene matrícula activa. No se permite registrar pagos por adelantado.':''} onClick={()=>finanzas.aplica&&abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={!['CA','REP'].includes(estatus)} onClick={()=>['CA','REP'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
+              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP','APR','CNV'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica} title={!finanzas.aplica?'El nivel no tiene matrícula activa. No se permite registrar pagos por adelantado.':''} onClick={()=>finanzas.aplica&&abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={!['CA','REP','APR','CNV'].includes(estatus)} onClick={()=>['CA','REP','APR','CNV'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
               {pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
               {finIntentos.length?<div style={{display:'grid',gap:7}}>{finIntentos.map((it,i)=><AgIndIntentoFinanciero key={it.intento_id||i} intento={it} color={color} nivel={nivel} certificadoRegistro={certRegistro}/>)}</div>:<div style={{padding:'9px 10px',border:'1px dashed #D9D0C7',borderRadius:8,color:'#81776F',fontSize:10,background:'white'}}>{finanzas.aplica?'El backend todavía no separó los comprobantes por intento.':'No aplica: el nivel no tiene matrícula activa ni obligación financiera.'}</div>}
             </div>}
