@@ -40,7 +40,7 @@ if(!current.includes("adminStudentsSafeUserError(certEstado.mensaje || certEstad
 const out=execFileSync('node',['scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'],{encoding:'utf8',maxBuffer:20*1024*1024});
 const findings=Number((out.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
 const files=Number((out.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
-const adminCount=Number((out.match(/FILE_COUNT\\|(\\d+)\\|src\\/admin_students\\.jsx/)||[])[1]);
+const adminCount=Number((out.match(/FILE_COUNT\|(\d+)\|src\/admin_students\.jsx/)||[])[1]);
 if(adminCount!==2) throw new Error(`admin_students scanner count changed: ${adminCount}`);
 if(!Number.isFinite(findings)||!Number.isFinite(files)) throw new Error('V3 scanner summary missing');
 console.log('CS21A210BG admin_students safe errors PASS');
