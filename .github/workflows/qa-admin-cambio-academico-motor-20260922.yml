@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -35,4 +37,4 @@ jobs:
       - name: Verify cambio academico frontend contract
         run: node scripts/qa_admin_cambio_academico_motor_frontend_20260922.mjs
       - name: Diff hygiene
-        run: git diff --check origin/main...HEAD
+        run: git diff --check $(git merge-base origin/main HEAD) HEAD
