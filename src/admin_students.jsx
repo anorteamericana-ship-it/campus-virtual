@@ -5162,7 +5162,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
     <div style={{marginTop:8,fontSize:9.5,color:'var(--ink-3,#81776f)'}}>La columna financiera separa comprobantes por intento. Los excedentes se informan, pero no se aplican automáticamente. PE y SIN REGISTRO se presentan como NO APLICA.</div>
     {modalEstado&&<ModalEstatus estudiante={{...estudianteBase,...est,codigo,display:nombre,grupo:modalEstado.info.grupo,estatus:modalEstado.info.estatus,nota:modalEstado.info.nota}} nivel={modalEstado.nivel} onClose={()=>setModalEstado(null)} onSuccess={()=>refrescar('Estado actualizado.')}/>} 
     {modalCambio&&<AkCambioAcademicoWizard codigo={codigo} nivel={modalCambio.nivel} infoNivel={modalCambio.info} onClose={()=>setModalCambio(null)} onSuccess={()=>refrescar('Cambio académico individual aplicado. Revisá grupo, intento, pagos y estado CONAPE.')}/>} 
-    {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')} onConapeClosed={()=>refrescar('Gestión CONAPE cerrada como NO CONTINUÓ; sin cambios académicos ni financieros.')}/>} 
+    {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')} onConapeClosed={()=>refrescar('Gestión CONAPE cerrada como NO CONTINUÓ; sin cambios académicos ni financieros.')}/>}
     {comentarioOpen&&<AkComentarioAdminModal codigo={codigo} comentarioAdmin={comentarioAdmin} onClose={()=>setComentarioOpen(false)} onSaved={(comentario)=>{setEstado(v=>({...v,comentarioAdmin:comentario||''}));setToast('Comentario administrativo actualizado.');setTimeout(()=>setToast(''),4500);}}/>}
   </div>;
 }
