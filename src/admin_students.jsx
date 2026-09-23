@@ -4833,11 +4833,14 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
   const estadoPago = simulacion?.estado_pago_conape || contexto?.estado_pago_conape || {};
   const varianteSim = (contexto?.variantes_pago || []).find(v => v.codigo === simulacion?.variante_pago) || varianteInfo;
   const esVarianteB = simulacion?.variante_pago === 'SIN_CONVALIDAR_PAGOS';
+  const esSoloFuturo = simulacion?.variante_pago === 'SOLO_FUTURO';
   const recibosNoAplican = fin?.pagos_historicos_no_aplican?.comprobantes || [];
   const descuento = fin?.descuento_aplicado || {};
   const precioLista = fin?.precio_lista || {};
   const pendingConape = conape?.requiere_modificacion === true;
   const puedeSimular = !!tipoCaso && !!grupoDestino && !!motivo && !(contexto?.bloqueos || []).length && (!variantes.length || !!variantePago);
+  const pagosHistoricosLabel = esSoloFuturo ? 'NIVEL ACTUAL SIN CAMBIO' : fin.convalida_pagos ? 'CONSERVADOS' : esVarianteB || fin.nuevo_intento ? 'NO HEREDADOS' : 'SEGÚN EL CASO';
+  const resultadoMensaje = resultado ? adminStudentsSafeUserError(resultado?.mensaje, resultado?.ya_aplicado ? 'El movimiento ya estaba aplicado; no se creó un duplicado.' : 'Movimiento aplicado correctamente.', 'resultado_cambio_grupo') : '';
 
   return (
     <div role="dialog" aria-modal="true" aria-label={'Evaluar cambio académico de '+codigo} style={{ position:'fixed', inset:0, zIndex:2500, background:'rgba(7,20,40,.72)', display:'flex', alignItems:'center', justifyContent:'center', padding:18 }}>
@@ -4941,14 +4944,14 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
                 {simulacion&&<div style={{marginTop:16,display:'grid',gap:13}}>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:12}}>
                     <AgCambioCompareCard title="ANTES" data={antes} tone={{bg:'#FFF7E6',fg:'#7A4A00',bd:'#E8C67A'}} nivel={nivel}/>
-                    <AgCambioCompareCard title="DESPUÉS" data={despues} tone={{bg:'#E8F5E9',fg:'#246B2A',bd:'#BFE4C3'}} nivel={nivel}/>
+                    <AgCambioCompareCard title={esSoloFuturo?'DESPUÉS · CONTINUIDAD FUTURA':'DESPUÉS'} data={despues} tone={{bg:'#E8F5E9',fg:'#246B2A',bd:'#BFE4C3'}} nivel={nivel}/>
                   </div>
 
                   <div style={{padding:'12px 13px',borderRadius:11,background:'white',border:'1px solid #DDE4EC'}}>
                     <div style={{fontSize:9.5,fontWeight:950,letterSpacing:'.1em',textTransform:'uppercase',color:'#667085',marginBottom:8}}>Resultado financiero simulado</div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:9}}>
                       <AgIndMetric label="Variante" value={varianteSim ? ((varianteSim.letra ? varianteSim.letra+' · ' : '')+varianteSim.label) : 'NO APLICA'} warn={false}/>
-                      <AgIndMetric label="Pagos históricos" value={fin.convalida_pagos?'CONSERVADOS':'NO HEREDADOS'} warn={false}/>
+                      <AgIndMetric label="Pagos históricos" value={pagosHistoricosLabel} warn={false}/>
                       <AgIndMetric label="Nuevo intento" value={fin.nuevo_intento?'SÍ':'NO'} warn={false}/>
                       <AgIndMetric label="Matrícula nueva" value={fin.nueva_matricula?'SÍ':'NO'} warn={false}/>
                       <AgIndMetric label="Cuotas nuevas" value={fin.nuevas_cuotas?'SÍ':'NO'} warn={false}/>
@@ -4986,7 +4989,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
                       <div><b>Variante:</b> {varianteSim ? ((varianteSim.letra ? varianteSim.letra+' · ' : '')+varianteSim.label) : 'No aplica'}</div>
                       <div><b>Movimiento:</b> {antes.grupo || '—'} → {despues.grupo || '—'}</div>
                       <div><b>Intento:</b> {fin.nuevo_intento ? 'crea un nuevo intento' : 'conserva el intento actual'}</div>
-                      <div><b>Pagos:</b> {fin.convalida_pagos ? 'conservados según simulación' : 'no heredados según simulación'}</div>
+                      <div><b>Pagos:</b> {pagosHistoricosLabel}</div>
                       <div><b>CONAPE:</b> {conape.estado || '—'}</div>
                     </div>
                   </div>
@@ -5006,7 +5009,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
 
               {resultado&&<div style={{padding:'15px 16px',borderRadius:12,background:'#E8F5E9',border:'1px solid #BFE4C3',color:'#245F2B'}}>
                 <div style={{fontSize:12,fontWeight:950}}>Resultado del backend</div>
-                <div style={{marginTop:6,fontSize:11.5,lineHeight:1.5}}>{resultado.mensaje || 'Sin mensaje adicional del backend.'}</div>
+                <div style={{marginTop:6,fontSize:11.5,lineHeight:1.5}}>{resultadoMensaje}</div>
                 {resultado.ya_aplicado&&<div style={{marginTop:6,fontSize:10.5,fontWeight:900}}>El backend indicó que este movimiento ya estaba aplicado.</div>}
                 {resultado.resultado&&<div style={{marginTop:8,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:7,fontSize:10}}>
                   {resultado.resultado.cambio_id&&<div><b>Cambio:</b> {resultado.resultado.cambio_id}</div>}
@@ -5304,7 +5307,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
               <span style={{width:25,height:25,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:abierto?color:'#F1EEE9',color:abierto?'white':'#6B625A',fontSize:14,fontWeight:900,transform:abierto?'rotate(180deg)':'none'}}>⌄</span>
             </button>
             {abierto&&<div style={{padding:'8px 12px 12px 16px',borderTop:'1px solid #EAE4DC',background:'#FBFAF8'}}>
-              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica} title={!finanzas.aplica?'El nivel no tiene matrícula activa. No se permite registrar pagos por adelantado.':''} onClick={()=>finanzas.aplica&&abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={!['CA','REP'].includes(estatus)} onClick={()=>['CA','REP'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
+              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP','APR','CNV'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica} title={!finanzas.aplica?'El nivel no tiene matrícula activa. No se permite registrar pagos por adelantado.':''} onClick={()=>finanzas.aplica&&abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate)}>💳 Pago</AkActionButton><AkActionButton disabled={!['CA','REP','APR','CNV'].includes(estatus)} onClick={()=>['CA','REP','APR','CNV'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
               {pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
               {finIntentos.length?<div style={{display:'grid',gap:7}}>{finIntentos.map((it,i)=><AgIndIntentoFinanciero key={it.intento_id||i} intento={it} color={color} nivel={nivel} certificadoRegistro={certRegistro}/>)}</div>:<div style={{padding:'9px 10px',border:'1px dashed #D9D0C7',borderRadius:8,color:'#81776F',fontSize:10,background:'white'}}>{finanzas.aplica?'El backend todavía no separó los comprobantes por intento.':'No aplica: el nivel no tiene matrícula activa ni obligación financiera.'}</div>}
             </div>}
