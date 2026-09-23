@@ -4658,6 +4658,8 @@ function AgCambioPaymentStateStrip({ estado }) {
 
 function AgCambioCompareCard({ title, data, tone, nivel }) {
   const d = data || {};
+  const displayNivel = d.aplica_desde_nivel || nivel;
+  const displayEstatus = d.nivel_actual_sin_cambio ? 'CONTINUIDAD FUTURA' : (d.estatus || '—');
   const rows = [
     ['Grupo', d.grupo || '—'],
     ['Modalidad', d.modalidad || '—'],
@@ -4671,7 +4673,7 @@ function AgCambioCompareCard({ title, data, tone, nivel }) {
   return (
     <div style={{padding:14,border:'1px solid '+tone.bd,borderRadius:12,background:tone.bg,color:tone.fg}}>
       <div style={{fontSize:10,fontWeight:950,letterSpacing:'.12em'}}>{title}</div>
-      <div style={{fontSize:12,fontWeight:950,marginTop:5}}>{NIVEL_LABEL_P[nivel]} · {d.estatus || '—'}</div>
+      <div style={{fontSize:12,fontWeight:950,marginTop:5}}>{NIVEL_LABEL_P[displayNivel] || displayNivel} · {displayEstatus}</div>
       <div style={{marginTop:9,display:'grid',gap:5}}>
         {rows.map(([label,value]) => <div key={label} style={{display:'grid',gridTemplateColumns:'minmax(120px,.8fr) minmax(120px,1.2fr)',gap:9,fontSize:10.5,lineHeight:1.35}}><span style={{opacity:.8}}>{label}</span><b style={{textAlign:'right',overflowWrap:'anywhere'}}>{value}</b></div>)}
       </div>
@@ -4874,7 +4876,7 @@ function AkCambioAcademicoWizard({ codigo, nivel, infoNivel, onClose, onSuccess 
               </div>
 
               {Number(actividad?.actividad_total || 0) > 0 && <div style={{marginBottom:14,padding:'12px 14px',borderRadius:10,background:'#FFF3E0',border:'1px solid #F0C27B',color:'#7A4400'}}>
-                <div style={{fontWeight:950,fontSize:11.5}}>El expediente ya tiene actividad académica registrada.</div>
+                <div style={{fontWeight:950,fontSize:11.5}}>Tiene asistencia/notas previas · Debe convalidarse trayectoria académica · Revisión administrativa requerida</div>
                 <div style={{fontSize:10.5,marginTop:5,lineHeight:1.45}}>Notas/evaluaciones: <b>{actividad.actividad_notas || 0}</b> · registros de asistencia: <b>{actividad.actividad_asistencia || 0}</b> · presentes: <b>{actividad.asistencia_presentes || 0}</b> · ausentes: <b>{actividad.asistencia_ausentes || 0}</b>.</div>
                 <div style={{fontSize:9.5,marginTop:5,fontWeight:800}}>La actividad por sí sola no bloquea la simulación; el backend decidirá si el expediente puede aplicarse.</div>
               </div>}
