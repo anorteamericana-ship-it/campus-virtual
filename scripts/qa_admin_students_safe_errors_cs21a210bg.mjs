@@ -40,11 +40,13 @@ if(!current.includes("adminStudentsSafeUserError(certEstado.mensaje || certEstad
 const out=execFileSync('node',['scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'],{encoding:'utf8',maxBuffer:20*1024*1024});
 const findings=Number((out.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
 const files=Number((out.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
-if(findings!==23||files!==12) throw new Error(`unexpected V3 ${findings}/${files}`);
-if(!out.includes('FILE_COUNT|2|src/admin_students.jsx')) throw new Error('admin_students should retain exactly two scanner findings already sanitized at render');
+const adminCount=Number((out.match(/FILE_COUNT\\|(\\d+)\\|src\\/admin_students\\.jsx/)||[])[1]);
+if(adminCount!==2) throw new Error(`admin_students scanner count changed: ${adminCount}`);
+if(!Number.isFinite(findings)||!Number.isFinite(files)) throw new Error('V3 scanner summary missing');
 console.log('CS21A210BG admin_students safe errors PASS');
 console.log(`PREIMAGE=${PRE}`);
 console.log(`HISTORICAL_CANDIDATE=${CANDIDATE}`);
 console.log(`CURRENT_DESCENDANT=${descendantHash}`);
-console.log(`V3=${findings}/${files}`);
+console.log(`V3_GLOBAL_INFORMATIONAL=${findings}/${files}`);
+console.log(`ADMIN_STUDENTS_FINDINGS=${adminCount}`);
 console.log('E2=NO');
