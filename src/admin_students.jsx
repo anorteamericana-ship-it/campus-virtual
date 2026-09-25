@@ -1997,7 +1997,7 @@ function rowAccent(estatus) {
   return 'transparent';
 }
 
-function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, filtroOperativo, ultimosDesembolsosConape }) {
+function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, rolUsuario, generarTituloFinal, tituloFinalBusy, filtroOperativo, ultimosDesembolsosConape }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
   const [modalCambio, setModalCambio] = React.useState(null);
@@ -2236,6 +2236,9 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               const nota      = Number(e.nota || 0);
               const cuotasLabel = cuotasPagadas == null ? '—' : `${cuotasPagadas}/${cuotasEsperadas}`;
               const esTraslado = !!e.es_traslado;
+              const finalKey = `${codigo}|${nivelKey}`;
+              const mostrarTituloFinal = rolUsuario === 'superadmin' && nivelKey === 'I2' && String(estatus || '').toUpperCase() === 'APR';
+              const tituloFinalEnCurso = tituloFinalBusy === finalKey;
               if (esTraslado) {
                 const abrirConsultaIndividual = () => {
                   try { sessionStorage.setItem('an_consulta_prefill', JSON.stringify({ codigo, nombre })); } catch (_) {}
@@ -2377,6 +2380,21 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
                         title={['CA','REP'].includes(String(estatus || '').toUpperCase()) ? 'Evaluar cambio académico individual' : 'Disponible únicamente para un nivel CA o REP'}
                         aria-label="Evaluar cambio académico individual"
                         style={{height:29,padding:'0 8px',borderRadius:7,border:'1px solid '+(['CA','REP'].includes(String(estatus || '').toUpperCase())?'#9DBCE2':'#D5D9DE'),fontSize:10.5,fontWeight:900,cursor:['CA','REP'].includes(String(estatus || '').toUpperCase())?'pointer':'not-allowed',background:['CA','REP'].includes(String(estatus || '').toUpperCase())?'#EAF3FF':'#F1F2F3',color:['CA','REP'].includes(String(estatus || '').toUpperCase())?'#174E8C':'#9AA1A8',opacity:['CA','REP'].includes(String(estatus || '').toUpperCase())?1:.65,whiteSpace:'nowrap'}}>🧭 Evaluar</button>
+                      {mostrarTituloFinal && (
+                        <button
+                          type="button"
+                          onClick={() => generarTituloFinal && generarTituloFinal(e, nivelKey)}
+                          disabled={tituloFinalEnCurso}
+                          title="Generar o recuperar la certificación final del programa"
+                          aria-label="Certificación final del programa"
+                          style={{
+                            height:29,padding:'0 9px',borderRadius:7,border:'1px solid #A7D4B0',
+                            background:tituloFinalEnCurso?'#EEF3EF':'#E8F5E9',color:'#246B2A',
+                            fontSize:10.5,fontWeight:900,cursor:tituloFinalEnCurso?'wait':'pointer',
+                            whiteSpace:'nowrap',opacity:tituloFinalEnCurso?.7:1
+                          }}
+                        >{tituloFinalEnCurso ? '⏳ Final…' : '🏅 Final'}</button>
+                      )}
                       <button onClick={() => setModalEstatus({ estudiante:e, nivel:nivelKey })} title="Cambiar estado" aria-label="Cambiar estado" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>✏️</button>
                       <button onClick={async()=>{if(resyncEst?.loading)return;setResyncEst({codigo,loading:true});const r=await resincronizarEstudianteIndividual(codigo);setResyncEst({codigo,loading:false,ok:r.ok,error:r.ok?'':adminStudentsSafeUserError(r.error || r.mensaje, 'No se pudo sincronizar CONAPE. Intentá de nuevo.', 'resincronizar_estudiante')});setTimeout(()=>setResyncEst(null),3000);}} disabled={resyncEst?.codigo===codigo&&resyncEst?.loading} title={resyncEst?.codigo===codigo&&resyncEst.loading?'Sincronizando CONAPE…':resyncEst?.codigo===codigo&&resyncEst.ok?'CONAPE sincronizado':resyncEst?.codigo===codigo&&resyncEst.error?'Error: '+resyncEst.error:'Sincronizar CONAPE'} aria-label="Sincronizar CONAPE" style={{width:29,height:29,borderRadius:7,border:'1px solid '+(resyncEst?.codigo===codigo&&resyncEst?.ok?'#2E8B43':resyncEst?.codigo===codigo&&resyncEst?.error?'#C62828':'#C9D2DC'),fontSize:14,fontWeight:900,cursor:resyncEst?.codigo===codigo&&resyncEst?.loading?'wait':'pointer',background:resyncEst?.codigo===codigo&&resyncEst?.ok?'#DDF3E2':resyncEst?.codigo===codigo&&resyncEst?.error?'#FFE1E4':'white'}}>↻</button>
                       <button onClick={() => abrirPago(e,nivelKey,onNavigate)} title="Aplicar pago" aria-label="Aplicar pago" style={{width:29,height:29,borderRadius:7,border:'1px solid #C9D2DC',fontSize:13,cursor:'pointer',background:'white'}}>💳</button>
@@ -2621,6 +2639,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [estudiantePanelAbierto, setEstudiantePanelAbierto] = React.useState(null); // { est, tab }
   const [certEstado, setCertEstado] = React.useState(null);
+  const [tituloFinalBusy, setTituloFinalBusy] = React.useState('');
   // { loading: true } | { ok, registro, nombre, url, error }
 
   // Rol del usuario activo — solo admin/superadmin ven el botón Sync CONAPE.
@@ -2706,6 +2725,57 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       }
     } catch(e) {
       setCertEstado({ ok: false, error: 'Error de conexión', codigo: est.codigo, nivel });
+    }
+  };
+
+  const handleGenerarTituloFinal = async (est, nivel) => {
+    const codigo = String(est?.codigo || est?.rec_m || '').trim();
+    const grupo = String(est?.grupo || grupoSel || '').trim();
+    const estatus = String(est?.estatus || est?.status_actual || '').trim().toUpperCase();
+    const busyKey = `${codigo}|${nivel}`;
+    if (rolUsuario !== 'superadmin' || nivel !== 'I2' || estatus !== 'APR' || !codigo || tituloFinalBusy === busyKey) return;
+
+    const nombre = String(est?.display || est?.nombre || codigo).trim();
+    const confirmar = window.confirm(
+      `Generar la certificación final del programa para ${nombre}?\n\n` +
+      `Código: ${codigo}\nGrupo: ${grupo || '—'}\n\n` +
+      'El sistema volverá a validar los cuatro niveles antes de generar o recuperar el documento.\n\n¿Continuar?'
+    );
+    if (!confirmar) return;
+
+    setTituloFinalBusy(busyKey);
+    setCertEstado({ loading:true, codigo, nivel:'Final', programaCompleto:true });
+    try {
+      const data = await postAdminStudents('generarCertificadoProgramaCompleto', { codigo, grupo }, 60000);
+      if (!data?.ok) {
+        setCertEstado({
+          ok:false,
+          programaCompleto:true,
+          codigo,
+          nivel:'Final',
+          error:adminStudentsSafeUserError(data?.mensaje || data?.error, 'No se pudo generar la certificación final. Intentá de nuevo.', 'cert_programa_completo'),
+        });
+        return;
+      }
+      const periodoSource = String(data.periodo_source || '—');
+      setCertEstado({
+        ...data,
+        programaCompleto:true,
+        codigo,
+        nivel:'Final',
+        mensaje:`Inicio: ${data.inicio || '—'} · Fin: ${data.fin || '—'} · Entrega: ${data.entrega || '—'} · Fuente: ${periodoSource}`,
+      });
+      setRefreshKey(k => k + 1);
+    } catch (e) {
+      setCertEstado({
+        ok:false,
+        programaCompleto:true,
+        codigo,
+        nivel:'Final',
+        error:adminStudentsSafeUserError(e?.message || String(e), 'No se pudo generar la certificación final. Intentá de nuevo.', 'cert_programa_completo'),
+      });
+    } finally {
+      setTituloFinalBusy('');
     }
   };
 
@@ -3211,6 +3281,9 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                   generarCertificadoFila={(est, niv) => handleGenerarCertificado(est, niv)}
                   generarCertificadosNivel={handleGenerarCertificadosNivel}
                   regenerarCertificadosNivel={handleRegenerarCertificadosNivel}
+                  rolUsuario={rolUsuario}
+                  generarTituloFinal={handleGenerarTituloFinal}
+                  tituloFinalBusy={tituloFinalBusy}
                   filtroOperativo={filtroOperativo}
                   ultimosDesembolsosConape={ultimosDesembolsosConape}
                 />
