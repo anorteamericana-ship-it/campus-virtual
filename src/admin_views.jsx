@@ -1295,12 +1295,12 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           fontSize:13, lineHeight:1.6,
         }}>
           <div style={{ fontWeight:700, color: nivel.color, marginBottom:4 }}>Vista previa del cronograma</div>
-          Este grupo tendrá <strong>32 lecciones de 3h</strong>
+          Este programa tendrá <strong>{32 * Math.max(1, form.niveles.length)} lecciones de 3h</strong>
           {bloquesDia > 1 && <> · <strong>{bloquesSemana} bloques de curso por semana</strong></>}
-          {form.modelo==='ina' && <> + <strong>16 sesiones I CAN de 2h</strong></>}.
+          {form.modelo==='ina' && <> + <strong>{16 * Math.max(1, form.niveles.length)} sesiones I CAN de 2h</strong></>}.
           <br/>
           Inicio: <strong>{fmtCR(inicioReal)}</strong>
-          {finEstimado && <> &nbsp;→&nbsp; Fin estimado: <strong>{fmtCR(finEstimado)}</strong></>}
+          {finEstimado && <>&nbsp;→&nbsp; {form.niveles.length > 1 ? 'Fin estimado del primer nivel' : 'Fin estimado'}: <strong>{fmtCR(finEstimado)}</strong></>}
           <br/>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>Feriados de Costa Rica 2026 excluidos automáticamente.</span>
           {inicioReal && form.fechaInicio && fmtCR(parseDateLocal(form.fechaInicio)) !== fmtCR(inicioReal) && (
