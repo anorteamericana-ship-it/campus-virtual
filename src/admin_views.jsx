@@ -297,6 +297,42 @@ const HORA_CODIGO = {
   '09:00': '94',
 };
 
+function diasGrupoEfectivos(form) {
+  if (!form) return '';
+  return form.dias === 'Otro'
+    ? String(form.diasCustom || '').trim()
+    : String(form.dias || '').trim();
+}
+
+function esDiaCompleto94(form) {
+  const dias = diasGrupoEfectivos(form);
+  if (form?.horaInicio !== '09:00') return false;
+  if (dias === 'Sáb (día completo)') return true;
+  return form?.modalidad === 'super_intensivo' && (dias === 'Lun/Mié' || dias === 'Mar/Jue');
+}
+
+function horaCodigoGrupo(form) {
+  if (esDiaCompleto94(form)) return '94';
+  if (form?.horaInicio === '09:00') return '96';
+  return HORA_CODIGO[form?.horaInicio] || String(form?.horaInicio || '').replace(':','').slice(0,2);
+}
+
+function horaFinGrupo(form) {
+  if (esDiaCompleto94(form)) return '16:00';
+  const [h, m] = String(form?.horaInicio || '00:00').split(':').map(Number);
+  return `${String((h || 0) + 3).padStart(2,'0')}:${String(m || 0).padStart(2,'0')}`;
+}
+
+function bloquesPorDiaGrupo(form) {
+  return esDiaCompleto94(form) ? 2 : 1;
+}
+
+function horarioDisplayGrupo(form) {
+  const dias = diasGrupoEfectivos(form) || 'Días por definir';
+  if (esDiaCompleto94(form)) return `${dias} · 09:00–12:00 y 13:00–16:00`;
+  return `${dias} · ${form?.horaInicio || '—'}–${horaFinGrupo(form)}`;
+}
+
 // Periodo derivado de la fecha de inicio + modalidad.
 // Intensivo (cuatrimestre): Ene→C1, May→C2, Sep→C3
 // Súper Intensivo (bimestre): Ene→B1, Mar→B2, May→B3, Jul→B4, Sep→B5, Nov→B6
@@ -332,8 +368,8 @@ function siguienteConsecutivo(grupos) {
 // Ej: B1-LM69-C3-0126
 function generarCodigoGrupo(form, grupos) {
   const nivel    = (form.niveles?.[0] || 'b1').toUpperCase();
-  const diasCod  = DIAS_CODIGO[form.dias] || 'XX';
-  const horaCod  = HORA_CODIGO[form.horaInicio] || form.horaInicio.replace(':','').slice(0,2);
+  const diasCod  = DIAS_CODIGO[diasGrupoEfectivos(form)] || 'XX';
+  const horaCod  = horaCodigoGrupo(form);
   const periodo  = periodoFromFecha(form.fechaInicio, form.modalidad) || 'C1';
   const consec   = siguienteConsecutivo(grupos);
   const año      = form.fechaInicio
@@ -363,16 +399,29 @@ function nextClassDay(fecha, diasSemana) {
 }
 
 // Generar cronograma de 32 lecciones
-function generarCronograma(fechaInicio, diasSemana) {
+function generarCronograma(fechaInicio, diasSemana, bloquesPorDia = 1) {
   const lecciones = [];
   let cur = new Date(fechaInicio);
+  const bloques = Math.max(1, Number(bloquesPorDia) || 1);
   // Encontrar primer día hábil válido desde fechaInicio
   while (!diasSemana.includes(cur.getDay()) || FERIADOS_CR_2026.has(cur.toISOString().slice(0,10))) {
     cur.setDate(cur.getDate() + 1);
   }
-  for (let n = 1; n <= 32; n++) {
-    lecciones.push({ n, fecha: new Date(cur), tipo: tipoLeccion(n) });
-    cur = nextClassDay(cur, diasSemana);
+  let n = 1;
+  while (n <= 32) {
+    for (let bloque = 1; bloque <= bloques && n <= 32; bloque++) {
+      const partido = bloques > 1;
+      lecciones.push({
+        n,
+        fecha: new Date(cur),
+        tipo: tipoLeccion(n),
+        bloque,
+        hora_inicio: partido ? (bloque === 1 ? '09:00' : '13:00') : '',
+        hora_fin: partido ? (bloque === 1 ? '12:00' : '16:00') : '',
+      });
+      n++;
+    }
+    if (n <= 32) cur = nextClassDay(cur, diasSemana);
   }
   return lecciones;
 }
@@ -445,14 +494,15 @@ function fechasValidas(modalidad) {
 
 // Opciones de días según modalidad
 const DIAS_OPTIONS = {
-  super_intensivo: ['Lun/Mar/Mié/Jue','Mar/Mié/Jue/Vie','Lun/Mié/Jue/Vie','Otro'],
+  // 12 h/semana: dos días completos (2 bloques por día) o cuatro días de 3 h.
+  super_intensivo: ['Lun/Mié','Mar/Jue','Lun/Mar/Mié/Jue'],
   intensivo:       ['Lun/Mié','Mar/Jue','Sáb (día completo)','Otro'],
 };
 
 // Estado inicial del wizard
 const initState = () => ({
   modelo:'ina', niveles:['b1'], modalidad:'intensivo',
-  dias:'Lun/Mié', horaInicio:'18:00', fechaInicio:null,
+  dias:'Lun/Mié', diasCustom:'', horaInicio:'18:00', fechaInicio:null,
   docente:'', entrega:'virtual', linkZoom:'', salon:'', capacidad:12,
   matricula:20000, matriculaObligatoria:true,
   cuota:89000,
@@ -647,7 +697,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
       if (!form.modalidad) e.modalidad = 'Selecciona modalidad';
     }
     if (step === 2) {
-      if (!form.dias) e.dias = 'Selecciona días';
+      if (!diasGrupoEfectivos(form)) e.dias = form.dias === 'Otro' ? 'Escribí los días personalizados' : 'Selecciona días';
       if (!form.fechaInicio) e.fechaInicio = 'Selecciona fecha de inicio';
     }
     if (step === 3) {
@@ -662,8 +712,8 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
     if (step === 4) {
       // Generate cronograma
       if (form.fechaInicio) {
-        const dias = parseDias(form.dias);
-        const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias.length ? dias : [1,3]);
+        const dias = parseDias(diasGrupoEfectivos(form));
+        const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias.length ? dias : [1,3], bloquesPorDiaGrupo(form));
         set('cronograma', cr);
       }
     }
@@ -694,12 +744,9 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           codigo_grupo:            code,
           docente:                 docenteObj?.nombre || 'POR DEFINIR',
           modalidad:               form.modalidad,
-          dias:                    form.dias,
+          dias:                    diasGrupoEfectivos(form),
           hora_ini:                form.horaInicio,
-          hora_fin:                (() => {
-            const [h, m] = form.horaInicio.split(':').map(Number);
-            return `${String(h + 3).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-          })(),
+          hora_fin:                horaFinGrupo(form),
           fecha_inicio:            form.fechaInicio,
           periodo_inicio:          periodo,
           programa:                form.modelo === 'ina' ? 'INA' : 'SIN_INA',
@@ -865,7 +912,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           <div style={{ overflowY:'auto', padding:'28px 32px' }}>
             {step===1 && <Step1 form={form} set={set} errors={errors} nivel={nivel} />}
             {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} docentesActivos={docentesActivos} />}
-            {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[form.dias]||'XX')+(HORA_CODIGO[form.horaInicio]||''); return p; })()} />}
+            {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[diasGrupoEfectivos(form)]||'XX')+horaCodigoGrupo(form); return p; })()} />}
             {step===4 && <Step4 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal} descuento={descuento}
               becasConfig={becasConfig} becasLoading={becasLoading} selectedBeca={selectedBeca} />}
@@ -1019,15 +1066,23 @@ function Step1({ form, set, errors, nivel }) {
 function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
   const diasOpts = DIAS_OPTIONS[form.modalidad] || [];
   const fechasOpts = fechasValidas(form.modalidad);
+  const diasEfectivos = diasGrupoEfectivos(form);
+  const bloquesDia = bloquesPorDiaGrupo(form);
+  const bloquesSemana = Math.max(1, parseDias(diasEfectivos).length) * bloquesDia;
+  const etiquetasDiaCompleto = diasEfectivos === 'Lun/Mié'
+    ? ['Lunes','Miércoles']
+    : diasEfectivos === 'Mar/Jue'
+      ? ['Martes','Jueves']
+      : ['Sábado'];
 
   // Calcular fecha fin estimada
   const finEstimado = React.useMemo(() => {
     if (!form.fechaInicio) return null;
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     if (!dias.length) return null;
-    const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias);
+    const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias, bloquesPorDiaGrupo(form));
     return cr[cr.length - 1]?.fecha;
-  }, [form.fechaInicio, form.dias]);
+  }, [form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
   // Fecha real de la primera lección (primer día válido desde fechaInicio).
   // Si el usuario tipea una fecha que no es día de clase, el cronograma
@@ -1035,7 +1090,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
   const inicioReal = React.useMemo(() => {
     if (!form.fechaInicio) return null;
     const fecha = parseDateLocal(form.fechaInicio);
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     if (!dias.length) return fecha;
     const cur = new Date(fecha);
     for (let i = 0; i < 60; i++) {
@@ -1044,7 +1099,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
       cur.setDate(cur.getDate() + 1);
     }
     return fecha;
-  }, [form.fechaInicio, form.dias]);
+  }, [form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
   // Fechas sugeridas para TODOS los niveles, alineadas al cuatrimestre.
   // Nivel 1 = la fecha que eligió el admin; siguientes = 2da semana del cuatri.
@@ -1052,7 +1107,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
     const out = {};
     const fechaN1 = parseDateLocal(form.fechaInicio);
     if (!fechaN1 || !form.niveles.length) return out;
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     const diasUsar = dias.length ? dias : [1,3];
     out[form.niveles[0]] = isoLocal(inicioReal || fechaN1);
     let cuatriMes = fechaN1.getMonth() < 4 ? 0 : fechaN1.getMonth() < 8 ? 4 : 8;
@@ -1066,7 +1121,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
       } catch(_) {}
     }
     return out;
-  }, [form.fechaInicio, form.dias, form.niveles, inicioReal]);
+  }, [form.fechaInicio, form.dias, form.diasCustom, form.niveles, inicioReal]);
 
   // Inicializa form.fechasPorNivel con las sugeridas cuando falte alguna.
   // El nivel 1 SIEMPRE se sincroniza con la primera clase real (la fecha de arriba);
@@ -1093,32 +1148,55 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
       if (!form.niveles.includes(k)) { delete next[k]; dirty = true; }
     });
     if (dirty) set('fechasPorNivel', next);
-  }, [form.fechaInicio, form.dias, form.niveles, fechasSugeridas]);
+  }, [form.fechaInicio, form.dias, form.diasCustom, form.niveles, fechasSugeridas]);
 
-  // I CAN — sugerir cantidad de días según modalidad (no sobreescribe la elección).
-  // Intensivo → 1 día (Vie [5]); súper intensivo → 2 días (Mar+Jue [2,4]).
+  // Los tres presets súper-intensivos son horarios institucionales fijos.
+  // LM/KJ = 2 días completos (09-12 + 13-16); L4 = 4 días de 18-21.
+  React.useEffect(() => {
+    if (form.modalidad !== 'super_intensivo') return;
+    const horaPreset = (form.dias === 'Lun/Mié' || form.dias === 'Mar/Jue') ? '09:00' : '18:00';
+    if (form.horaInicio !== horaPreset) set('horaInicio', horaPreset);
+  }, [form.modalidad, form.dias]);
+
+  // I CAN: el preset LM solicitado sugiere martes + viernes, 2 h cada sesión.
+  // Sigue siendo editable; los demás presets no reciben días automáticos para evitar choques.
   React.useEffect(() => {
     if (form.modelo !== 'ina') return;
     if (form.icanDias && form.icanDias.length > 0) return;
-    set('icanDias', form.modalidad === 'super_intensivo' ? [2,4] : [5]);
-  }, [form.modelo, form.modalidad]);
+    if (form.modalidad === 'super_intensivo') {
+      if (form.dias === 'Lun/Mié') set('icanDias', [2,5]);
+      return;
+    }
+    set('icanDias', [5]);
+  }, [form.modelo, form.modalidad, form.dias]);
 
   return (
     <div>
       <SectionTitle error={errors.dias}>Días de clase</SectionTitle>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
         {diasOpts.map(d => (
-          <button key={d} onClick={() => set('dias', d)} style={{
+          <button key={d} onClick={() => {
+            set('dias', d);
+            if (form.modalidad === 'super_intensivo') {
+              set('horaInicio', (d === 'Lun/Mié' || d === 'Mar/Jue') ? '09:00' : '18:00');
+            }
+          }} style={{
             padding:'8px 16px', borderRadius:'var(--r-md)',
             border:`2px solid ${form.dias===d ? nivel.color : 'var(--line)'}`,
             background: form.dias===d ? `color-mix(in srgb, ${nivel.color} 10%, white)` : 'var(--surface)',
             fontWeight: form.dias===d ? 700 : 500, fontSize:13, cursor:'pointer',
             color: form.dias===d ? nivel.color : 'var(--ink-2)',
-          }}>{d}</button>
+          }}>{form.modalidad === 'super_intensivo'
+            ? (d === 'Lun/Mié'
+                ? 'Lun/Mié · 9–12 + 1–4'
+                : d === 'Mar/Jue'
+                  ? 'Mar/Jue · 9–12 + 1–4'
+                  : 'Lun/Mar/Mié/Jue · 6–9pm')
+            : d}</button>
         ))}
       </div>
       {form.dias==='Otro' && (
-        <input placeholder="Ej: Lun/Mié/Vie" value={form.dias==='Otro'?'':form.dias} onChange={e => set('dias', e.target.value)}
+        <input placeholder="Ej: Lun/Mié/Vie" value={form.diasCustom || ''} onChange={e => set('diasCustom', e.target.value)}
           style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', marginBottom:16, fontFamily:'inherit' }} />
       )}
       {errors.dias && <ErrMsg>{errors.dias}</ErrMsg>}
@@ -1126,20 +1204,38 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:24 }}>
         <div>
           <SectionTitle>Hora de inicio</SectionTitle>
-          <select value={form.horaInicio} onChange={e => set('horaInicio', e.target.value)}
-            style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit' }}>
-            {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
-              .map(h => <option key={h}>{h}</option>)}
-          </select>
+          {form.modalidad === 'super_intensivo'
+            ? <div style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', background:'var(--surface-2)', fontFamily:'var(--f-mono)', fontSize:14, color:'var(--ink-2)' }}>
+                {form.horaInicio}
+                <span style={{ fontSize:10, color:'var(--ink-3)', marginLeft:6 }}>horario fijo del preset</span>
+              </div>
+            : <select value={form.horaInicio} onChange={e => set('horaInicio', e.target.value)}
+                style={{ width:'100%', padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', fontFamily:'inherit' }}>
+                {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
+                  .map(h => <option key={h}>{h}</option>)}
+              </select>}
         </div>
         <div>
           <SectionTitle>Hora de fin (calculada)</SectionTitle>
           <div style={{ padding:'10px 12px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', background:'var(--surface-2)', fontFamily:'var(--f-mono)', fontSize:14, color:'var(--ink-2)' }}>
-            {(() => { const [h,m] = form.horaInicio.split(':').map(Number); return `${String(h+3).padStart(2,'0')}:${String(m).padStart(2,'0')}`; })()}
-            <span style={{ fontSize:10, color:'var(--ink-3)', marginLeft:6 }}>3h por lección</span>
+            {horaFinGrupo(form)}
+            <span style={{ fontSize:10, color:'var(--ink-3)', marginLeft:6 }}>{esDiaCompleto94(form) ? '2 bloques de 3h' : '3h por lección'}</span>
           </div>
         </div>
       </div>
+
+      {esDiaCompleto94(form) && (
+        <div style={{ margin:'-8px 0 24px', padding:'13px 14px', border:'1px solid var(--line)', borderRadius:'var(--r-md)', background:'var(--surface-2)' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'var(--an-navy)', marginBottom:8 }}>{bloquesSemana} BLOQUES SEMANALES · 12 HORAS</div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:8 }}>
+            {etiquetasDiaCompleto.map(dia => <div key={dia} style={{ padding:'9px 10px', borderRadius:'var(--r-sm)', background:'white', border:'1px solid var(--line)' }}>
+              <strong style={{ display:'block', fontSize:12, marginBottom:3 }}>{dia}</strong>
+              <span style={{ fontSize:11, color:'var(--ink-2)' }}>09:00–12:00 · 13:00–16:00</span>
+            </div>)}
+          </div>
+          <div style={{ fontSize:10.5, color:'var(--ink-3)', marginTop:8 }}>12:00–13:00 queda como receso; no se cuenta como hora lectiva.</div>
+        </div>
+      )}
 
       <SectionTitle error={errors.fechaInicio}>Fecha de inicio</SectionTitle>
       <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:10 }}>
@@ -1177,9 +1273,9 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           style={{ padding:'10px 12px', border:`2px solid ${nivel.color}`, borderRadius:'var(--r-md)', fontFamily:'inherit', fontSize:14, color:'var(--ink)' }}
         />
         {form.fechaInicio && (() => {
-          const dias = parseDias(form.dias);
+          const dias = parseDias(diasGrupoEfectivos(form));
           if (!dias.length) return null;
-          const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias);
+          const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias, bloquesPorDiaGrupo(form));
           const fin = cr[cr.length-1]?.fecha;
           if (!fin) return null;
           const mes = fin.getMonth();
@@ -1200,6 +1296,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
         }}>
           <div style={{ fontWeight:700, color: nivel.color, marginBottom:4 }}>Vista previa del cronograma</div>
           Este grupo tendrá <strong>32 lecciones de 3h</strong>
+          {bloquesDia > 1 && <> · <strong>{bloquesSemana} bloques de curso por semana</strong></>}
           {form.modelo==='ina' && <> + <strong>16 sesiones I CAN de 2h</strong></>}.
           <br/>
           Inicio: <strong>{fmtCR(inicioReal)}</strong>
@@ -1878,7 +1975,7 @@ function Step5({ form, set, nivel }) {
   // Genera 1 cronograma por nivel usando su fecha. Si algún cálculo falla,
   // descarta ese nivel — el calendario muestra los que sí pudieron generarse.
   const cronogramasPorNivel = React.useMemo(() => {
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     const diasUsar = dias.length ? dias : [1,3];
     const out = [];
     (form.niveles || []).forEach(niv => {
@@ -1887,47 +1984,54 @@ function Step5({ form, set, nivel }) {
       const fechaD = parseDateLocal(fechaStr);
       if (!fechaD || !meta) return;
       try {
-        const lecciones = generarCronograma(fechaD, diasUsar);
+        const lecciones = generarCronograma(fechaD, diasUsar, bloquesPorDiaGrupo(form));
         if (lecciones && lecciones.length) {
           out.push({ nivel: niv, color: meta.color, nombre: meta.nombre, lecciones });
         }
       } catch (_) { /* silenciar errores de fecha inválida */ }
     });
     return out;
-  }, [form.niveles, form.fechasPorNivel, form.fechaInicio, form.dias]);
+  }, [form.niveles, form.fechasPorNivel, form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
   // Mapa global fecha → {nivel, color, n, tipo, nombre}
   const fechaMapGlobal = React.useMemo(() => {
     const map = {};
     cronogramasPorNivel.forEach(({ nivel: niv, color, nombre, lecciones }) => {
       lecciones.forEach(l => {
-        map[isoLocal(l.fecha)] = { nivel: niv, color, nombre, n: l.n, tipo: l.tipo, fecha: l.fecha };
+        const key = isoLocal(l.fecha);
+        if (map[key] && map[key].nivel === niv) {
+          map[key] = { ...map[key], n2:l.n, tipo2:l.tipo, bloque2:l.bloque };
+        } else {
+          map[key] = { nivel: niv, color, nombre, n:l.n, tipo:l.tipo, fecha:l.fecha, bloque:l.bloque };
+        }
       });
     });
     return map;
   }, [cronogramasPorNivel]);
 
-  // I CAN — viernes vacíos entre la 1ª y la última lección del programa,
-  // solo si el modelo es INA. Se calcula globalmente sobre el rango total.
+  // I CAN — respeta los días elegidos en el Paso 2 y muestra hasta 16 sesiones.
   const icanSet = React.useMemo(() => {
     const set = new Set();
     if (form.modelo !== 'ina' || !cronogramasPorNivel.length) return set;
+    const diasIcan = Array.isArray(form.icanDias) ? form.icanDias : [];
+    if (!diasIcan.length) return set;
     const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
     if (!allFechas.length) return set;
-    const ini = new Date(Math.min(...allFechas));
-    const fin = new Date(Math.max(...allFechas));
-    let cur = new Date(ini);
-    while (cur <= fin) {
-      const dow = cur.getDay();
-      const diff = (5 - dow + 7) % 7;
-      const vie = new Date(cur);
-      vie.setDate(cur.getDate() + diff);
-      const iso = isoLocal(vie);
-      if (vie <= fin && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
-      cur.setDate(cur.getDate() + 7);
+    const iniCurso = new Date(Math.min(...allFechas));
+    const finCurso = new Date(Math.max(...allFechas));
+    // Permitimos cerrar la última semana para incluir, por ejemplo, el viernes
+    // posterior a una última clase de miércoles y completar las 16 sesiones.
+    const limite = new Date(finCurso);
+    limite.setDate(limite.getDate() + 6);
+    const primeroConfig = parseDateLocal(form.icanFechaPrimero);
+    let cur = primeroConfig && primeroConfig > iniCurso ? new Date(primeroConfig) : new Date(iniCurso);
+    while (cur <= limite && set.size < 16) {
+      const iso = isoLocal(cur);
+      if (diasIcan.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
+      cur.setDate(cur.getDate() + 1);
     }
     return set;
-  }, [cronogramasPorNivel, fechaMapGlobal, form.modelo]);
+  }, [cronogramasPorNivel, fechaMapGlobal, form.modelo, form.icanDias, form.icanFechaPrimero]);
 
   // Rango de meses a renderizar
   const mesesGlobal = React.useMemo(() => {
@@ -2011,7 +2115,9 @@ function Step5({ form, set, nivel }) {
                 {ts && (
                   <div style={{ fontSize:8, fontWeight:700, color:ts.tc, background:'rgba(0,0,0,0.18)', borderRadius:3, padding:'1px 3px', alignSelf:'flex-start', lineHeight:1.4 }}>
                     {lec
-                      ? `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}`
+                      ? (lec.n2
+                          ? `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}–L${String(lec.n2).padStart(2,'0')}`
+                          : `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}`)
                       : 'I CAN'}
                   </div>
                 )}
@@ -2161,7 +2267,7 @@ function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalP
           ['Nivel', `${nivel.emoji} ${nivel.nombre}`],
           ['Modalidad', form.modalidad==='super_intensivo' ? 'Súper Intensivo (2 cuotas)' : 'Intensivo (4 cuotas)'],
           ['Docente', docente?.nombre || '—'],
-          ['Horario', `${form.dias} · ${form.horaInicio}`],
+          ['Horario', horarioDisplayGrupo(form)],
           ['Fecha inicio', form.fechaInicio ? fmtCR(parseDateLocal(form.fechaInicio)) : '—'],
           ['Fin estimado', cr.length ? fmtCR(cr[cr.length-1].fecha) : '—'],
           ['Capacidad', `${form.capacidad} estudiantes`],

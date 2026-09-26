@@ -2,7 +2,7 @@
 // F98.4-Z6-IP3J · descripciones públicas de beca
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP5B-HOTFIX-MATRICULA';
+const INS_VERSION = 'F98.4-Z6-IP5C-HOTFIX-SUPER94';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip5_draft';
 const INS_LEGACY_STORAGE_KEYS = Object.freeze(['anorteam_inscripcion_ip3_draft']);
 const INS_DRAFT_FIELDS = Object.freeze([
@@ -119,13 +119,16 @@ function inferRangeFromCode(code){
   const c = upper(code);
   if(c.includes('18')) return '6pm a 9pm';
   if(c.includes('69')) return '6pm a 9pm';
-  if(c.includes('94')) return '9am a 12pm';
+  if(c.includes('94')) return '9am a 12pm · 1pm a 4pm';
   if(c.includes('SA')) return '9am a 4pm';
   return '';
 }
 function normalizeHorarioFromGroup(g){
   const inicio = clean(g.hora_inicio || g.HORA_INICIO || g.col_l || g.L || '');
   const fin = clean(g.hora_fin || g.HORA_FIN || g.col_m || g.M || '');
+  const inicio12 = timeTo12h(inicio);
+  const fin12 = timeTo12h(fin);
+  if(inicio12 === '9am' && fin12 === '4pm') return '9am a 12pm · 1pm a 4pm';
   const range = rangeTo12h(inicio, fin);
   if(range) return range;
   const direct = clean(g.hora_label || g.hora || g.HORA || '');
