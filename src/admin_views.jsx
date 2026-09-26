@@ -227,11 +227,50 @@ function AdminPerfilView() {
 // CONSTANTES DEL NEGOCIO
 // ─────────────────────────────────────────────────────────────────────────
 
-const FERIADOS_CR_2026 = new Set([
-  '2026-01-01','2026-04-09','2026-04-10','2026-04-11','2026-05-01',
-  '2026-07-25','2026-08-02','2026-08-15','2026-09-15',
-  '2026-10-12','2026-11-01','2026-12-08','2026-12-25',
-]);
+function fechaIsoSimple(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Meeus/Jones/Butcher: calcula Domingo de Resurrección para cualquier año gregoriano.
+// A partir de ahí Jueves Santo = -3 días y Viernes Santo = -2 días.
+function domingoResurreccion(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function construirFeriadosCR(year) {
+  // Art. 148 Código de Trabajo: feriados nacionales, de pago obligatorio o no.
+  const fijos = [
+    '01-01','04-11','05-01','07-25','08-02',
+    '08-15','08-31','09-15','12-01','12-25',
+  ].map(md => `${year}-${md}`);
+
+  const pascua = domingoResurreccion(year);
+  const juevesSanto = new Date(pascua);
+  juevesSanto.setDate(juevesSanto.getDate() - 3);
+  const viernesSanto = new Date(pascua);
+  viernesSanto.setDate(viernesSanto.getDate() - 2);
+
+  return [...fijos, fechaIsoSimple(juevesSanto), fechaIsoSimple(viernesSanto)];
+}
+
+// El wizard puede crear programas que cruzan años. No debe vencer al cambiar de año.
+const FERIADOS_CR = new Set(
+  Array.from({ length: 11 }, (_, i) => 2025 + i).flatMap(construirFeriadosCR)
+);
 
 const NIVEL_META = {
   b1: { nombre:'Básico I',      emoji:'🟡', color:'#E5A823', css:'var(--lvl-basic1)', toneChip:'gold' },
@@ -392,7 +431,7 @@ function nextClassDay(fecha, diasSemana) {
   d.setDate(d.getDate() + 1);
   for (let i = 0; i < 60; i++) {
     const iso = d.toISOString().slice(0,10);
-    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR_2026.has(iso)) return new Date(d);
+    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR.has(iso)) return new Date(d);
     d.setDate(d.getDate() + 1);
   }
   return d;
@@ -404,7 +443,7 @@ function generarCronograma(fechaInicio, diasSemana, bloquesPorDia = 1) {
   let cur = new Date(fechaInicio);
   const bloques = Math.max(1, Number(bloquesPorDia) || 1);
   // Encontrar primer día hábil válido desde fechaInicio
-  while (!diasSemana.includes(cur.getDay()) || FERIADOS_CR_2026.has(cur.toISOString().slice(0,10))) {
+  while (!diasSemana.includes(cur.getDay()) || FERIADOS_CR.has(cur.toISOString().slice(0,10))) {
     cur.setDate(cur.getDate() + 1);
   }
   let n = 1;
@@ -464,10 +503,10 @@ function isoLocal(d) {
 function sugerirInicioCuatri(year, mesInicial, diasSemana) {
   for (let dia = 8; dia <= 14; dia++) {
     const d = new Date(year, mesInicial, dia);
-    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR_2026.has(isoLocal(d))) return d;
+    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR.has(isoLocal(d))) return d;
   }
   let d = new Date(year, mesInicial, 8);
-  while (!diasSemana.includes(d.getDay()) || FERIADOS_CR_2026.has(isoLocal(d))) d.setDate(d.getDate()+1);
+  while (!diasSemana.includes(d.getDay()) || FERIADOS_CR.has(isoLocal(d))) d.setDate(d.getDate()+1);
   return d;
 }
 
@@ -489,7 +528,7 @@ function fechasValidas(modalidad) {
     : [ // Inicio de cuatrimestre
         new Date(year,0,5), new Date(year,4,4), new Date(year,8,1),
       ];
-  return candidatos.filter(d => !FERIADOS_CR_2026.has(d.toISOString().slice(0,10)));
+  return candidatos.filter(d => !FERIADOS_CR.has(d.toISOString().slice(0,10)));
 }
 
 // Opciones de días según modalidad
@@ -1095,7 +1134,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
     const cur = new Date(fecha);
     for (let i = 0; i < 60; i++) {
       const iso = cur.toISOString().slice(0,10);
-      if (dias.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso)) return cur;
+      if (dias.includes(cur.getDay()) && !FERIADOS_CR.has(iso)) return cur;
       cur.setDate(cur.getDate() + 1);
     }
     return fecha;
@@ -2049,7 +2088,7 @@ function Step5({ form, set, nivel }) {
         const tieneClaseMismoNivel = clasesDia.some(ev => ev.nivel === curso.nivel);
         if (
           diasIcan.includes(cur.getDay()) &&
-          !FERIADOS_CR_2026.has(iso) &&
+          !FERIADOS_CR.has(iso) &&
           !tieneClaseMismoNivel
         ) {
           sesiones.push({
@@ -2170,7 +2209,7 @@ function Step5({ form, set, nivel }) {
           {celdas.map((dia, idx) => {
             const iso = isoLocal(dia);
             const esMes = dia.getMonth() === month;
-            const esFer = FERIADOS_CR_2026.has(iso);
+            const esFer = FERIADOS_CR.has(iso);
             const eventos = eventosPorFecha[iso] || [];
             const lecciones = eventos.filter(ev => ev.kind === 'lesson');
             const icans = eventos.filter(ev => ev.kind === 'ican');
