@@ -2285,7 +2285,7 @@ function Step5({ form, set, nivel }) {
         <div style={{ fontSize:12, color:'var(--ink-2)' }}>
           <strong>Programa completo · {nNiveles} {nNiveles === 1 ? 'nivel' : 'niveles'}</strong>
           &nbsp;·&nbsp; <strong>{totalLecciones} lecciones</strong>
-          {form.modelo==='ina' && <> + <strong>~{Math.min(icanSet.size, 16 * nNiveles)} I CAN</strong></>}
+          {form.modelo==='ina' && <> + <strong>{totalIcan} I CAN</strong></>}
           {fechaIni && fechaFin && <>&nbsp;·&nbsp; {fmtCR(fechaIni)} → {fmtCR(fechaFin)}</>}
         </div>
         <div style={{ fontSize:10, color:'var(--ink-3)' }}>Clic en lección para detalles</div>
@@ -2303,10 +2303,26 @@ function Step5({ form, set, nivel }) {
         {form.modelo === 'ina' && (
           <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12 }}>
             <span style={{ width:14, height:14, borderRadius:3, background:'#6B4FA0', display:'inline-block' }} />
-            <span style={{ color:'var(--ink-2)' }}>Club I CAN</span>
+            <span style={{ color:'var(--ink-2)' }}>Club I CAN · {totalIcan}/{icanEsperados}</span>
           </div>
         )}
       </div>
+
+      {form.modelo === 'ina' && icanIncompletos.length > 0 && (
+        <div style={{
+          marginBottom:12,
+          padding:'9px 12px',
+          borderRadius:'var(--r-md)',
+          border:'1px solid var(--warn)',
+          background:'color-mix(in srgb, var(--warn) 9%, white)',
+          color:'#7A5000',
+          fontSize:11,
+          fontWeight:600,
+        }}>
+          ⚠ I CAN incompleto: {icanIncompletos.map(x => `${x.nombre} ${x.actual}/16`).join(' · ')}.
+          Revisá días, feriados o la fecha del primer I CAN antes de confirmar.
+        </div>
+      )}
 
       {/* Toggle vista */}
       <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center' }}>
@@ -2337,17 +2353,19 @@ function Step5({ form, set, nivel }) {
       {lecSelec && (
         <div style={{ position:'fixed', inset:0, background:'rgba(10,8,20,0.5)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center' }}
           onClick={() => setLecSelec(null)}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:'var(--r-xl)', padding:28, maxWidth:380, width:'100%', boxShadow:'0 16px 60px rgba(0,0,0,0.3)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:'var(--r-xl)', padding:28, maxWidth:420, width:'100%', boxShadow:'0 16px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
-              <div style={{ width:44, height:44, borderRadius:'var(--r-md)', background:lecSelecColor, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:700, fontSize:18 }}>
-                {String(lecSelec.n).padStart(2,'0')}
+              <div style={{ minWidth:52, height:44, padding:'0 8px', borderRadius:'var(--r-md)', background:lecSelecColor, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:700, fontSize:15 }}>
+                {lecSelec.n2
+                  ? `${String(lecSelec.n).padStart(2,'0')}–${String(lecSelec.n2).padStart(2,'0')}`
+                  : String(lecSelec.n).padStart(2,'0')}
               </div>
               <div>
                 <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-                  {lecSelec.nivel?.toUpperCase()} · Lección {lecSelec.n}
+                  {lecSelec.nivel?.toUpperCase()} · {lecSelec.n2 ? `Lecciones ${lecSelec.n}–${lecSelec.n2}` : `Lección ${lecSelec.n}`}
                 </div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500 }}>
-                  {TLBL_FALLBACK[lecSelec.tipo] || 'Clase regular'}
+                  {lecSelec.n2 ? 'Bloques del día' : (TLBL_FALLBACK[lecSelec.tipo] || 'Clase regular')}
                 </div>
                 <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{lecSelec.nombre}</div>
               </div>
@@ -2355,12 +2373,22 @@ function Step5({ form, set, nivel }) {
             <div style={{ fontSize:13, color:'var(--ink-2)', padding:'10px 12px', background:'var(--surface-2)', borderRadius:'var(--r-md)', marginBottom:14 }}>
               {fmtCR(lecSelec.fecha)}
             </div>
-            {lecSelec.nivel === 'b1' && (
-              <div style={{ fontSize:11, color:'var(--ink-2)', marginBottom:16 }}>
-                {SYLLABUS_BASICO_I_DATA[lecSelec.n] || 'Contenido según plan de estudios'}
+
+            {(lecSelec.eventos || [lecSelec]).map(ev => (
+              <div key={ev.n} style={{ padding:'9px 10px', border:'1px solid var(--line)', borderRadius:'var(--r-sm)', marginBottom:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', gap:8, fontSize:11, fontWeight:700, color:'var(--ink-2)' }}>
+                  <span>Lección {ev.n} · {TLBL_FALLBACK[ev.tipo] || 'Clase regular'}</span>
+                  {(ev.hora_inicio || ev.hora_fin) && <span style={{ fontFamily:'var(--f-mono)', fontSize:10 }}>{ev.hora_inicio}–{ev.hora_fin}</span>}
+                </div>
+                {ev.nivel === 'b1' && (
+                  <div style={{ fontSize:10.5, color:'var(--ink-3)', marginTop:4 }}>
+                    {SYLLABUS_BASICO_I_DATA[ev.n] || 'Contenido según plan de estudios'}
+                  </div>
+                )}
               </div>
-            )}
-            <button onClick={() => setLecSelec(null)} className="btn btn-ghost" style={{ width:'100%' }}>← Cerrar</button>
+            ))}
+
+            <button onClick={() => setLecSelec(null)} className="btn btn-ghost" style={{ width:'100%', marginTop:4 }}>← Cerrar</button>
           </div>
         </div>
       )}
