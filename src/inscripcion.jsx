@@ -2,7 +2,7 @@
 // F98.4-Z6-IP3J · descripciones públicas de beca
 // Revisión orientada a experiencia comercial, guiado visual y mobile-first.
 
-const INS_VERSION = 'F98.4-Z6-IP5A';
+const INS_VERSION = 'F98.4-Z6-IP5B-HOTFIX-MATRICULA';
 const INS_STORAGE_KEY = 'anorteam_inscripcion_ip5_draft';
 const INS_LEGACY_STORAGE_KEYS = Object.freeze(['anorteam_inscripcion_ip3_draft']);
 const INS_DRAFT_FIELDS = Object.freeze([
@@ -149,7 +149,7 @@ function isSostenimientoSelected(v){
   return k !== '' && k !== 'NO';
 }
 function paymentLabel(v){
-  return upper(v) === 'CONAPE' ? 'Financiado por CONAPE' : 'BECA con la Academia';
+  return upper(v) === 'CONAPE' ? 'Financiado por CONAPE' : 'Matrícula con la Academia';
 }
 const ENGLISH_EXPERIENCE_OPTIONS = [
   'Nunca he llevado un curso o practicado el ingles',
@@ -1091,6 +1091,8 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
       descripcion:'Esta beca debe habilitarse desde Super Admin.',
       disponible:false
     });
+  const becasDisponibles = visibleBecas.filter(b => b.disponible !== false);
+  const becasSinCupo = visibleBecas.filter(b => b.disponible === false);
   const toeicAmount = conapeToeicAmount(selectedGroup, form);
   const toeicAvailable = selectedGroup?.toeic_disponible || toeicAmount > 0;
   const laptopSelected = isConapeEquipoSelected(form.conape_equipo);
@@ -1099,7 +1101,6 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   function next(){
     const missing=[];
     if(!clean(form.financiamiento)) missing.push('opción de pago');
-    if(propio && !clean(form.beca || form.beca_propio)) missing.push('beca seleccionada');
     if(!clean(form.como_entero)) missing.push('cómo se enteró');
     if(!clean(form.conocimientos_previos)) missing.push('experiencia con el inglés');
     if(selectedGroup?.estado_cupo === 'LISTA_ESPERA' && !form.aceptar_lista_espera) missing.push('aceptación de lista de espera');
@@ -1110,7 +1111,7 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   return <section className="ins-card ins-step-card">
     <div className="ins-card-head"><span>Paso 4</span><h2>Opciones de pago</h2><p>Elegí la opción que mejor se ajusta a tu proceso de ingreso.</p></div>
     <div className="ins-choice-grid finance-grid">
-      <button type="button" className={`ins-choice finance academy-pay ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>🎓</i><strong>BECA con la Academia</strong><span>Descuento en todas las mensualidades si cancelás por tus propios medios. Conservá tu beca aprobando cada nivel.</span></button>
+      <button type="button" className={`ins-choice finance academy-pay ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>🎓</i><strong>Matrícula con la Academia</strong><span>Pagá directamente la matrícula y las mensualidades. Si hay una beca con cupo, podés solicitarla de forma opcional.</span></button>
       <button type="button" className={`ins-choice finance conape-pay ${conape?'selected':''}`} onClick={()=>setForm({financiamiento:'CONAPE',beca:'',beca_propio:''})}><i>🏦</i><strong>Financiado por CONAPE</strong><span>Financia el 100% del programa, laptop, internet y certificación internacional TOEIC.</span></button>
     </div>
 
@@ -1172,12 +1173,15 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
     </div>}
 
     {propio && <div className="ins-subcard">
-      <h3>Becas activas</h3>
-      <div className="ins-beca-grid">
-        {visibleBecas.map(b=><BecaCard key={b.id || b.nombre} beca={b} selected={(form.beca || form.beca_propio) === b.id} onSelect={id=>{setBecaNotice('');setForm({beca:id,beca_propio:id});}} onUnavailable={()=>setBecaNotice('Esta beca se encuentra sin cupos disponibles')} />)}
-      </div>
+      <h3>Becas disponibles <small style={{fontWeight:600,color:'var(--ink-3, #777)'}}>· opcional</small></h3>
+      {becasDisponibles.length > 0 ? <div className="ins-beca-grid">
+        {becasDisponibles.map(b=><BecaCard key={b.id || b.nombre} beca={b} selected={(form.beca || form.beca_propio) === b.id} onSelect={id=>{setBecaNotice('');setForm({beca:id,beca_propio:id});}} />)}
+      </div> : <Alert>No hay becas con cupo en este momento. Podés continuar con matrícula regular y pagar la matrícula y mensualidades correspondientes.</Alert>}
+      {becasSinCupo.length > 0 && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}>
+        {becasSinCupo.map(b=><span key={b.id || b.nombre} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 10px',border:'1px solid #E3E6EA',borderRadius:999,background:'#F7F8FA',color:'#737B85',fontSize:12,fontWeight:700}}><b style={{color:'#59616B'}}>{b.nombre}</b> · Sin cupo</span>)}
+      </div>}
       {becaNotice && <Alert type="error">{becaNotice}</Alert>}
-      {!clean(form.beca || form.beca_propio) && <Alert>Seleccioná la beca que querés solicitar antes de continuar.</Alert>}
+      {!clean(form.beca || form.beca_propio) && becasDisponibles.length > 0 && <Alert>Si querés una beca, podés seleccionarla. Si preferís pagar el precio regular, continuá sin elegir ninguna.</Alert>}
     </div>}
 
     <div className="ins-grid two">
@@ -1291,7 +1295,7 @@ function ReviewStep({form,selectedGroup,setStep,onSubmit,submitting,error,becas}
   const conape = upper(form.financiamiento)==='CONAPE';
   const wait = selectedGroup?.estado_cupo === 'LISTA_ESPERA';
   const canSubmit = !wait || form.aceptar_lista_espera;
-  const becaSel = (becas || []).find(b => b.id === (form.beca || form.beca_propio));
+  const becaSel = (becas || []).find(b => b.id === (form.beca || form.beca_propio) && b.disponible !== false);
   return <section className="ins-card ins-step-card">
     <div className="ins-card-head"><span>Paso 6</span><h2>Revisá antes de enviar</h2><p>Confirmá tus datos antes de registrar la solicitud. Aún no es matrícula activa.</p></div>
     <div className="ins-review-grid">
@@ -1313,7 +1317,7 @@ function ReviewStep({form,selectedGroup,setStep,onSubmit,submitting,error,becas}
         {conape && <SummaryRow label="Laptop" value={conapeEquipoLabel(form.conape_equipo)}/>}
         {conape && <SummaryRow label="Sostenimiento" value={conapeSostenimientoLabel(form.conape_sostenimiento)}/>}
         {conape && <SummaryRow label="TOEIC" value={form.conape_toeic ? `Solicitado · ${fmtMoney(conapeToeicAmount(selectedGroup, form))}` : 'No solicitado'}/>}
-        {!conape && <SummaryRow label="Beca" value={becaSel ? `${becaSel.nombre}${becaSel.porcentaje ? ` · ${becaSel.porcentaje}` : ''}` : 'Sin beca seleccionada'}/>}
+        {!conape && <SummaryRow label="Beca" value={becaSel ? `${becaSel.nombre}${becaSel.porcentaje ? ` · ${becaSel.porcentaje}` : ''}` : 'No solicitada · matrícula regular'}/>}
         <SummaryRow label="Experiencia" value={form.conocimientos_previos}/>
       </ReviewPanel>
     </div>
@@ -1440,7 +1444,6 @@ function InscripcionApp(){
     if(!clean(form.direccion) || !clean(form.fecha_nac) || !clean(form.sexo)) return 'Completá los datos personales obligatorios.';
     if(form.es_menor && (!clean(form.tutor_nombre) || !clean(form.tutor_cedula) || !clean(form.tutor_tel))) return 'Completá los datos del representante legal.';
     if(!clean(form.financiamiento)) return 'Seleccioná una opción de pago.';
-    if(upper(form.financiamiento)==='PROPIO' && !clean(form.beca || form.beca_propio)) return 'Seleccioná la beca que querés solicitar.';
     if(!clean(form.como_entero)) return 'Indicá cómo te enteraste.';
     if(!clean(form.conocimientos_previos)) return 'Seleccioná tu experiencia con el inglés.';
     if(!form.foto_ced_frente || !form.foto_ced_dorso || !form.foto_titulo) return 'Subí los tres documentos requeridos.';
@@ -1454,8 +1457,13 @@ function InscripcionApp(){
     setSubmitting(true); setSubmitError('');
     try{
       const finalDistrict = upper(form.distrito)==='OTRO' ? clean(form.distrito_otro) : form.distrito;
+      const selectedBecaId = clean(form.beca || form.beca_propio);
+      const selectedBeca = (becas || []).find(b => b.id === selectedBecaId && b.disponible !== false);
+      const becaVigente = upper(form.financiamiento)==='PROPIO' && selectedBeca ? selectedBeca.id : '';
       const payload = {
         ...form,
+        beca: becaVigente,
+        beca_propio: becaVigente,
         distrito: finalDistrict,
         cedula: cedClean(form.cedula),
         nombre: upper(form.nombre),
