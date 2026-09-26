@@ -2132,11 +2132,21 @@ function Step5({ form, set, nivel }) {
 
   const DIAS_HDR = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
-  // Fecha primera y última del programa
-  const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
+  // Totales y rango reales del programa: incluyen todas las lecciones y todos los I CAN.
+  const allEventos = Object.values(eventosPorFecha).flat();
+  const allFechas = allEventos
+    .map(ev => ev.fecha?.getTime?.())
+    .filter(Number.isFinite);
   const fechaIni = allFechas.length ? new Date(Math.min(...allFechas)) : null;
   const fechaFin = allFechas.length ? new Date(Math.max(...allFechas)) : null;
   const totalLecciones = cronogramasPorNivel.reduce((s, c) => s + c.lecciones.length, 0);
+  const totalIcan = icanEventos.length;
+  const icanEsperados = form.modelo === 'ina' ? 16 * cronogramasPorNivel.length : 0;
+  const icanIncompletos = form.modelo === 'ina'
+    ? cronogramasPorNivel
+        .map(c => ({ nivel:c.nivel, nombre:c.nombre, actual:(icanPorNivel[c.nivel] || []).length }))
+        .filter(x => x.actual < 16)
+    : [];
 
   function MesGridMultinivel({ year, month }) {
     const primer = new Date(year, month, 1);
@@ -2160,33 +2170,101 @@ function Step5({ form, set, nivel }) {
           {celdas.map((dia, idx) => {
             const iso = isoLocal(dia);
             const esMes = dia.getMonth() === month;
-            const lec = fechaMapGlobal[iso];
-            const esICAN = icanSet.has(iso);
             const esFer = FERIADOS_CR_2026.has(iso);
-            // Color base: si hay lección, color del nivel; si I CAN, púrpura I CAN.
-            const ts = lec
-              ? { bg: lec.color, tc: 'white', lbl: TSTYLE_LEC[lec.tipo]?.lbl || 'Lec' }
-              : esICAN
-              ? { bg: '#6B4FA0', tc: 'white', lbl: 'ICAN' }
-              : null;
+            const eventos = eventosPorFecha[iso] || [];
+            const lecciones = eventos.filter(ev => ev.kind === 'lesson');
+            const icans = eventos.filter(ev => ev.kind === 'ican');
+
+            // Para ahorrar espacio visual, agrupamos las dos lecciones del mismo nivel
+            // en un solo pill, pero conservamos los eventos individuales en memoria.
+            const gruposLeccion = [];
+            lecciones.forEach(ev => {
+              let grupo = gruposLeccion.find(g => g.nivel === ev.nivel);
+              if (!grupo) {
+                grupo = { nivel:ev.nivel, color:ev.color, eventos:[] };
+                gruposLeccion.push(grupo);
+              }
+              grupo.eventos.push(ev);
+            });
+
             return (
-              <div key={idx} onClick={() => lec && setLecSelec(lec)} style={{
-                minHeight: vista==='completo' ? 40 : 56, borderRadius:5, padding:'3px 4px',
-                background: !esMes ? 'transparent' : esFer ? 'color-mix(in srgb, var(--line) 25%, white)' : ts ? ts.bg : 'var(--surface-2)',
-                border:`1px solid ${!esMes?'transparent': ts?ts.bg:'var(--line)'}`,
-                opacity: !esMes ? 0.25 : 1, cursor: lec ? 'pointer' : 'default',
-                display:'flex', flexDirection:'column', gap:2,
+              <div key={idx} style={{
+                minHeight: vista==='completo' ? 48 : 64,
+                borderRadius:5,
+                padding:'4px',
+                background: !esMes
+                  ? 'transparent'
+                  : esFer
+                    ? 'color-mix(in srgb, var(--line) 25%, white)'
+                    : 'var(--surface-2)',
+                border:`1px solid ${!esMes?'transparent':'var(--line)'}`,
+                opacity: !esMes ? 0.25 : 1,
+                display:'flex',
+                flexDirection:'column',
+                gap:3,
+                overflow:'visible',
               }}>
-                <div style={{ fontSize:10, fontWeight: ts?700:400, color: ts?ts.tc: esFer?'var(--ink-3)':'var(--ink)', lineHeight:1 }}>{dia.getDate()}</div>
-                {ts && (
-                  <div style={{ fontSize:8, fontWeight:700, color:ts.tc, background:'rgba(0,0,0,0.18)', borderRadius:3, padding:'1px 3px', alignSelf:'flex-start', lineHeight:1.4 }}>
-                    {lec
-                      ? (lec.n2
-                          ? `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}–L${String(lec.n2).padStart(2,'0')}`
-                          : `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}`)
-                      : 'I CAN'}
+                <div style={{ fontSize:10, fontWeight:(gruposLeccion.length || icans.length)?700:400, color:esFer?'var(--ink-3)':'var(--ink)', lineHeight:1 }}>
+                  {dia.getDate()}
+                </div>
+
+                {gruposLeccion.map((grupo, gidx) => {
+                  const primero = grupo.eventos[0];
+                  const ultimo = grupo.eventos[grupo.eventos.length - 1];
+                  const rango = grupo.eventos.length > 1
+                    ? `L${String(primero.n).padStart(2,'0')}–L${String(ultimo.n).padStart(2,'0')}`
+                    : `L${String(primero.n).padStart(2,'0')}`;
+                  return (
+                    <button
+                      type="button"
+                      key={`lec-${grupo.nivel}-${gidx}`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setLecSelec({
+                          ...primero,
+                          n2:grupo.eventos.length > 1 ? ultimo.n : null,
+                          eventos:grupo.eventos,
+                        });
+                      }}
+                      style={{
+                        width:'100%',
+                        border:0,
+                        borderRadius:3,
+                        padding:'2px 4px',
+                        background:grupo.color,
+                        color:'white',
+                        fontSize:8,
+                        fontWeight:800,
+                        textAlign:'left',
+                        lineHeight:1.25,
+                        cursor:'pointer',
+                        fontFamily:'inherit',
+                      }}
+                    >
+                      {grupo.nivel.toUpperCase()} {rango}
+                    </button>
+                  );
+                })}
+
+                {icans.map((ev, iidx) => (
+                  <div
+                    key={`ican-${ev.nivel}-${ev.n}-${iidx}`}
+                    title={`${ev.nombre} · I CAN ${ev.n} · ${ev.hora_inicio || ''}–${ev.hora_fin || ''}`}
+                    style={{
+                      width:'100%',
+                      borderRadius:3,
+                      padding:'2px 4px',
+                      background:'#6B4FA0',
+                      color:'white',
+                      fontSize:8,
+                      fontWeight:800,
+                      lineHeight:1.25,
+                    }}
+                  >
+                    {ev.nivel.toUpperCase()} I CAN {String(ev.n).padStart(2,'0')}
                   </div>
-                )}
+                ))}
+
                 {esFer && esMes && <div style={{ fontSize:7, color:'var(--ink-3)' }}>Fer.</div>}
               </div>
             );
