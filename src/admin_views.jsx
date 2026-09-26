@@ -1443,6 +1443,24 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
             const meta = NIVEL_META[niv];
             const fecha = form.fechasPorNivel[niv] || fechasSugeridas[niv] || '';
             const esN1 = idx === 0;
+            const esManual = !!(form.fechasNivelManual || {})[niv];
+
+            let minFecha = '';
+            if (!esN1) {
+              const prevNiv = form.niveles[idx - 1];
+              const prevInicioStr = form.fechasPorNivel[prevNiv] || fechasSugeridas[prevNiv] || '';
+              const prevInicio = parseDateLocal(prevInicioStr);
+              if (prevInicio) {
+                try {
+                  const dias = parseDias(diasGrupoEfectivos(form));
+                  const diasUsar = dias.length ? dias : [1,3];
+                  const crPrevio = generarCronograma(prevInicio, diasUsar, bloquesPorDiaGrupo(form));
+                  const finPrevio = crPrevio[crPrevio.length - 1]?.fecha;
+                  if (finPrevio) minFecha = isoLocal(nextClassDay(finPrevio, diasUsar));
+                } catch(_) {}
+              }
+            }
+
             return (
               <div key={niv} style={{
                 display:'flex', alignItems:'center', gap:12,
@@ -1452,19 +1470,29 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
               }}>
                 <span style={{ fontSize:20 }}>{meta.emoji}</span>
                 <div style={{ flex:'0 0 110px', fontWeight:600, fontSize:13 }}>{meta.nombre}</div>
-                <input type="date" value={fecha} disabled={esN1}
-                  onChange={e => set('fechasPorNivel', { ...form.fechasPorNivel, [niv]: e.target.value })}
+                <input
+                  type="date"
+                  value={fecha}
+                  disabled={esN1}
+                  min={minFecha || undefined}
+                  onChange={e => {
+                    set('fechasPorNivel', { ...form.fechasPorNivel, [niv]: e.target.value });
+                    set('fechasNivelManual', { ...(form.fechasNivelManual || {}), [niv]: true });
+                  }}
                   style={{
                     flex:'0 0 170px', padding:'8px 10px',
                     borderRadius:'var(--r-sm)', border:'1px solid var(--line)',
                     fontFamily:'inherit', fontSize:13,
                     background: esN1 ? 'var(--surface-2)' : 'var(--surface)',
                     color: esN1 ? 'var(--ink-3)' : 'var(--ink)', cursor: esN1 ? 'not-allowed' : 'auto',
-                  }} />
+                  }}
+                />
                 <span style={{ fontSize:11, color:'var(--ink-3)', flex:1 }}>
                   {esN1
                     ? '= fecha de inicio del grupo'
-                    : (fecha ? fmtCR(parseDateLocal(fecha)) : 'sin fecha')}
+                    : (fecha
+                        ? <>{fmtCR(parseDateLocal(fecha))}{esManual ? ' · manual' : ' · sugerida'}</>
+                        : 'sin fecha')}
                 </span>
               </div>
             );
