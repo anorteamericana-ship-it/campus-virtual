@@ -1993,50 +1993,116 @@ function Step5({ form, set, nivel }) {
     return out;
   }, [form.niveles, form.fechasPorNivel, form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
-  // Mapa global fecha → {nivel, color, n, tipo, nombre}
-  const fechaMapGlobal = React.useMemo(() => {
+  // Fuente única del calendario: una fecha puede contener MUCHOS eventos.
+  // No se comprime en un solo objeto; así nunca se pisan niveles, bloques ni I CAN.
+  const leccionesPorFecha = React.useMemo(() => {
     const map = {};
     cronogramasPorNivel.forEach(({ nivel: niv, color, nombre, lecciones }) => {
       lecciones.forEach(l => {
         const key = isoLocal(l.fecha);
-        if (map[key] && map[key].nivel === niv) {
-          map[key] = { ...map[key], n2:l.n, tipo2:l.tipo, bloque2:l.bloque };
-        } else {
-          map[key] = { nivel: niv, color, nombre, n:l.n, tipo:l.tipo, fecha:l.fecha, bloque:l.bloque };
-        }
+        if (!map[key]) map[key] = [];
+        map[key].push({
+          kind:'lesson',
+          nivel:niv,
+          color,
+          nombre,
+          n:l.n,
+          tipo:l.tipo,
+          fecha:new Date(l.fecha),
+          bloque:l.bloque || 1,
+          hora_inicio:l.hora_inicio || '',
+          hora_fin:l.hora_fin || '',
+        });
       });
     });
+    Object.values(map).forEach(arr => arr.sort((a,b) => a.n - b.n));
     return map;
   }, [cronogramasPorNivel]);
 
-  // I CAN — respeta los días elegidos en el Paso 2 y muestra hasta 16 sesiones.
-  const icanSet = React.useMemo(() => {
-    const set = new Set();
-    if (form.modelo !== 'ina' || !cronogramasPorNivel.length) return set;
+  // I CAN se genera POR NIVEL: 32 lecciones => 16 sesiones complementarias.
+  // En un programa de 4 niveles son 64 I CAN, no 16 globales consumidos al inicio.
+  const icanPorNivel = React.useMemo(() => {
+    const out = {};
+    if (form.modelo !== 'ina' || !cronogramasPorNivel.length) return out;
     const diasIcan = Array.isArray(form.icanDias) ? form.icanDias : [];
-    if (!diasIcan.length) return set;
-    const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
-    if (!allFechas.length) return set;
-    const iniCurso = new Date(Math.min(...allFechas));
-    const finCurso = new Date(Math.max(...allFechas));
-    // Permitimos cerrar la última semana para incluir, por ejemplo, el viernes
-    // posterior a una última clase de miércoles y completar las 16 sesiones.
-    const limite = new Date(finCurso);
-    limite.setDate(limite.getDate() + 6);
-    const primeroConfig = parseDateLocal(form.icanFechaPrimero);
-    let cur = primeroConfig && primeroConfig > iniCurso ? new Date(primeroConfig) : new Date(iniCurso);
-    while (cur <= limite && set.size < 16) {
-      const iso = isoLocal(cur);
-      if (diasIcan.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
-      cur.setDate(cur.getDate() + 1);
-    }
-    return set;
-  }, [cronogramasPorNivel, fechaMapGlobal, form.modelo, form.icanDias, form.icanFechaPrimero]);
+    if (!diasIcan.length) return out;
 
-  // Rango de meses a renderizar
+    const primeroPrograma = parseDateLocal(form.icanFechaPrimero);
+    cronogramasPorNivel.forEach((curso, idx) => {
+      const sesiones = [];
+      out[curso.nivel] = sesiones;
+      if (!curso.lecciones || !curso.lecciones.length) return;
+
+      const iniNivel = new Date(curso.lecciones[0].fecha);
+      const finNivel = new Date(curso.lecciones[curso.lecciones.length - 1].fecha);
+      // Margen para recuperar I CAN omitidos por feriados al cierre del nivel.
+      const limite = new Date(finNivel);
+      limite.setDate(limite.getDate() + 13);
+
+      let cur = new Date(iniNivel);
+      // "Fecha primer I CAN" solo gobierna el primer nivel del programa.
+      if (idx === 0 && primeroPrograma && primeroPrograma > cur) cur = new Date(primeroPrograma);
+
+      while (cur <= limite && sesiones.length < 16) {
+        const iso = isoLocal(cur);
+        const clasesDia = leccionesPorFecha[iso] || [];
+        const tieneClaseMismoNivel = clasesDia.some(ev => ev.nivel === curso.nivel);
+        if (
+          diasIcan.includes(cur.getDay()) &&
+          !FERIADOS_CR_2026.has(iso) &&
+          !tieneClaseMismoNivel
+        ) {
+          sesiones.push({
+            kind:'ican',
+            nivel:curso.nivel,
+            color:'#6B4FA0',
+            nombre:curso.nombre,
+            n:sesiones.length + 1,
+            fecha:new Date(cur),
+            hora_inicio:form.icanHoraInicio || '',
+            hora_fin:form.icanHoraFin || '',
+          });
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return out;
+  }, [
+    form.modelo, form.icanDias, form.icanFechaPrimero, form.icanHoraInicio, form.icanHoraFin,
+    cronogramasPorNivel, leccionesPorFecha,
+  ]);
+
+  const icanEventos = React.useMemo(
+    () => Object.values(icanPorNivel).flat(),
+    [icanPorNivel]
+  );
+
+  const eventosPorFecha = React.useMemo(() => {
+    const map = {};
+    Object.entries(leccionesPorFecha).forEach(([iso, eventos]) => {
+      map[iso] = [...eventos];
+    });
+    icanEventos.forEach(ev => {
+      const iso = isoLocal(ev.fecha);
+      if (!map[iso]) map[iso] = [];
+      map[iso].push(ev);
+    });
+    const ordenNivel = Object.fromEntries(cronogramasPorNivel.map((c, i) => [c.nivel, i]));
+    Object.values(map).forEach(arr => arr.sort((a,b) => {
+      if (a.kind !== b.kind) return a.kind === 'lesson' ? -1 : 1;
+      const nivelDiff = (ordenNivel[a.nivel] ?? 99) - (ordenNivel[b.nivel] ?? 99);
+      if (nivelDiff) return nivelDiff;
+      return (a.n || 0) - (b.n || 0);
+    }));
+    return map;
+  }, [leccionesPorFecha, icanEventos, cronogramasPorNivel]);
+
+  // Rango de meses basado en TODOS los eventos, incluido I CAN posterior a la última lección.
   const mesesGlobal = React.useMemo(() => {
-    if (!cronogramasPorNivel.length) return [];
-    const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
+    const allFechas = Object.values(eventosPorFecha)
+      .flat()
+      .map(ev => ev.fecha?.getTime?.())
+      .filter(Number.isFinite);
     if (!allFechas.length) return [];
     const fMin = new Date(Math.min(...allFechas));
     const fMax = new Date(Math.max(...allFechas));
@@ -2048,7 +2114,7 @@ function Step5({ form, set, nivel }) {
       cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
     }
     return out;
-  }, [cronogramasPorNivel]);
+  }, [eventosPorFecha]);
 
   React.useEffect(() => {
     if (mesesGlobal.length && !mesFoco) setMesFoco(mesesGlobal[0]);
