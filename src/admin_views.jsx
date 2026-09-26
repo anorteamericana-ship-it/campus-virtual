@@ -297,6 +297,42 @@ const HORA_CODIGO = {
   '09:00': '94',
 };
 
+function diasGrupoEfectivos(form) {
+  if (!form) return '';
+  return form.dias === 'Otro'
+    ? String(form.diasCustom || '').trim()
+    : String(form.dias || '').trim();
+}
+
+function esDiaCompleto94(form) {
+  const dias = diasGrupoEfectivos(form);
+  if (form?.horaInicio !== '09:00') return false;
+  if (dias === 'Sáb (día completo)') return true;
+  return form?.modalidad === 'super_intensivo' && (dias === 'Lun/Mié' || dias === 'Mar/Jue');
+}
+
+function horaCodigoGrupo(form) {
+  if (esDiaCompleto94(form)) return '94';
+  if (form?.horaInicio === '09:00') return '96';
+  return HORA_CODIGO[form?.horaInicio] || String(form?.horaInicio || '').replace(':','').slice(0,2);
+}
+
+function horaFinGrupo(form) {
+  if (esDiaCompleto94(form)) return '16:00';
+  const [h, m] = String(form?.horaInicio || '00:00').split(':').map(Number);
+  return `${String((h || 0) + 3).padStart(2,'0')}:${String(m || 0).padStart(2,'0')}`;
+}
+
+function bloquesPorDiaGrupo(form) {
+  return esDiaCompleto94(form) ? 2 : 1;
+}
+
+function horarioDisplayGrupo(form) {
+  const dias = diasGrupoEfectivos(form) || 'Días por definir';
+  if (esDiaCompleto94(form)) return `${dias} · 09:00–12:00 y 13:00–16:00`;
+  return `${dias} · ${form?.horaInicio || '—'}–${horaFinGrupo(form)}`;
+}
+
 // Periodo derivado de la fecha de inicio + modalidad.
 // Intensivo (cuatrimestre): Ene→C1, May→C2, Sep→C3
 // Súper Intensivo (bimestre): Ene→B1, Mar→B2, May→B3, Jul→B4, Sep→B5, Nov→B6
@@ -332,8 +368,8 @@ function siguienteConsecutivo(grupos) {
 // Ej: B1-LM69-C3-0126
 function generarCodigoGrupo(form, grupos) {
   const nivel    = (form.niveles?.[0] || 'b1').toUpperCase();
-  const diasCod  = DIAS_CODIGO[form.dias] || 'XX';
-  const horaCod  = HORA_CODIGO[form.horaInicio] || form.horaInicio.replace(':','').slice(0,2);
+  const diasCod  = DIAS_CODIGO[diasGrupoEfectivos(form)] || 'XX';
+  const horaCod  = horaCodigoGrupo(form);
   const periodo  = periodoFromFecha(form.fechaInicio, form.modalidad) || 'C1';
   const consec   = siguienteConsecutivo(grupos);
   const año      = form.fechaInicio
@@ -363,16 +399,29 @@ function nextClassDay(fecha, diasSemana) {
 }
 
 // Generar cronograma de 32 lecciones
-function generarCronograma(fechaInicio, diasSemana) {
+function generarCronograma(fechaInicio, diasSemana, bloquesPorDia = 1) {
   const lecciones = [];
   let cur = new Date(fechaInicio);
+  const bloques = Math.max(1, Number(bloquesPorDia) || 1);
   // Encontrar primer día hábil válido desde fechaInicio
   while (!diasSemana.includes(cur.getDay()) || FERIADOS_CR_2026.has(cur.toISOString().slice(0,10))) {
     cur.setDate(cur.getDate() + 1);
   }
-  for (let n = 1; n <= 32; n++) {
-    lecciones.push({ n, fecha: new Date(cur), tipo: tipoLeccion(n) });
-    cur = nextClassDay(cur, diasSemana);
+  let n = 1;
+  while (n <= 32) {
+    for (let bloque = 1; bloque <= bloques && n <= 32; bloque++) {
+      const partido = bloques > 1;
+      lecciones.push({
+        n,
+        fecha: new Date(cur),
+        tipo: tipoLeccion(n),
+        bloque,
+        hora_inicio: partido ? (bloque === 1 ? '09:00' : '13:00') : '',
+        hora_fin: partido ? (bloque === 1 ? '12:00' : '16:00') : '',
+      });
+      n++;
+    }
+    if (n <= 32) cur = nextClassDay(cur, diasSemana);
   }
   return lecciones;
 }
@@ -445,14 +494,15 @@ function fechasValidas(modalidad) {
 
 // Opciones de días según modalidad
 const DIAS_OPTIONS = {
-  super_intensivo: ['Lun/Mar/Mié/Jue','Mar/Mié/Jue/Vie','Lun/Mié/Jue/Vie','Otro'],
+  // 12 h/semana: dos días completos (2 bloques por día) o cuatro días de 3 h.
+  super_intensivo: ['Lun/Mié','Mar/Jue','Lun/Mar/Mié/Jue'],
   intensivo:       ['Lun/Mié','Mar/Jue','Sáb (día completo)','Otro'],
 };
 
 // Estado inicial del wizard
 const initState = () => ({
   modelo:'ina', niveles:['b1'], modalidad:'intensivo',
-  dias:'Lun/Mié', horaInicio:'18:00', fechaInicio:null,
+  dias:'Lun/Mié', diasCustom:'', horaInicio:'18:00', fechaInicio:null,
   docente:'', entrega:'virtual', linkZoom:'', salon:'', capacidad:12,
   matricula:20000, matriculaObligatoria:true,
   cuota:89000,
@@ -647,7 +697,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
       if (!form.modalidad) e.modalidad = 'Selecciona modalidad';
     }
     if (step === 2) {
-      if (!form.dias) e.dias = 'Selecciona días';
+      if (!diasGrupoEfectivos(form)) e.dias = form.dias === 'Otro' ? 'Escribí los días personalizados' : 'Selecciona días';
       if (!form.fechaInicio) e.fechaInicio = 'Selecciona fecha de inicio';
     }
     if (step === 3) {
@@ -662,8 +712,8 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
     if (step === 4) {
       // Generate cronograma
       if (form.fechaInicio) {
-        const dias = parseDias(form.dias);
-        const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias.length ? dias : [1,3]);
+        const dias = parseDias(diasGrupoEfectivos(form));
+        const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias.length ? dias : [1,3], bloquesPorDiaGrupo(form));
         set('cronograma', cr);
       }
     }
@@ -694,12 +744,9 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           codigo_grupo:            code,
           docente:                 docenteObj?.nombre || 'POR DEFINIR',
           modalidad:               form.modalidad,
-          dias:                    form.dias,
+          dias:                    diasGrupoEfectivos(form),
           hora_ini:                form.horaInicio,
-          hora_fin:                (() => {
-            const [h, m] = form.horaInicio.split(':').map(Number);
-            return `${String(h + 3).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-          })(),
+          hora_fin:                horaFinGrupo(form),
           fecha_inicio:            form.fechaInicio,
           periodo_inicio:          periodo,
           programa:                form.modelo === 'ina' ? 'INA' : 'SIN_INA',
@@ -865,7 +912,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           <div style={{ overflowY:'auto', padding:'28px 32px' }}>
             {step===1 && <Step1 form={form} set={set} errors={errors} nivel={nivel} />}
             {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} docentesActivos={docentesActivos} />}
-            {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[form.dias]||'XX')+(HORA_CODIGO[form.horaInicio]||''); return p; })()} />}
+            {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[diasGrupoEfectivos(form)]||'XX')+horaCodigoGrupo(form); return p; })()} />}
             {step===4 && <Step4 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas}
               matFinal={matFinal} cuotasFinal={cuotasFinal} descuento={descuento}
               becasConfig={becasConfig} becasLoading={becasLoading} selectedBeca={selectedBeca} />}
@@ -1023,9 +1070,9 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
   // Calcular fecha fin estimada
   const finEstimado = React.useMemo(() => {
     if (!form.fechaInicio) return null;
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     if (!dias.length) return null;
-    const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias);
+    const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias, bloquesPorDiaGrupo(form));
     return cr[cr.length - 1]?.fecha;
   }, [form.fechaInicio, form.dias]);
 
@@ -1035,7 +1082,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
   const inicioReal = React.useMemo(() => {
     if (!form.fechaInicio) return null;
     const fecha = parseDateLocal(form.fechaInicio);
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     if (!dias.length) return fecha;
     const cur = new Date(fecha);
     for (let i = 0; i < 60; i++) {
@@ -1052,7 +1099,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
     const out = {};
     const fechaN1 = parseDateLocal(form.fechaInicio);
     if (!fechaN1 || !form.niveles.length) return out;
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     const diasUsar = dias.length ? dias : [1,3];
     out[form.niveles[0]] = isoLocal(inicioReal || fechaN1);
     let cuatriMes = fechaN1.getMonth() < 4 ? 0 : fechaN1.getMonth() < 8 ? 4 : 8;
@@ -1177,9 +1224,9 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           style={{ padding:'10px 12px', border:`2px solid ${nivel.color}`, borderRadius:'var(--r-md)', fontFamily:'inherit', fontSize:14, color:'var(--ink)' }}
         />
         {form.fechaInicio && (() => {
-          const dias = parseDias(form.dias);
+          const dias = parseDias(diasGrupoEfectivos(form));
           if (!dias.length) return null;
-          const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias);
+          const cr = generarCronograma(parseDateLocal(form.fechaInicio), dias, bloquesPorDiaGrupo(form));
           const fin = cr[cr.length-1]?.fecha;
           if (!fin) return null;
           const mes = fin.getMonth();
@@ -1878,7 +1925,7 @@ function Step5({ form, set, nivel }) {
   // Genera 1 cronograma por nivel usando su fecha. Si algún cálculo falla,
   // descarta ese nivel — el calendario muestra los que sí pudieron generarse.
   const cronogramasPorNivel = React.useMemo(() => {
-    const dias = parseDias(form.dias);
+    const dias = parseDias(diasGrupoEfectivos(form));
     const diasUsar = dias.length ? dias : [1,3];
     const out = [];
     (form.niveles || []).forEach(niv => {
@@ -1887,7 +1934,7 @@ function Step5({ form, set, nivel }) {
       const fechaD = parseDateLocal(fechaStr);
       if (!fechaD || !meta) return;
       try {
-        const lecciones = generarCronograma(fechaD, diasUsar);
+        const lecciones = generarCronograma(fechaD, diasUsar, bloquesPorDiaGrupo(form));
         if (lecciones && lecciones.length) {
           out.push({ nivel: niv, color: meta.color, nombre: meta.nombre, lecciones });
         }
