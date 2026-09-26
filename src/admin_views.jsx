@@ -1991,40 +1991,43 @@ function Step5({ form, set, nivel }) {
       } catch (_) { /* silenciar errores de fecha inválida */ }
     });
     return out;
-  }, [form.niveles, form.fechasPorNivel, form.fechaInicio, form.dias]);
+  }, [form.niveles, form.fechasPorNivel, form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
   // Mapa global fecha → {nivel, color, n, tipo, nombre}
   const fechaMapGlobal = React.useMemo(() => {
     const map = {};
     cronogramasPorNivel.forEach(({ nivel: niv, color, nombre, lecciones }) => {
       lecciones.forEach(l => {
-        map[isoLocal(l.fecha)] = { nivel: niv, color, nombre, n: l.n, tipo: l.tipo, fecha: l.fecha };
+        const key = isoLocal(l.fecha);
+        if (map[key] && map[key].nivel === niv) {
+          map[key] = { ...map[key], n2:l.n, tipo2:l.tipo, bloque2:l.bloque };
+        } else {
+          map[key] = { nivel: niv, color, nombre, n:l.n, tipo:l.tipo, fecha:l.fecha, bloque:l.bloque };
+        }
       });
     });
     return map;
   }, [cronogramasPorNivel]);
 
-  // I CAN — viernes vacíos entre la 1ª y la última lección del programa,
-  // solo si el modelo es INA. Se calcula globalmente sobre el rango total.
+  // I CAN — respeta los días elegidos en el Paso 2 y muestra hasta 16 sesiones.
   const icanSet = React.useMemo(() => {
     const set = new Set();
     if (form.modelo !== 'ina' || !cronogramasPorNivel.length) return set;
+    const diasIcan = Array.isArray(form.icanDias) ? form.icanDias : [];
+    if (!diasIcan.length) return set;
     const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
     if (!allFechas.length) return set;
-    const ini = new Date(Math.min(...allFechas));
+    const iniCurso = new Date(Math.min(...allFechas));
     const fin = new Date(Math.max(...allFechas));
-    let cur = new Date(ini);
-    while (cur <= fin) {
-      const dow = cur.getDay();
-      const diff = (5 - dow + 7) % 7;
-      const vie = new Date(cur);
-      vie.setDate(cur.getDate() + diff);
-      const iso = isoLocal(vie);
-      if (vie <= fin && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
-      cur.setDate(cur.getDate() + 7);
+    const primeroConfig = parseDateLocal(form.icanFechaPrimero);
+    let cur = primeroConfig && primeroConfig > iniCurso ? new Date(primeroConfig) : new Date(iniCurso);
+    while (cur <= fin && set.size < 16) {
+      const iso = isoLocal(cur);
+      if (diasIcan.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
+      cur.setDate(cur.getDate() + 1);
     }
     return set;
-  }, [cronogramasPorNivel, fechaMapGlobal, form.modelo]);
+  }, [cronogramasPorNivel, fechaMapGlobal, form.modelo, form.icanDias, form.icanFechaPrimero]);
 
   // Rango de meses a renderizar
   const mesesGlobal = React.useMemo(() => {
@@ -2108,7 +2111,9 @@ function Step5({ form, set, nivel }) {
                 {ts && (
                   <div style={{ fontSize:8, fontWeight:700, color:ts.tc, background:'rgba(0,0,0,0.18)', borderRadius:3, padding:'1px 3px', alignSelf:'flex-start', lineHeight:1.4 }}>
                     {lec
-                      ? `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}`
+                      ? (lec.n2
+                          ? `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}–L${String(lec.n2).padStart(2,'0')}`
+                          : `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}`)
                       : 'I CAN'}
                   </div>
                 )}
@@ -2258,7 +2263,7 @@ function Step6({ form, nivel, nCuotas, matFinal, cuotasFinal, totalNivel, totalP
           ['Nivel', `${nivel.emoji} ${nivel.nombre}`],
           ['Modalidad', form.modalidad==='super_intensivo' ? 'Súper Intensivo (2 cuotas)' : 'Intensivo (4 cuotas)'],
           ['Docente', docente?.nombre || '—'],
-          ['Horario', `${form.dias} · ${form.horaInicio}`],
+          ['Horario', horarioDisplayGrupo(form)],
           ['Fecha inicio', form.fechaInicio ? fmtCR(parseDateLocal(form.fechaInicio)) : '—'],
           ['Fin estimado', cr.length ? fmtCR(cr[cr.length-1].fecha) : '—'],
           ['Capacidad', `${form.capacidad} estudiantes`],
