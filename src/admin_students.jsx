@@ -2781,6 +2781,9 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
 
   const handleGenerarCertificadosNivel = async (nivel) => {
     if (!grupoSel || !nivel) return;
+    // La emisión masiva institucional siempre se revisa y ejecuta A→Z por nombre.
+    setSortCol('nombre');
+    setSortDir('asc');
     setCertEstado({ loading: true, masivo: true, preview: true, nivel });
     try {
       const preview = await postAdminStudents('generarCertificadosNivel', {
@@ -2799,17 +2802,25 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
       const sinPdf = Number(r.sin_pdf || 0) || 0;
       const noAptos = Number(r.no_aptos || 0) || 0;
       const errores = Number(r.errores || 0) || 0;
+      const candidatosAZ = (preview.detalle || [])
+        .filter(x => x && x.estado === 'por_generar')
+        .map((x, i) => `${i + 1}. ${String(x.nombre || 'SIN NOMBRE').trim()} · ${String(x.codigo || '').trim()}`);
       const msg = [
         `Grupo: ${grupoSel}`,
         `Nivel: ${nivel}`,
+        'Orden de emisión: A → Z por nombre',
         '',
         `Se crearán certificados nuevos: ${porGenerar}`,
+        candidatosAZ.length ? '' : '',
+        candidatosAZ.length ? candidatosAZ.join('\n') : '',
+        candidatosAZ.length ? '' : '',
         `Ya registrados / existentes: ${yaExistentes}`,
         `Registrados sin PDF localizado: ${sinPdf}`,
         `No aptos: ${noAptos}`,
         errores ? `Errores previos: ${errores}` : '',
         '',
         'Regla segura: los estudiantes con certificado ya registrado NO generan un número nuevo.',
+        'El backend vuelve a ordenar A → Z antes de asignar consecutivos.',
         '',
         '¿Confirmás ejecutar la generación masiva segura?'
       ].filter(Boolean).join('\n');
