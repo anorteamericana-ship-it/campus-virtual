@@ -227,11 +227,50 @@ function AdminPerfilView() {
 // CONSTANTES DEL NEGOCIO
 // ─────────────────────────────────────────────────────────────────────────
 
-const FERIADOS_CR_2026 = new Set([
-  '2026-01-01','2026-04-09','2026-04-10','2026-04-11','2026-05-01',
-  '2026-07-25','2026-08-02','2026-08-15','2026-09-15',
-  '2026-10-12','2026-11-01','2026-12-08','2026-12-25',
-]);
+function fechaIsoSimple(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Meeus/Jones/Butcher: calcula Domingo de Resurrección para cualquier año gregoriano.
+// A partir de ahí Jueves Santo = -3 días y Viernes Santo = -2 días.
+function domingoResurreccion(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function construirFeriadosCR(year) {
+  // Art. 148 Código de Trabajo: feriados nacionales, de pago obligatorio o no.
+  const fijos = [
+    '01-01','04-11','05-01','07-25','08-02',
+    '08-15','08-31','09-15','12-01','12-25',
+  ].map(md => `${year}-${md}`);
+
+  const pascua = domingoResurreccion(year);
+  const juevesSanto = new Date(pascua);
+  juevesSanto.setDate(juevesSanto.getDate() - 3);
+  const viernesSanto = new Date(pascua);
+  viernesSanto.setDate(viernesSanto.getDate() - 2);
+
+  return [...fijos, fechaIsoSimple(juevesSanto), fechaIsoSimple(viernesSanto)];
+}
+
+// El wizard puede crear programas que cruzan años. No debe vencer al cambiar de año.
+const FERIADOS_CR = new Set(
+  Array.from({ length: 11 }, (_, i) => 2025 + i).flatMap(construirFeriadosCR)
+);
 
 const NIVEL_META = {
   b1: { nombre:'Básico I',      emoji:'🟡', color:'#E5A823', css:'var(--lvl-basic1)', toneChip:'gold' },
@@ -392,7 +431,7 @@ function nextClassDay(fecha, diasSemana) {
   d.setDate(d.getDate() + 1);
   for (let i = 0; i < 60; i++) {
     const iso = d.toISOString().slice(0,10);
-    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR_2026.has(iso)) return new Date(d);
+    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR.has(iso)) return new Date(d);
     d.setDate(d.getDate() + 1);
   }
   return d;
@@ -404,7 +443,7 @@ function generarCronograma(fechaInicio, diasSemana, bloquesPorDia = 1) {
   let cur = new Date(fechaInicio);
   const bloques = Math.max(1, Number(bloquesPorDia) || 1);
   // Encontrar primer día hábil válido desde fechaInicio
-  while (!diasSemana.includes(cur.getDay()) || FERIADOS_CR_2026.has(cur.toISOString().slice(0,10))) {
+  while (!diasSemana.includes(cur.getDay()) || FERIADOS_CR.has(cur.toISOString().slice(0,10))) {
     cur.setDate(cur.getDate() + 1);
   }
   let n = 1;
@@ -464,10 +503,10 @@ function isoLocal(d) {
 function sugerirInicioCuatri(year, mesInicial, diasSemana) {
   for (let dia = 8; dia <= 14; dia++) {
     const d = new Date(year, mesInicial, dia);
-    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR_2026.has(isoLocal(d))) return d;
+    if (diasSemana.includes(d.getDay()) && !FERIADOS_CR.has(isoLocal(d))) return d;
   }
   let d = new Date(year, mesInicial, 8);
-  while (!diasSemana.includes(d.getDay()) || FERIADOS_CR_2026.has(isoLocal(d))) d.setDate(d.getDate()+1);
+  while (!diasSemana.includes(d.getDay()) || FERIADOS_CR.has(isoLocal(d))) d.setDate(d.getDate()+1);
   return d;
 }
 
@@ -489,7 +528,7 @@ function fechasValidas(modalidad) {
     : [ // Inicio de cuatrimestre
         new Date(year,0,5), new Date(year,4,4), new Date(year,8,1),
       ];
-  return candidatos.filter(d => !FERIADOS_CR_2026.has(d.toISOString().slice(0,10)));
+  return candidatos.filter(d => !FERIADOS_CR.has(d.toISOString().slice(0,10)));
 }
 
 // Opciones de días según modalidad
@@ -1095,7 +1134,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
     const cur = new Date(fecha);
     for (let i = 0; i < 60; i++) {
       const iso = cur.toISOString().slice(0,10);
-      if (dias.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso)) return cur;
+      if (dias.includes(cur.getDay()) && !FERIADOS_CR.has(iso)) return cur;
       cur.setDate(cur.getDate() + 1);
     }
     return fecha;
@@ -1295,12 +1334,12 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           fontSize:13, lineHeight:1.6,
         }}>
           <div style={{ fontWeight:700, color: nivel.color, marginBottom:4 }}>Vista previa del cronograma</div>
-          Este grupo tendrá <strong>32 lecciones de 3h</strong>
+          Este programa tendrá <strong>{32 * Math.max(1, form.niveles.length)} lecciones de 3h</strong>
           {bloquesDia > 1 && <> · <strong>{bloquesSemana} bloques de curso por semana</strong></>}
-          {form.modelo==='ina' && <> + <strong>16 sesiones I CAN de 2h</strong></>}.
+          {form.modelo==='ina' && <> + <strong>{16 * Math.max(1, form.niveles.length)} sesiones I CAN de 2h</strong></>}.
           <br/>
           Inicio: <strong>{fmtCR(inicioReal)}</strong>
-          {finEstimado && <> &nbsp;→&nbsp; Fin estimado: <strong>{fmtCR(finEstimado)}</strong></>}
+          {finEstimado && <>&nbsp;→&nbsp; {form.niveles.length > 1 ? 'Fin estimado del primer nivel' : 'Fin estimado'}: <strong>{fmtCR(finEstimado)}</strong></>}
           <br/>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>Feriados de Costa Rica 2026 excluidos automáticamente.</span>
           {inicioReal && form.fechaInicio && fmtCR(parseDateLocal(form.fechaInicio)) !== fmtCR(inicioReal) && (
@@ -1993,50 +2032,123 @@ function Step5({ form, set, nivel }) {
     return out;
   }, [form.niveles, form.fechasPorNivel, form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
-  // Mapa global fecha → {nivel, color, n, tipo, nombre}
-  const fechaMapGlobal = React.useMemo(() => {
+  // Fuente única del calendario: una fecha puede contener MUCHOS eventos.
+  // No se comprime en un solo objeto; así nunca se pisan niveles, bloques ni I CAN.
+  const leccionesPorFecha = React.useMemo(() => {
     const map = {};
     cronogramasPorNivel.forEach(({ nivel: niv, color, nombre, lecciones }) => {
       lecciones.forEach(l => {
         const key = isoLocal(l.fecha);
-        if (map[key] && map[key].nivel === niv) {
-          map[key] = { ...map[key], n2:l.n, tipo2:l.tipo, bloque2:l.bloque };
-        } else {
-          map[key] = { nivel: niv, color, nombre, n:l.n, tipo:l.tipo, fecha:l.fecha, bloque:l.bloque };
-        }
+        if (!map[key]) map[key] = [];
+        map[key].push({
+          kind:'lesson',
+          nivel:niv,
+          color,
+          nombre,
+          n:l.n,
+          tipo:l.tipo,
+          fecha:new Date(l.fecha),
+          bloque:l.bloque || 1,
+          hora_inicio:l.hora_inicio || '',
+          hora_fin:l.hora_fin || '',
+        });
       });
     });
+    Object.values(map).forEach(arr => arr.sort((a,b) => a.n - b.n));
     return map;
   }, [cronogramasPorNivel]);
 
-  // I CAN — respeta los días elegidos en el Paso 2 y muestra hasta 16 sesiones.
-  const icanSet = React.useMemo(() => {
-    const set = new Set();
-    if (form.modelo !== 'ina' || !cronogramasPorNivel.length) return set;
+  // I CAN se genera POR NIVEL: 32 lecciones => 16 sesiones complementarias.
+  // En un programa de 4 niveles son 64 I CAN, no 16 globales consumidos al inicio.
+  const icanPorNivel = React.useMemo(() => {
+    const out = {};
+    if (form.modelo !== 'ina' || !cronogramasPorNivel.length) return out;
     const diasIcan = Array.isArray(form.icanDias) ? form.icanDias : [];
-    if (!diasIcan.length) return set;
-    const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
-    if (!allFechas.length) return set;
-    const iniCurso = new Date(Math.min(...allFechas));
-    const finCurso = new Date(Math.max(...allFechas));
-    // Permitimos cerrar la última semana para incluir, por ejemplo, el viernes
-    // posterior a una última clase de miércoles y completar las 16 sesiones.
-    const limite = new Date(finCurso);
-    limite.setDate(limite.getDate() + 6);
-    const primeroConfig = parseDateLocal(form.icanFechaPrimero);
-    let cur = primeroConfig && primeroConfig > iniCurso ? new Date(primeroConfig) : new Date(iniCurso);
-    while (cur <= limite && set.size < 16) {
-      const iso = isoLocal(cur);
-      if (diasIcan.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
-      cur.setDate(cur.getDate() + 1);
-    }
-    return set;
-  }, [cronogramasPorNivel, fechaMapGlobal, form.modelo, form.icanDias, form.icanFechaPrimero]);
+    if (!diasIcan.length) return out;
 
-  // Rango de meses a renderizar
+    const primeroPrograma = parseDateLocal(form.icanFechaPrimero);
+    cronogramasPorNivel.forEach((curso, idx) => {
+      const sesiones = [];
+      out[curso.nivel] = sesiones;
+      if (!curso.lecciones || !curso.lecciones.length) return;
+
+      const iniNivel = new Date(curso.lecciones[0].fecha);
+      const finNivel = new Date(curso.lecciones[curso.lecciones.length - 1].fecha);
+      // Margen para recuperar I CAN omitidos por feriados al cierre del nivel.
+      // Nunca invade el siguiente nivel: si no alcanza 16, se muestra alerta en vez de ocultarlo.
+      let limite = new Date(finNivel);
+      limite.setDate(limite.getDate() + 13);
+      const siguienteCurso = cronogramasPorNivel[idx + 1];
+      if (siguienteCurso?.lecciones?.length) {
+        const antesSiguiente = new Date(siguienteCurso.lecciones[0].fecha);
+        antesSiguiente.setDate(antesSiguiente.getDate() - 1);
+        if (antesSiguiente < limite) limite = antesSiguiente;
+      }
+
+      let cur = new Date(iniNivel);
+      // "Fecha primer I CAN" solo gobierna el primer nivel del programa.
+      if (idx === 0 && primeroPrograma && primeroPrograma > cur) cur = new Date(primeroPrograma);
+
+      while (cur <= limite && sesiones.length < 16) {
+        const iso = isoLocal(cur);
+        const clasesDia = leccionesPorFecha[iso] || [];
+        const tieneClaseMismoNivel = clasesDia.some(ev => ev.nivel === curso.nivel);
+        if (
+          diasIcan.includes(cur.getDay()) &&
+          !FERIADOS_CR.has(iso) &&
+          !tieneClaseMismoNivel
+        ) {
+          sesiones.push({
+            kind:'ican',
+            nivel:curso.nivel,
+            color:'#6B4FA0',
+            nombre:curso.nombre,
+            n:sesiones.length + 1,
+            fecha:new Date(cur),
+            hora_inicio:form.icanHoraInicio || '',
+            hora_fin:form.icanHoraFin || '',
+          });
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return out;
+  }, [
+    form.modelo, form.icanDias, form.icanFechaPrimero, form.icanHoraInicio, form.icanHoraFin,
+    cronogramasPorNivel, leccionesPorFecha,
+  ]);
+
+  const icanEventos = React.useMemo(
+    () => Object.values(icanPorNivel).flat(),
+    [icanPorNivel]
+  );
+
+  const eventosPorFecha = React.useMemo(() => {
+    const map = {};
+    Object.entries(leccionesPorFecha).forEach(([iso, eventos]) => {
+      map[iso] = [...eventos];
+    });
+    icanEventos.forEach(ev => {
+      const iso = isoLocal(ev.fecha);
+      if (!map[iso]) map[iso] = [];
+      map[iso].push(ev);
+    });
+    const ordenNivel = Object.fromEntries(cronogramasPorNivel.map((c, i) => [c.nivel, i]));
+    Object.values(map).forEach(arr => arr.sort((a,b) => {
+      if (a.kind !== b.kind) return a.kind === 'lesson' ? -1 : 1;
+      const nivelDiff = (ordenNivel[a.nivel] ?? 99) - (ordenNivel[b.nivel] ?? 99);
+      if (nivelDiff) return nivelDiff;
+      return (a.n || 0) - (b.n || 0);
+    }));
+    return map;
+  }, [leccionesPorFecha, icanEventos, cronogramasPorNivel]);
+
+  // Rango de meses basado en TODOS los eventos, incluido I CAN posterior a la última lección.
   const mesesGlobal = React.useMemo(() => {
-    if (!cronogramasPorNivel.length) return [];
-    const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
+    const allFechas = Object.values(eventosPorFecha)
+      .flat()
+      .map(ev => ev.fecha?.getTime?.())
+      .filter(Number.isFinite);
     if (!allFechas.length) return [];
     const fMin = new Date(Math.min(...allFechas));
     const fMax = new Date(Math.max(...allFechas));
@@ -2048,7 +2160,7 @@ function Step5({ form, set, nivel }) {
       cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
     }
     return out;
-  }, [cronogramasPorNivel]);
+  }, [eventosPorFecha]);
 
   React.useEffect(() => {
     if (mesesGlobal.length && !mesFoco) setMesFoco(mesesGlobal[0]);
@@ -2066,11 +2178,21 @@ function Step5({ form, set, nivel }) {
 
   const DIAS_HDR = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
-  // Fecha primera y última del programa
-  const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
+  // Totales y rango reales del programa: incluyen todas las lecciones y todos los I CAN.
+  const allEventos = Object.values(eventosPorFecha).flat();
+  const allFechas = allEventos
+    .map(ev => ev.fecha?.getTime?.())
+    .filter(Number.isFinite);
   const fechaIni = allFechas.length ? new Date(Math.min(...allFechas)) : null;
   const fechaFin = allFechas.length ? new Date(Math.max(...allFechas)) : null;
   const totalLecciones = cronogramasPorNivel.reduce((s, c) => s + c.lecciones.length, 0);
+  const totalIcan = icanEventos.length;
+  const icanEsperados = form.modelo === 'ina' ? 16 * cronogramasPorNivel.length : 0;
+  const icanIncompletos = form.modelo === 'ina'
+    ? cronogramasPorNivel
+        .map(c => ({ nivel:c.nivel, nombre:c.nombre, actual:(icanPorNivel[c.nivel] || []).length }))
+        .filter(x => x.actual < 16)
+    : [];
 
   function MesGridMultinivel({ year, month }) {
     const primer = new Date(year, month, 1);
@@ -2094,33 +2216,101 @@ function Step5({ form, set, nivel }) {
           {celdas.map((dia, idx) => {
             const iso = isoLocal(dia);
             const esMes = dia.getMonth() === month;
-            const lec = fechaMapGlobal[iso];
-            const esICAN = icanSet.has(iso);
-            const esFer = FERIADOS_CR_2026.has(iso);
-            // Color base: si hay lección, color del nivel; si I CAN, púrpura I CAN.
-            const ts = lec
-              ? { bg: lec.color, tc: 'white', lbl: TSTYLE_LEC[lec.tipo]?.lbl || 'Lec' }
-              : esICAN
-              ? { bg: '#6B4FA0', tc: 'white', lbl: 'ICAN' }
-              : null;
+            const esFer = FERIADOS_CR.has(iso);
+            const eventos = eventosPorFecha[iso] || [];
+            const lecciones = eventos.filter(ev => ev.kind === 'lesson');
+            const icans = eventos.filter(ev => ev.kind === 'ican');
+
+            // Para ahorrar espacio visual, agrupamos las dos lecciones del mismo nivel
+            // en un solo pill, pero conservamos los eventos individuales en memoria.
+            const gruposLeccion = [];
+            lecciones.forEach(ev => {
+              let grupo = gruposLeccion.find(g => g.nivel === ev.nivel);
+              if (!grupo) {
+                grupo = { nivel:ev.nivel, color:ev.color, eventos:[] };
+                gruposLeccion.push(grupo);
+              }
+              grupo.eventos.push(ev);
+            });
+
             return (
-              <div key={idx} onClick={() => lec && setLecSelec(lec)} style={{
-                minHeight: vista==='completo' ? 40 : 56, borderRadius:5, padding:'3px 4px',
-                background: !esMes ? 'transparent' : esFer ? 'color-mix(in srgb, var(--line) 25%, white)' : ts ? ts.bg : 'var(--surface-2)',
-                border:`1px solid ${!esMes?'transparent': ts?ts.bg:'var(--line)'}`,
-                opacity: !esMes ? 0.25 : 1, cursor: lec ? 'pointer' : 'default',
-                display:'flex', flexDirection:'column', gap:2,
+              <div key={idx} style={{
+                minHeight: vista==='completo' ? 48 : 64,
+                borderRadius:5,
+                padding:'4px',
+                background: !esMes
+                  ? 'transparent'
+                  : esFer
+                    ? 'color-mix(in srgb, var(--line) 25%, white)'
+                    : 'var(--surface-2)',
+                border:`1px solid ${!esMes?'transparent':'var(--line)'}`,
+                opacity: !esMes ? 0.25 : 1,
+                display:'flex',
+                flexDirection:'column',
+                gap:3,
+                overflow:'visible',
               }}>
-                <div style={{ fontSize:10, fontWeight: ts?700:400, color: ts?ts.tc: esFer?'var(--ink-3)':'var(--ink)', lineHeight:1 }}>{dia.getDate()}</div>
-                {ts && (
-                  <div style={{ fontSize:8, fontWeight:700, color:ts.tc, background:'rgba(0,0,0,0.18)', borderRadius:3, padding:'1px 3px', alignSelf:'flex-start', lineHeight:1.4 }}>
-                    {lec
-                      ? (lec.n2
-                          ? `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}–L${String(lec.n2).padStart(2,'0')}`
-                          : `${lec.nivel.toUpperCase()} L${String(lec.n).padStart(2,'0')}`)
-                      : 'I CAN'}
+                <div style={{ fontSize:10, fontWeight:(gruposLeccion.length || icans.length)?700:400, color:esFer?'var(--ink-3)':'var(--ink)', lineHeight:1 }}>
+                  {dia.getDate()}
+                </div>
+
+                {gruposLeccion.map((grupo, gidx) => {
+                  const primero = grupo.eventos[0];
+                  const ultimo = grupo.eventos[grupo.eventos.length - 1];
+                  const rango = grupo.eventos.length > 1
+                    ? `L${String(primero.n).padStart(2,'0')}–L${String(ultimo.n).padStart(2,'0')}`
+                    : `L${String(primero.n).padStart(2,'0')}`;
+                  return (
+                    <button
+                      type="button"
+                      key={`lec-${grupo.nivel}-${gidx}`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setLecSelec({
+                          ...primero,
+                          n2:grupo.eventos.length > 1 ? ultimo.n : null,
+                          eventos:grupo.eventos,
+                        });
+                      }}
+                      style={{
+                        width:'100%',
+                        border:0,
+                        borderRadius:3,
+                        padding:'2px 4px',
+                        background:grupo.color,
+                        color:'white',
+                        fontSize:8,
+                        fontWeight:800,
+                        textAlign:'left',
+                        lineHeight:1.25,
+                        cursor:'pointer',
+                        fontFamily:'inherit',
+                      }}
+                    >
+                      {grupo.nivel.toUpperCase()} {rango}
+                    </button>
+                  );
+                })}
+
+                {icans.map((ev, iidx) => (
+                  <div
+                    key={`ican-${ev.nivel}-${ev.n}-${iidx}`}
+                    title={`${ev.nombre} · I CAN ${ev.n} · ${ev.hora_inicio || ''}–${ev.hora_fin || ''}`}
+                    style={{
+                      width:'100%',
+                      borderRadius:3,
+                      padding:'2px 4px',
+                      background:'#6B4FA0',
+                      color:'white',
+                      fontSize:8,
+                      fontWeight:800,
+                      lineHeight:1.25,
+                    }}
+                  >
+                    {ev.nivel.toUpperCase()} I CAN {String(ev.n).padStart(2,'0')}
                   </div>
-                )}
+                ))}
+
                 {esFer && esMes && <div style={{ fontSize:7, color:'var(--ink-3)' }}>Fer.</div>}
               </div>
             );
@@ -2141,7 +2331,7 @@ function Step5({ form, set, nivel }) {
         <div style={{ fontSize:12, color:'var(--ink-2)' }}>
           <strong>Programa completo · {nNiveles} {nNiveles === 1 ? 'nivel' : 'niveles'}</strong>
           &nbsp;·&nbsp; <strong>{totalLecciones} lecciones</strong>
-          {form.modelo==='ina' && <> + <strong>~{Math.min(icanSet.size, 16 * nNiveles)} I CAN</strong></>}
+          {form.modelo==='ina' && <> + <strong>{totalIcan} I CAN</strong></>}
           {fechaIni && fechaFin && <>&nbsp;·&nbsp; {fmtCR(fechaIni)} → {fmtCR(fechaFin)}</>}
         </div>
         <div style={{ fontSize:10, color:'var(--ink-3)' }}>Clic en lección para detalles</div>
@@ -2159,10 +2349,26 @@ function Step5({ form, set, nivel }) {
         {form.modelo === 'ina' && (
           <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12 }}>
             <span style={{ width:14, height:14, borderRadius:3, background:'#6B4FA0', display:'inline-block' }} />
-            <span style={{ color:'var(--ink-2)' }}>Club I CAN</span>
+            <span style={{ color:'var(--ink-2)' }}>Club I CAN · {totalIcan}/{icanEsperados}</span>
           </div>
         )}
       </div>
+
+      {form.modelo === 'ina' && icanIncompletos.length > 0 && (
+        <div style={{
+          marginBottom:12,
+          padding:'9px 12px',
+          borderRadius:'var(--r-md)',
+          border:'1px solid var(--warn)',
+          background:'color-mix(in srgb, var(--warn) 9%, white)',
+          color:'#7A5000',
+          fontSize:11,
+          fontWeight:600,
+        }}>
+          ⚠ I CAN incompleto: {icanIncompletos.map(x => `${x.nombre} ${x.actual}/16`).join(' · ')}.
+          Revisá días, feriados o la fecha del primer I CAN antes de confirmar.
+        </div>
+      )}
 
       {/* Toggle vista */}
       <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center' }}>
@@ -2193,17 +2399,19 @@ function Step5({ form, set, nivel }) {
       {lecSelec && (
         <div style={{ position:'fixed', inset:0, background:'rgba(10,8,20,0.5)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center' }}
           onClick={() => setLecSelec(null)}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:'var(--r-xl)', padding:28, maxWidth:380, width:'100%', boxShadow:'0 16px 60px rgba(0,0,0,0.3)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:'var(--r-xl)', padding:28, maxWidth:420, width:'100%', boxShadow:'0 16px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
-              <div style={{ width:44, height:44, borderRadius:'var(--r-md)', background:lecSelecColor, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:700, fontSize:18 }}>
-                {String(lecSelec.n).padStart(2,'0')}
+              <div style={{ minWidth:52, height:44, padding:'0 8px', borderRadius:'var(--r-md)', background:lecSelecColor, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:700, fontSize:15 }}>
+                {lecSelec.n2
+                  ? `${String(lecSelec.n).padStart(2,'0')}–${String(lecSelec.n2).padStart(2,'0')}`
+                  : String(lecSelec.n).padStart(2,'0')}
               </div>
               <div>
                 <div style={{ fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-                  {lecSelec.nivel?.toUpperCase()} · Lección {lecSelec.n}
+                  {lecSelec.nivel?.toUpperCase()} · {lecSelec.n2 ? `Lecciones ${lecSelec.n}–${lecSelec.n2}` : `Lección ${lecSelec.n}`}
                 </div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:18, fontWeight:500 }}>
-                  {TLBL_FALLBACK[lecSelec.tipo] || 'Clase regular'}
+                  {lecSelec.n2 ? 'Bloques del día' : (TLBL_FALLBACK[lecSelec.tipo] || 'Clase regular')}
                 </div>
                 <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{lecSelec.nombre}</div>
               </div>
@@ -2211,12 +2419,22 @@ function Step5({ form, set, nivel }) {
             <div style={{ fontSize:13, color:'var(--ink-2)', padding:'10px 12px', background:'var(--surface-2)', borderRadius:'var(--r-md)', marginBottom:14 }}>
               {fmtCR(lecSelec.fecha)}
             </div>
-            {lecSelec.nivel === 'b1' && (
-              <div style={{ fontSize:11, color:'var(--ink-2)', marginBottom:16 }}>
-                {SYLLABUS_BASICO_I_DATA[lecSelec.n] || 'Contenido según plan de estudios'}
+
+            {(lecSelec.eventos || [lecSelec]).map(ev => (
+              <div key={ev.n} style={{ padding:'9px 10px', border:'1px solid var(--line)', borderRadius:'var(--r-sm)', marginBottom:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', gap:8, fontSize:11, fontWeight:700, color:'var(--ink-2)' }}>
+                  <span>Lección {ev.n} · {TLBL_FALLBACK[ev.tipo] || 'Clase regular'}</span>
+                  {(ev.hora_inicio || ev.hora_fin) && <span style={{ fontFamily:'var(--f-mono)', fontSize:10 }}>{ev.hora_inicio}–{ev.hora_fin}</span>}
+                </div>
+                {ev.nivel === 'b1' && (
+                  <div style={{ fontSize:10.5, color:'var(--ink-3)', marginTop:4 }}>
+                    {SYLLABUS_BASICO_I_DATA[ev.n] || 'Contenido según plan de estudios'}
+                  </div>
+                )}
               </div>
-            )}
-            <button onClick={() => setLecSelec(null)} className="btn btn-ghost" style={{ width:'100%' }}>← Cerrar</button>
+            ))}
+
+            <button onClick={() => setLecSelec(null)} className="btn btn-ghost" style={{ width:'100%', marginTop:4 }}>← Cerrar</button>
           </div>
         </div>
       )}
