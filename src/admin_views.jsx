@@ -2018,10 +2018,14 @@ function Step5({ form, set, nivel }) {
     const allFechas = cronogramasPorNivel.flatMap(c => c.lecciones.map(l => l.fecha.getTime()));
     if (!allFechas.length) return set;
     const iniCurso = new Date(Math.min(...allFechas));
-    const fin = new Date(Math.max(...allFechas));
+    const finCurso = new Date(Math.max(...allFechas));
+    // Permitimos cerrar la última semana para incluir, por ejemplo, el viernes
+    // posterior a una última clase de miércoles y completar las 16 sesiones.
+    const limite = new Date(finCurso);
+    limite.setDate(limite.getDate() + 6);
     const primeroConfig = parseDateLocal(form.icanFechaPrimero);
     let cur = primeroConfig && primeroConfig > iniCurso ? new Date(primeroConfig) : new Date(iniCurso);
-    while (cur <= fin && set.size < 16) {
+    while (cur <= limite && set.size < 16) {
       const iso = isoLocal(cur);
       if (diasIcan.includes(cur.getDay()) && !FERIADOS_CR_2026.has(iso) && !fechaMapGlobal[iso]) set.add(iso);
       cur.setDate(cur.getDate() + 1);
