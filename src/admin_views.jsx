@@ -497,24 +497,39 @@ function isoLocal(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Sugiere fecha de inicio según cuatrimestre. Regla: "2da semana" del mes
-// inicial del cuatrimestre (primer día de clase en rango día 8-14).
-// C1=enero(0), C2=mayo(4), C3=septiembre(8).
-function sugerirInicioCuatri(year, mesInicial, diasSemana) {
-  for (let dia = 8; dia <= 14; dia++) {
+// Inicio sugerido del período académico según modalidad.
+// Intensivo: 2da semana de C1/C2/C3. Súper intensivo: 1ra semana de cada bimestre.
+function sugerirInicioPeriodo(year, mesInicial, diasSemana, modalidad) {
+  const superIntensivo = modalidad === 'super_intensivo';
+  const diaDesde = superIntensivo ? 1 : 8;
+  const diaHasta = superIntensivo ? 7 : 14;
+  for (let dia = diaDesde; dia <= diaHasta; dia++) {
     const d = new Date(year, mesInicial, dia);
     if (diasSemana.includes(d.getDay()) && !FERIADOS_CR.has(isoLocal(d))) return d;
   }
-  let d = new Date(year, mesInicial, 8);
+  let d = new Date(year, mesInicial, diaDesde);
   while (!diasSemana.includes(d.getDay()) || FERIADOS_CR.has(isoLocal(d))) d.setDate(d.getDate()+1);
   return d;
 }
 
-// Secuencia de cuatrimestres: C1(ene)→C2(may)→C3(sep)→C1(ene año+1)→...
-function siguienteCuatri(year, mesInicial) {
-  if (mesInicial === 0) return { year, mes: 4 };        // C1 ene → C2 may
-  if (mesInicial === 4) return { year, mes: 8 };        // C2 may → C3 sep
-  return { year: year + 1, mes: 0 };                    // C3 sep → C1 ene (año sig)
+function periodoBaseDesdeFecha(fecha, modalidad) {
+  const mes = fecha.getMonth();
+  if (modalidad === 'super_intensivo') {
+    return { year:fecha.getFullYear(), mes:Math.floor(mes / 2) * 2 };
+  }
+  return {
+    year:fecha.getFullYear(),
+    mes:mes < 4 ? 0 : mes < 8 ? 4 : 8,
+  };
+}
+
+// Avanza un período real: bimestre para Súper Intensivo, cuatrimestre para Intensivo.
+function siguientePeriodoAcademico(year, mesInicial, modalidad) {
+  const salto = modalidad === 'super_intensivo' ? 2 : 4;
+  const next = mesInicial + salto;
+  return next >= 12
+    ? { year:year + 1, mes:next - 12 }
+    : { year, mes:next };
 }
 
 // Fechas de inicio válidas (primero de cada período, no feriado)
@@ -558,7 +573,8 @@ const initState = () => ({
   beca:'none', becaCustomNombre:'', becaCustomPct:25,
   disponibleInscripcion:false,
   cronograma:[],
-  fechasPorNivel:{},  // { b1:'2026-09-02', b2:'2027-01-11', i1:'2027-05-10', i2:'2027-09-13' }
+  fechasPorNivel:{},
+  fechasNivelManual:{}, // distingue fechas editadas por el admin de las sugerencias automáticas
   // I CAN — solo aplica a grupos INA
   icanDias:[],             // números de día: [5]=Vie, [2,4]=Mar+Jue
   icanFechaPrimero:null,   // fecha del primer I CAN
