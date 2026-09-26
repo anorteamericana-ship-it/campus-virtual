@@ -1130,6 +1130,14 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
       ? ['Martes','Jueves']
       : ['Sábado'];
 
+  const setFechaInicioPrograma = (value) => {
+    // Cambiar la fecha raíz invalida toda sugerencia automática anterior.
+    // Las fechas manuales de niveles posteriores también se reinician para evitar
+    // que queden ancladas a un calendario viejo.
+    set('fechaInicio', value);
+    set('fechasNivelManual', {});
+  };
+
   // Calcular fecha fin estimada
   const finEstimado = React.useMemo(() => {
     if (!form.fechaInicio) return null;
@@ -1156,54 +1164,111 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
     return fecha;
   }, [form.fechaInicio, form.dias, form.diasCustom, form.modalidad, form.horaInicio]);
 
-  // Fechas sugeridas para TODOS los niveles, alineadas al cuatrimestre.
-  // Nivel 1 = la fecha que eligió el admin; siguientes = 2da semana del cuatri.
+  // Fechas sugeridas para TODOS los niveles, siguiendo la modalidad real.
+  // Intensivo avanza por cuatrimestres; Súper Intensivo avanza por bimestres.
   const fechasSugeridas = React.useMemo(() => {
     const out = {};
     const fechaN1 = parseDateLocal(form.fechaInicio);
     if (!fechaN1 || !form.niveles.length) return out;
     const dias = parseDias(diasGrupoEfectivos(form));
     const diasUsar = dias.length ? dias : [1,3];
-    out[form.niveles[0]] = isoLocal(inicioReal || fechaN1);
-    let cuatriMes = fechaN1.getMonth() < 4 ? 0 : fechaN1.getMonth() < 8 ? 4 : 8;
-    let cuatriYear = fechaN1.getFullYear();
+    const bloques = bloquesPorDiaGrupo(form);
+
+    let inicioPrevio = inicioReal || fechaN1;
+    out[form.niveles[0]] = isoLocal(inicioPrevio);
+
+    let periodo = periodoBaseDesdeFecha(fechaN1, form.modalidad);
     for (let i = 1; i < form.niveles.length; i++) {
-      const sig = siguienteCuatri(cuatriYear, cuatriMes);
-      cuatriYear = sig.year; cuatriMes = sig.mes;
       try {
-        const f = sugerirInicioCuatri(cuatriYear, cuatriMes, diasUsar);
-        out[form.niveles[i]] = isoLocal(f);
+        const crPrevio = generarCronograma(inicioPrevio, diasUsar, bloques);
+        const finPrevio = crPrevio[crPrevio.length - 1]?.fecha || inicioPrevio;
+
+        periodo = siguientePeriodoAcademico(periodo.year, periodo.mes, form.modalidad);
+        let candidato = sugerirInicioPeriodo(periodo.year, periodo.mes, diasUsar, form.modalidad);
+
+        // Si un inicio tardío o feriados hacen que el período siguiente choque
+        // con el nivel anterior, avanzamos al próximo período académico.
+        let guard = 0;
+        while (candidato <= finPrevio && guard < 12) {
+          periodo = siguientePeriodoAcademico(periodo.year, periodo.mes, form.modalidad);
+          candidato = sugerirInicioPeriodo(periodo.year, periodo.mes, diasUsar, form.modalidad);
+          guard++;
+        }
+
+        out[form.niveles[i]] = isoLocal(candidato);
+        inicioPrevio = candidato;
       } catch(_) {}
     }
     return out;
-  }, [form.fechaInicio, form.dias, form.diasCustom, form.niveles, inicioReal]);
+  }, [
+    form.fechaInicio, form.dias, form.diasCustom, form.niveles,
+    form.modalidad, form.horaInicio, inicioReal,
+  ]);
 
-  // Inicializa form.fechasPorNivel con las sugeridas cuando falte alguna.
-  // El nivel 1 SIEMPRE se sincroniza con la primera clase real (la fecha de arriba);
-  // los niveles 2-4 respetan ediciones manuales y solo se rellenan si están vacíos.
+  // Sincroniza sugerencias automáticas y conserva únicamente ediciones manuales válidas.
+  // Nunca permite que un nivel posterior quede antes de terminar el anterior.
   React.useEffect(() => {
-    if (!form.niveles.length) return;
-    const n1 = form.niveles[0];
+    if (!form.niveles.length || !form.fechaInicio) return;
+    const dias = parseDias(diasGrupoEfectivos(form));
+    const diasUsar = dias.length ? dias : [1,3];
+    const bloques = bloquesPorDiaGrupo(form);
     const next = { ...form.fechasPorNivel };
-    let dirty = false;
-    // Nivel 1 SIEMPRE = primera clase real
-    if (form.fechaInicio && fechasSugeridas[n1] && next[n1] !== fechasSugeridas[n1]) {
+    const manual = { ...(form.fechasNivelManual || {}) };
+    let dirtyFechas = false;
+    let dirtyManual = false;
+
+    const n1 = form.niveles[0];
+    if (fechasSugeridas[n1] && next[n1] !== fechasSugeridas[n1]) {
       next[n1] = fechasSugeridas[n1];
-      dirty = true;
+      dirtyFechas = true;
     }
-    // Niveles 2-4: solo rellenar si están vacíos (no sobrescribe ediciones)
-    form.niveles.slice(1).forEach(niv => {
-      if (!next[niv] && fechasSugeridas[niv]) {
-        next[niv] = fechasSugeridas[niv];
-        dirty = true;
+    if (manual[n1]) { delete manual[n1]; dirtyManual = true; }
+
+    let inicioPrevio = parseDateLocal(next[n1] || fechasSugeridas[n1]);
+    for (let i = 1; i < form.niveles.length; i++) {
+      const niv = form.niveles[i];
+      const sugerida = fechasSugeridas[niv];
+      if (!sugerida) continue;
+
+      let candidata = manual[niv] && next[niv] ? next[niv] : sugerida;
+      let fechaCandidata = parseDateLocal(candidata);
+
+      let finPrevio = inicioPrevio;
+      if (inicioPrevio) {
+        try {
+          const crPrevio = generarCronograma(inicioPrevio, diasUsar, bloques);
+          finPrevio = crPrevio[crPrevio.length - 1]?.fecha || inicioPrevio;
+        } catch(_) {}
       }
-    });
-    // Limpia niveles que ya no están seleccionados
+
+      // Una edición manual vieja/inválida se descarta y vuelve a la sugerencia correcta.
+      if (!fechaCandidata || (finPrevio && fechaCandidata <= finPrevio)) {
+        candidata = sugerida;
+        fechaCandidata = parseDateLocal(candidata);
+        if (manual[niv]) { delete manual[niv]; dirtyManual = true; }
+      }
+
+      if (next[niv] !== candidata) {
+        next[niv] = candidata;
+        dirtyFechas = true;
+      }
+      inicioPrevio = fechaCandidata;
+    }
+
     Object.keys(next).forEach(k => {
-      if (!form.niveles.includes(k)) { delete next[k]; dirty = true; }
+      if (!form.niveles.includes(k)) { delete next[k]; dirtyFechas = true; }
     });
-    if (dirty) set('fechasPorNivel', next);
-  }, [form.fechaInicio, form.dias, form.diasCustom, form.niveles, fechasSugeridas]);
+    Object.keys(manual).forEach(k => {
+      if (!form.niveles.includes(k)) { delete manual[k]; dirtyManual = true; }
+    });
+
+    if (dirtyFechas) set('fechasPorNivel', next);
+    if (dirtyManual) set('fechasNivelManual', manual);
+  }, [
+    form.fechaInicio, form.dias, form.diasCustom, form.niveles,
+    form.modalidad, form.horaInicio, form.fechasPorNivel, form.fechasNivelManual,
+    fechasSugeridas,
+  ]);
 
   // Los tres presets súper-intensivos son horarios institucionales fijos.
   // LM/KJ = 2 días completos (09-12 + 13-16); L4 = 4 días de 18-21.
@@ -1301,7 +1366,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           const iso = f.toISOString().slice(0,10);
           const sel = form.fechaInicio === iso;
           return (
-            <button key={i} onClick={() => set('fechaInicio', iso)} style={{
+            <button key={i} onClick={() => setFechaInicioPrograma(iso)} style={{
               padding:'12px 10px', borderRadius:'var(--r-md)',
               border:`2px solid ${sel ? nivel.color : 'var(--line)'}`,
               background: sel ? `color-mix(in srgb, ${nivel.color} 10%, white)` : 'var(--surface)',
@@ -1324,7 +1389,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           O eleg\u00ed cualquier fecha
         </div>
         <input type="date" value={form.fechaInicio||''}
-          onChange={e => set('fechaInicio', e.target.value)}
+          onChange={e => setFechaInicioPrograma(e.target.value)}
           style={{ padding:'10px 12px', border:`2px solid ${nivel.color}`, borderRadius:'var(--r-md)', fontFamily:'inherit', fontSize:14, color:'var(--ink)' }}
         />
         {form.fechaInicio && (() => {
@@ -1357,7 +1422,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
           Inicio: <strong>{fmtCR(inicioReal)}</strong>
           {finEstimado && <>&nbsp;→&nbsp; {form.niveles.length > 1 ? 'Fin estimado del primer nivel' : 'Fin estimado'}: <strong>{fmtCR(finEstimado)}</strong></>}
           <br/>
-          <span style={{ fontSize:11, color:'var(--ink-3)' }}>Feriados de Costa Rica 2026 excluidos automáticamente.</span>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>Feriados de Costa Rica excluidos automáticamente en todos los años del programa.</span>
           {inicioReal && form.fechaInicio && fmtCR(parseDateLocal(form.fechaInicio)) !== fmtCR(inicioReal) && (
             <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:6, fontStyle:'italic' }}>
               Tipeaste {fmtCR(parseDateLocal(form.fechaInicio))}, pero la primera clase válida según los días elegidos ({form.dias}) es {fmtCR(inicioReal)}.
@@ -1370,7 +1435,9 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
         <div style={{ marginTop:24 }}>
           <SectionTitle>Fecha de inicio por nivel</SectionTitle>
           <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:10 }}>
-            Sugeridas según cuatrimestre (C1 ene · C2 may · C3 sep). Ajustá si hace falta.
+            {form.modalidad === 'super_intensivo'
+              ? 'Sugeridas por bimestre (ene · mar · may · jul · sep · nov). Ajustá si hace falta.'
+              : 'Sugeridas por cuatrimestre (ene · may · sep). Ajustá si hace falta.'}
           </div>
           {form.niveles.map((niv, idx) => {
             const meta = NIVEL_META[niv];
