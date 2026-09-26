@@ -2075,8 +2075,15 @@ function Step5({ form, set, nivel }) {
       const iniNivel = new Date(curso.lecciones[0].fecha);
       const finNivel = new Date(curso.lecciones[curso.lecciones.length - 1].fecha);
       // Margen para recuperar I CAN omitidos por feriados al cierre del nivel.
-      const limite = new Date(finNivel);
+      // Nunca invade el siguiente nivel: si no alcanza 16, se muestra alerta en vez de ocultarlo.
+      let limite = new Date(finNivel);
       limite.setDate(limite.getDate() + 13);
+      const siguienteCurso = cronogramasPorNivel[idx + 1];
+      if (siguienteCurso?.lecciones?.length) {
+        const antesSiguiente = new Date(siguienteCurso.lecciones[0].fecha);
+        antesSiguiente.setDate(antesSiguiente.getDate() - 1);
+        if (antesSiguiente < limite) limite = antesSiguiente;
+      }
 
       let cur = new Date(iniNivel);
       // "Fecha primer I CAN" solo gobierna el primer nivel del programa.
