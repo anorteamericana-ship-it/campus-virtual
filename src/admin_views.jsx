@@ -377,7 +377,9 @@ function horarioDisplayGrupo(form) {
 // Súper Intensivo (bimestre): Ene→B1, Mar→B2, May→B3, Jul→B4, Sep→B5, Nov→B6
 function periodoFromFecha(fechaIso, modalidad) {
   if (!fechaIso) return '';
-  const m = new Date(fechaIso).getMonth(); // 0-11
+  const fecha = parseDateLocal(fechaIso);
+  if (!fecha) return '';
+  const m = fecha.getMonth(); // 0-11, local CR; evita desfase UTC en días 1
   if (modalidad === 'super_intensivo') {
     const map = { 0:'B1', 2:'B2', 4:'B3', 6:'B4', 8:'B5', 10:'B6' };
     return map[m] || `B${Math.floor(m/2)+1}`;
@@ -564,9 +566,9 @@ const initState = () => ({
     b1:{ monto:15000, obligatorio:false },
     b2:{ monto:15000, obligatorio:false },
     i1:{ monto:15000, obligatorio:false },
-    i2:{ monto:25000, obligatorio:false },
+    i2:{ monto:15000, obligatorio:false },
   },
-  certificadoPrograma:45000,
+  certificadoPrograma:35000,
   certificadoProgramaObligatorio:false,
   toeic:false, toeicMonto:136730,
   rubrosExtra:[],  // {id, nombre, monto, obligatorio, tipo_aplicacion: 'por_nivel'|'una_vez_inicio'|'una_vez_final'}
@@ -660,6 +662,24 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
   const [becasLoading, setBecasLoading] = React.useState(false);
   const adminPreview = adminPreviewMode();
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const setModelo = (modelo) => setForm(f => ({
+    ...f,
+    modelo,
+    certificadosPorNivel: modelo === 'ina'
+      ? {
+          b1:{ monto:15000, obligatorio:false },
+          b2:{ monto:15000, obligatorio:false },
+          i1:{ monto:15000, obligatorio:false },
+          i2:{ monto:15000, obligatorio:false },
+        }
+      : {
+          b1:{ monto:15000, obligatorio:false },
+          b2:{ monto:15000, obligatorio:false },
+          i1:{ monto:15000, obligatorio:false },
+          i2:{ monto:25000, obligatorio:false },
+        },
+    certificadoPrograma: modelo === 'ina' ? 35000 : 45000,
+  }));
 
   // Docentes reales construidos desde APOLLO — se recalcula cuando cambian los grupos
   const docentesActivos = React.useMemo(() => buildDocentesActivos(grupos), [grupos]);
@@ -810,7 +830,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
           nivel_inicio:            (form.niveles[0] || 'b1').toUpperCase(),
           tipo_periodo:            form.modalidad === 'super_intensivo' ? 'B' : 'C',
           año_inicio:              form.fechaInicio ? parseDateLocal(form.fechaInicio).getFullYear() : new Date().getFullYear(),
-          dias_sem:                form.modalidad === 'super_intensivo' ? 4 : (form.dias.includes('Sáb') ? 1 : 2),
+          dias_sem:                Math.max(1, parseDias(diasGrupoEfectivos(form)).length),
           consecutivo:             `${consec}${año}`,   // ej. "0726" — string, preserva ceros y año
           // v4.15 — campos nuevos
           disponible_inscripcion:  form.disponibleInscripcion === true,
@@ -832,11 +852,10 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
             tipo_aplicacion: r.tipo_aplicacion || 'por_nivel',
           })),
           // v4.23.14 — programa multinivel: 1 fila por nivel
-          niveles: form.niveles.map(niv => {
-            const fecha = form.fechasPorNivel[niv] || form.fechaInicio;
+          niveles: form.niveles.map((niv, idxNivel) => {
+            const fecha = idxNivel === 0 ? form.fechaInicio : (form.fechasPorNivel[niv] || form.fechaInicio);
             const d = parseDateLocal(fecha);
-            const mes = d ? d.getMonth() : 0;
-            const periodo = mes < 4 ? 'C1' : mes < 8 ? 'C2' : 'C3';
+            const periodo = periodoFromFecha(fecha, form.modalidad) || (form.modalidad === 'super_intensivo' ? 'B1' : 'C1');
             return {
               nivel:          niv.toUpperCase(),
               fecha_inicio:   fecha,
@@ -856,7 +875,11 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
       });
       clearTimeout(tid);
       const data = await res.json();
-      if (!data.ok) setAvisoManual(true);
+      if (!data.ok) {
+        setAvisoManual(true);
+      } else if (data.fecha_ajustada) {
+        window.alert('Aviso del calendario: ' + data.fecha_ajustada);
+      }
     } catch(_) {
       setAvisoManual(true);
     } finally {
@@ -965,7 +988,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
 
           {/* Main content */}
           <div style={{ overflowY:'auto', padding:'28px 32px' }}>
-            {step===1 && <Step1 form={form} set={set} errors={errors} nivel={nivel} />}
+            {step===1 && <Step1 form={form} set={set} setModelo={setModelo} errors={errors} nivel={nivel} />}
             {step===2 && <Step2 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas} docentesActivos={docentesActivos} />}
             {step===3 && <Step3 form={form} set={set} errors={errors} nivel={nivel} docentesActivos={docentesActivos} nuevoHorarioCod={(() => { const p=(DIAS_CODIGO[diasGrupoEfectivos(form)]||'XX')+horaCodigoGrupo(form); return p; })()} />}
             {step===4 && <Step4 form={form} set={set} errors={errors} nivel={nivel} nCuotas={nCuotas}
@@ -1017,7 +1040,7 @@ function WizardCrearGrupo({ onClose, onCrear, grupos }) {
 // ─────────────────────────────────────────────────────────────────────────
 // PASO 1 — Tipo y nivel
 // ─────────────────────────────────────────────────────────────────────────
-function Step1({ form, set, errors, nivel }) {
+function Step1({ form, set, setModelo, errors, nivel }) {
   const Opt = ({ value, current, onChange, children, accent }) => (
     <label style={{
       display:'flex', alignItems:'flex-start', gap:14, padding:'14px 16px',
@@ -1034,13 +1057,13 @@ function Step1({ form, set, errors, nivel }) {
   return (
     <div>
       <SectionTitle>Modelo del grupo</SectionTitle>
-      <Opt value="ina" current={form.modelo} onChange={() => set('modelo','ina')} accent="var(--an-navy)">
+      <Opt value="ina" current={form.modelo} onChange={() => setModelo('ina')} accent="var(--an-navy)">
         <div>
           <div style={{ fontWeight:700, fontSize:15 }}>Con INA <span style={{ fontWeight:400, fontSize:12, color:'var(--ink-3)' }}>· Acreditado por INA</span></div>
           <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:3 }}>128h totales (96h curso + 32h Club I CAN) · Certificado oficial INA · Compatible con CONAPE</div>
         </div>
       </Opt>
-      <Opt value="sin_ina" current={form.modelo} onChange={() => set('modelo','sin_ina')} accent="var(--ink-3)">
+      <Opt value="sin_ina" current={form.modelo} onChange={() => setModelo('sin_ina')} accent="var(--ink-3)">
         <div>
           <div style={{ fontWeight:700, fontSize:15 }}>Sin INA <span style={{ fontWeight:400, fontSize:12, color:'var(--ink-3)' }}>· Programa propio de la academia</span></div>
           <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:3 }}>96h · Certificado propio · Sin Club I CAN obligatorio</div>
@@ -1242,7 +1265,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
       }
 
       // Una edición manual vieja/inválida se descarta y vuelve a la sugerencia correcta.
-      if (!fechaCandidata || (finPrevio && fechaCandidata <= finPrevio)) {
+      if (!fechaCandidata) {
         candidata = sugerida;
         fechaCandidata = parseDateLocal(candidata);
         if (manual[niv]) { delete manual[niv]; dirtyManual = true; }
@@ -1445,7 +1468,7 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
             const esN1 = idx === 0;
             const esManual = !!(form.fechasNivelManual || {})[niv];
 
-            let minFecha = '';
+            let finPrevioIso = '';
             if (!esN1) {
               const prevNiv = form.niveles[idx - 1];
               const prevInicioStr = form.fechasPorNivel[prevNiv] || fechasSugeridas[prevNiv] || '';
@@ -1456,10 +1479,11 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
                   const diasUsar = dias.length ? dias : [1,3];
                   const crPrevio = generarCronograma(prevInicio, diasUsar, bloquesPorDiaGrupo(form));
                   const finPrevio = crPrevio[crPrevio.length - 1]?.fecha;
-                  if (finPrevio) minFecha = isoLocal(nextClassDay(finPrevio, diasUsar));
+                  if (finPrevio) finPrevioIso = isoLocal(finPrevio);
                 } catch(_) {}
               }
             }
+            const inicioAntesL32 = !esN1 && !!fecha && !!finPrevioIso && fecha < finPrevioIso;
 
             return (
               <div key={niv} style={{
@@ -1474,7 +1498,6 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
                   type="date"
                   value={fecha}
                   disabled={esN1}
-                  min={minFecha || undefined}
                   onChange={e => {
                     set('fechasPorNivel', { ...form.fechasPorNivel, [niv]: e.target.value });
                     set('fechasNivelManual', { ...(form.fechasNivelManual || {}), [niv]: true });
@@ -1487,13 +1510,20 @@ function Step2({ form, set, errors, nivel, nCuotas, docentesActivos = [] }) {
                     color: esN1 ? 'var(--ink-3)' : 'var(--ink)', cursor: esN1 ? 'not-allowed' : 'auto',
                   }}
                 />
-                <span style={{ fontSize:11, color:'var(--ink-3)', flex:1 }}>
-                  {esN1
-                    ? '= fecha de inicio del grupo'
-                    : (fecha
-                        ? <>{fmtCR(parseDateLocal(fecha))}{esManual ? ' · manual' : ' · sugerida'}</>
-                        : 'sin fecha')}
-                </span>
+                <div style={{ fontSize:11, color:'var(--ink-3)', flex:1 }}>
+                  <span>
+                    {esN1
+                      ? '= fecha de inicio del grupo'
+                      : (fecha
+                          ? <>{fmtCR(parseDateLocal(fecha))}{esManual ? ' · manual' : ' · sugerida'}</>
+                          : 'sin fecha')}
+                  </span>
+                  {inicioAntesL32 && (
+                    <div style={{ marginTop:4, color:'#7A5000', fontWeight:600 }}>
+                      ⚠ El inicio elegido es anterior a la lección 32 del nivel previo. Es solo una advertencia; la fecha manual se conserva.
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -2477,7 +2507,7 @@ function Step5({ form, set, nivel }) {
           fontWeight:600,
         }}>
           ⚠ I CAN incompleto: {icanIncompletos.map(x => `${x.nombre} ${x.actual}/16`).join(' · ')}.
-          Revisá días, feriados o la fecha del primer I CAN antes de confirmar.
+          Advertencia informativa: no bloquea la apertura del grupo.
         </div>
       )}
 
