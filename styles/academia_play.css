@@ -678,3 +678,41 @@
 .sb-item:hover .sb-english-lab-icon{
   --elab-blue:#5FA0FF;
 }
+
+/* Juegos fase 1 · pasada móvil (360 px): toques >= 44 px, contraste AA, estados correcto/incorrecto y pareo medido */
+.aplay-shell{--ink-3:#5A6576;}
+.ap-btn,.ap-mode-tabs button,.ap-filter-tabs button,.ap-sound-toggle{min-height:44px;}
+.ap-order-workbench button,.ap-word-bank button{min-height:44px;min-width:44px;}
+.ap-order-label-row span,.ap-order-label-row small,.ap-order-workbench span,.ap-match-col .ap-small-label,
+.ap-summary-stats span,.ap-summary-ring span,.ap-summary-ring small,.ap-practice-meta{color:#4B5563;}
+/* Barra superior del juego en una fila: volver (44×44) + insignias */
+@media(max-width:760px){.ap-practice-top{flex-direction:row;align-items:center}.ap-practice-top .ap-btn-light{width:44px;flex:0 0 44px;padding:0}.ap-practice-meta{width:auto}}
+/* Opción múltiple: ✓/✗ además del color; las opciones descartadas siguen legibles */
+.ap-answer span{color:#4B5563;}
+.ap-answer.locked{opacity:.88;}
+.ap-feedback{animation:apFeedbackIn .24s ease both;}
+@keyframes apFeedbackIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+/* Ordenar: etiqueta real ("Ordená la oración") y fichas legibles en el intento incorrecto */
+.ap-order-card .ap-question-strip strong{font-size:10px;}
+.ap-order-card .ap-question-strip strong:after{content:none;}
+.ap-order-workbench.correct{animation:apGlow .46s ease;}
+.ap-order-workbench.wrong .ap-word-token.placed{background:#fff!important;color:#8A1C12!important;border-color:rgba(180,35,24,.45)!important;}
+/* Resumen: el nombre del juego no se recorta */
+.ap-summary-stats div:last-child strong{white-space:normal;overflow-wrap:anywhere;text-overflow:clip;font-size:16px;line-height:1.2;}
+@media(max-width:620px){.ap-summary-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.ap-summary-stats div:last-child{grid-column:1/-1;min-height:64px}}
+/* Pareo: SVG sobre todo el tablero, en píxeles reales; las columnas conservan su canal central */
+.ap-match-board.ap-match-board-vivid{position:relative;grid-template-columns:minmax(0,1fr) var(--ap-match-gutter,56px) minmax(0,1fr)!important;}
+.ap-match-board .ap-match-lines-svg{position:absolute;left:0;top:0;grid-column:auto;grid-row:auto;width:100%;height:100%;min-height:0;max-width:none;overflow:visible;z-index:1;pointer-events:none;}
+.ap-match-board>.ap-match-col{grid-row:1;z-index:auto;}
+.ap-match-board .ap-match-chip{position:relative;z-index:2;}
+.ap-match-board>.ap-match-col:last-of-type{grid-column:3;}
+.ap-match-lines-svg path{stroke:#2E8B57;stroke-width:4;opacity:.85;animation:apLineIn .28s ease-out both;}
+.ap-match-chip.fixed{opacity:1;}
+.ap-match-chip.fixed:after{content:'✓';inset:-8px -8px auto auto;width:22px;height:22px;display:grid;place-items:center;border-radius:999px;background:#1F7A45;color:#fff;font-size:12px;font-weight:900;line-height:1;opacity:1;box-shadow:0 0 0 2px #fff;animation:apPop .28s ease-out both;}
+@keyframes apLineIn{from{opacity:0}to{opacity:.85}}
+@media(max-width:620px){.ap-match-board.ap-match-board-vivid{--ap-match-gutter:36px;}}
+/* Catálogo: las tarjetas bloqueadas se distinguen por su insignia y el ícono apagado, sin bajar el contraste del texto */
+.ap-game-card.is-locked{opacity:1;}
+.ap-game-card.is-locked .ap-cog-icon{filter:grayscale(1);opacity:.6;}
+.ap-badge.muted{color:#4B5563;}
+.ap-bank-unit-tabs button.active b{color:var(--danger);}
