@@ -1,0 +1,58 @@
+name: QA juegos fase 1 (English LAB)
+
+on:
+  pull_request:
+    paths:
+      - 'src/academia_play.jsx'
+      - 'styles/academia_play.css'
+      - 'qa/juegos_fase1/**'
+      - 'scripts/qa_juegos_fase1_*.mjs'
+      - '.github/workflows/qa-juegos-fase1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-juegos-fase1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  juegos-fase1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Pruebas unitarias (mezcla, pareo, reporte del banco)
+        run: node scripts/qa_juegos_fase1_unitarias.mjs
+
+      - name: Reporte del banco local (solo lectura)
+        run: |
+          mkdir -p qa-output/juegos_fase1
+          node scripts/qa_juegos_fase1_banco_reporte.mjs --out qa-output/juegos_fase1/reporte_banco.md --json qa-output/juegos_fase1/reporte_banco.json
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Pruebas de interfaz sin backend (360 px y escritorio)
+        run: node scripts/qa_juegos_fase1_ui.mjs
+
+      - name: Publicar resumen
+        if: always()
+        run: cat qa-output/juegos_fase1/informe.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Subir evidencia (capturas e informes)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-juegos-fase1-${{ github.run_number }}
+          path: qa-output/juegos_fase1/

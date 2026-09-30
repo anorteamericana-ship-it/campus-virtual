@@ -1,8 +1,9 @@
 /* global React, Icon */
 // F98.4-Z6-CS17E · English LAB consolidado sin regresiones.
 // Lee ACADEMIA_PLAY_BANK, muestra avance 100% por unidad y no genera notas oficiales.
+// Juegos fase 1 · opciones, fichas de ordenar y columnas del pareo mezcladas por intento; líneas del pareo medidas en píxeles reales.
 
-const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect } = React;
+const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect, useRef: apUseRef, useLayoutEffect: apUseLayoutEffect } = React;
 
 function apNormCedula(v) {
   return String(v || '').replace(/[^0-9]/g, '');
@@ -45,8 +46,62 @@ function apFirstName(usuario) {
   return raw.split(/\s+/)[0] || 'Estudiante';
 }
 
-function apShuffleStatic(arr) {
-  return [...arr].sort((a, b) => String(a.es || a.label || a).localeCompare(String(b.es || b.label || b)));
+// Fisher-Yates sobre una copia. rng opcional (0 <= rng() < 1) para pruebas reproducibles.
+function apShuffle(list, rng) {
+  const next = [...(list || [])];
+  const rand = typeof rng === 'function' ? rng : Math.random;
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+// Mezcla las opciones y recalcula el índice correcto por posición original (no por texto: tolera opciones repetidas).
+function apShuffleChoiceQuestion(q, rng) {
+  const order = apShuffle((q.options || []).map((_, i) => i), rng);
+  return { ...q, options: order.map(i => q.options[i]), correct: order.indexOf(q.correct), optionOrder: order };
+}
+
+function apBuildChoiceDeck(flow, rng) {
+  return (flow?.questions || []).map(q => apShuffleChoiceQuestion(q, rng));
+}
+
+// Ordenar: fichas mezcladas; si quedan en el orden de la respuesta (con al menos 2 fichas distintas) se vuelve
+// a mezclar y, como último recurso, se rotan. La clave por posición original permite fichas repetidas ("the … the").
+function apShuffleOrderQuestion(q, rng) {
+  const tiles = (q.words || []).map((w, i) => ({ w, key: w + '-' + i }));
+  const answer = (q.answer || []).join(' ');
+  const solved = list => list.map(t => t.w).join(' ') === answer;
+  let next = apShuffle(tiles, rng);
+  if (new Set(tiles.map(t => t.w)).size > 1) {
+    for (let tries = 0; tries < 5 && solved(next); tries++) next = apShuffle(tiles, rng);
+    for (let turns = 1; turns < next.length && solved(next); turns++) next = [...next.slice(1), next[0]];
+  }
+  return { ...q, tiles: next };
+}
+
+function apBuildOrderDeck(flow, rng) {
+  return (flow?.questions || []).map(q => apShuffleOrderQuestion(q, rng));
+}
+
+// Pareo: ambas columnas mezcladas; si todas las parejas quedan fila a fila, se rota la columna derecha.
+function apBuildMatchDeck(pairs, rng) {
+  const left = apShuffle(pairs, rng);
+  let right = apShuffle(pairs, rng);
+  if (right.length > 1 && right.every((p, i) => p.id === left[i].id)) right = [...right.slice(1), right[0]];
+  return { left, right };
+}
+
+// Mazo fijo por intento: se arma al montar el runner y al repetir; los re-render no lo vuelven a mezclar.
+function apUseAttemptDeck(source, build) {
+  const [attempt, setAttempt] = apUseState(() => ({ source, deck: build(source) }));
+  let current = attempt;
+  if (current.source !== source) {
+    current = { source, deck: build(source) };
+    setAttempt(current);
+  }
+  return [current.deck, () => setAttempt({ source, deck: build(source) })];
 }
 
 
@@ -1022,7 +1077,8 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextG
   const [score, setScore] = apUseState(0);
   const [errors, setErrors] = apUseState(0);
   const [results, setResults] = apUseState([]);
-  const q = flow.questions[qIndex];
+  const [deck, reshuffleDeck] = apUseAttemptDeck(flow, apBuildChoiceDeck);
+  const q = deck[qIndex];
   const correct = answered && selected === q.correct;
   const progress = Math.round(((qIndex + 1) / flow.questions.length) * 100);
   const liveText = phase === 'summary'
@@ -1054,6 +1110,7 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextG
   }
   function reset() {
     setPhase('intro'); setQIndex(0); setSelected(null); setAnswered(false); setScore(0); setErrors(0); setResults([]);
+    reshuffleDeck();
   }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
@@ -1077,8 +1134,8 @@ function APChoiceRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextG
         {q.options.map((opt, idx) => {
           const state = !answered ? (idx === selected ? 'selected' : '') : idx === q.correct ? 'correct' : idx === selected ? 'wrong' : 'locked';
           return (
-            <button type="button" key={opt} disabled={answered} className={'ap-answer ' + state} onClick={() => setSelected(idx)}>
-              <span>{String.fromCharCode(65 + idx)}</span>{opt}
+            <button type="button" key={qIndex + '-' + q.optionOrder[idx]} disabled={answered} aria-pressed={!answered ? idx === selected : undefined} className={'ap-answer ' + state} onClick={() => setSelected(idx)}>
+              <span>{state === 'correct' ? '✓' : state === 'wrong' ? '✗' : String.fromCharCode(65 + idx)}</span>{opt}
             </button>
           );
         })}
@@ -1103,7 +1160,10 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
   const [fixed, setFixed] = apUseState([]);
   const [errors, setErrors] = apUseState(0);
   const [wrong, setWrong] = apUseState('');
-  const rightItems = apUseMemo(() => apShuffleStatic(flow.pairs), [flow]);
+  const [deck, reshuffleDeck] = apUseAttemptDeck(flow.pairs, apBuildMatchDeck);
+  const [lines, setLines] = apUseState({ width: 0, height: 0, paths: [] });
+  const svgRef = apUseRef(null);
+  const chipRefs = apUseRef({ en: {}, es: {} });
   const score = fixed.length;
   const total = flow.pairs.length;
   const liveText = phase === 'summary'
@@ -1128,13 +1188,69 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
   }
   function reset() {
     setPhase('intro'); setSelectedLeft(null); setFixed([]); setErrors(0); setWrong('');
+    setLines({ width: 0, height: 0, paths: [] });
+    reshuffleDeck();
   }
-  const lineData = fixed.map(id => {
-    const li = flow.pairs.findIndex(p => p.id === id);
-    const ri = rightItems.findIndex(p => p.id === id);
-    if (li < 0 || ri < 0) return null;
-    return { id, y1: 32 + li * 58, y2: 32 + ri * 58 };
-  }).filter(Boolean);
+  function chipRef(side, id) {
+    return el => {
+      if (el) chipRefs.current[side][id] = el;
+      else delete chipRefs.current[side][id];
+    };
+  }
+
+  // Cada línea va del borde derecho del botón en inglés al borde izquierdo de su pareja, medidos contra el propio SVG.
+  apUseLayoutEffect(() => {
+    if (phase !== 'question') return undefined;
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    let frame = 0;
+    let alive = true;
+    const measure = () => {
+      frame = 0;
+      if (!alive) return;
+      const box = svg.getBoundingClientRect();
+      const paths = fixed.map(id => {
+        const left = chipRefs.current.en[id];
+        const right = chipRefs.current.es[id];
+        if (!left || !right) return null;
+        const a = left.getBoundingClientRect();
+        const b = right.getBoundingClientRect();
+        const x1 = +(a.right - box.left).toFixed(1);
+        const y1 = +(a.top + a.height / 2 - box.top).toFixed(1);
+        const x2 = +(b.left - box.left).toFixed(1);
+        const y2 = +(b.top + b.height / 2 - box.top).toFixed(1);
+        const bend = Math.max(8, (x2 - x1) / 2);
+        const c1 = +(x1 + bend).toFixed(1);
+        const c2 = +(x2 - bend).toFixed(1);
+        return { id, d: `M ${x1} ${y1} C ${c1} ${y1} ${c2} ${y2} ${x2} ${y2}` };
+      }).filter(Boolean);
+      const next = { width: Math.round(box.width), height: Math.round(box.height), paths };
+      setLines(prev => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    };
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(measure); };
+    measure();
+    const board = svg.parentElement;
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
+    if (observer) {
+      observer.observe(svg);
+      Object.values(chipRefs.current.en).concat(Object.values(chipRefs.current.es)).forEach(el => observer.observe(el));
+    }
+    // Las transiciones de los botones (transform) no disparan ResizeObserver: se vuelve a medir al terminar.
+    board.addEventListener('transitionend', schedule);
+    board.addEventListener('animationend', schedule);
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule, () => {});
+    return () => {
+      alive = false;
+      if (frame) window.cancelAnimationFrame(frame);
+      if (observer) observer.disconnect();
+      board.removeEventListener('transitionend', schedule);
+      board.removeEventListener('animationend', schedule);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
+    };
+  }, [phase, fixed, deck]);
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
   if (phase === 'summary') return <APSummary title={flow.title} score={score} total={total} errors={errors} onReset={reset} onBack={onBack} onNext={onNextGame} nextLabel={nextGame ? ('Siguiente juego · ' + nextGame.title) : 'Siguiente juego'} />;
@@ -1155,23 +1271,23 @@ function APMatchRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
       <div className="ap-match-focus">{selectedLeft ? <>Tocá el significado de <strong>{selectedLeft.en}</strong></> : 'Elegí una palabra para empezar'}</div>
       <APProgress value={Math.round((score / total) * 100)} label="Pares completados" />
       <div className="ap-match-board ap-match-board-vivid">
-        <svg className="ap-match-lines-svg" viewBox={`0 0 100 ${Math.max(total, 1) * 58}`} preserveAspectRatio="none" aria-hidden="true">
-          {lineData.map(l => <path key={l.id} d={`M 4 ${l.y1} C 34 ${l.y1} 66 ${l.y2} 96 ${l.y2}`} />)}
+        <svg ref={svgRef} className="ap-match-lines-svg" width={lines.width} height={lines.height} aria-hidden="true" focusable="false">
+          {lines.paths.map(l => <path key={l.id} data-pair-id={l.id} d={l.d} />)}
         </svg>
         <div className="ap-match-col">
           <span className="ap-small-label">Inglés</span>
-          {flow.pairs.map(pair => {
+          {deck.left.map(pair => {
             const done = fixed.includes(pair.id);
             const active = selectedLeft?.id === pair.id;
-            return <button key={pair.id} type="button" disabled={done} className={'ap-match-chip ' + (done ? 'fixed ' : '') + (active ? 'selected ' : '')} onClick={() => setSelectedLeft(pair)}>{done ? '✓ ' : ''}{pair.en}</button>;
+            return <button key={pair.id} ref={chipRef('en', pair.id)} data-side="en" data-pair-id={pair.id} type="button" disabled={done} aria-pressed={done ? undefined : active} className={'ap-match-chip ' + (done ? 'fixed ' : '') + (active ? 'selected ' : '')} onClick={() => setSelectedLeft(pair)}>{pair.en}</button>;
           })}
         </div>
         <div className="ap-match-col">
           <span className="ap-small-label">Español</span>
-          {rightItems.map(pair => {
+          {deck.right.map(pair => {
             const done = fixed.includes(pair.id);
             const bad = wrong.endsWith('-' + pair.id);
-            return <button key={pair.id} type="button" disabled={done} className={'ap-match-chip ' + (done ? 'fixed ' : '') + (bad ? 'wrong ' : '')} onClick={() => pickRight(pair)}>{done ? '✓ ' : ''}{pair.es}</button>;
+            return <button key={pair.id} ref={chipRef('es', pair.id)} data-side="es" data-pair-id={pair.id} type="button" disabled={done} className={'ap-match-chip ' + (done ? 'fixed ' : '') + (bad ? 'wrong ' : '')} onClick={() => pickRight(pair)}>{pair.es}</button>;
           })}
         </div>
       </div>
@@ -1188,9 +1304,10 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
   const [score, setScore] = apUseState(0);
   const [errors, setErrors] = apUseState(0);
   const [results, setResults] = apUseState([]);
-  const q = flow.questions[qIndex];
+  const [deck, reshuffleDeck] = apUseAttemptDeck(flow, apBuildOrderDeck);
+  const q = deck[qIndex];
   const correct = answered && built.map(x => x.w).join(' ') === q.answer.join(' ');
-  const remaining = q.words.map((w, i) => ({ w, key: w + '-' + i })).filter(x => !built.some(b => b.key === x.key));
+  const remaining = q.tiles.filter(x => !built.some(b => b.key === x.key));
   const liveText = phase === 'summary'
     ? 'Sentence Order finalizado. Resultado demo ' + score + ' de ' + flow.questions.length + '.'
     : answered ? (correct ? 'Correcto.' : 'Casi. Revisá el orden correcto.') : 'Construí la frase.';
@@ -1214,7 +1331,7 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
       setPhase('summary'); return; }
     setQIndex(qIndex + 1); setBuilt([]); setAnswered(false);
   }
-  function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); setResults([]); }
+  function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); setResults([]); reshuffleDeck(); }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
   if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} onNext={onNextGame} nextLabel={nextGame ? ('Siguiente juego · ' + nextGame.title) : 'Siguiente juego'} />;
