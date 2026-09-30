@@ -3,7 +3,7 @@
 // cualquier request a Apps Script se aborta y se cuenta). Genera capturas y un informe en qa-output/juegos_fase1.
 //
 // Uso:  node scripts/qa_juegos_fase1_ui.mjs
-// Env:  QA_OUT=<carpeta>  QA_CHROME_CHANNEL=chrome (usar Chrome instalado)  QA_SOLO=capturas,mezcla,pareo
+// Env:  QA_OUT=<carpeta>  QA_CHROME_CHANNEL=chrome (usar Chrome instalado)  QA_SOLO=capturas,mezcla,ordenar,pareo
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
@@ -12,7 +12,7 @@ import { chromium } from 'playwright';
 const ROOT = process.cwd();
 const OUT = path.resolve(ROOT, process.env.QA_OUT || 'qa-output/juegos_fase1');
 const SHOTS = path.join(OUT, 'capturas');
-const SOLO = new Set(String(process.env.QA_SOLO || 'capturas,mezcla,pareo').split(',').map(s => s.trim()).filter(Boolean));
+const SOLO = new Set(String(process.env.QA_SOLO || 'capturas,mezcla,ordenar,pareo').split(',').map(s => s.trim()).filter(Boolean));
 const ATTEMPTS = Number(process.env.QA_INTENTOS || 100);
 fs.mkdirSync(SHOTS, { recursive: true });
 
@@ -371,6 +371,49 @@ async function pruebaMezcla(browser, base) {
   }
 }
 
+// ---------------------------------------------------------------- fichas de ordenar
+// Banco con 4 frases (incluye fichas repetidas y una fuente ya ordenada), 20 intentos con "Repetir juego".
+async function pruebaOrdenar(browser, base) {
+  const ROUNDS = 20;
+  const { context, page } = await newPage(browser, 'escritorio', { reducedMotion: 'reduce' });
+  await open(page, base, 'bank=order');
+  const flow = await page.evaluate(() => { const fx = window.AP_QA_FIXTURES.bank.order; return window.apFlowFromBankGame(fx.game, fx.items); });
+  const bankTiles = () => page.evaluate(() => [...document.querySelectorAll('.ap-word-bank .ap-word-token')].map(b => b.textContent));
+  const exact = w => new RegExp('^' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
+  const orders = flow.questions.map(() => []);
+  let shownSolved = 0; let unstable = 0; let notCorrect = 0;
+  for (let round = 0; round < ROUNDS; round++) {
+    await page.getByRole('button', { name: 'Empezar', exact: true }).click();
+    for (let qi = 0; qi < flow.questions.length; qi++) {
+      const q = flow.questions[qi];
+      const before = await bankTiles();
+      orders[qi].push(before.join(' '));
+      if (before.join(' ') === q.answer.join(' ')) shownSolved += 1;
+      // Re-render dentro del intento: agregar una ficha y limpiar no cambia el orden del banco.
+      await page.locator('.ap-word-bank .ap-word-token').first().click();
+      if ((await bankTiles()).join('|') !== before.slice(1).join('|')) unstable += 1;
+      await page.getByRole('button', { name: 'Limpiar' }).click();
+      if ((await bankTiles()).join('|') !== before.join('|')) unstable += 1;
+      // Armar la respuesta; con fichas repetidas se toma la primera disponible.
+      for (const w of q.answer) await page.locator('.ap-word-bank .ap-word-token', { hasText: exact(w) }).first().click();
+      await page.getByRole('button', { name: 'Confirmar orden' }).click();
+      if (!(await page.locator('.ap-feedback.correct').count())) notCorrect += 1;
+      await page.getByRole('button', { name: /Siguiente frase/ }).click();
+    }
+    await page.waitForSelector('.ap-summary-card');
+    await page.getByRole('button', { name: 'Repetir juego' }).click();
+  }
+  const changes = orders.map(list => list.slice(1).filter((o, i) => o !== list[i]).length);
+  check('ordenar', `fichas nunca en el orden de la respuesta (${flow.questions.length} frases × ${ROUNDS} intentos)`, shownSolved === 0, `${shownSolved} veces resueltas`);
+  check('ordenar', 'el orden no cambia dentro del intento (agregar ficha / limpiar)', unstable === 0, `${unstable} cambios`);
+  check('ordenar', 'la respuesta se arma y marca correcta, también con fichas repetidas ("the … the")', notCorrect === 0, `${notCorrect} fallos`);
+  check('ordenar', 'el orden cambia al repetir', changes.every(c => c >= Math.floor(0.75 * (ROUNDS - 1))),
+    changes.map((c, i) => `F${i + 1}: cambió en ${c}/${ROUNDS - 1}`).join(' · '));
+  check('general', 'ordenar · sin errores de consola', !page.__errors.length, page.__errors.slice(0, 3).join(' | '));
+  fs.writeFileSync(path.join(OUT, 'ordenar_banco.json'), JSON.stringify({ rounds: ROUNDS, orders }, null, 2));
+  await context.close();
+}
+
 // ---------------------------------------------------------------- pareo con palabras de 2 renglones
 async function lineAlignment(page) {
   return page.evaluate(() => {
@@ -516,6 +559,8 @@ function writeReport(startedAt) {
     '',
     '## Capturas',
     '',
+    'En la carpeta de salida (`capturas/`); en CI, dentro del artifact `qa-juegos-fase1-<número de ejecución>`. No se versionan en el repo.',
+    '',
     ...captures.map(c => `- \`capturas/${c.name}\` · ${c.note}`),
     '',
   ];
@@ -531,6 +576,7 @@ function writeReport(startedAt) {
   try {
     if (SOLO.has('capturas')) for (const vp of Object.keys(VIEWPORTS)) await capturasJuegos(browser, base, vp);
     if (SOLO.has('mezcla')) await pruebaMezcla(browser, base);
+    if (SOLO.has('ordenar')) await pruebaOrdenar(browser, base);
     if (SOLO.has('pareo')) await pruebaPareo(browser, base);
   } catch (err) {
     check('general', 'ejecución completa sin excepciones', false, String(err && err.stack || err).split('\n').slice(0, 3).join(' '));

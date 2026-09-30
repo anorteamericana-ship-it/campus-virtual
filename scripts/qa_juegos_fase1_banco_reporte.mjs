@@ -171,8 +171,8 @@ export function renderMarkdown(sections) {
     lines.push(...list('Unidad que no corresponde al nivel', r.unitLevelMismatch));
     lines.push(...list('Pareo con lado vacío', r.matchIncomplete));
     lines.push(...list('Pareo con textos repetidos dentro del juego', r.matchDuplicates, 'dos botones iguales hacen ambiguo el par'));
-    lines.push(...list('Ordenar sin WORDS_TO_ORDER', r.orderNoWords, 'el runner usa la oración correcta: las fichas salen ya ordenadas'));
-    lines.push(...list('Ordenar con fichas ya en el orden correcto', r.orderAlreadySolved, 'el runner no mezcla fichas en fase 1'));
+    lines.push(...list('Ordenar sin WORDS_TO_ORDER', r.orderNoWords, 'el runner arma las fichas partiendo la oración correcta (desde fase 1 las mezcla)'));
+    lines.push(...list('Ordenar con fichas ya en el orden correcto', r.orderAlreadySolved, 'desde fase 1 el runner las mezcla, pero conviene corregir la fuente'));
     lines.push(...list('Ordenar sin solución (fichas ≠ palabras de la respuesta)', r.orderUnsolvable));
   });
   return lines.join('\n') + '\n';

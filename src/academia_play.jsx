@@ -1,7 +1,7 @@
 /* global React, Icon */
 // F98.4-Z6-CS17E · English LAB consolidado sin regresiones.
 // Lee ACADEMIA_PLAY_BANK, muestra avance 100% por unidad y no genera notas oficiales.
-// Juegos fase 1 · opciones y columnas del pareo mezcladas por intento; líneas del pareo medidas en píxeles reales.
+// Juegos fase 1 · opciones, fichas de ordenar y columnas del pareo mezcladas por intento; líneas del pareo medidas en píxeles reales.
 
 const { useMemo: apUseMemo, useState: apUseState, useEffect: apUseEffect, useRef: apUseRef, useLayoutEffect: apUseLayoutEffect } = React;
 
@@ -65,6 +65,24 @@ function apShuffleChoiceQuestion(q, rng) {
 
 function apBuildChoiceDeck(flow, rng) {
   return (flow?.questions || []).map(q => apShuffleChoiceQuestion(q, rng));
+}
+
+// Ordenar: fichas mezcladas; si quedan en el orden de la respuesta (con al menos 2 fichas distintas) se vuelve
+// a mezclar y, como último recurso, se rotan. La clave por posición original permite fichas repetidas ("the … the").
+function apShuffleOrderQuestion(q, rng) {
+  const tiles = (q.words || []).map((w, i) => ({ w, key: w + '-' + i }));
+  const answer = (q.answer || []).join(' ');
+  const solved = list => list.map(t => t.w).join(' ') === answer;
+  let next = apShuffle(tiles, rng);
+  if (new Set(tiles.map(t => t.w)).size > 1) {
+    for (let tries = 0; tries < 5 && solved(next); tries++) next = apShuffle(tiles, rng);
+    for (let turns = 1; turns < next.length && solved(next); turns++) next = [...next.slice(1), next[0]];
+  }
+  return { ...q, tiles: next };
+}
+
+function apBuildOrderDeck(flow, rng) {
+  return (flow?.questions || []).map(q => apShuffleOrderQuestion(q, rng));
 }
 
 // Pareo: ambas columnas mezcladas; si todas las parejas quedan fila a fila, se rota la columna derecha.
@@ -1286,9 +1304,10 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
   const [score, setScore] = apUseState(0);
   const [errors, setErrors] = apUseState(0);
   const [results, setResults] = apUseState([]);
-  const q = flow.questions[qIndex];
+  const [deck, reshuffleDeck] = apUseAttemptDeck(flow, apBuildOrderDeck);
+  const q = deck[qIndex];
   const correct = answered && built.map(x => x.w).join(' ') === q.answer.join(' ');
-  const remaining = q.words.map((w, i) => ({ w, key: w + '-' + i })).filter(x => !built.some(b => b.key === x.key));
+  const remaining = q.tiles.filter(x => !built.some(b => b.key === x.key));
   const liveText = phase === 'summary'
     ? 'Sentence Order finalizado. Resultado demo ' + score + ' de ' + flow.questions.length + '.'
     : answered ? (correct ? 'Correcto.' : 'Casi. Revisá el orden correcto.') : 'Construí la frase.';
@@ -1312,7 +1331,7 @@ function APOrderRunner({ flow, isFreeUser, onBack, onComplete, soundOn, onNextGa
       setPhase('summary'); return; }
     setQIndex(qIndex + 1); setBuilt([]); setAnswered(false);
   }
-  function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); setResults([]); }
+  function reset() { setPhase('intro'); setQIndex(0); setBuilt([]); setAnswered(false); setScore(0); setErrors(0); setResults([]); reshuffleDeck(); }
 
   if (phase === 'intro') return <APStartScreen flow={flow} isFreeUser={isFreeUser} onStart={() => setPhase('question')} onBack={onBack} soundOn={soundOn} />;
   if (phase === 'summary') return <APSummary title={flow.title} score={score} total={flow.questions.length} errors={errors} onReset={reset} onBack={onBack} onNext={onNextGame} nextLabel={nextGame ? ('Siguiente juego · ' + nextGame.title) : 'Siguiente juego'} />;

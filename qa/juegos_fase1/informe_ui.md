@@ -1,9 +1,9 @@
 # QA juegos fase 1 · interfaz English LAB
 
-- Fecha: 2026-09-30T22:47:22.815Z
-- Duración: 169 s
+- Fecha: 2026-09-30T23:56:46.304Z
+- Duración: 178 s
 - Evidencia: E1 sintética local (harness sin backend; requests a Apps Script bloqueadas: 0)
-- Resultado: 249/249 PASS
+- Resultado: 254/254 PASS
 
 | Estado | Área | Chequeo | Detalle |
 |---|---|---|---|
@@ -219,14 +219,19 @@
 | PASS | visual | escritorio · banco order · toques ≥ 44 px |  |
 | PASS | visual | escritorio · banco order · contraste AA |  |
 | PASS | general | escritorio · banco order sin errores de consola |  |
-| PASS | mezcla | Vocabulary Sprint (catálogo → juego): la correcta aparece en A, B, C y D | A:31 B:26 C:19 D:24 en 100 intentos |
+| PASS | mezcla | Vocabulary Sprint (catálogo → juego): la correcta aparece en A, B, C y D | A:28 B:24 C:25 D:23 en 100 intentos |
 | PASS | mezcla | Vocabulary Sprint: mismas 4 opciones y la correcta siempre presente | 0 intentos con opciones alteradas |
 | PASS | mezcla | Vocabulary Sprint: orden fijo dentro del intento (seleccionar/confirmar no re-mezcla) | 0 intentos inestables |
 | PASS | mezcla | Vocabulary Sprint: se marca como correcta la opción correcta tras mezclar | 0 marcas erróneas |
-| PASS | mezcla | Banco (correctas en A) con "Repetir juego": cada pregunta aparece en las 4 posiciones | P1 A:30 B:27 C:19 D:24 · P2 A:16 B:29 C:31 D:24 · P3 A:25 B:25 C:23 D:27 · P4 A:29 B:22 C:23 D:26 · P5 A:36 B:25 C:19 D:20 |
+| PASS | mezcla | Banco (correctas en A) con "Repetir juego": cada pregunta aparece en las 4 posiciones | P1 A:22 B:26 C:23 D:29 · P2 A:19 B:34 C:27 D:20 · P3 A:25 B:26 C:19 D:30 · P4 A:29 B:20 C:30 D:21 · P5 A:29 B:19 C:30 D:22 |
 | PASS | mezcla | Banco: 100% de aciertos al elegir la opción correcta mezclada | 0 marcas erróneas |
 | PASS | general | mezcla · sin errores de consola |  |
-| PASS | pareo | movil · hay botones de 2+ renglones en ambas columnas | en:wake=3r/81px en:bus=6r/139px en:hw=1r/48px en:class=1r/48px en:teeth=4r/100px en:dress=4r/100px es:hw=1r/48px es:bus=6r/139px es:teeth=4r/100px es:class=1r/48px es:dress=4r/100px es:wake=4r/100px |
+| PASS | ordenar | fichas nunca en el orden de la respuesta (4 frases × 20 intentos) | 0 veces resueltas |
+| PASS | ordenar | el orden no cambia dentro del intento (agregar ficha / limpiar) | 0 cambios |
+| PASS | ordenar | la respuesta se arma y marca correcta, también con fichas repetidas ("the … the") | 0 fallos |
+| PASS | ordenar | el orden cambia al repetir | F1: cambió en 19/19 · F2: cambió en 19/19 · F3: cambió en 19/19 · F4: cambió en 17/19 |
+| PASS | general | ordenar · sin errores de consola |  |
+| PASS | pareo | movil · hay botones de 2+ renglones en ambas columnas | en:hw=1r/48px en:wake=3r/81px en:bus=6r/139px en:teeth=4r/100px en:class=1r/48px en:dress=4r/100px es:hw=1r/48px es:teeth=4r/100px es:class=1r/48px es:bus=6r/139px es:dress=4r/100px es:wake=4r/100px |
 | PASS | pareo | movil · SVG sin preserveAspectRatio="none" | {"par":null,"vb":null} |
 | PASS | pareo | movil · par incorrecto se marca en rojo y no fija línea |  |
 | PASS | pareo | movil · cada línea une el borde real de sus dos botones | 5 líneas alineadas (±1.5px) |
@@ -239,7 +244,7 @@
 | PASS | pareo | movil · tras hacer scroll, las líneas siguen alineadas | 5 líneas alineadas (±1.5px) |
 | PASS | pareo | movil · el orden de columnas no cambia dentro del intento |  |
 | PASS | general | movil · pareo sin errores de consola |  |
-| PASS | pareo | escritorio · hay botones de 2+ renglones en ambas columnas | en:wake=3r/85px en:hw=1r/48px en:teeth=3r/85px en:bus=4r/106px en:class=1r/48px en:dress=3r/85px es:hw=1r/48px es:wake=3r/85px es:class=1r/48px es:dress=3r/85px es:teeth=3r/85px es:bus=4r/106px |
+| PASS | pareo | escritorio · hay botones de 2+ renglones en ambas columnas | en:teeth=3r/85px en:bus=4r/106px en:class=1r/48px en:dress=3r/85px en:hw=1r/48px en:wake=3r/85px es:bus=4r/106px es:class=1r/48px es:dress=3r/85px es:wake=3r/85px es:teeth=3r/85px es:hw=1r/48px |
 | PASS | pareo | escritorio · SVG sin preserveAspectRatio="none" | {"par":null,"vb":null} |
 | PASS | pareo | escritorio · par incorrecto se marca en rojo y no fija línea |  |
 | PASS | pareo | escritorio · cada línea une el borde real de sus dos botones | 5 líneas alineadas (±1.5px) |
@@ -258,6 +263,8 @@
 | PASS | general | ninguna llamada a Apps Script | 0 requests bloqueadas |
 
 ## Capturas
+
+En la carpeta de salida (`capturas/`); en CI, dentro del artifact `qa-juegos-fase1-<número de ejecución>`. No se versionan en el repo.
 
 - `capturas/movil_00_catalogo.jpg` · Catálogo English LAB
 - `capturas/movil_01_vocabulary.jpg` · Vocabulary Sprint · pregunta

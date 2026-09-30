@@ -5,25 +5,26 @@ Rama `juegos_fase1` desde `main` `a9b556f1`. Solo frontend (`src/academia_play.j
 ## Qué cambia
 
 1. **Opciones mezcladas.** `APChoiceRunner` arma un mazo por intento con Fisher-Yates (`apShuffle`) y recalcula el índice correcto por posición original (`apShuffleChoiceQuestion`). El mazo se fija al montar el runner y se rehace en "Repetir juego" o al volver a entrar; los re-render no lo cambian (`apUseAttemptDeck`). Es el único runner con `options/correct`.
-2. **Pareo.** Se elimina el cálculo fijo de 58 px y el `preserveAspectRatio="none"`. Cada línea se mide con refs + `getBoundingClientRect` contra el propio SVG (del borde derecho del botón en inglés al borde izquierdo de su pareja). Se recalcula con `ResizeObserver` (tablero y botones), `resize`, scroll, carga de fuentes y fin de transiciones. Ambas columnas se mezclan por intento; nunca quedan todas las parejas alineadas fila a fila.
-3. **Pasada visual móvil (360 px).** Toques ≥ 44 px, contraste AA (incluye fichas ilegibles del intento incorrecto en Sentence Order), ✓/✗ además del color, animaciones cortas al acertar (se apagan con `prefers-reduced-motion`), resumen sin recortar el nombre del juego, etiqueta real "Ordená la oración" (antes decía "TRADUCÍ").
+2. **Fichas de ordenar mezcladas.** `APOrderRunner` usa el mismo mecanismo (`apShuffleOrderQuestion`). Si la mezcla deja las fichas en el orden de la respuesta y hay al menos 2 fichas distintas, se vuelve a mezclar y, como último recurso, se rotan. Cada ficha conserva una clave por posición original, así que las repetidas ("the … the") funcionan.
+3. **Pareo.** Se elimina el cálculo fijo de 58 px y el `preserveAspectRatio="none"`. Cada línea se mide con refs + `getBoundingClientRect` contra el propio SVG (del borde derecho del botón en inglés al borde izquierdo de su pareja). Se recalcula con `ResizeObserver` (tablero y botones), `resize`, scroll, carga de fuentes y fin de transiciones. Ambas columnas se mezclan por intento; nunca quedan todas las parejas alineadas fila a fila.
+4. **Pasada visual móvil (360 px).** Toques ≥ 44 px, contraste AA (incluye fichas ilegibles del intento incorrecto en Sentence Order), ✓/✗ además del color, animaciones cortas al acertar (se apagan con `prefers-reduced-motion`), resumen sin recortar el nombre del juego, etiqueta real "Ordená la oración" (antes decía "TRADUCÍ").
 
 ## Cómo correr
 
 ```bash
-node scripts/qa_juegos_fase1_unitarias.mjs      # mezcla, pareo y reporte del banco (sin navegador)
-node scripts/qa_juegos_fase1_ui.mjs             # Playwright: capturas 360 px y escritorio, 100 intentos, pareo en 2+ renglones
+node scripts/qa_juegos_fase1_unitarias.mjs      # mezcla, fichas, pareo y reporte del banco (sin navegador)
+node scripts/qa_juegos_fase1_ui.mjs             # Playwright: capturas 360 px y escritorio, 100 intentos, fichas, pareo en 2+ renglones
 node scripts/qa_juegos_fase1_banco_reporte.mjs  # reporte del banco (solo lectura)
 ```
 
-La prueba de interfaz sirve el repo con un servidor local y monta `qa/juegos_fase1/harness.html`, que carga `src/academia_play.jsx` igual que `src/lazy_loader.jsx`. No hay backend: la URL de Apps Script apunta a una ruta local inexistente y cualquier request a `script.google.com` se aborta y se cuenta (resultado: 0). Workflow: `.github/workflows/qa-juegos-fase1.yml`.
+La prueba de interfaz sirve el repo con un servidor local y monta `qa/juegos_fase1/harness.html`, que carga `src/academia_play.jsx` igual que `src/lazy_loader.jsx`. No hay backend: la URL de Apps Script apunta a una ruta local inexistente y cualquier request a `script.google.com` se aborta y se cuenta (resultado: 0). Workflow: `.github/workflows/qa-juegos-fase1.yml`. Las capturas no se versionan: quedan en la carpeta de salida y, en CI, en el artifact `qa-juegos-fase1-<número de ejecución>`.
 
 ## Resultados (E1 sintética local, Chrome, Windows)
 
-- Unitarias: todo OK. 45 preguntas × 100 intentos: la correcta aparece en A, B, C y D en todas.
-- Interfaz: **249/249 PASS** (`informe_ui.md`). Vocabulary Sprint real, 100 entradas desde el catálogo: A 28 · B 26 · C 19 · D 27. Banco con todas las correctas en A, 100 intentos con "Repetir juego": las 5 preguntas en las 4 posiciones.
+- Unitarias: todo OK. 45 preguntas × 100 intentos: la correcta aparece en A, B, C y D en todas. 10 frases de ordenar × 100 intentos (incluye fichas repetidas, fuente ya ordenada y "Costa Rica" como una ficha): nunca en el orden de la respuesta y siempre las mismas fichas.
+- Interfaz: **254/254 PASS** (`informe_ui.md`). Vocabulary Sprint real, 100 entradas desde el catálogo: A 28 · B 26 · C 19 · D 27. Banco con todas las correctas en A, 100 intentos con "Repetir juego": las 5 preguntas en las 4 posiciones. Ordenar con banco (4 frases × 20 intentos): nunca resuelta al mostrarse, orden estable dentro del intento y distinto al repetir; con fichas repetidas la respuesta se arma y marca correcta.
 - Pareo con textos de 1 a 6 renglones: todas las líneas dentro de ±1.5 px de los bordes reales, también después de redimensionar y hacer scroll.
-- Misma suite sobre `main` (antes): 160/213 en capturas; líneas del pareo desalineadas, fichas invisibles en orden incorrecto, botones de 34–41 px, título del resumen recortado. Capturas `capturas/antes_*.jpg`.
+- Misma suite sobre `main` (antes): 160/213 en capturas; líneas del pareo desalineadas, fichas invisibles en orden incorrecto, botones de 34–41 px, título del resumen recortado. Las capturas del "antes" están en el commit `114a9195` de la rama. La prueba de ordenar sobre ese commit falla: una frase aparece resuelta en los 20 intentos y el orden nunca cambia.
 
 ## Reporte del banco
 
@@ -43,6 +44,5 @@ Para el banco productivo, lo mismo con la pestaña `ACADEMIA_PLAY_BANK` de APOLL
 
 ## Fuera de alcance, para fase 2
 
-- `APOrderRunner` no mezcla fichas: si `WORDS_TO_ORDER` viene vacío o ya ordenado, la respuesta queda a la vista. El reporte lo detecta.
 - `apCorrectIndex` trata una letra vacía o inválida como A, y `apFlowFromBankGame` descarta sin aviso las preguntas con menos de 4 opciones. El reporte lista ambos casos.
 - La franja de pregunta muestra "Pregunta X de N" en grande y la consigna en pequeño; el temporizador es fijo (20 s / 12 s). No se tocaron.

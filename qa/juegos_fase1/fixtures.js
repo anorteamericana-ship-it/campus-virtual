@@ -70,6 +70,10 @@
       items: [
         { play_item_id: 'QA-O1', item_type: 'ORDER', prompt_es: 'Ordená la oración.', stem: 'friend / A / keeps / reliable / promises', words_to_order: 'friend | A | keeps | reliable | promises', correct_sentence: 'A reliable friend keeps promises', explanation_es: 'Adjetivo antes del sustantivo.' },
         { play_item_id: 'QA-O2', item_type: 'ORDER', prompt_es: 'Ordená la oración.', stem: 'honest / I / friends / trust', words_to_order: 'honest | I | friends | trust', correct_sentence: 'I trust honest friends', explanation_es: 'Sujeto + verbo + objeto.' },
+        // Fichas repetidas: dos "the" deben poder usarse en cualquier orden.
+        { play_item_id: 'QA-O3', item_type: 'ORDER', prompt_es: 'Ordená la oración.', stem: 'the / mat / sat / the / on / cat', words_to_order: 'the | mat | sat | the | on | cat', correct_sentence: 'the cat sat on the mat', explanation_es: 'Sujeto + verbo + lugar.' },
+        // Fuente ya ordenada (como en algunas bases pedagógicas): nunca debe mostrarse resuelta.
+        { play_item_id: 'QA-O4', item_type: 'ORDER', prompt_es: 'Ordená la oración.', stem: 'Ordená las palabras.', words_to_order: 'I | like | green | tea', correct_sentence: 'I like green tea', explanation_es: 'Sujeto + verbo + objeto.' },
       ],
     },
   };

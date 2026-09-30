@@ -29,7 +29,7 @@ function seeded(seed) {
 const sorted = list => [...list].map(String).sort().join('\u0001');
 
 // 1) Existen las funciones nuevas y ya no queda la "mezcla" alfabética ni el cálculo fijo de 58 px.
-['apShuffle', 'apShuffleChoiceQuestion', 'apBuildChoiceDeck', 'apBuildMatchDeck', 'apUseAttemptDeck'].forEach(fn => {
+['apShuffle', 'apShuffleChoiceQuestion', 'apBuildChoiceDeck', 'apShuffleOrderQuestion', 'apBuildOrderDeck', 'apBuildMatchDeck', 'apUseAttemptDeck'].forEach(fn => {
   check(`existe ${fn}`, typeof ap[fn] === 'function');
 });
 check('sin apShuffleStatic (orden alfabético)', !/apShuffleStatic/.test(source));
@@ -117,7 +117,49 @@ function choiceFlows() {
   check('pareo de 2: nunca queda cada palabra frente a su pareja', twoAligned === 0);
 }
 
-// 6) Reporte del banco: la muestra sintética (qa/juegos_fase1/banco_muestra.csv) da exactamente los conteos esperados.
+// 6) Ordenar: en 100 intentos las fichas nunca salen en el orden de la respuesta, son siempre las mismas
+//    y las repetidas conservan claves distintas. Incluye fuentes ya ordenadas y fichas de varias palabras.
+{
+  const orderItems = [
+    { play_item_id: 'O1', item_type: 'ORDER', words_to_order: 'the | mat | sat | the | on | cat', correct_sentence: 'the cat sat on the mat' },
+    { play_item_id: 'O2', item_type: 'ORDER', words_to_order: 'I | like | green | tea', correct_sentence: 'I like green tea' },
+    { play_item_id: 'O3', item_type: 'ORDER', words_to_order: '', correct_sentence: 'We study English' },
+    { play_item_id: 'O4', item_type: 'ORDER', words_to_order: 'no | no', correct_sentence: 'no no' },
+    { play_item_id: 'O5', item_type: 'ORDER', words_to_order: 'ok | go', correct_sentence: 'go ok' },
+  ];
+  const flows = [
+    { id: 'sentence_order (local)', flow: ap.AP_FLOWS.sentence_order },
+    { id: 'banco (repetidas, ya ordenada, sin fichas, iguales, 2 fichas)', flow: ap.apFlowFromBankGame({ game_id: 'QA' }, orderItems) },
+  ];
+  let questions = 0; let shownSolved = []; let changedTiles = 0; let dupKeys = 0; let allSameOk = true;
+  for (const { id, flow } of flows) {
+    flow.questions.forEach((q, qi) => {
+      questions += 1;
+      const distinct = new Set(q.words).size > 1;
+      for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+        const s = plain(ap.apShuffleOrderQuestion(q));
+        const words = s.tiles.map(t => t.w);
+        if (sorted(words) !== sorted(q.words)) changedTiles += 1;
+        if (new Set(s.tiles.map(t => t.key)).size !== s.tiles.length) dupKeys += 1;
+        if (distinct && words.join(' ') === q.answer.join(' ')) shownSolved.push(`${id}#${qi + 1}`);
+        if (!distinct && words.join(' ') !== q.words.join(' ')) allSameOk = false;
+      }
+    });
+  }
+  check(`ordenar: ${questions} frases × ${ATTEMPTS} intentos, nunca en el orden de la respuesta`, !shownSolved.length, [...new Set(shownSolved)].join(' | '));
+  check('ordenar: siempre las mismas fichas (repetidas incluidas)', changedTiles === 0, `${changedTiles} errores`);
+  check('ordenar: fichas repetidas con claves distintas', dupKeys === 0, `${dupKeys} errores`);
+  check('ordenar: si todas las fichas son iguales no entra en bucle', allSameOk);
+  const degenerate = plain(ap.apShuffleOrderQuestion({ words: ['a', 'b', 'c'], answer: ['b', 'c', 'a'] }, () => 0));
+  check('ordenar: con un generador que siempre repite, la rotación evita la respuesta', degenerate.tiles.map(t => t.w).join(' ') !== 'b c a', degenerate.tiles.map(t => t.w).join(' '));
+  const multi = plain(ap.apShuffleOrderQuestion(ap.AP_FLOWS.sentence_order.questions[2]));
+  check('ordenar: "Costa Rica" sigue siendo una sola ficha', multi.tiles.filter(t => t.w === 'Costa Rica').length === 1);
+  const perms = new Set();
+  for (let i = 0; i < ATTEMPTS; i++) perms.add(plain(ap.apShuffleOrderQuestion(ap.AP_FLOWS.sentence_order.questions[0])).tiles.map(t => t.w).join(' '));
+  check('ordenar: las fichas cambian entre intentos', perms.size > 20, `${perms.size} órdenes distintos en ${ATTEMPTS}`);
+}
+
+// 7) Reporte del banco: la muestra sintética (qa/juegos_fase1/banco_muestra.csv) da exactamente los conteos esperados.
 {
   const rows = parseCsv(fs.readFileSync('qa/juegos_fase1/banco_muestra.csv', 'utf8'));
   check('CSV: comillas con coma y salto de línea se leen como un solo campo', rows.length === 13 && rows[5].OPTION_D === 'Sí, claro' && rows[0].MINI_TEXT_OR_DIALOGUE.includes('\n'));
