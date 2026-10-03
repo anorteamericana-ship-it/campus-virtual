@@ -150,12 +150,26 @@ function HeroCarousel() {
     </section>
   );
 }
+function nombreSaludoLogin(account) {
+  const preferred = String(account?.nombre_saludo || account?.primer_nombre || '').trim();
+  if (preferred) return preferred.split(/\s+/)[0];
+  const parts = String(account?.nombre || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'de nuevo';
+  // Los estudiantes provenientes de DATOS/TSE se guardan como APELLIDO1 APELLIDO2 NOMBRE(S).
+  // Para otros roles se conserva el orden normal configurado en USUARIOS.
+  if (String(account?.rol || '').toLowerCase() === 'student') {
+    if (parts.length >= 3) return parts[2];
+    if (parts.length === 2) return parts[1];
+  }
+  return parts[0];
+}
+
 function GroupModal({ data, onPick, onCancel }) {
   return (
     <div className="modal-scrim" onClick={onCancel}>
       <div className="modal" onClick={event => event.stopPropagation()}>
         <div className="m-kicker">Selección de grupo</div>
-        <h2>Hola, {data.nombre.split(' ')[0]}</h2>
+        <h2>Hola, {nombreSaludoLogin(data)}</h2>
         <div className="m-sub">Tenés {data.grupos.length} grupos asignados. Elegí con cuál querés trabajar en esta sesión.</div>
         {data.grupos.map((group, index) => (
           <button key={index} className="group-opt" onClick={() => onPick(group)}>
@@ -177,7 +191,7 @@ function RedirectOverlay({ account }) {
     <div className="redirect">
       <div>
         <div className="redirect-loader"><span /><span /><span /></div>
-        <div className="r-title">¡Hola, {(account.nombre || '').split(' ')[0] || 'de nuevo'}!</div>
+        <div className="r-title">¡Hola, {nombreSaludoLogin(account)}!</div>
         <div className="r-sub">{ROLE_LABEL[account.rol] || 'Usuario'} · Entrando al Campus…</div>
       </div>
     </div>

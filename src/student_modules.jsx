@@ -12,14 +12,24 @@
 const SCRIPT_URL_SM = window.APPS_SCRIPT_URL;
 
 // FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
-async function postStudentModules(fn, payload = {}) {
+async function postStudentModules(fn, payload = {}, timeoutMs = 90000) {
   const token = window.getSessionToken ? window.getSessionToken() : '';
-  const res = await fetch(`${SCRIPT_URL_SM}?fn=${encodeURIComponent(fn)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ fn, token, ...payload }),
-  });
-  return await res.json();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${SCRIPT_URL_SM}?fn=${encodeURIComponent(fn)}`, {
+      method: 'POST',
+      headers: { 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ fn, token, ...payload }),
+      signal: controller ? controller.signal : undefined,
+    });
+    return await res.json();
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('La consulta tardó demasiado. Intentá de nuevo.');
+    throw error;
+  } finally {
+    if (timer) window.clearTimeout(timer);
+  }
 }
 
 function _smSafeUserErrorF984(raw, fallback, context = '') {
@@ -889,6 +899,31 @@ function useMisCertificadosEstadoF984(codigo) {
   return { ...state, reload };
 }
 
+const CERT_DOCUMENT_META_F984 = {
+  PROGRAMA_COMPLETO:{ code:'PC', title:'Programa Completo', subtitle:'Título final del programa', color:'#7A1E2C' },
+  INA:{ code:'INA', title:'Certificado INA', subtitle:'Certificación especial INA', color:'#6B4F9B' },
+};
+
+function certDocumentoMetaF984(row) {
+  const nivel = String(row?.nivel || '').trim().toUpperCase();
+  const tipo = String(row?.tipo_documento || '').trim().toUpperCase() || (['B1','B2','I1','I2'].includes(nivel) ? 'NIVEL' : nivel);
+  if (tipo === 'NIVEL') return {
+    tipo,
+    code:nivel,
+    title:NIVEL_NOMBRE_SM[nivel] || nivel,
+    subtitle:NIVEL_LIBRO_SM[nivel] || '',
+    color:NIVEL_COLOR_SM[nivel] || 'var(--an-navy)',
+  };
+  const special = CERT_DOCUMENT_META_F984[tipo] || {};
+  return {
+    tipo,
+    code:special.code || nivel || 'DOC',
+    title:String(row?.titulo || special.title || 'Certificado'),
+    subtitle:String(row?.subtitulo || special.subtitle || 'Documento institucional'),
+    color:special.color || 'var(--an-navy)',
+  };
+}
+
 const CERT_ESTADO_UI_F984 = {
   NO_ELEGIBLE: { label:'Pendiente', fg:'#40516A', bg:'#EEF2F7' },
   CURSANDO_ACTUALMENTE: { label:'Cursando Actualmente', fg:'#805500', bg:'#FFF4D6' },
@@ -917,14 +952,14 @@ function CertificadosView() {
 function CertificadosContenido({ data, codigo }) {
   const rows = Array.isArray(data?.certificados) ? data.certificados : [];
   if (!rows.length) {
-    return <EmptyState icon="🎖️" title="Sin niveles para consultar" subtitle="No fue posible relacionar niveles académicos con tu expediente." />;
+    return <EmptyState icon="🎖️" title="Sin certificados para consultar" subtitle="No fue posible localizar documentos de certificación en tu expediente." />;
   }
   return (
     <>
       <style>{`
         .certificados-grid-f984u {
           display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
+          grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
           gap:14px;
           width:100%;
           align-items:stretch;
@@ -938,11 +973,11 @@ function CertificadosContenido({ data, codigo }) {
         }
       `}</style>
       <div className="certificados-grid-f984u">
-        {rows.map(row => <CertificadoEstadoCardF984 key={row.nivel} row={row} codigo={codigo} />)}
+        {rows.map((row,index) => <CertificadoEstadoCardF984 key={`${row.tipo_documento || 'NIVEL'}-${row.nivel || index}-${row.registro || index}`} row={row} codigo={codigo} />)}
       </div>
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás hacer una consulta?</strong> Contactá al área académica con tu código y nivel.</div>
+          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás hacer una consulta?</strong> Contactá al área académica con tu código y el documento que necesitás.</div>
           <window.ContactoAdmin
             est={Object.assign({}, data?.estudiante || { CODIGO:data?.codigo }, {
               contactos_campus:data?.contactos_campus || {},
@@ -966,13 +1001,17 @@ async function _smSha256HexF984(bytes) {
 async function _smCertificadoPrivadoBlobF984(codigo, row) {
   const nivel = String(row?.nivel || '').trim().toUpperCase();
   const codigoLimpio = String(codigo || '').trim();
-  if (!codigoLimpio || !['B1','B2','I1','I2'].includes(nivel)) {
-    throw new Error('No se pudo identificar el expediente o nivel del certificado.');
+  const tipoDocumento = String(row?.tipo_documento || '').trim().toUpperCase()
+    || (['B1','B2','I1','I2'].includes(nivel) ? 'NIVEL' : nivel);
+  if (!codigoLimpio || !['NIVEL','PROGRAMA_COMPLETO','INA'].includes(tipoDocumento)
+      || (tipoDocumento === 'NIVEL' && !['B1','B2','I1','I2'].includes(nivel))) {
+    throw new Error('No se pudo identificar el expediente o tipo de certificado.');
   }
 
   const r = await postStudentModules('descargarMiCertificadoPrivado', {
     codigo: codigoLimpio,
     nivel,
+    tipo_documento: tipoDocumento,
     registro: row?.registro || '',
     grupo: row?.grupo || row?.cod_grupo || '',
   });
@@ -1012,17 +1051,26 @@ async function _smCertificadoPrivadoBlobF984(codigo, row) {
 }
 
 function CertificadoEstadoCardF984({ row, codigo }) {
+  const docMeta = certDocumentoMetaF984(row);
   const estatusAcademico = String(row.estatus || '').trim().toUpperCase();
   const meta = row.estado === 'NO_ELEGIBLE' && estatusAcademico === 'CA'
     ? CERT_ESTADO_UI_F984.CURSANDO_ACTUALMENTE
     : (CERT_ESTADO_UI_F984[row.estado] || CERT_ESTADO_UI_F984.NO_ELEGIBLE);
-  const checks = [
+  const checks = docMeta.tipo === 'NIVEL' ? [
     ['Estado académico', row.estatus || 'Sin registro'],
     ['Nota', row.nota != null ? `${row.nota}/100` : 'Sin dato'],
     ['Asistencia', row.asistencia_pct != null ? `${row.asistencia_pct}%` : 'Sin dato verificable'],
     ['Morosidad', row.morosidad_verificada ? (row.morosidad ? 'Registra morosidad' : 'Al Día') : 'Sin dato verificable'],
     ['Pago de certificado', row.certificado_pagado ? 'Registrado' : 'No registrado'],
     ['Número oficial', row.registro || 'Sin asignar'],
+  ] : docMeta.tipo === 'PROGRAMA_COMPLETO' ? [
+    ['Documento', 'Título final del programa'],
+    ['Número oficial', row.registro || 'Sin asignar'],
+    ['Archivo', row.pdf_existente ? 'PDF disponible' : 'Pendiente de localizar'],
+  ] : [
+    ['Programa', 'INA'],
+    ['Documento', 'Certificación especial'],
+    ['Archivo', row.pdf_existente ? 'PDF disponible' : 'Pendiente'],
   ];
   const [abriendo, setAbriendo] = React.useState(false);
   const [certError, setCertError] = React.useState('');
@@ -1058,13 +1106,13 @@ function CertificadoEstadoCardF984({ row, codigo }) {
     } finally { setAbriendo(false); }
   };
   return (
-    <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${NIVEL_COLOR_SM[row.nivel] || 'var(--an-navy)'}` }}>
+    <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${docMeta.color}` }}>
       <div style={{ padding:'18px 20px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg,#fff,#FBF8F2)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start' }}>
           <div>
-            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:NIVEL_COLOR_SM[row.nivel] }}>{row.nivel}</div>
-            <h2 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'4px 0 2px', color:'var(--an-navy-ink)' }}>{NIVEL_NOMBRE_SM[row.nivel] || row.nivel}</h2>
-            <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{NIVEL_LIBRO_SM[row.nivel] || ''}</div>
+            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:docMeta.color }}>{docMeta.code}</div>
+            <h2 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'4px 0 2px', color:'var(--an-navy-ink)' }}>{docMeta.title}</h2>
+            <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{docMeta.subtitle}</div>
           </div>
           <span style={{ padding:'5px 9px', borderRadius:999, background:meta.bg, color:meta.fg, fontSize:10, fontWeight:900, textAlign:'center' }}>{meta.label}</span>
         </div>
