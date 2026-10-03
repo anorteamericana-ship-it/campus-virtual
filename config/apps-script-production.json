@@ -14,7 +14,7 @@
     "functionalVerified": false,
     "functionalVerificationNote": "POST-promoción: pull remoto 27/27 idéntico al candidato, 25 JS sin errores de sintaxis, POST 228/228, GET 9/9, smoke público/read-only PASS y descargas privadas sin sesión rechazadas con sesion_requerida. No se ejecutó E2E autenticado con escritura ni FULL_BROWSER_E2E después de @431."
   },
-  "currentMain": "a9b556f16cd86f49a2740f7a308ca8cb075fafb5",
+  "frontendCodeMainAtVerification": "a9b556f16cd86f49a2740f7a308ca8cb075fafb5",
   "frontendHotfixPr": 119,
   "latestFrontendMainPr": 388,
   "notes": [

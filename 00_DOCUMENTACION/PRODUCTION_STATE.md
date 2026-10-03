@@ -30,7 +30,7 @@ Regla futura: si `SpreadsheetApp.openById` devuelve falta de permiso y el error 
 ## Frontend público
 
 - Rama productiva: `main`.
-- `main` vigente al cierre C2-R11: `a9b556f16cd86f49a2740f7a308ca8cb075fafb5`.
+- Baseline de código frontend al momento de la verificación C2-R11: `a9b556f16cd86f49a2740f7a308ca8cb075fafb5`. Los PR operativos/documentales posteriores a ese SHA no deben interpretarse como cambios funcionales del frontend.
 - Último SHA con cambio funcional de frontend verificado públicamente registrado en este documento: `b0bea76990a1cafdf13fb024f728f812298428ed`. No inferir de aquí que los commits posteriores carezcan de QA; este campo solo conserva la última verificación pública documentada en este archivo.
 - PR #118: mergeado; scanner/documentos CONAPE publicados.
 - PR #119: mergeado; hotfix visual de tildes/símbolos del Paso 5 + cache-bust.
