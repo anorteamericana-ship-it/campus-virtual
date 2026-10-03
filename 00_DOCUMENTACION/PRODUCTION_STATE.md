@@ -1,18 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
-Última verificación operativa: **2026-10-03 13:20 -06:00**.
+Última verificación operativa: **2026-10-03 16:10 -06:00**.
 
 ## Apps Script PROD
 
 - Script ID: `1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2`
 - Deployment ID estable: `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`
 - URL estable: `https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec`
-- Versión desplegada: **@431**
-- Versión estable anterior / rollback inmediato: **@430**
-- Release actual: **C2-R10 · promoción modular a PROD · 27 archivos**.
-- Reconciliación de fuente: **C2-R11 · `campus_backend/main` = `2a5be797ab910f90b19d908e206ce4a45298bed4`**, con `prod/` idéntico al pull real de PROD @431.
-- Verificación HTTP/runtime: **PASS**. Root y las 9 rutas GET públicas respondieron HTTP 200/JSON válido; las cuatro descargas privadas rechazaron correctamente una llamada sin sesión con `sesion_requerida`.
-- Límite de evidencia: **no se ejecutó E2E autenticado con escritura ni FULL_BROWSER_E2E después de @431**.
+- Version desplegada: **@432**
+- Version estable anterior / rollback inmediato: **@431**.
+- Release actual: **C2-R12 · Mi Perfil/saludo + inventario dinamico de certificados + Programa Completo/INA**.
+- Reconciliacion backend: **campus_backend/main = f5cd1e8317c77a5c8306c739081bae8cc7496c30**, PR #3 mergeado.
+- Promocion backend: clasp push normal PASS, sin --force; readback remoto 27/27, 25 JS, 0 drift y sintaxis PASS; el mismo Deployment ID estable apunta a **@432**.
+- Frontend C2-R12: PR **#392** mergeado en ddc70655543da160a539faeae7e71740a00e2fe4; Pages y checks de main PASS; el sitio publico sirve los cache-busters C2-R12.
+- Verificacion HTTP/runtime: **PASS** para root de Apps Script y rutas publicas comprobadas; las descargas privadas siguen rechazando sin sesion con sesion_requerida.
+- Limite de evidencia: **falta repetir QA autenticado post-promocion en navegador para Mi Perfil, saludo y quinto certificado; no declarar FULL_BROWSER_E2E ni FULL_E2E todavia**.
 - Excepción procedimental C2-R10: el `clasp push` normal devolvió `Skipping push`; se terminó usando `clasp push --force` desde la carpeta temporal aislada que contenía únicamente el candidato aprobado. El pull post-push dio **0 drift** contra ese candidato. **Esto no modifica la regla general de no usar `--force`; queda registrado como excepción histórica, no como procedimiento recomendado.**
 
 ### Incidente OAuth histórico resuelto durante el release @419
@@ -30,8 +32,8 @@ Regla futura: si `SpreadsheetApp.openById` devuelve falta de permiso y el error 
 ## Frontend público
 
 - Rama productiva: `main`.
-- Baseline de código frontend al momento de la verificación C2-R11: `a9b556f16cd86f49a2740f7a308ca8cb075fafb5`. Los PR operativos/documentales posteriores a ese SHA no deben interpretarse como cambios funcionales del frontend.
-- Último SHA con cambio funcional de frontend verificado públicamente registrado en este documento: `b0bea76990a1cafdf13fb024f728f812298428ed`. No inferir de aquí que los commits posteriores carezcan de QA; este campo solo conserva la última verificación pública documentada en este archivo.
+- Baseline de codigo frontend publicado para C2-R12: ddc70655543da160a539faeae7e71740a00e2fe4 (PR #392).
+- Verificacion de publicacion C2-R12: GitHub Pages success, checks de main success, campus.html y login.html responden HTTP 200 y contienen los nuevos cache-busters. La verificacion funcional autenticada en navegador sigue pendiente.
 - PR #118: mergeado; scanner/documentos CONAPE publicados.
 - PR #119: mergeado; hotfix visual de tildes/símbolos del Paso 5 + cache-bust.
 - PR #115: mergeado después; cambia únicamente documentación/configuración/skills de operación y auditoría, **sin modificar el comportamiento del frontend público**.
