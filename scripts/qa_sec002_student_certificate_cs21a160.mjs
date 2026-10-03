@@ -12,7 +12,7 @@ function check(condition, message) {
 }
 
 check(src.includes('<CertificadosContenido data={data} codigo={codigo} />'), 'student code reaches certificate content');
-check(src.includes('<CertificadoEstadoCardF984 key={row.nivel} row={row} codigo={codigo} />'), 'student code reaches each certificate card');
+check(src.includes('rows.map((row,index) => <CertificadoEstadoCardF984') && src.includes('row={row} codigo={codigo}'), 'student code reaches each certificate card with dynamic document key');
 check(src.includes("postStudentModules('descargarMiCertificadoPrivado'"), 'private certificate endpoint is wired');
 check(src.includes("String(r.mime_type || '').trim().toLowerCase() !== 'application/pdf'"), 'private certificate requires PDF MIME');
 check(src.includes('bytes.length > 2 * 1024 * 1024'), 'private certificate enforces 2 MB client limit');

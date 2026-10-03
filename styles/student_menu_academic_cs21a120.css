@@ -1,10 +1,10 @@
-/* F98.4-Z6-CS21A120 · Menú estudiante con diseño docente. */
+/* F98.4-Z6-CS21A147 · Menú estudiante con aislamiento de rutas custom. */
 .teacher-menu-layout .teacher-sb-section.student-sb-section{color:var(--an-navy-ink,#001E47)}
 .teacher-menu-layout .teacher-sb-item.student-sb-item{min-height:42px}
 .teacher-menu-layout [data-nav-id="recursos_adicionales"] .sb-icon{display:none}
 .teacher-menu-layout [data-nav-id="recursos_adicionales"]::before{content:"▤";width:18px;flex:0 0 18px;text-align:center;font-size:16px;font-weight:950;line-height:1}
 .an-student-academic-route-open .app>.main:not(.an-student-academic-host-cs21a120){display:none!important}
-.app>.an-student-academic-host-cs21a120{grid-column:2;min-width:0;overflow-x:hidden}
+.app>.an-student-academic-host-cs21a120{grid-column:2;min-width:0;min-height:100vh;overflow-x:hidden;position:relative;z-index:1;background:var(--bg,#F7F4EF)}
 .sa120-page{width:100%;max-width:1320px;margin:0 auto;padding:18px 22px 58px}
 .sa120-header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;padding:18px 20px;border:1px solid var(--line,#E5E0D8);border-radius:18px;background:linear-gradient(135deg,#fff,#F8F4EE);box-shadow:var(--sh-1,0 6px 22px rgba(0,0,0,.06))}
 .sa120-eyebrow{color:var(--an-granate,#7A1E2C);font-size:11px;font-weight:950;letter-spacing:.16em;text-transform:uppercase}

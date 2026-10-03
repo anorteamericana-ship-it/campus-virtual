@@ -1,9 +1,9 @@
-// F98.4-Z6-CS21A120 · Menú estudiante con diseño docente y rutas académicas reales.
+// F98.4-Z6-CS21A147 · Menú estudiante: rutas académicas aisladas sin bleed de la vista anterior.
 /* global React, ReactDOM, Sidebar, Icon */
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A120';
+  const VERSION = 'F98.4-Z6-CS21A147';
   const CUSTOM_ROUTES = new Set([
     'perfil_estudiante',
     'info_programa',
@@ -39,6 +39,7 @@
   };
 
   let overlayRoot = null;
+  let overlayBaseMain = null;
   let navigationApi = { setActive:null };
 
   function session(){
@@ -111,7 +112,7 @@
     const link = document.createElement('link');
     link.id = 'an-student-menu-academic-cs21a120-css';
     link.rel = 'stylesheet';
-    link.href = 'styles/student_menu_academic_cs21a120.css?v=F98.4Z6CS21A120';
+    link.href = 'styles/student_menu_academic_cs21a120.css?v=F98.4Z6CS21A147';
     document.head.appendChild(link);
   }
 
@@ -124,6 +125,35 @@
     try { window.dispatchEvent(new CustomEvent('an:student-custom-route-cs21a120', { detail:{ route } })); } catch (_) {}
   }
 
+  function baseMainCS21A147(){
+    const app = document.querySelector('.app');
+    if (!app) return null;
+    if (overlayBaseMain && overlayBaseMain.isConnected) return overlayBaseMain;
+    overlayBaseMain = app.querySelector(':scope > .main:not(.an-student-academic-host-cs21a120)');
+    return overlayBaseMain;
+  }
+
+  function setBaseMainHiddenCS21A147(hidden){
+    const base = baseMainCS21A147();
+    if (!base) return;
+    if (hidden) {
+      if (!base.hasAttribute('data-an-prev-display-cs21a147')) {
+        base.setAttribute('data-an-prev-display-cs21a147', base.style.display || '');
+      }
+      base.hidden = true;
+      base.setAttribute('aria-hidden', 'true');
+      try { base.inert = true; } catch (_) {}
+      base.style.display = 'none';
+      return;
+    }
+    const previous = base.getAttribute('data-an-prev-display-cs21a147');
+    base.hidden = false;
+    base.removeAttribute('aria-hidden');
+    try { base.inert = false; } catch (_) {}
+    base.style.display = previous == null ? '' : previous;
+    base.removeAttribute('data-an-prev-display-cs21a147');
+  }
+
   function overlayHost(){
     let host = document.getElementById('an-student-academic-host-cs21a120');
     if (host) return host;
@@ -132,7 +162,11 @@
     host = document.createElement('main');
     host.id = 'an-student-academic-host-cs21a120';
     host.className = 'main an-student-academic-host-cs21a120';
-    const current = app.querySelector(':scope > .main:not(.an-student-academic-host-cs21a120)');
+    host.style.background = 'var(--bg, #F7F4EF)';
+    host.style.minHeight = '100vh';
+    host.style.position = 'relative';
+    host.style.zIndex = '1';
+    const current = baseMainCS21A147();
     if (current) current.insertAdjacentElement('afterend', host);
     else app.appendChild(host);
     return host;
@@ -145,6 +179,7 @@
       overlayRoot = null;
     }
     document.getElementById('an-student-academic-host-cs21a120')?.remove();
+    setBaseMainHiddenCS21A147(false);
     dispatchRoute('');
     if (!keepHistory && routeFromHash()) {
       try { history.replaceState({},'', '#dashboard'); } catch (_) {}
@@ -162,12 +197,15 @@
   function openOverlay(route, push=true){
     if (!CUSTOM_ROUTES.has(route)) return;
     ensureCss();
+    // Aislar la ruta ANTES de montar su contenido. No dependemos de que el CSS
+    // externo haya terminado de cargar para ocultar la pantalla anterior.
+    setBaseMainHiddenCS21A147(true);
     const host = overlayHost();
-    if (!host) return;
+    if (!host) { setBaseMainHiddenCS21A147(false); return; }
     document.body.classList.add('an-student-academic-route-open');
     document.body.classList.remove('an-mobile-nav-open');
     if (!overlayRoot) overlayRoot = ReactDOM.createRoot(host);
-    overlayRoot.render(<StudentCustomRouteCS21A120 route={route} onNavigate={resolveStandardNavigation}/>);
+    overlayRoot.render(<StudentCustomRouteCS21A120 key={route} route={route} onNavigate={resolveStandardNavigation}/>);
     dispatchRoute(route);
     if (push && routeFromHash() !== route) {
       try { history.pushState({ anStudentAcademic:true, route },'', '#'+route); } catch (_) { location.hash = route; }
@@ -212,7 +250,7 @@
   }
 
   function StudentProfileRouteCS21A120({ onNavigate }){
-    return <section className="sa120-page"><AsyncComponentRoute files={['src/student_modules.jsx?v=F98.4Z6G']} component="PerfilView" props={{onNavigate}}/></section>;
+    return <section className="sa120-page"><AsyncComponentRoute files={['src/student_modules.jsx?v=F98.4Z6CS21A147']} component="PerfilView" props={{onNavigate}}/></section>;
   }
 
   function StudentSummaryRouteCS21A120({ onNavigate }){
