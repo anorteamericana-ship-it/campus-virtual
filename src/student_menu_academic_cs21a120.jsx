@@ -1,11 +1,10 @@
-// F98.4-Z6-CS21A147 · Menú estudiante: rutas académicas aisladas sin bleed de la vista anterior.
+// F98.4-Z6-CS21A148 · Mi Perfil usa router React nativo; overlays quedan para rutas académicas especiales.
 /* global React, ReactDOM, Sidebar, Icon */
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A147';
+  const VERSION = 'F98.4-Z6-CS21A148';
   const CUSTOM_ROUTES = new Set([
-    'perfil_estudiante',
     'info_programa',
     'resumen_academico',
     'syllabus_estudiante',
@@ -112,7 +111,7 @@
     const link = document.createElement('link');
     link.id = 'an-student-menu-academic-cs21a120-css';
     link.rel = 'stylesheet';
-    link.href = 'styles/student_menu_academic_cs21a120.css?v=F98.4Z6CS21A147';
+    link.href = 'styles/student_menu_academic_cs21a120.css?v=F98.4Z6CS21A148';
     document.head.appendChild(link);
   }
 
@@ -418,7 +417,6 @@
   }
 
   function StudentCustomRouteCS21A120({ route, onNavigate }){
-    if(route==='perfil_estudiante')return <StudentProfileRouteCS21A120 onNavigate={onNavigate}/>;
     if(route==='info_programa'){
       const Component=window.ProgramInfoSharedCS21A119;
       return typeof Component==='function'?<Component/>:<ErrorCard text="No pudimos preparar Información General del Programa. Intentá de nuevo."/>;
@@ -452,7 +450,7 @@
 
     const nav=[
       {section:'Principal',items:[
-        {id:'perfil_estudiante',label:'Mi Perfil',icon:'profile',custom:true},
+        {id:'perfil',label:'Mi Perfil',icon:'profile'},
         {id:'info_programa',label:'Información General del Programa',icon:'doc',custom:true},
       ]},
       {section:'Gestión Académica',items:[
