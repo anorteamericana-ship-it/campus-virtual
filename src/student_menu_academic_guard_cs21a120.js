@@ -26,7 +26,7 @@
     loadCss();
     loader.loadOne('src/student_books_proxy_cs21a126.jsx?v=F98.4Z6CS21A127')
       .then(()=>loader.loadOne('src/student_planeamiento_pdf_catalog_cs21a129.js?v=F98.4Z6CS21A130'))
-      .then(()=>loader.loadOne('src/student_content_access_cs21a125.jsx?v=F98.4Z6CS21A129'))
+      .then(()=>loader.loadOne('src/student_content_access_cs21a125.jsx?v=F98.4Z6CS21A149'))
       .then(()=>loader.loadOne('src/student_tasks_menu_cs21a126.js?v=F98.4Z6CS21A127'))
       .then(()=>loader.loadOne('src/student_calendar_cleanup_cs21a126.js?v=F98.4Z6CS21A127'))
       .catch(error=>console.error('CS21A130',error));

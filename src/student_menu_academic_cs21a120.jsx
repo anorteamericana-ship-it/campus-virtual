@@ -195,6 +195,8 @@
 
   function openOverlay(route, push=true){
     if (!CUSTOM_ROUTES.has(route)) return;
+    window.StudentContentAccessCS21A125?.close?.(true);
+    window.StudentTasksMenuCS21A126?.close?.(false);
     ensureCss();
     // Aislar la ruta ANTES de montar su contenido. No dependemos de que el CSS
     // externo haya terminado de cargar para ocultar la pantalla anterior.
@@ -205,10 +207,11 @@
     document.body.classList.remove('an-mobile-nav-open');
     if (!overlayRoot) overlayRoot = ReactDOM.createRoot(host);
     overlayRoot.render(<StudentCustomRouteCS21A120 key={route} route={route} onNavigate={resolveStandardNavigation}/>);
-    dispatchRoute(route);
     if (push && routeFromHash() !== route) {
       try { history.pushState({ anStudentAcademic:true, route },'', '#'+route); } catch (_) { location.hash = route; }
     }
+    dispatchRoute(route);
+    window.dispatchEvent(new Event('an:student-navigation'));
     try { window.scrollTo({top:0,left:0,behavior:'auto'}); } catch (_) { window.scrollTo(0,0); }
   }
 
@@ -246,10 +249,6 @@
     if (state.error) return <ErrorCard text={state.error} onRetry={load}/>;
     const Component = window[component];
     return <Component {...props}/>;
-  }
-
-  function StudentProfileRouteCS21A120({ onNavigate }){
-    return <section className="sa120-page"><AsyncComponentRoute files={['src/student_modules.jsx?v=F98.4Z6CS21A147']} component="PerfilView" props={{onNavigate}}/></section>;
   }
 
   function StudentSummaryRouteCS21A120({ onNavigate }){
@@ -437,20 +436,32 @@
 
   function StudentSidebarCS21A120(props){
     const user=props.usuario||session();
-    const [customActive,setCustomActive]=React.useState(routeFromHash);
+    // The URL is shared by native routes and both academic renderers.
+    const readRoute=()=>{
+      const raw=String(location.hash||'#dashboard').slice(1).split('/')[0];
+      return ({perfil:'dashboard',perfil_estudiante:'dashboard',cronograma_grupo:'mi_curso'})[raw]||raw;
+    };
+    const [activeRoute,setActiveRoute]=React.useState(readRoute);
     navigationApi.setActive=props.setActive;
     React.useEffect(()=>{
-      const handler=event=>setCustomActive(clean(event?.detail?.route));
-      window.addEventListener('an:student-custom-route-cs21a120',handler);
-      return()=>window.removeEventListener('an:student-custom-route-cs21a120',handler);
+      const sync=()=>setActiveRoute(readRoute());
+      const afterClick=()=>queueMicrotask(sync);
+      window.addEventListener('an:student-navigation',sync);
+      window.addEventListener('popstate',sync);
+      window.addEventListener('hashchange',sync);
+      document.addEventListener('click',afterClick,true);
+      sync();
+      return()=>{
+        window.removeEventListener('an:student-navigation',sync);
+        window.removeEventListener('popstate',sync);
+        window.removeEventListener('hashchange',sync);
+        document.removeEventListener('click',afterClick,true);
+      };
     },[]);
-    React.useEffect(()=>{
-      if(customActive&&location.hash==='#dashboard')closeOverlay(true);
-    },[props.active]);
 
     const nav=[
       {section:'Principal',items:[
-        {id:'perfil',label:'Mi Perfil',icon:'profile'},
+        {id:'dashboard',label:'Mi Perfil',icon:'profile'},
         {id:'info_programa',label:'Información General del Programa',icon:'doc',custom:true},
       ]},
       {section:'Gestión Académica',items:[
@@ -479,12 +490,11 @@
     const name=clean(user?.nombre)||'—';
     const initials=name.split(' ').slice(0,2).map(word=>word[0]).join('').toUpperCase()||'AN';
     const code=clean(user?.codigo||user?.CODIGO);
-    const isActive=item=>item.custom?customActive===item.id:(!customActive&&props.active===(item.activeTarget||item.id));
+    const isActive=item=>activeRoute===(item.activeTarget||item.id);
     const go=item=>{
       if(item.mode){try{sessionStorage.setItem('an_resources_panel_mode_cs21a68',item.mode);window.dispatchEvent(new CustomEvent('an:resources-panel-mode',{detail:{mode:item.mode}}));}catch(_){}}
       if(item.custom){openOverlay(item.id,true);return;}
       closeOverlay(true);
-      setCustomActive('');
       if(typeof props.setActive==='function')props.setActive(item.target||item.id);
     };
 
@@ -506,14 +516,17 @@
     ensureCss();
     window.Sidebar=SidebarCS21A120;
     try{Sidebar=SidebarCS21A120;}catch(_){}
-    window.CS21A120_STUDENT_MENU={version:VERSION,open:openOverlay,close:closeOverlay};
+    window.CS21A120_STUDENT_MENU={version:VERSION,open:openOverlay,close:closeOverlay,isCustomRoute:route=>CUSTOM_ROUTES.has(route)};
   }
 
-  window.addEventListener('popstate',()=>{
+  const restoreRoute=()=>{
     const route=routeFromHash();
-    if(route)openOverlay(route,false);
+    const contentRoute=['planeamiento_estudiante','libros_audios_estudiante','recursos_adicionales','plan_estudio_estudiante'].includes(route);
+    if(route&&!contentRoute)openOverlay(route,false);
     else if(document.body.classList.contains('an-student-academic-route-open'))closeOverlay(true);
-  });
+  };
+  window.addEventListener('popstate',restoreRoute);
+  window.addEventListener('hashchange',restoreRoute);
   window.addEventListener('an:session-changed',()=>closeOverlay(true));
   install();
 })();
