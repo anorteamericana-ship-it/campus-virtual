@@ -117,7 +117,7 @@ const STUDENT_ROUTE_ALIASES_F984 = {
   inicio: ['dashboard', null], portal_estudiante: ['dashboard', null], dashboard: ['dashboard', null],
   cronograma_grupo: ['mi_curso', 'cronograma'], materiales: ['mi_curso', 'materiales'], tareas: ['mi_curso', 'tareas'],
   examenes: ['evaluaciones', 'proximas'], notas: ['evaluaciones', 'resultados'], solicitudes_estudiante: ['evaluaciones', 'reposiciones'],
-  info_programa: ['documentos_ayuda', 'programa'], mensajes: ['documentos_ayuda', 'avisos'], perfil: ['documentos_ayuda', 'ayuda'],
+  info_programa: ['documentos_ayuda', 'programa'], mensajes: ['documentos_ayuda', 'avisos'], perfil: ['perfil', null], perfil_estudiante: ['perfil', null],
   pagos: ['pagos', null], certificados: ['certificados', null], ican: ['ican', null],
   academia_play: ['academia_play', null], play: ['academia_play', null],
   mi_curso: ['mi_curso', null], evaluaciones: ['evaluaciones', null], documentos_ayuda: ['documentos_ayuda', null],
@@ -941,6 +941,7 @@ function App() {
       ican: <LazyRoute title="Club I CAN" component="ICANViewNew" files={F96_LAZY.syllabus_views} toast={toast} role="student" />,
       pagos: <LazyRoute title="Pagos y estado de cuenta" component="PagosView" files={F96_LAZY.student_modules} />,
       certificados: <LazyRoute title="Certificados" component="CertificadosView" files={F96_LAZY.student_modules} />,
+      perfil: <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} onNavigate={navigateTo} />,
       documentos_ayuda: <LazyRoute title="Documentos y ayuda" component="StudentDocumentsHelpView" files={F96_LAZY.student_documents}
         initialTab={studentDocsTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('documentos_ayuda', tab)} />,
       academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
