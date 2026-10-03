@@ -1,19 +1,21 @@
 # CAMPUS VIRTUAL · Estado de producción
 
-Última verificación operativa: **2026-08-21 18:57 -06:00**.
+Última verificación operativa: **2026-10-03 13:20 -06:00**.
 
 ## Apps Script PROD
 
 - Script ID: `1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2`
 - Deployment ID estable: `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`
 - URL estable: `https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec`
-- Versión desplegada: **@419**
-- Versión estable anterior: **@417**
-- @418: histórica/no productiva; no usar como base por intuición.
-- Release asociado: PR #118 · documentos CONAPE privados + scanner.
-- Verificación HTTP: **200**. La redirección 302 a `script.googleusercontent.com` es normal para Web Apps de Apps Script.
+- Versión desplegada: **@431**
+- Versión estable anterior / rollback inmediato: **@430**
+- Release actual: **C2-R10 · promoción modular a PROD · 27 archivos**.
+- Reconciliación de fuente: **C2-R11 · `campus_backend/main` = `2a5be797ab910f90b19d908e206ce4a45298bed4`**, con `prod/` idéntico al pull real de PROD @431.
+- Verificación HTTP/runtime: **PASS**. Root y las 9 rutas GET públicas respondieron HTTP 200/JSON válido; las cuatro descargas privadas rechazaron correctamente una llamada sin sesión con `sesion_requerida`.
+- Límite de evidencia: **no se ejecutó E2E autenticado con escritura ni FULL_BROWSER_E2E después de @431**.
+- Excepción procedimental C2-R10: el `clasp push` normal devolvió `Skipping push`; se terminó usando `clasp push --force` desde la carpeta temporal aislada que contenía únicamente el candidato aprobado. El pull post-push dio **0 drift** contra ese candidato. **Esto no modifica la regla general de no usar `--force`; queda registrado como excepción histórica, no como procedimiento recomendado.**
 
-### Incidente OAuth resuelto durante el release @419
+### Incidente OAuth histórico resuelto durante el release @419
 
 Después del primer movimiento a @419, login y verificación de cédula devolvieron un error real de backend:
 
@@ -28,7 +30,8 @@ Regla futura: si `SpreadsheetApp.openById` devuelve falta de permiso y el error 
 ## Frontend público
 
 - Rama productiva: `main`.
-- Último SHA con cambio funcional de frontend verificado públicamente: `b0bea76990a1cafdf13fb024f728f812298428ed`.
+- `main` vigente al cierre C2-R11: `a9b556f16cd86f49a2740f7a308ca8cb075fafb5`.
+- Último SHA con cambio funcional de frontend verificado públicamente registrado en este documento: `b0bea76990a1cafdf13fb024f728f812298428ed`. No inferir de aquí que los commits posteriores carezcan de QA; este campo solo conserva la última verificación pública documentada en este archivo.
 - PR #118: mergeado; scanner/documentos CONAPE publicados.
 - PR #119: mergeado; hotfix visual de tildes/símbolos del Paso 5 + cache-bust.
 - PR #115: mergeado después; cambia únicamente documentación/configuración/skills de operación y auditoría, **sin modificar el comportamiento del frontend público**.

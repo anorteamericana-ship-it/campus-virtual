@@ -91,6 +91,8 @@ Para crear una versión inmutable:
 No usar `clasp push --force`.
 No usar `clasp push --watch` como mecanismo de release: deja el proceso escuchando cambios y agrega riesgo innecesario.
 
+**Excepción histórica C2-R10 (2026-10-03):** el `clasp push` normal devolvió `Skipping push` durante la promoción modular de 27 archivos. Se usó `--force` únicamente desde una carpeta temporal aislada que contenía el candidato aprobado; el pull remoto posterior coincidió 27/27 y arrojó 0 drift. Registrar esta excepción evita ocultar el procedimiento real, pero **no la convierte en patrón permitido**: antes de repetirla debe diagnosticarse por qué `clasp` considera que no hay cambios y preferirse un mecanismo que conserve la prohibición de `--force`.
+
 ### Flujo obligatorio
 
 1. verificar sesión `clasp` y CLI;
