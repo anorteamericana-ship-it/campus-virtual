@@ -4243,6 +4243,93 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
 
   const [gen, setGen] = React.useState({});
   const [res, setRes] = React.useState({});
+  const [matFirmada, setMatFirmada] = React.useState({ loading:true, existe:false, nombre:'', fecha:'' });
+  const [matFirmadaBusy, setMatFirmadaBusy] = React.useState('');
+  const matFirmadaInputRef = React.useRef(null);
+  const codigoMatFirmada = String(est.codigo || est.rec_m || '').trim();
+  const cedulaMatFirmada = String(est.cedula || est.identificacion || est.NUM_CEDULA || detalle?.cedula || detalle?.NUM_CEDULA || '').trim();
+
+  const refrescarMatriculaFirmada = React.useCallback(async () => {
+    if (!cedulaMatFirmada) {
+      setMatFirmada({ loading:false, existe:false, nombre:'', fecha:'' });
+      return;
+    }
+    setMatFirmada(prev => ({ ...prev, loading:true }));
+    try {
+      const r = await postAdminStudents('getProspectoDetalle', { cedula:cedulaMatFirmada }, 45000);
+      const m = r?.matricula_firmada || {};
+      setMatFirmada({ loading:false, existe:!!m.existe, nombre:String(m.nombre || ''), fecha:String(m.fecha || '') });
+    } catch (_) {
+      setMatFirmada(prev => ({ ...prev, loading:false }));
+    }
+  }, [cedulaMatFirmada, codigoMatFirmada]);
+
+  React.useEffect(() => { refrescarMatriculaFirmada(); }, [refrescarMatriculaFirmada]);
+
+  const abrirMatriculaFirmadaAdmin = async () => {
+    if (!codigoMatFirmada || !cedulaMatFirmada || matFirmadaBusy) return;
+    setMatFirmadaBusy('OPEN');
+    try {
+      const r = await postAdminStudents('descargarMatriculaFirmadaPrivada', {
+        cedula:cedulaMatFirmada,
+        codigo:codigoMatFirmada,
+        file_id:'',
+      }, 70000);
+      if (!r?.ok || !abrirPdfBackend({ pdf_base64:r.data_base64, pdf_mime:r.mime_type || 'application/pdf' })) {
+        throw new Error(r?.mensaje || r?.error || 'No se pudo abrir la matrícula firmada.');
+      }
+    } catch (e) {
+      alert(adminStudentsSafeUserError(e?.message, 'No se pudo abrir la matrícula firmada.', 'abrir_matricula_firmada_admin'));
+    } finally { setMatFirmadaBusy(''); }
+  };
+
+  const seleccionarReemplazoFirmadoAdmin = () => {
+    if (!codigoMatFirmada || !cedulaMatFirmada) {
+      alert('El estudiante debe tener código y cédula para registrar una matrícula firmada.');
+      return;
+    }
+    const texto = matFirmada.existe
+      ? 'Se registrará una nueva versión firmada como vigente. La versión anterior se conservará en el histórico. ¿Continuar?'
+      : 'Se registrará este PDF como matrícula firmada vigente. ¿Continuar?';
+    if (!window.confirm(texto)) return;
+    matFirmadaInputRef.current?.click();
+  };
+
+  const subirReemplazoFirmadoAdmin = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!(/pdf/i.test(file.type || '') || /[.]pdf$/i.test(file.name || ''))) {
+      alert('Solo se permite un PDF firmado.');
+      return;
+    }
+    if (file.size > 9 * 1024 * 1024) {
+      alert('El PDF supera los 9 MB.');
+      return;
+    }
+    setMatFirmadaBusy('UPLOAD');
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      const r = await postAdminStudents('subirMatriculaFirmadaVentas', {
+        cedula:cedulaMatFirmada,
+        codigo:codigoMatFirmada,
+        nivel:nivelActivo || 'B1',
+        nombre_archivo:file.name,
+        mime_type:file.type || 'application/pdf',
+        base64,
+      }, 90000);
+      if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo registrar la nueva versión firmada.');
+      setMatFirmada({ loading:false, existe:true, nombre:String(r.nombre || file.name), fecha:'' });
+      alert('Nueva versión firmada registrada como vigente. El histórico anterior se conserva.');
+    } catch (e2) {
+      alert(adminStudentsSafeUserError(e2?.message, 'No se pudo registrar la matrícula firmada.', 'subir_matricula_firmada_admin'));
+    } finally { setMatFirmadaBusy(''); }
+  };
 
   const generarDocumentoComun = async (tipo) => {
     if (gen[tipo]) return;
@@ -4398,6 +4485,34 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
             </div>
           );
         })}
+
+        <div style={{ border:'2px solid #0B4A7D', borderRadius:'var(--r-lg, 12px)', padding:'16px 18px', background:'color-mix(in srgb, #0B4A7D 4%, white)' }}>
+          <input ref={matFirmadaInputRef} type="file" accept="application/pdf,.pdf" style={{ display:'none' }} onChange={subirReemplazoFirmadoAdmin} />
+          <div style={{ display:'grid', gridTemplateColumns:'40px 1fr auto', gap:12, alignItems:'flex-start' }}>
+            <div style={{ width:40, height:40, borderRadius:'var(--r-md, 8px)', background:'color-mix(in srgb, #0B4A7D 15%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}><span aria-hidden="true">PDF</span></div>
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, marginBottom:3 }}>Matrícula firmada vigente</div>
+              <div style={{ fontSize:11, color:'var(--ink-3, #777)', lineHeight:1.45 }}>
+                {matFirmada.loading
+                  ? 'Consultando expediente…'
+                  : matFirmada.existe
+                    ? <>Documento firmado registrado{matFirmada.fecha ? <> · {matFirmada.fecha}</> : ''}. Admin puede sustituirlo cuando cambien fechas, horario, docente u otra condición real; el histórico se conserva.</>
+                    : 'Todavía no existe un PDF firmado registrado para este estudiante.'}
+              </div>
+              {matFirmada.nombre ? <div style={{ marginTop:6, fontSize:10.5, color:'#0B4A7D', fontWeight:700 }}>{matFirmada.nombre}</div> : null}
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'stretch' }}>
+              {matFirmada.existe ? (
+                <button type="button" disabled={!!matFirmadaBusy} onClick={abrirMatriculaFirmadaAdmin} style={{ padding:'8px 12px', borderRadius:'var(--r-md, 8px)', border:'2px solid #0B4A7D', background:'#0B4A7D', color:'white', fontWeight:800, fontSize:10.5, cursor:matFirmadaBusy?'wait':'pointer' }}>
+                  {matFirmadaBusy === 'OPEN' ? 'Abriendo…' : 'Ver firmado'}
+                </button>
+              ) : null}
+              <button type="button" disabled={!!matFirmadaBusy || !codigoMatFirmada || !cedulaMatFirmada} onClick={seleccionarReemplazoFirmadoAdmin} style={{ padding:'7px 10px', borderRadius:'var(--r-md, 8px)', border:'1px solid #0B4A7D', background:'white', color:'#0B4A7D', fontWeight:800, fontSize:10.5, cursor:matFirmadaBusy?'wait':'pointer' }}>
+                {matFirmadaBusy === 'UPLOAD' ? 'Subiendo…' : (matFirmada.existe ? 'Reemplazar firmado' : 'Subir firmado')}
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div style={{ border:`2px solid ${certColor}`, borderRadius:'var(--r-lg, 12px)', padding:'16px 18px', background:`color-mix(in srgb, ${certColor} 4%, white)` }}>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12, alignItems:'center' }}>

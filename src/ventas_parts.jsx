@@ -312,16 +312,15 @@ function vxDriveCandidates(url) {
   }
   return [...new Set(list.filter(Boolean))];
 }
-function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
+function VxDocPhoto({ src, cap, onView }) {
   const [idx, setIdx] = React.useState(0);
-  React.useEffect(() => { setIdx(0); }, [src]);   // reset al cambiar de prospecto
+  React.useEffect(() => { setIdx(0); }, [src]);
   const cands = vxDriveCandidates(src);
   if (idx >= cands.length) {
     return (
       <div className="vx-doc-empty">
-        <div className="vx-doc-ph">Foto no disponible</div>
-        <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
-        <button className="vx-mini-btn" onClick={() => onSubirManual(docKey, cap)}>Subir manualmente</button>
+        <div className="vx-doc-ph">No se pudo previsualizar</div>
+        <div className="vx-doc-cap">{cap}</div>
       </div>
     );
   }
@@ -334,14 +333,13 @@ function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
   );
 }
 
-function DocsBlock({ detalle, onView, onSubirManual }) {
-  // SEC-002 CS21A174: se conserva el consumidor legacy FOTO_* hasta que exista
-  // entrega privada específica de identidad/título. El mapa FILE_ID solo evita
-  // presentar como ausente un archivo que el backend ya tiene registrado.
+function DocsBlock({ detalle, onView, onOpenPrivate, openingPrivate }) {
+  // C2-R14: FILE_ID canónico tiene prioridad. El vendedor abre el documento
+  // mediante entrega privada autenticada; nunca recibe un enlace de Drive.
   const docs = [
-    ['foto_ced_frente', 'Cédula · frente'],
-    ['foto_ced_dorso',  'Cédula · dorso'],
-    ['foto_titulo',     'Título'],
+    ['foto_ced_frente', 'Cédula · frente', 'CEDULA_FRENTE'],
+    ['foto_ced_dorso',  'Cédula · dorso',  'CEDULA_DORSO'],
+    ['foto_titulo',     'Título',           'TITULO'],
   ];
   const privateKeysByLegacy = {
     foto_ced_frente: ['ced_frente_file_id','doc_identidad_file_id'],
@@ -350,29 +348,34 @@ function DocsBlock({ detalle, onView, onSubirManual }) {
   };
   return (
     <div className="vx-docs">
-      {docs.map(([key, cap]) => {
+      {docs.map(([key, cap, tipo]) => {
         const src = detalle[key];
         const privateKeys = privateKeysByLegacy[key] || [];
         const privateFileId = privateKeys.map(k => String(detalle[k] || '').trim()).find(Boolean) || '';
-        if (src) {
-          return <VxDocPhoto key={key} src={src} cap={cap} docKey={key} onView={onView} onSubirManual={onSubirManual} />;
-        }
-        if (privateFileId) {
+        const legacyInline = /^data:/i.test(String(src || '').trim());
+        const canOpenPrivate = !!privateFileId || (!!src && !legacyInline);
+        if (canOpenPrivate) {
+          const opening = openingPrivate === tipo;
           return (
             <div key={key} className="vx-doc-empty" data-private-document="true">
-              <div className="vx-doc-ph">Archivo guardado</div>
+              <div className="vx-doc-ph">{opening ? 'Verificando…' : 'Archivo privado'}</div>
               <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
-              <div style={{ fontSize: 11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35 }}>
-                Documento privado registrado
-              </div>
+              <button
+                type="button"
+                className="vx-mini-btn"
+                disabled={!!openingPrivate}
+                onClick={() => onOpenPrivate(tipo, cap)}
+              >
+                {opening ? 'Abriendo…' : 'Ver documento'}
+              </button>
             </div>
           );
         }
+        if (src) return <VxDocPhoto key={key} src={src} cap={cap} onView={onView} />;
         return (
           <div key={key} className="vx-doc-empty">
-            <div className="vx-doc-ph">Sin archivo</div>
-            <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
-            <button className="vx-mini-btn" onClick={() => onSubirManual(key, cap)}>Subir manualmente</button>
+            <div className="vx-doc-ph">Sin archivo registrado</div>
+            <div className="vx-doc-cap">{cap}</div>
           </div>
         );
       })}

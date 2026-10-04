@@ -28,53 +28,68 @@ function vxSafeUserError(raw, fallback, context = '') {
 // deshabilitado con el mensaje "Falta adjuntar el Reglamento Estudiantil al
 // proyecto.". Cuando se suba el archivo (p. ej. assets/docs/reglamento_estudiantil.pdf),
 // poné su ruta acá y el botón se habilita automáticamente. NO se inventa archivo.
-const REGLAMENTO_URL = '';
+const REGLAMENTO_URL = 'https://drive.google.com/file/d/1K_yZjUpiPF6MtXgapeFq7J314qqPQ-Ei/view';
 
-// VENTAS-DASHBOARD-002 · Sección "Documentos del estudiante" DENTRO del drawer.
-// Bloqueada hasta que el estudiante esté MATRICULADO (admin aplicó la matrícula).
-// 3 botones: Hoja de matrícula (CERTIFICADO) · Carta de no deuda CONAPE (MATRICULA_2)
-// · Reglamento estudiantil (archivo estático). Reutiliza el endpoint SEGURO
-// generarDocumentoVentasSeguro; NUNCA llama generarDocumento directo.
+// C2-R14 · Documentos del estudiante dentro del drawer de Ventas.
+// Con código real: antes de la firma, Hoja de matrícula + Reglamento + carga firmada.
+// Después de la primera firma: consulta/reenvío solamente. Carta No Deuda es Admin.
+// La hoja usa generarDocumentoVentasSeguro, wrapper del generador canónico de Admin.
 function DocsEstudianteVentas({ detalle, demo, onToast }) {
-  const [busy, setBusy] = vUseState('');     // '' | 'CERTIFICADO' | 'CARTA' | upload/notificaciones
+  const [busy, setBusy] = vUseState('');
   const [err, setErr] = vUseState('');
   const [signedDoc, setSignedDoc] = vUseState(null);
   const [openingSigned, setOpeningSigned] = vUseState(false);
   const signedFileRef = React.useRef(null);
+
   const d = detalle || {};
   const est = window.calcularEstadoEstudianteVentas(d);
-  const matriculado = est.estado === 'MATRICULADO';
   const codigo = String(d.codigo || d.codigo_estudiante || d.CODIGO_ESTUDIANTE || d.rec_m || '').trim();
-  const puedeSubirFirmada = !!codigo;
+  const matriculado = !!codigo || est.estado === 'MATRICULADO';
   const nivel = d.nivel || d.NIVEL || 'B1';
   const cedulaDoc = d.cedula || d.CEDULA || '';
   const correoDoc = String(d.correo || d.email || d.CORREO || d.EMAIL || d.correo_electronico || d.CORREO_ELECTRONICO || '').trim();
   const waNumDoc = waDigits(d.whatsapp || d.WHATSAPP || d.telefono || d.TELEFONO || d.tel1 || d.TEL1 || d.telefono1 || d.TELEFONO_1 || '');
+  const firmadoBackend = d.matricula_firmada || {};
+  const signedExists = !!((signedDoc && signedDoc.file_id) || firmadoBackend.existe);
+  const puedePreparar = !!codigo && !signedExists;
 
-  const generar = async (btn, tipo, msgFalla) => {
-    if (busy) return;
-    setBusy(btn); setErr('');
+  const generarHoja = async () => {
+    if (busy || !puedePreparar) return;
+    setBusy('CERTIFICADO'); setErr('');
     try {
       if (demo) {
         await sleep(700);
-        onToast && onToast({ tipo: 'ok', msg: 'Vista previa: documento de ejemplo (no se genera en modo demo).' });
+        onToast && onToast({ tipo:'ok', msg:'Vista previa: no se genera documento real.' });
         return;
       }
-      const r = await window.generarDocumentoVentasSeguro({ cedula: d.cedula, codigo, nivel, tipo });
-      if (r && r.ok && r.url) {
+      const r = await window.generarDocumentoVentasSeguro({
+        cedula:cedulaDoc,
+        codigo,
+        nivel,
+        tipo:'CERTIFICADO',
+      });
+      if (r?.ok && r.url) {
         window.open(r.url, '_blank', 'noopener');
-        onToast && onToast({ tipo: 'ok', msg: 'Documento generado correctamente.' });
+        onToast && onToast({ tipo:'ok', msg:'Hoja de matrícula generada correctamente.' });
       } else {
-        const m = vxSafeUserError(r && (r.mensaje || r.error), msgFalla, `documento:${tipo}`);
-        setErr(m); onToast && onToast({ tipo: 'err', msg: m });
+        const m = vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo generar la hoja de matrícula.', 'documento:CERTIFICADO');
+        setErr(m); onToast && onToast({ tipo:'err', msg:m });
       }
     } catch (_) {
-      setErr(msgFalla); onToast && onToast({ tipo: 'err', msg: msgFalla });
+      const m = 'No se pudo generar la hoja de matrícula.';
+      setErr(m); onToast && onToast({ tipo:'err', msg:m });
     } finally { setBusy(''); }
   };
 
   const pickSigned = () => {
-    if (!puedeSubirFirmada) { onToast && onToast({ tipo:'err', msg:'El estudiante debe tener código real para adjuntar la matrícula firmada.' }); return; }
+    if (!codigo) {
+      onToast && onToast({ tipo:'err', msg:'El estudiante debe tener código real para adjuntar la matrícula firmada.' });
+      return;
+    }
+    if (signedExists) {
+      onToast && onToast({ tipo:'err', msg:'La matrícula firmada ya está registrada. Ventas solo puede consultarla.' });
+      return;
+    }
     signedFileRef.current?.click();
   };
 
@@ -82,25 +97,25 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    const isPdf = /pdf/i.test(file.type || '') || /\.pdf$/i.test(file.name || '');
+    const isPdf = /pdf/i.test(file.type || '') || /.pdf$/i.test(file.name || '');
     if (!isPdf) { onToast && onToast({ tipo:'err', msg:'Solo se permite subir PDF firmado.' }); return; }
     if (file.size > 9 * 1024 * 1024) { onToast && onToast({ tipo:'err', msg:'El PDF supera los 9 MB.' }); return; }
     setBusy('UPLOAD_SIGNED'); setErr('');
     try {
       const base64 = await window.fileToBase64V(file);
       const r = demo
-        ? (await sleep(700), { ok:true, url:'#demo', nombre:file.name, file_id:'demo' })
+        ? (await sleep(700), { ok:true, nombre:file.name, file_id:'demo' })
         : await window.subirMatriculaFirmadaVentasSeguro({
-            cedula: cedulaDoc,
+            cedula:cedulaDoc,
             codigo,
             nivel,
-            nombre_archivo: file.name,
-            mime_type: file.type || 'application/pdf',
+            nombre_archivo:file.name,
+            mime_type:file.type || 'application/pdf',
             base64,
           });
-      if (r && r.ok) {
+      if (r?.ok) {
         setSignedDoc(r);
-        onToast && onToast({ tipo:'ok', msg:'Matrícula firmada adjuntada al expediente.' });
+        onToast && onToast({ tipo:'ok', msg:'Matrícula firmada registrada. A partir de ahora queda en modo consulta.' });
       } else {
         const m = vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo subir la matrícula firmada.', 'subir_matricula_firmada');
         setErr(m); onToast && onToast({ tipo:'err', msg:m });
@@ -112,10 +127,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   };
 
   const openSignedPrivate = async () => {
-    // C2-R13: if this drawer was reopened, signedDoc is null even when Drive
-    // already has a signed enrollment. The backend accepts an empty file_id
-    // and resolves the latest authorized PDF for this student.
-    if (openingSigned || !puedeSubirFirmada) return;
+    if (openingSigned || !codigo || !signedExists) return;
     if (demo) {
       onToast && onToast({ tipo:'ok', msg:'Vista previa: la apertura privada requiere una sesión real.' });
       return;
@@ -131,16 +143,17 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
     }
     try {
       const r = await window.descargarMatriculaFirmadaPrivadaVentasSeguro({
-        cedula: cedulaDoc,
+        cedula:cedulaDoc,
         codigo,
-        file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
+        file_id:signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
       });
       if (!r?.ok || !r.blob) throw new Error(vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir la matrícula firmada.', 'abrir_matricula_firmada'));
       const objectUrl = URL.createObjectURL(r.blob);
       if (preview && !preview.closed) preview.location.replace(objectUrl);
       else {
         const a = document.createElement('a');
-        a.href = objectUrl; a.download = r.nombre || 'matricula_firmada.pdf';
+        a.href = objectUrl;
+        a.download = r.nombre || 'matricula_firmada.pdf';
         document.body.appendChild(a); a.click(); a.remove();
       }
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
@@ -152,66 +165,49 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   };
 
   const notifySigned = async (canal) => {
-    if (!puedeSubirFirmada) return;
+    if (!codigo || !signedExists || busy) return;
     if (canal === 'whatsapp') {
-      if (!(signedDoc && signedDoc.file_id)) { onToast && onToast({ tipo:'err', msg:'Primero subí el PDF firmado al expediente.' }); return; }
-      if (!waNumDoc) { onToast && onToast({ tipo:'err', msg:'Este estudiante no tiene WhatsApp/teléfono registrado.' }); return; }
-      const msg = 'Hola. Tu documento de matrícula firmado de Academia Norteamericana ya está disponible de forma privada en el Campus Virtual, en Documentos y ayuda. También podemos enviártelo adjunto por correo.';
-      window.open(`https://wa.me/${waNumDoc}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+      if (!waNumDoc) {
+        onToast && onToast({ tipo:'err', msg:'Este estudiante no tiene WhatsApp/teléfono registrado.' });
+        return;
+      }
+      const msg = 'Hola. Tu documento de matrícula firmado y el Reglamento Estudiantil de Academia Norteamericana están listos. La matrícula firmada también está disponible de forma privada en el Campus Virtual.';
+      window.open('https://wa.me/' + waNumDoc + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
       return;
     }
-    setBusy(canal === 'correo' ? 'EMAIL_SIGNED' : 'ALERT_SIGNED'); setErr('');
+    setBusy(canal === 'correo' ? 'EMAIL_SIGNED' : 'ALERT_SIGNED');
+    setErr('');
     try {
       const r = demo
         ? (await sleep(500), { ok:true })
         : await window.notificarMatriculaFirmadaVentasSeguro({
-            cedula: cedulaDoc,
+            cedula:cedulaDoc,
             codigo,
             canal,
-            file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
-            email: correoDoc,
+            file_id:signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
+            email:correoDoc,
           });
-      if (r && r.ok) {
-        onToast && onToast({ tipo:'ok', msg: canal === 'correo' ? 'Correo enviado.' : 'Alerta del campus creada.' });
+      if (r?.ok) {
+        onToast && onToast({
+          tipo:'ok',
+          msg: canal === 'correo'
+            ? 'Correo enviado con matrícula firmada y Reglamento Estudiantil.'
+            : 'Alerta del campus creada.',
+        });
       } else {
-        const m = vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar la notificación.', `notificar_matricula:${canal}`);
+        const m = vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar el documento.', 'notificar_matricula:' + canal);
         setErr(m); onToast && onToast({ tipo:'err', msg:m });
       }
     } catch (_) {
-      const m = 'Error enviando notificación.';
+      const m = 'Error enviando el documento.';
       setErr(m); onToast && onToast({ tipo:'err', msg:m });
     } finally { setBusy(''); }
   };
 
-  const SignedUploadBlock = () => (
-    <div className="vx-docest-signed" style={{ marginTop: 12, borderTop: '1px dashed var(--v-line)', paddingTop: 12 }}>
-      <input ref={signedFileRef} type="file" accept="application/pdf,.pdf" style={{ display:'none' }} onChange={uploadSigned} />
-      <div className="vx-docest-sub" style={{ marginBottom: 8 }}>
-        Adjuntá aquí el PDF ya firmado digitalmente para dejarlo en el expediente del estudiante.
-      </div>
-      <div className="vx-docest-btns">
-        <button className="vx-btn vx-btn-navy" disabled={!!busy || !puedeSubirFirmada} onClick={pickSigned}>
-          {busy === 'UPLOAD_SIGNED' ? <><span className="vx-spin" /> Subiendo…</> : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
-        </button>
-        {puedeSubirFirmada ? (
-          <button type="button" className="vx-btn vx-btn-ghost" disabled={openingSigned} onClick={openSignedPrivate} style={{ justifyContent:'center' }}>
-            {openingSigned ? <><span className="vx-spin dark" /> Verificando…</> : <><window.Vico d={window.VI.doc} size={14} /> Ver firmado</>}
-          </button>
-        ) : null}
-      </div>
-      {signedDoc && signedDoc.file_id ? (
-        <div className="vx-docest-btns" style={{ marginTop: 8 }}>
-          <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('correo')}>
-            {busy === 'EMAIL_SIGNED' ? <><span className="vx-spin dark" /> Enviando…</> : <>Enviar correo</>}
-          </button>
-          <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('whatsapp')}>WhatsApp</button>
-          <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('campus')}>
-            {busy === 'ALERT_SIGNED' ? <><span className="vx-spin dark" /> Creando…</> : <>Alerta campus</>}
-          </button>
-        </div>
-      ) : null}
-      {!codigo ? <div className="vx-docest-note">La subida firmada requiere código de estudiante real.</div> : null}
-    </div>
+  const ReglamentoButton = () => (
+    <a className="vx-btn vx-btn-ghost" href={REGLAMENTO_URL} target="_blank" rel="noopener" style={{ textDecoration:'none', justifyContent:'center' }}>
+      <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
+    </a>
   );
 
   return (
@@ -220,35 +216,66 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
       {!matriculado ? (
         <div className="vx-docest-lock">
           <window.Vico d={window.VI.shield} size={15} />
-          <span>Los documentos estarán disponibles cuando el estudiante esté matriculado.</span>
+          <span>Los documentos estarán disponibles cuando exista un código de estudiante real.</span>
         </div>
       ) : (
         <React.Fragment>
           <div className="vx-docest-sub">
-            Estudiante matriculado{codigo ? <> · código <b style={{ fontFamily: 'var(--f-mono, monospace)' }}>{codigo}</b></> : ''}. Generá y compartí sus documentos.
+            Estudiante matriculado · código <b style={{ fontFamily:'var(--f-mono, monospace)' }}>{codigo}</b>.
+            {signedExists ? <> La matrícula firmada ya está registrada y Ventas queda en modo consulta.</> : null}
           </div>
+
+          <input ref={signedFileRef} type="file" accept="application/pdf,.pdf" style={{ display:'none' }} onChange={uploadSigned} />
+
           <div className="vx-docest-btns">
-            <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={() => generar('CERTIFICADO', 'CERTIFICADO', 'No se pudo generar la hoja de matrícula.')}>
-              {busy === 'CERTIFICADO' ? <><span className="vx-spin" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Hoja de matrícula</>}
-            </button>
-            <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => generar('CARTA', 'MATRICULA_2', 'No se pudo generar la carta de no deuda.')}>
-              {busy === 'CARTA' ? <><span className="vx-spin dark" /> Generando…</> : <><window.Vico d={window.VI.doc} size={14} /> Carta de no deuda (CONAPE)</>}
-            </button>
-            {REGLAMENTO_URL ? (
-              <a className="vx-btn vx-btn-ghost" href={REGLAMENTO_URL} target="_blank" rel="noopener" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-                <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
-              </a>
-            ) : (
-              <button className="vx-btn vx-btn-ghost" disabled title="Reglamento no disponible">
-                <window.Vico d={window.VI.doc} size={14} /> Reglamento estudiantil
+            {puedePreparar ? (
+              <button className="vx-btn vx-btn-navy" disabled={!!busy} onClick={generarHoja}>
+                {busy === 'CERTIFICADO'
+                  ? <><span className="vx-spin" /> Generando…</>
+                  : <><window.Vico d={window.VI.doc} size={14} /> Hoja de matrícula</>}
               </button>
-            )}
+            ) : null}
+
+            {signedExists ? (
+              <button type="button" className="vx-btn vx-btn-navy" disabled={openingSigned} onClick={openSignedPrivate}>
+                {openingSigned
+                  ? <><span className="vx-spin" /> Verificando…</>
+                  : <><window.Vico d={window.VI.doc} size={14} /> Ver / descargar firmado</>}
+              </button>
+            ) : null}
+
+            <ReglamentoButton />
           </div>
-          {!REGLAMENTO_URL ? (
-            <div className="vx-docest-note">El Reglamento Estudiantil aún no está disponible.</div>
-          ) : null}
-          <SignedUploadBlock />
-          {err ? <div className="vx-inline-err" style={{ marginTop: 10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
+
+          {!signedExists ? (
+            <div className="vx-docest-signed" style={{ marginTop:12, borderTop:'1px dashed var(--v-line)', paddingTop:12 }}>
+              <div className="vx-docest-sub" style={{ marginBottom:8 }}>
+                Descargá la hoja, firmala digitalmente y subí aquí el PDF final. Ventas solo puede registrar este original una vez.
+              </div>
+              <button className="vx-btn vx-btn-navy" disabled={!!busy || !codigo} onClick={pickSigned}>
+                {busy === 'UPLOAD_SIGNED'
+                  ? <><span className="vx-spin" /> Subiendo…</>
+                  : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
+              </button>
+            </div>
+          ) : (
+            <div className="vx-docest-signed" style={{ marginTop:12, borderTop:'1px dashed var(--v-line)', paddingTop:12 }}>
+              <div className="vx-docest-sub" style={{ marginBottom:8 }}>
+                Documento final registrado. Ventas no puede regenerarlo ni sustituirlo; sí puede consultarlo y volver a enviarlo.
+              </div>
+              <div className="vx-docest-btns">
+                <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('correo')}>
+                  {busy === 'EMAIL_SIGNED' ? <><span className="vx-spin dark" /> Enviando…</> : <>Enviar correo + Reglamento</>}
+                </button>
+                <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('whatsapp')}>WhatsApp</button>
+                <button className="vx-btn vx-btn-ghost" disabled={!!busy} onClick={() => notifySigned('campus')}>
+                  {busy === 'ALERT_SIGNED' ? <><span className="vx-spin dark" /> Creando…</> : <>Alerta campus</>}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {err ? <div className="vx-inline-err" style={{ marginTop:10 }}><window.Vico d={window.VI.alert} size={15} /><span>{err}</span></div> : null}
         </React.Fragment>
       )}
     </section>
@@ -859,6 +886,39 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
   };
 
   // ── Subir documento (extra o manual de los 3) ──
+  const abrirDocumentoInscripcionPrivado = async (tipo, caption) => {
+    const key = 'inscripcion:' + String(tipo || '');
+    if (docPrivadoAbriendo) return;
+    setDocPrivadoAbriendo(key);
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando documento…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando documento…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await window.descargarDocumentoInscripcionPrivadoVentasSeguro(cedula, tipo);
+      if (!r?.ok || !r.blob) throw new Error(vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el documento.', 'abrir_documento_inscripcion'));
+      const objectUrl = URL.createObjectURL(r.blob);
+      if (preview && !preview.closed) {
+        preview.location.replace(objectUrl);
+      } else {
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = r.nombre || caption || 'documento';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      onToast({ tipo:'err', msg:vxSafeUserError(e?.message, 'No se pudo abrir el documento.', 'abrir_documento_inscripcion') });
+    } finally {
+      setDocPrivadoAbriendo('');
+    }
+  };
+
   const triggerUpload = (docKey) => { pendingDocKey.current = docKey || null; fileRef.current?.click(); };
   const onFilePicked = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -1070,7 +1130,12 @@ function ProspectoDrawer({ cedula, seed, asesor, usuario, demo, esSuperadmin, on
               {/* 4 · DOCUMENTOS */}
               <section className="vx-block">
                 <div className="vx-block-h"><window.Vico d={window.VI.doc} size={13} /> Documentos</div>
-                <window.DocsBlock detalle={d} onView={onView} onSubirManual={(key) => triggerUpload(key)} />
+                <window.DocsBlock
+                  detalle={d}
+                  onView={onView}
+                  onOpenPrivate={abrirDocumentoInscripcionPrivado}
+                  openingPrivate={String(docPrivadoAbriendo || '').replace(/^inscripcion:/, '')}
+                />
               </section>
 
               {/* 4b · PROFORMAS DEL PROSPECTO — formato tarjetas (PROFORMAS-VENDEDOR-001),
