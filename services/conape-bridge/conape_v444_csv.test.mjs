@@ -31,8 +31,8 @@ assert.match(helperSource, /credentials:'same-origin'/);
 assert.match(helperSource, /return downloadProspectCsvViaApexDirect\(page, parseProspectCsv\)/);
 {
   const start = helperSource.indexOf('async function downloadProspectCsvViaDialog');
-  const end = helperSource.indexOf('\n}\n\nexport {', start);
-  const compatibilityBlock = start >= 0 && end > start ? helperSource.slice(start, end) : '';
+  const exportStart = helperSource.indexOf('export {', start);
+  const compatibilityBlock = start >= 0 && exportStart > start ? helperSource.slice(start, exportStart) : '';
   assert.ok(compatibilityBlock);
   assert.doesNotMatch(compatibilityBlock, /getByRole|locator\(|\.click\(/);
 }

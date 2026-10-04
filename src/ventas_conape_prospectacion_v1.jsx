@@ -2,8 +2,8 @@
 (function(){
   'use strict';
 
-  const { useCallback, useEffect, useMemo, useState } = React;
-  const BUILD = 'CONAPE_PROSPECTACION_V2_SALES_UI_20261004';
+  const { useCallback, useEffect, useMemo, useRef, useState } = React;
+  const BUILD = 'CONAPE_PROSPECTACION_V2_REFRESH_UI_20261004';
   const MAX_BYTES = 2 * 1024 * 1024;
 
   function injectStyles() {
@@ -82,7 +82,7 @@
     return s || '—';
   }
 
-  function ConapeProspectacionPanelV1({ asesor, rol, onOpenProspecto }) {
+  function ConapeProspectacionPanelV1({ asesor, rol, onOpenProspecto, onConapeUpdated }) {
     injectStyles();
     const isAdmin = rol === 'admin' || rol === 'superadmin';
     const [data, setData] = useState(null);
@@ -94,27 +94,79 @@
     const [adminBusy, setAdminBusy] = useState(false);
     const [adminMsg, setAdminMsg] = useState('');
     const [adminOk, setAdminOk] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [refreshMsg, setRefreshMsg] = useState('');
+    const [refreshOk, setRefreshOk] = useState(true);
+    const autoAttemptRef = useRef('');
 
     const load = useCallback(async () => {
-      if (!asesor && rol === 'ventas') return;
+      if (!asesor && rol === 'ventas') return null;
       setLoading(true);
       setError('');
       try {
         const r = await callApi('getConapeProspectacionVentas', { asesor: asesor || '' });
         if (!r || r.ok !== true) {
           setError(safePanelMessage(r?.mensaje || r?.error, 'No se pudo cargar Prospectación CONAPE.', 'cargar_panel'));
-          return;
+          return null;
         }
         setData(r);
+        return r;
       } catch (e) {
         console.warn('[CONAPE Prospectacion V1] Fallo al cargar panel.', e);
         setError(safePanelMessage(e?.message, 'No se pudo cargar Prospectación CONAPE.', 'cargar_panel_exception'));
+        return null;
       } finally {
         setLoading(false);
       }
     }, [asesor, rol]);
 
-    useEffect(() => { load(); }, [load]);
+    const refreshLive = useCallback(async ({ automatic = false } = {}) => {
+      if (!asesor && rol === 'ventas') return null;
+      const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
+      if (!bridge || typeof bridge.refreshProspectacionVentas !== 'function') {
+        setRefreshOk(false);
+        setRefreshMsg('Actualización CONAPE no disponible · se conserva la última lectura.');
+        return null;
+      }
+
+      setRefreshing(true);
+      setRefreshOk(true);
+      setRefreshMsg(automatic ? 'Actualizando CONAPE en segundo plano…' : 'Consultando CONAPE…');
+      try {
+        const r = await bridge.refreshProspectacionVentas();
+        if (!r || r.ok !== true) {
+          setRefreshOk(false);
+          setRefreshMsg('No se pudo actualizar · se conserva la última lectura válida.');
+          return null;
+        }
+        const fresh = await load();
+        const changes = Number(r.movimientos_registrados || 0);
+        setRefreshOk(true);
+        setRefreshMsg(changes > 0 ? `Actualizado · ${changes} cambio${changes === 1 ? '' : 's'} detectado${changes === 1 ? '' : 's'}.` : 'Actualizado · sin cambios nuevos.');
+        if (typeof onConapeUpdated === 'function') onConapeUpdated();
+        return fresh;
+      } catch (e) {
+        console.warn('[CONAPE Prospectacion V2] Actualización viva no disponible.', { code:String(e?.code || e?.message || 'UNAVAILABLE') });
+        setRefreshOk(false);
+        setRefreshMsg('No se pudo actualizar · se conserva la última lectura válida.');
+        return null;
+      } finally {
+        setRefreshing(false);
+      }
+    }, [asesor, rol, load, onConapeUpdated]);
+
+    useEffect(() => {
+      let alive = true;
+      (async () => {
+        const snapshot = await load();
+        if (!alive || !snapshot || snapshot.requiere_actualizacion !== true) return;
+        const key = `${asesor || 'ALL'}|${snapshot.actualizado_en || 'SIN_SNAPSHOT'}`;
+        if (autoAttemptRef.current === key) return;
+        autoAttemptRef.current = key;
+        await refreshLive({ automatic:true });
+      })();
+      return () => { alive = false; };
+    }, [asesor, load, refreshLive]);
 
     async function selectCsv(ev) {
       const file = ev.target.files && ev.target.files[0];
@@ -155,6 +207,7 @@
         setAdminMsg(safePanelMessage(r.mensaje, 'CONAPE actualizado.', 'importar_csv_ok'));
         setCandidate(null); setPreview(null);
         await load();
+        if (typeof onConapeUpdated === 'function') onConapeUpdated();
       } catch (e) {
         console.warn('[CONAPE Prospectacion V1] Fallo al importar CSV.', e);
         setAdminOk(false);
@@ -177,10 +230,12 @@
             <h3 className="cpv1-title">Movimientos que no desaparecen al actualizar</h3>
             <div className="cpv1-sub">
               Ventas usa el estado operativo derivado de Prospectación. Los valores 01/09/2026 son códigos: depósito 01 · período 09 · año 2026, no fechas.
-              {data?.actualizado_en ? ` Última lectura: ${data.actualizado_en}.` : ''}
+              {data?.actualizado_en ? ` Última lectura: ${data.actualizado_en}${data?.edad_minutos != null ? ` · hace ${data.edad_minutos} min` : ''}.` : ''}
+              {data?.ttl_minutos ? ` Se consulta CONAPE al abrir solo cuando han pasado ${data.ttl_minutos} min.` : ''}
             </div>
+            {refreshMsg ? <div className={`cpv1-msg ${refreshOk ? 'ok' : 'err'}`}>{refreshMsg}</div> : null}
           </div>
-          <button type="button" className="cpv1-refresh" onClick={load} disabled={loading}>{loading ? 'Actualizando…' : 'Actualizar vista'}</button>
+          <button type="button" className="cpv1-refresh" onClick={() => refreshLive({ automatic:false })} disabled={refreshing}>{refreshing ? 'Actualizando…' : 'Actualizar CONAPE'}</button>
         </div>
 
         <div className="cpv1-kpis">
@@ -193,6 +248,7 @@
         <div className="cpv1-body">
           {isAdmin && (
             <div className="cpv1-admin">
+              <div className="cpv1-sub" style={{ marginBottom:10 }}>Respaldo manual administrativo · úselo solo si la actualización automática de Prospectación no está disponible.</div>
               <div className="cpv1-admin-row">
                 <input className="cpv1-file" type="file" accept=".csv,text/csv" onChange={selectCsv} disabled={adminBusy} aria-label="CSV de Prospectación CONAPE" />
                 {preview?.ok && <button type="button" className="cpv1-btn primary" onClick={confirmImport} disabled={adminBusy}>{adminBusy ? 'Importando…' : 'Confirmar importación'}</button>}

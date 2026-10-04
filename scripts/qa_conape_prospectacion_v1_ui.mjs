@@ -11,6 +11,12 @@ function check(ok, label) {
 }
 
 check(panel.includes("callApi('getConapeProspectacionVentas'"), 'Panel reads CONAPE Prospectacion through authenticated endpoint');
+check(panel.includes("snapshot.requiere_actualizacion !== true"), 'Open refresh runs only when backend marks snapshot stale');
+check(panel.includes("refreshLive({ automatic:true })"), 'Stale snapshot triggers one background live refresh on open');
+check(panel.includes("onClick={() => refreshLive({ automatic:false })}"), 'Actualizar CONAPE always forces a live refresh');
+check(panel.includes("refreshProspectacionVentas"), 'Seller refresh uses dedicated Prospectacion bridge action');
+check(panel.includes("Se consulta CONAPE al abrir solo cuando han pasado"), 'UI explains the freshness-window behavior');
+check(dashboard.includes('onConapeUpdated={onConapeUpdated}'), 'Successful Prospectacion refresh reloads main Sales dashboard');
 check(panel.includes("callApi('previsualizarConapeProspectacionCsv'"), 'Admin previews CSV before importing');
 check(panel.includes("callApi('importarConapeProspectacionCsv'"), 'Admin imports only after explicit confirmation');
 check(panel.includes("const isAdmin = rol === 'admin' || rol === 'superadmin'"), 'CSV controls are gated to admin/superadmin');
@@ -31,8 +37,10 @@ check(dashboard.includes('window.ConapeProspectacionPanelV1'), 'Ventas dashboard
 check(dashboard.includes('asesor={scopeAsesor}'), 'Panel follows active advisor scope');
 check(dashboard.includes('rol={rolReal}'), 'Panel receives real role, not simulated advisor role');
 
-const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-SALES-20261004';
-const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-SALES-20261004';
+const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.4.7';
+const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-REFRESH-20261004';
+const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004';
+check(html.includes(bridgeScript), 'ventas.html cache-busts Prospectacion bridge client');
 check(html.includes(panelScript), 'ventas.html loads V1 panel with cache bust');
 check(html.includes(dashScript), 'ventas.html cache-busts dashboard integration');
 check(html.indexOf(panelScript) < html.indexOf(dashScript), 'Panel script loads before dashboard consumer');

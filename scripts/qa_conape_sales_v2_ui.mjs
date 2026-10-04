@@ -25,9 +25,12 @@ check(table.includes('p?.conape_accion'),'desktop action reads derived seller ac
 check(table.includes("state.toUpperCase()==='SIN REGISTRO CONAPE'"),'recruit button is limited to missing CONAPE record under V2');
 check(parts.includes('CONAPE · {p.conape_estado}'),'mobile card exposes derived CONAPE state');
 check(panel.includes('Código último depósito'),'Prospectación panel labels disbursement as code');
-for (const f of ['ventas_data.jsx','ventas_parts.jsx','ventas_sortable_table_cs21a20.jsx','ventas_conape_prospectacion_v1.jsx','ventas_dashboard.jsx']) {
+for (const f of ['ventas_data.jsx','ventas_parts.jsx','ventas_sortable_table_cs21a20.jsx']) {
   check(html.includes('src/'+f+'?v=CONAPE-V2-SALES-20261004'),f+' cache-bust is V2');
 }
+check(html.includes('src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-REFRESH-20261004'),'ventas_conape_prospectacion_v1.jsx cache-bust is refresh V2');
+check(html.includes('src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004'),'ventas_dashboard.jsx cache-bust is refresh V2');
+check(html.includes('src/conape_bridge_client_c3_6.js?v=V4.4.7'),'CONAPE bridge client cache-bust is V4.4.7');
 
 // JSX parse/transform with the exact Babel bundle shipped by the site.
 const sandbox={window:{},self:{},console,setTimeout,clearTimeout};

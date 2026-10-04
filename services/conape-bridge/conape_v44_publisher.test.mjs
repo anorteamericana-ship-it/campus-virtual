@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   CONAPE_V44_ACTION,
+  CONAPE_PROSPECTACION_V2_ACTION,
   CONAPE_V44_ROW_FIELDS,
   stableJson,
   sha256Hex,
@@ -8,6 +9,8 @@ import {
   canonicalForEnvelope,
   buildConapeV44SignedEnvelope,
   buildConapeV44DryRunSummary,
+  buildConapeProspectacionV2Snapshot,
+  buildConapeProspectacionV2SignedEnvelope,
 } from './conape_v44_publisher.mjs';
 
 function fixture(overrides = {}) {
@@ -84,6 +87,33 @@ assert.equal(summaryReady.signature_ready, true);
 assert.equal(summaryReady.apply_enabled, false);
 assert.equal('rows' in summaryReady, false);
 assert.equal('signature' in summaryReady, false);
+
+const v2Fixture = fixture({
+  method:'HTML_DOUBLE',
+  rows_a:1,
+  rows_b:1,
+  counts_match:true,
+  columns_ok:true,
+});
+const v2Snapshot = buildConapeProspectacionV2Snapshot(v2Fixture);
+assert.equal(v2Snapshot.method, 'HTML_DOUBLE');
+assert.equal(v2Snapshot.rows_a, 1);
+assert.equal(v2Snapshot.rows_b, 1);
+assert.equal(v2Snapshot.rows[0].cedula, '123456789');
+expectCode(() => buildConapeProspectacionV2Snapshot({ ...v2Fixture, counts_match:false }), 'CONAPE_V2_PUBLISHER_COUNTS_NOT_MATCHED');
+expectCode(() => buildConapeProspectacionV2Snapshot({ ...v2Fixture, rows_b:2 }), 'CONAPE_V2_PUBLISHER_COUNT_INVALID');
+expectCode(() => buildConapeProspectacionV2Snapshot({ ...v2Fixture, rows:[v2Fixture.rows[0], v2Fixture.rows[0]], rows_a:2, rows_b:2 }), 'CONAPE_V2_PUBLISHER_DUPLICATE_CEDULA');
+
+const v2Signed = buildConapeProspectacionV2SignedEnvelope(v2Fixture, {
+  ...fixedOptions,
+  requestId:'req-prospectacion-v2-001',
+});
+assert.equal(v2Signed.envelope.action, CONAPE_PROSPECTACION_V2_ACTION);
+assert.equal(v2Signed.meta.apply_enabled, true);
+assert.equal(v2Signed.meta.row_count, 1);
+assert.match(v2Signed.envelope.signature, /^[0-9a-f]{64}$/);
+const v2Canonical = canonicalForEnvelope(v2Signed.envelope);
+assert.equal(v2Canonical.payloadHash, v2Signed.meta.payload_hash);
 
 const source = await import('node:fs').then(fs => fs.readFileSync(new URL('./conape_v44_publisher.mjs', import.meta.url), 'utf8'));
 assert.equal(/\bfetch\s*\(/.test(source), false);
