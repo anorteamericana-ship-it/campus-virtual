@@ -112,7 +112,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
   };
 
   const openSignedPrivate = async () => {
-    if (openingSigned || !(signedDoc && signedDoc.file_id)) return;
+    if (openingSigned || !puedeSubirFirmada) return;
     if (demo) {
       onToast && onToast({ tipo:'ok', msg:'Vista previa: la apertura privada requiere una sesión real.' });
       return;
@@ -130,7 +130,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
       const r = await window.descargarMatriculaFirmadaPrivadaVentasSeguro({
         cedula: cedulaDoc,
         codigo,
-        file_id: signedDoc.file_id,
+        file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : '',
       });
       if (!r?.ok || !r.blob) throw new Error(vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir la matrícula firmada.', 'abrir_matricula_firmada'));
       const objectUrl = URL.createObjectURL(r.blob);
@@ -190,7 +190,7 @@ function DocsEstudianteVentas({ detalle, demo, onToast }) {
         <button className="vx-btn vx-btn-navy" disabled={!!busy || !puedeSubirFirmada} onClick={pickSigned}>
           {busy === 'UPLOAD_SIGNED' ? <><span className="vx-spin" /> Subiendo…</> : <><window.Vico d={window.VI.upload} size={14} /> Subir PDF firmado</>}
         </button>
-        {signedDoc && signedDoc.file_id ? (
+        {puedeSubirFirmada ? (
           <button type="button" className="vx-btn vx-btn-ghost" disabled={openingSigned} onClick={openSignedPrivate} style={{ justifyContent:'center' }}>
             {openingSigned ? <><span className="vx-spin dark" /> Verificando…</> : <><window.Vico d={window.VI.doc} size={14} /> Ver firmado</>}
           </button>

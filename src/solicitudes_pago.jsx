@@ -128,7 +128,7 @@ function SolicitudesPagoView({ onNavigate, categoria = 'TODAS', embedded = false
 
   // Poblar el dropdown de asesores una vez (de TODAS las solicitudes).
   React.useEffect(() => {
-    window.getSolicitudesPago({ estado: 'TODOS' }).then(r => {
+    window.getSolicitudesPago({ estado: '' }).then(r => {
       if (r && r.ok) {
         const set = new Set((r.solicitudes || []).map(s => s.nombre_reporta).filter(Boolean));
         setAsesores([...set].sort());

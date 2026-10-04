@@ -30,6 +30,9 @@ check(!drawer.includes('preview_test'), 'Ventas drawer no longer exposes preview
 // UI must use file_id/private endpoint, never public links for these classes.
 check(drawer.includes('signedDoc && signedDoc.file_id'), 'signed enrollment UI is keyed by file_id');
 check(drawer.includes('window.descargarMatriculaFirmadaPrivadaVentasSeguro'), 'signed enrollment view uses private delivery helper');
+check(drawer.includes("if (openingSigned || !puedeSubirFirmada) return;"), 'historical signed enrollment open is not gated by current-session upload state');
+check(drawer.includes("file_id: signedDoc && signedDoc.file_id ? signedDoc.file_id : ''"), 'signed enrollment can request latest authorized PDF after reload');
+check(drawer.includes("{puedeSubirFirmada ? ("), 'coded student keeps Ver firmado action after drawer reload');
 check(drawer.includes('window.descargarDocumentoExtraPrivado(cedula, fileId)'), 'docs_extra view uses private delivery helper');
 check(drawer.includes('URL.createObjectURL(r.blob)'), 'private documents use temporary ObjectURL');
 check(drawer.includes('URL.revokeObjectURL(objectUrl)'), 'temporary ObjectURLs are revoked');

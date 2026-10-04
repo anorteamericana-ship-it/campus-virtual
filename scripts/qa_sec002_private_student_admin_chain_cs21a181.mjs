@@ -30,6 +30,8 @@ must(pagos, 'URL.createObjectURL', 'receipt ObjectURL');
 if (count(pagos, 'url_comprobante') > 1) throw new Error('url_comprobante may remain only for local demo data URL compatibility');
 mustNot(pagos, "const url = sol.url_comprobante", 'direct payment receipt URL');
 mustNot(pagos, "window.open(url, '_blank'", 'direct payment receipt navigation');
+must(pagos, "window.getSolicitudesPago({ estado: '' }).then", 'advisor preload requests all payment states');
+mustNot(pagos, "getSolicitudesPago({ estado: 'TODOS' }).then", 'literal TODOS status mismatch');
 
 // CS21A162 · matrícula firmada privada estudiante.
 must(experience, '_studentPrivateSignedPdfF984', 'student signed enrollment private helper');
