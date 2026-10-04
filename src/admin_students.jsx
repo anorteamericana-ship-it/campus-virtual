@@ -4464,7 +4464,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     if (r.ok) {
       setSignedMeta({ loading:false, existe:true, nombre:r.nombre || signedMeta.nombre || '', error:'' });
     } else {
-      alert(r.error || 'No pudimos abrir la matricula firmada.');
+      alert(adminStudentsSafeUserError(r.error, 'No pudimos abrir la matr\u00edcula firmada. Intent\u00e1 de nuevo.', 'matricula_firmada_admin_presentacion'));
     }
   };
 
