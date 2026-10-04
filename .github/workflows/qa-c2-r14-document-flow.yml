@@ -1,0 +1,44 @@
+name: QA C2-R14 Document Flow
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_data.jsx'
+      - 'src/ventas_parts.jsx'
+      - 'src/ventas_drawer.jsx'
+      - 'src/admin_students.jsx'
+      - 'src/app.jsx'
+      - 'ventas.html'
+      - 'campus.html'
+      - 'scripts/qa_c2_r14_document_flow.mjs'
+      - '.github/workflows/qa-c2-r14-document-flow.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa-c2-r14-document-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: C2-R14 document workflow contract
+        run: node scripts/qa_c2_r14_document_flow.mjs
+      - name: Parse changed JSX with bundled Babel
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const Babel=require('./vendor/babel.js');
+          for (const f of ['src/ventas_data.jsx','src/ventas_parts.jsx','src/ventas_drawer.jsx','src/admin_students.jsx','src/app.jsx']) {
+            Babel.transform(fs.readFileSync(f,'utf8'),{presets:['react']});
+            console.log('PASS '+f);
+          }
+          NODE
+      - name: Existing SEC-002 Ventas guard
+        run: node scripts/qa_sec002_ventas_private_delivery_cs21a159.mjs
+      - name: Existing Ventas hardcoded-QA guard
+        run: node scripts/qa_ventas_no_hardcoded_qa_cs21a157.mjs
+      - name: Diff whitespace check
+        run: git diff --check origin/main...HEAD

@@ -7,7 +7,7 @@ const SAFE='src/importador_banco_integridad_cs21a114.jsx';
 const AH='scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs';
 const OLD="  banco: ['src/importador_banco.jsx?v=F96.5G'],";
 const NEW="  banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],";
-const BEFORE="  buscador: ['src/admin_students.jsx?v=F98.4Z6CS21A140','src/buscador.jsx?v=F98.4Z6AS'],";
+const BEFORE="  buscador: ['src/admin_students.jsx?v=F98.4Z6C2R14DOC1','src/buscador.jsx?v=F98.4Z6AS'],";
 const AFTER="  aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],";
 const EFFECTIVE_BLOCK=[BEFORE,NEW,AFTER].join('\n');
 const PRE_AS_BLOCK=[BEFORE,OLD,AFTER].join('\n');
