@@ -25,4 +25,9 @@ jobs:
       - name: Regress CS21A191
         run: node scripts/qa_admin_students_safe_errors_cs21a191.mjs
       - name: Diff hygiene against stacked base
-        run: git diff --check origin/fix/admin-students-user-copy-cs21a192...HEAD -- ':!00_DOCUMENTACION/**'
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD" -- ':!00_DOCUMENTACION/**'
+          else
+            git diff --check origin/fix/admin-students-user-copy-cs21a192...HEAD -- ':!00_DOCUMENTACION/**'
+          fi

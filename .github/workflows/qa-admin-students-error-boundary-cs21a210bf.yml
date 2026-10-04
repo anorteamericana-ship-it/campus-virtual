@@ -20,4 +20,9 @@ jobs:
       - name: Regress BD post-BC classification
         run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
       - name: Diff hygiene
-        run: git diff --check ddd243a73e74c109420fc8a3e9a82e7c2bf31349
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          else
+            git diff --check ddd243a73e74c109420fc8a3e9a82e7c2bf31349
+          fi
