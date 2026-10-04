@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'src/app.jsx'
+      - 'src/additional_resources_panel_cs21a68.jsx'
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'src/student_content_access_cs21a125.jsx'
       - 'src/student_tasks_menu_cs21a126.js'

@@ -370,6 +370,8 @@
   }
 
   function syncSidebar(aside) {
+    // The academic student sidebar owns its buttons and URL-based selection.
+    if (aside.classList.contains('student-sb')) return;
     const booksButton = Array.from(aside.querySelectorAll('button')).find(button => menuLabel(button) === 'Libros y Audios');
     if (!booksButton) return;
     const additional = makeNavButton(aside, booksButton);

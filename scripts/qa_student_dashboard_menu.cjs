@@ -21,7 +21,7 @@ const historyEffect=app.slice(app.indexOf('  useEffect(() => {',app.indexOf('// 
  await page.goto(`http://127.0.0.1:${server.address().port}/`);
  await page.addScriptTag({path:path.join(__dirname,'../vendor/react.js')});await page.addScriptTag({path:path.join(__dirname,'../vendor/react-dom.js')});
  await page.evaluate(()=>{window.getSesion=()=>({rol:'student',codigo:'SYNTHETIC-QA',nombre:'Synthetic QA',nivel_activo:'B1'});window.__AN_CONTENT_ACCESS_CS21A125__={value:{niveles_autorizados:[],nivel_maximo:''},promise:null};window.fetch=async()=>({ok:true,text:async()=>JSON.stringify({ok:true,catalogo:{},catalog:{}})});window.Icon=()=>null;});
- for(const f of ['src/student_menu_academic_cs21a120.jsx','src/student_content_access_cs21a125.jsx'])await page.addScriptTag({content:compile(read(f))});
+ for(const f of ['src/additional_resources_panel_cs21a68.jsx','src/student_menu_academic_cs21a120.jsx','src/student_content_access_cs21a125.jsx'])await page.addScriptTag({content:compile(read(f))});
  await page.addScriptTag({content:compile(`${aliases}
  const {useState,useEffect}=React;
  function Harness(){const role='student';const [active,setActive]=useState('dashboard');const [studentCourseTab,setStudentCourseTab]=useState('cronograma');const [studentEvalTab,setStudentEvalTab]=useState('proximas');const [studentDocsTab,setStudentDocsTab]=useState('programa');const setPendingLesson=()=>{},setPendingGrupo=()=>{},setPendingSeguimiento=()=>{},setPendingOral=()=>{},scrollCampusTopF91=()=>{};
@@ -30,7 +30,7 @@ const historyEffect=app.slice(app.indexOf('  useEffect(() => {',app.indexOf('// 
  window.qaNavigate=navigateTo;
  return <div className="app"><window.Sidebar usuario={getSesion()} active={active} setActive={navigateTo}/><main className="main" id="native">{active}</main></div>;}
  ReactDOM.createRoot(document.getElementById('root')).render(<Harness/>);`)});
- const check=async(id)=>{await page.waitForFunction(id=>{const a=[...document.querySelectorAll('.student-sb .sb-item.active')];return a.length===1&&a[0].dataset.navId===id;},id);assert.equal(await page.locator('.student-sb .sb-item.active').count(),1);};
+ const check=async(id)=>{await page.waitForFunction(id=>{const a=[...document.querySelectorAll('.student-sb .sb-item.active')];return a.length===1&&a[0].dataset.navId===id;},id);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));assert.equal(await page.locator('.student-sb .sb-item.active').count(),1);assert.equal(await page.locator('.student-sb .sb-item.active').getAttribute('data-nav-id'),id);};
  await check('dashboard');
  await page.addScriptTag({content:read('src/student_tasks_menu_cs21a126.js')});
  for(let cycle=0;cycle<2;cycle++)for(const id of ['syllabus_estudiante','planeamiento_estudiante','libros_audios_estudiante','recursos_adicionales','evaluaciones','certificados','dashboard']){
