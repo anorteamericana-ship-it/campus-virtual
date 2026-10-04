@@ -309,6 +309,16 @@ function VentasApp({ sesion }) {
           <window.ResumenSkeleton />
         ) : (
           <React.Fragment>
+            {window.ConapeProspectacionPanelV1 ? (
+              <div className="vx-sec">
+                <window.ConapeProspectacionPanelV1
+                  asesor={scopeAsesor}
+                  rol={rolReal}
+                  onOpenProspecto={cedula => setDrawerCed(cedula)}
+                />
+              </div>
+            ) : null}
+
             {/* 1 · ESTUDIANTES (tabla y reglas de permanencia intactas) */}
             <div className="vx-sec">
               <div className="vx-sec-h">Estudiantes</div>
