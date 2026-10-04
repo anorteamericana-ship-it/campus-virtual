@@ -50,7 +50,7 @@ const out=execFileSync('node',['scripts/audit_raw_user_error_surface_v3_cs21a210
 const findings=Number((out.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
 const files=Number((out.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
 if(findings!==24||files!==13) throw new Error('unexpected V3 '+findings+'/'+files);
-if(!out.includes('FILE_COUNT|2|src\\admin_students.jsx')) throw new Error('admin_students should retain exactly two historical scanner findings already sanitized at render');
+if(!/FILE_COUNT\|2\|src[\\/]admin_students\.jsx/.test(out)) throw new Error('admin_students should retain exactly two historical scanner findings already sanitized at render');
 
 console.log('CS21A210BG admin_students safe errors PASS');
 console.log('PREIMAGE='+PRE);

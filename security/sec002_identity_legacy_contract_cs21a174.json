@@ -3,9 +3,9 @@
   "date": "2026-08-29",
   "base_pr": 145,
   "base_sha": "7348a29db65d12d6c2a8a566662bd967579f59f7",
-  "status": "legacy_consumers_mapped_backend_private_endpoint_pending",
+  "status": "ventas_private_delivery_candidate_backend_pr4_required_before_publish",
   "no_acl_change": true,
-  "no_consumer_switch_before_backend": true,
+  "no_consumer_switch_before_backend": false,
   "document_class": "student_identity_and_title_images_legacy",
   "fields": [
     "FOTO_CED_FRENTE",
@@ -24,21 +24,38 @@
       "surface": "ventas",
       "path": "src/ventas_parts.jsx",
       "component": "DocsBlock/VxDocPhoto",
-      "current_delivery": "foto_ced_* URL -> Drive/lh3 candidate URLs -> img/lightbox",
-      "authorization_expected": ["session", "sales_or_admin_role", "allowed_sales_scope", "prospect_or_student", "document_type"]
+      "current_delivery": "C2-R14 candidate: logical document type -> authenticated private POST -> bounded Blob/ObjectURL; legacy stored Drive/lh3 URL is resolved server-side only",
+      "authorization_expected": [
+        "session",
+        "sales_or_admin_role",
+        "allowed_sales_scope",
+        "prospect_or_student",
+        "document_type"
+      ],
+      "migration_state": "candidate_private_delivery"
     },
     {
       "surface": "matriculas_admin",
       "path": "src/matriculas_admin.jsx",
       "component": "Documentos adjuntos/MatDocPhoto",
       "current_delivery": "FOTO_CED_* URL -> Drive/lh3 candidate URLs -> img/lightbox",
-      "authorization_expected": ["session", "admin_or_superadmin_role", "allowed_admin_scope", "prospect_or_student", "document_type"]
+      "authorization_expected": [
+        "session",
+        "admin_or_superadmin_role",
+        "allowed_admin_scope",
+        "prospect_or_student",
+        "document_type"
+      ],
+      "migration_state": "legacy_consumer_unchanged_in_c2_r14"
     }
   ],
   "target_delivery": {
     "transport": "authenticated POST",
-    "proposed_operation": "descargarDocumentoIdentidadPrivado",
-    "selection": ["expediente_or_cedula", "document_type"],
+    "proposed_operation": "descargarDocumentoInscripcionPrivado",
+    "selection": [
+      "expediente_or_cedula",
+      "document_type"
+    ],
     "server_requirements": [
       "derive actor from session token",
       "enforce staff role and business scope server-side",
@@ -58,21 +75,27 @@
     ]
   },
   "runtime_gate": [
-    "fresh current Apps Script QA snapshot per Issue #111",
-    "port minimal endpoint onto exact modular source",
+    "backend PR #4 merged and stable Apps Script deployment promoted before frontend merge",
     "positive Sales own-scope read",
     "negative Sales cross-scope read",
     "positive admin/superadmin read",
     "negative unauthorized/student read",
     "legacy existing-object lookup",
-    "browser image/PDF render",
-    "switch both consumers in QA",
-    "scan residual direct Drive/lh3 access",
-    "only then test ACL removal on QA copies"
+    "browser image/PDF render through private Blob/ObjectURL",
+    "scan residual direct Drive/lh3 access in migrated Ventas identity path",
+    "historical identity/title ACL remains unchanged in C2-R14"
   ],
   "known_ui_bug": {
     "surface": "ventas",
     "description": "The legacy identity-slot 'Subir manualmente' action currently uploads through subirDocumentoExtra and only paints base64 into foto_ced_* local state; after reload it is an extra document, not a persisted replacement of the identity field.",
-    "resolution_rule": "Do not claim identity-slot replacement until a dedicated authenticated persistence contract exists."
+    "resolution_rule": "Do not claim identity-slot replacement until a dedicated authenticated persistence contract exists.",
+    "status": "resolved_in_c2_r14_candidate",
+    "resolution": "Ventas no longer exposes Subir manualmente for canonical identity/title slots; canonical files are read-only and privately delivered."
+  },
+  "backend_dependency": {
+    "repo": "campus_backend",
+    "pr": 4,
+    "operation": "descargarDocumentoInscripcionPrivado",
+    "must_be_in_prod_before_frontend": true
   }
 }
