@@ -27,13 +27,16 @@ jobs:
           p.parse(fs.readFileSync('src/admin_students.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
           console.log('admin_students JSX parse PASS');
           NODE
-      - name: Verify exact reconstruction and safe sinks
+      - name: Verify safe sinks and descendant contract
         run: node scripts/qa_admin_students_safe_errors_cs21a210bg.mjs
       - name: Regress BF classification structure
         run: |
           grep -F 'EFFECTIVE_VISIBLE · 5' 00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md
           grep -F 'ALREADY_SANITIZED_AT_RENDER · 2' 00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md
-      - name: Regress BD post-BC audit descendant contract
-        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
       - name: Diff hygiene
-        run: git diff --check ecaa2b58122e15043bde86a050fe9534d8d2618c
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          else
+            git diff --check ecaa2b58122e15043bde86a050fe9534d8d2618c
+          fi

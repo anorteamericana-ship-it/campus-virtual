@@ -7,17 +7,20 @@ const SAFE='src/importador_banco_integridad_cs21a114.jsx';
 const AH='scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs';
 const OLD="  banco: ['src/importador_banco.jsx?v=F96.5G'],";
 const NEW="  banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],";
-const BEFORE="  buscador: ['src/admin_students.jsx?v=F98.4Z6CS21A140','src/buscador.jsx?v=F98.4Z6AS'],";
 const AFTER="  aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],";
-const EFFECTIVE_BLOCK=[BEFORE,NEW,AFTER].join('\n');
-const PRE_AS_BLOCK=[BEFORE,OLD,AFTER].join('\n');
 
 function must(ok,msg){if(!ok)throw new Error(msg);}
-const app=fs.readFileSync(APP,'utf8');
+const app=fs.readFileSync(APP,'utf8').replace(/\r\n/g,'\n');
 const lazy=fs.readFileSync(LAZY,'utf8');
 const base=fs.readFileSync(BASE,'utf8');
 const safe=fs.readFileSync(SAFE,'utf8');
 const ah=fs.readFileSync(AH,'utf8');
+
+const beforeMatches=app.match(/^  buscador: \['src\/admin_students\.jsx\?v=[^']+','src\/buscador\.jsx\?v=F98\.4Z6AS'\],$/gm) || [];
+must(beforeMatches.length===1,'AS buscador neighbor route changed unexpectedly.');
+const BEFORE=beforeMatches[0];
+const EFFECTIVE_BLOCK=[BEFORE,NEW,AFTER].join('\n');
+const PRE_AS_BLOCK=[BEFORE,OLD,AFTER].join('\n');
 
 must((app.split(NEW).length-1)===1,'AS route must load base + integrity exactly once.');
 must(!app.includes(OLD),'Old banco route without integrity file remains.');
