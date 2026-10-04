@@ -117,7 +117,7 @@ const STUDENT_ROUTE_ALIASES_F984 = {
   inicio: ['dashboard', null], portal_estudiante: ['dashboard', null], dashboard: ['dashboard', null],
   cronograma_grupo: ['mi_curso', 'cronograma'], materiales: ['mi_curso', 'materiales'], tareas: ['mi_curso', 'tareas'],
   examenes: ['evaluaciones', 'proximas'], notas: ['evaluaciones', 'resultados'], solicitudes_estudiante: ['evaluaciones', 'reposiciones'],
-  info_programa: ['documentos_ayuda', 'programa'], mensajes: ['documentos_ayuda', 'avisos'], perfil: ['perfil', null], perfil_estudiante: ['perfil', null],
+  info_programa: ['documentos_ayuda', 'programa'], mensajes: ['documentos_ayuda', 'avisos'], perfil: ['dashboard', null], perfil_estudiante: ['dashboard', null],
   pagos: ['pagos', null], certificados: ['certificados', null], ican: ['ican', null],
   academia_play: ['academia_play', null], play: ['academia_play', null],
   mi_curso: ['mi_curso', null], evaluaciones: ['evaluaciones', null], documentos_ayuda: ['documentos_ayuda', null],
@@ -773,6 +773,9 @@ function App() {
     let finalTarget = target;
     let resolvedTab = null;
     if (role === 'student') {
+      window.CS21A120_STUDENT_MENU?.close?.(true);
+      window.StudentContentAccessCS21A125?.close?.(true);
+      window.StudentTasksMenuCS21A126?.close?.(false);
       const normalized = normalizarRutaEstudianteF984(target, opts);
       finalTarget = normalized.target;
       resolvedTab = normalized.tab;
@@ -803,9 +806,10 @@ function App() {
       const state = { anCampus:true, route:finalTarget, tabs };
       try {
         if (opts.replaceHistory) history.replaceState(state, '', studentRouteHashF984(finalTarget, tabs));
-        else history.pushState(state, '', studentRouteHashF984(finalTarget, tabs));
+        else if (location.hash !== studentRouteHashF984(finalTarget, tabs)) history.pushState(state, '', studentRouteHashF984(finalTarget, tabs));
       } catch (_) {}
     }
+    if (role === 'student') window.dispatchEvent(new Event('an:student-navigation'));
     scrollCampusTopF91();
   };
 
@@ -854,16 +858,22 @@ function App() {
     const onPop = (ev) => {
       const st = ev.state || {};
       const parts = String(location.hash || '').replace(/^#/,'').split('/');
-      const route = st.route || parts[0] || 'dashboard';
+      const route = parts[0] || st.route || 'dashboard';
+      if (window.CS21A120_STUDENT_MENU?.isCustomRoute(route) || route === 'tareas_estudiante') return;
       const tabs = st.tabs || {};
       const opts = { fromPop:true };
       if (route === 'mi_curso') opts.tab = tabs.course || parts[1] || 'cronograma';
       if (route === 'evaluaciones') opts.tab = tabs.evaluations || parts[1] || 'proximas';
       if (route === 'documentos_ayuda') opts.tab = tabs.documents || parts[1] || 'programa';
+      if (route === 'perfil' || route === 'perfil_estudiante') {
+        opts.fromPop = false;
+        opts.replaceHistory = true;
+      }
       navigateTo(route, opts);
     };
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    window.addEventListener('hashchange', onPop);
+    return () => { window.removeEventListener('popstate', onPop); window.removeEventListener('hashchange', onPop); };
   }, [role]);
 
   useEffect(() => {
@@ -941,7 +951,6 @@ function App() {
       ican: <LazyRoute title="Club I CAN" component="ICANViewNew" files={F96_LAZY.syllabus_views} toast={toast} role="student" />,
       pagos: <LazyRoute title="Pagos y estado de cuenta" component="PagosView" files={F96_LAZY.student_modules} />,
       certificados: <LazyRoute title="Certificados" component="CertificadosView" files={F96_LAZY.student_modules} />,
-      perfil: <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} onNavigate={navigateTo} />,
       documentos_ayuda: <LazyRoute title="Documentos y ayuda" component="StudentDocumentsHelpView" files={F96_LAZY.student_documents}
         initialTab={studentDocsTab} onTabChange={(tab)=>cambiarPestanaEstudianteF984('documentos_ayuda', tab)} />,
       academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,

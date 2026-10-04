@@ -70,7 +70,7 @@ for (const file of lazyRefs) {
 if (lazyRefs.every(exists)) ok(`${lazyRefs.length} dependencias diferidas de F96_LAZY existen.`);
 
 const expectedRoutes = {
-  student: ['dashboard','mi_curso','evaluaciones','ican','pagos','certificados','perfil','documentos_ayuda','academia_play'],
+  student: ['dashboard','mi_curso','evaluaciones','ican','pagos','certificados','documentos_ayuda','academia_play'],
   teacher: ['mi_panel_docente','grupos','asistencia','cronograma_grupo','examenes','materiales','ican','mensajes','perfil'],
   admin: ['perfil','dashboard','supervision','calendario_grupo','auditoria_academica','diagnostico_interno','permisos_roles','conape_cobranza','reportes','inscripcion_admin','examenes','solicitudes','prematriculas','grupos','estudiantes','matriculas','buscador','banco','aplicar_pago'],
   studentCustom: ['info_programa','resumen_academico','syllabus_estudiante','planeamiento_estudiante','plan_estudio_estudiante','cronograma_general_estudiante','libros_audios_estudiante','recursos_adicionales'],
