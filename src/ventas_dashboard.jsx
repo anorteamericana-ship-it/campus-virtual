@@ -142,24 +142,59 @@ function VentasApp({ sesion }) {
           prospectos: (data.prospectos || []).map(window.adaptProspectoDash),
           grupos_disponibles: data.grupos_disponibles || [],
           total_prospectos: data.total_prospectos,
+          conape_prospectacion: null,
         };
         setDash(baseDash);
 
-        const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
-        if (bridge && typeof bridge.salesStatuses === 'function') {
+        let conapeV1Aplicado = false;
+        if (typeof window.getConapeProspectacionVentas === 'function') {
           try {
-            const conape = await bridge.salesStatuses(scopeAsesor);
-            if (!cancel && conape?.ok && Array.isArray(conape.rows)) {
-              const byCedula = new Map(conape.rows.map(row => [String(row?.cedula || '').replace(/\D/g, ''), row]).filter(([ced]) => !!ced));
+            const conapeV1 = await window.getConapeProspectacionVentas(scopeAsesor);
+            if (!cancel && conapeV1?.ok) {
+              const rows = Array.isArray(conapeV1.rows) ? conapeV1.rows : [];
+              const byCedula = new Map(rows.map(row => [
+                String(row?.cedula || '').replace(/\D/g, ''),
+                row,
+              ]).filter(([ced]) => !!ced));
               setDash(prev => prev ? {
                 ...prev,
-                prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(p, byCedula.get(String(p?.cedula || '').replace(/\D/g, '')))),
+                conape_prospectacion: conapeV1,
+                prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(
+                  p,
+                  byCedula.get(String(p?.cedula || '').replace(/\D/g, ''))
+                )),
               } : prev);
-            } else if (!cancel && conape && conape.ok === false) {
-              console.warn('[Ventas CONAPE] No se pudo refrescar el estado.', { code:String(conape.code || conape.error || 'UNKNOWN') });
+              conapeV1Aplicado = rows.length > 0;
+            } else if (!cancel && conapeV1 && conapeV1.ok === false) {
+              console.warn('[Ventas CONAPE V1] Estado no disponible.', {
+                code:String(conapeV1.error || 'UNKNOWN')
+              });
             }
-          } catch (conapeError) {
-            if (!cancel) console.warn('[Ventas CONAPE] Refresco temporalmente no disponible.', { code:String(conapeError?.code || 'UNAVAILABLE') });
+          } catch (conapeV1Error) {
+            if (!cancel) console.warn('[Ventas CONAPE V1] Lectura temporalmente no disponible.', {
+              code:String(conapeV1Error?.message || 'UNAVAILABLE')
+            });
+          }
+        }
+
+        // Bridge legacy: solo fallback mientras no exista linea base V1.
+        if (!conapeV1Aplicado) {
+          const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
+          if (bridge && typeof bridge.salesStatuses === 'function') {
+            try {
+              const conape = await bridge.salesStatuses(scopeAsesor);
+              if (!cancel && conape?.ok && Array.isArray(conape.rows)) {
+                const byCedula = new Map(conape.rows.map(row => [String(row?.cedula || '').replace(/\D/g, ''), row]).filter(([ced]) => !!ced));
+                setDash(prev => prev ? {
+                  ...prev,
+                  prospectos: prev.prospectos.map(p => window.mergeConapeStatusVentas(p, byCedula.get(String(p?.cedula || '').replace(/\D/g, '')))),
+                } : prev);
+              } else if (!cancel && conape && conape.ok === false) {
+                console.warn('[Ventas CONAPE legacy] No se pudo refrescar el estado.', { code:String(conape.code || conape.error || 'UNKNOWN') });
+              }
+            } catch (conapeError) {
+              if (!cancel) console.warn('[Ventas CONAPE legacy] Refresco temporalmente no disponible.', { code:String(conapeError?.code || 'UNAVAILABLE') });
+            }
           }
         }
       } catch (e) {
@@ -309,6 +344,18 @@ function VentasApp({ sesion }) {
           <window.ResumenSkeleton />
         ) : (
           <React.Fragment>
+            {/* CONAPE Prospectacion V1: movimientos persistentes por fecha de deteccion. */}
+            {typeof window.ConapeProspectacionPanel === 'function' ? (
+              <window.ConapeProspectacionPanel
+                data={dash.conape_prospectacion}
+                esSupervisor={esSupervisor}
+                onApplied={() => {
+                  if (typeof window.ventasDashCacheClear === 'function') window.ventasDashCacheClear();
+                  setReloadTick(t => t + 1);
+                }}
+              />
+            ) : null}
+
             {/* 1 · ESTUDIANTES (tabla y reglas de permanencia intactas) */}
             <div className="vx-sec">
               <div className="vx-sec-h">Estudiantes</div>
