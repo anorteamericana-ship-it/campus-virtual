@@ -147,6 +147,71 @@ async function abrirCertificadoAdminPrivado({ codigo, nivel, grupo = '', registr
   }
 }
 
+function adminSignedFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) { resolve(''); return; }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer el PDF firmado.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function abrirMatriculaFirmadaAdminPrivada({ codigo, cedula }) {
+  const preview = window.open('', '_blank');
+  if (preview) {
+    try {
+      preview.opener = null;
+      preview.document.title = 'Verificando matricula firmada...';
+      preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando matricula firmada...</p>';
+    } catch (_) {}
+  }
+  try {
+    const r = await postAdminStudents('descargarMatriculaFirmadaPrivada', {
+      codigo: String(codigo || '').trim(),
+      cedula: String(cedula || '').trim(),
+      file_id: '',
+    }, 60000);
+    if (!r?.ok) throw new Error(adminStudentsSafeUserError(r?.mensaje || r?.error, 'No pudimos obtener la matr\u00edcula firmada. Intent\u00e1 de nuevo.', 'matricula_firmada_admin'));
+
+    const b64 = String(r?.data_base64 || '').replace(/\s+/g, '');
+    if (!b64) throw new Error('El documento privado no incluy\u00f3 contenido.');
+    if (String(r?.mime_type || '').trim().toLowerCase() !== 'application/pdf') throw new Error('Tipo de documento inv\u00e1lido.');
+    if (b64.length > 13 * 1024 * 1024) throw new Error('Documento demasiado grande.');
+
+    const bin = atob(b64);
+    if (bin.length < 5 || bin.slice(0, 5) !== '%PDF-') throw new Error('Firma PDF inv\u00e1lida.');
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    if (bytes.length > 9 * 1024 * 1024) throw new Error('Documento demasiado grande.');
+
+    const announced = Number(r?.size_bytes || 0);
+    if (announced > 0 && announced !== bytes.length) throw new Error('Tama\u00f1o de documento inconsistente.');
+    const expectedHash = String(r?.sha256 || '').trim().toLowerCase();
+    if (expectedHash && window.crypto?.subtle) {
+      const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+      const actualHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+      if (actualHash !== expectedHash) throw new Error('Integridad SHA-256 inv\u00e1lida.');
+    }
+
+    const objectUrl = URL.createObjectURL(new Blob([bytes], { type:'application/pdf' }));
+    if (preview && !preview.closed) preview.location.replace(objectUrl);
+    else {
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = String(r?.nombre || 'matricula_firmada.pdf');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    return { ok:true, nombre:String(r?.nombre || 'matricula_firmada.pdf') };
+  } catch (e) {
+    try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+    return { ok:false, error:adminStudentsSafeUserError(e?.message || String(e), 'No pudimos abrir la matr\u00edcula firmada. Intent\u00e1 de nuevo.', 'matricula_firmada_admin') };
+  }
+}
+
 async function resincronizarEstudianteIndividual(codigo) {
   // Llama sincronizarCONAPE con param 'codigo' (dispatcher GET).
   // Devuelve { ok, mensaje, error }.
@@ -4243,6 +4308,36 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
 
   const [gen, setGen] = React.useState({});
   const [res, setRes] = React.useState({});
+  const signedInputRef = React.useRef(null);
+  const [signedBusy, setSignedBusy] = React.useState('');
+  const [signedMeta, setSignedMeta] = React.useState({ loading:true, existe:false, nombre:'', error:'' });
+  const codigoFirmada = String(est?.codigo || est?.rec_m || '').trim();
+  const cedulaFirmada = String(est?.cedula || detalle?.estudiante?.CEDULA || detalle?.estudiante?.cedula || '').trim();
+
+  React.useEffect(() => {
+    let alive = true;
+    if (!cedulaFirmada) {
+      setSignedMeta({ loading:false, existe:false, nombre:'', error:'cedula_requerida' });
+      return () => { alive = false; };
+    }
+    setSignedMeta(prev => ({ ...prev, loading:true, error:'' }));
+    postAdminStudents('getProspectoDetalle', { cedula:cedulaFirmada }, 45000)
+      .then(r => {
+        if (!alive) return;
+        const meta = r?.matricula_firmada || r?.prospecto?.matricula_firmada || {};
+        setSignedMeta({
+          loading:false,
+          existe:meta?.existe === true || String(meta?.existe || '').toUpperCase() === 'TRUE',
+          nombre:String(meta?.nombre || '').trim(),
+          error:'',
+        });
+      })
+      .catch(() => {
+        if (alive) setSignedMeta({ loading:false, existe:false, nombre:'', error:'estado_no_disponible' });
+      });
+    return () => { alive = false; };
+  }, [cedulaFirmada, codigoFirmada]);
+
 
   const generarDocumentoComun = async (tipo) => {
     if (gen[tipo]) return;
@@ -4361,6 +4456,62 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
     }
   };
 
+  const abrirFirmadaAdmin = async () => {
+    if (signedBusy === 'OPEN' || !codigoFirmada || !cedulaFirmada) return;
+    setSignedBusy('OPEN');
+    const r = await abrirMatriculaFirmadaAdminPrivada({ codigo:codigoFirmada, cedula:cedulaFirmada });
+    setSignedBusy('');
+    if (r.ok) {
+      setSignedMeta({ loading:false, existe:true, nombre:r.nombre || signedMeta.nombre || '', error:'' });
+    } else {
+      alert(adminStudentsSafeUserError(r.error, 'No pudimos abrir la matr\u00edcula firmada. Intent\u00e1 de nuevo.', 'matricula_firmada_admin_presentacion'));
+    }
+  };
+
+  const elegirNuevaFirmadaAdmin = () => {
+    if (!codigoFirmada || !cedulaFirmada) {
+      alert('El estudiante debe tener c\u00f3digo y c\u00e9dula para registrar una matr\u00edcula firmada.');
+      return;
+    }
+    signedInputRef.current?.click();
+  };
+
+  const subirNuevaFirmadaAdmin = async (event) => {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    if (input) input.value = '';
+    if (!file || signedBusy) return;
+
+    const isPdf = /pdf/i.test(file.type || '') || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) { alert('Solo se permite subir un PDF firmado.'); return; }
+    if (file.size > 9 * 1024 * 1024) { alert('El PDF supera los 9 MB.'); return; }
+
+    const message = signedMeta.existe
+      ? 'Esta acci\u00f3n crear\u00e1 una NUEVA VERSI\u00d3N firmada y la convertir\u00e1 en la vigente para Ventas y el estudiante. La versi\u00f3n anterior se conserva en el expediente para trazabilidad.\n\n\u00bfContinuar?'
+      : 'Esta acci\u00f3n registrar\u00e1 el PDF firmado como versi\u00f3n vigente del documento de matr\u00edcula.\n\n\u00bfContinuar?';
+    if (!window.confirm(message)) return;
+
+    setSignedBusy('UPLOAD');
+    try {
+      const base64 = await adminSignedFileToBase64(file);
+      const r = await postAdminStudents('subirMatriculaFirmadaVentas', {
+        cedula:cedulaFirmada,
+        codigo:codigoFirmada,
+        nivel:String(nivelActivo || 'B1').trim().toUpperCase(),
+        nombre_archivo:file.name,
+        mime_type:file.type || 'application/pdf',
+        base64,
+      }, 90000);
+      if (!r?.ok) throw new Error(adminStudentsSafeUserError(r?.mensaje || r?.error, 'No se pudo registrar la nueva versi\u00f3n firmada.', 'subir_matricula_firmada_admin'));
+      setSignedMeta({ loading:false, existe:true, nombre:String(r?.nombre || file.name), error:'' });
+      alert('Nueva versi\u00f3n firmada registrada. Las versiones anteriores se conservan en el expediente.');
+    } catch (e) {
+      alert(adminStudentsSafeUserError(e?.message || String(e), 'No se pudo registrar la nueva versi\u00f3n firmada.', 'subir_matricula_firmada_admin'));
+    } finally {
+      setSignedBusy('');
+    }
+  };
+
   const certResult = res[certKey];
   const certLoading = !!gen[certKey];
   const certColor = NIVEL_COLOR_D[nivelCert] || '#E5A823';
@@ -4398,6 +4549,36 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
             </div>
           );
         })}
+
+        <div data-admin-signed-enrollment="true" style={{ border:'2px solid #173E72', borderRadius:'var(--r-lg, 12px)', padding:'16px 18px', background:'color-mix(in srgb, #173E72 4%, white)' }}>
+          <input ref={signedInputRef} type="file" accept="application/pdf,.pdf" style={{ display:'none' }} onChange={subirNuevaFirmadaAdmin} />
+          <div style={{ display:'grid', gridTemplateColumns:'40px 1fr auto', gap:12, alignItems:'flex-start' }}>
+            <div style={{ width:40, height:40, borderRadius:'var(--r-md, 8px)', background:'color-mix(in srgb, #173E72 15%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>&#128221;</div>
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, marginBottom:3 }}>Matr&iacute;cula firmada &middot; versiones</div>
+              <div style={{ fontSize:11, color:'var(--ink-3, #777)', lineHeight:1.45 }}>
+                Administraci&oacute;n puede registrar una nueva versi&oacute;n cuando cambien fecha de inicio, docente, horario u otros datos de la matr&iacute;cula. Las versiones anteriores se conservan; la m&aacute;s reciente queda vigente.
+              </div>
+              <div style={{ marginTop:8, fontSize:11, fontWeight:700, color:signedMeta.existe ? '#2E7D32' : '#8B8178' }}>
+                {signedMeta.loading
+                  ? 'Consultando documento firmado...'
+                  : signedMeta.existe
+                    ? <>Vigente: {signedMeta.nombre || 'PDF firmado registrado'}</>
+                    : signedMeta.error
+                      ? 'No se pudo consultar el estado; las acciones seguras siguen disponibles.'
+                      : 'Todav\u00eda no hay una matr\u00edcula firmada registrada.'}
+              </div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6, minWidth:170 }}>
+              <button type="button" onClick={abrirFirmadaAdmin} disabled={signedBusy === 'OPEN' || !codigoFirmada || !cedulaFirmada} style={{ padding:'8px 12px', borderRadius:'var(--r-md, 8px)', border:'2px solid #173E72', background:'#173E72', color:'white', fontWeight:800, fontSize:10.8, cursor:signedBusy === 'OPEN' ? 'wait' : 'pointer', opacity:signedBusy === 'OPEN' ? 0.7 : 1 }}>
+                {signedBusy === 'OPEN' ? 'Verificando...' : 'Abrir \u00faltima firmada'}
+              </button>
+              <button type="button" onClick={elegirNuevaFirmadaAdmin} disabled={signedBusy === 'UPLOAD' || !codigoFirmada || !cedulaFirmada} style={{ padding:'8px 12px', borderRadius:'var(--r-md, 8px)', border:'1px solid #173E72', background:'white', color:'#173E72', fontWeight:800, fontSize:10.8, cursor:signedBusy === 'UPLOAD' ? 'wait' : 'pointer', opacity:signedBusy === 'UPLOAD' ? 0.7 : 1 }}>
+                {signedBusy === 'UPLOAD' ? 'Subiendo...' : 'Subir nueva versi\u00f3n firmada'}
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div style={{ border:`2px solid ${certColor}`, borderRadius:'var(--r-lg, 12px)', padding:'16px 18px', background:`color-mix(in srgb, ${certColor} 4%, white)` }}>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12, alignItems:'center' }}>
