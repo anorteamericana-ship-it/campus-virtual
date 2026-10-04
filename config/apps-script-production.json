@@ -2,47 +2,65 @@
   "environment": "production",
   "scriptId": "1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2",
   "deploymentId": "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ",
-  "deployedVersion": 434,
-  "lastVerifiedAt": "2026-10-04T08:45:58-06:00",
-  "lastVerifiedBy": "authenticated-clasp-ui-deployment-readback-pages-public-source-smoke",
+  "deployedVersion": 436,
+  "lastVerifiedAt": "2026-10-04T14:51:15-06:00",
+  "lastVerifiedBy": "clasp-readback-authenticated-conape-v1-baseline-import-pages-public-source-security-smoke",
   "lastChange": {
-    "summary": "C2-R14C · PROD @434 · documentos privados de Ventas + ciclo de matrícula firmada + versionado Admin",
-    "sourceBackendPr": 6,
+    "summary": "CONAPE Prospectación V1 · PROD @436 · CSV + estado actual + eventos persistentes + semáforo 7/14 + panel Ventas",
+    "sourceBackendPr": 8,
     "backendReleasePrs": [
-      5,
-      6
+      7,
+      8
     ],
-    "backendMain": "faaa8e1893bcbacbf7b35cdaceb0746a3d5f5217",
-    "previousVersion": 433,
+    "backendMain": "4c5549150cf1fb2cb26cc49db077b2744cf0e6f1",
+    "previousKnownGoodVersion": 434,
     "runtimeVerified": true,
-    "functionalVerified": false,
-    "functionalVerificationNote": "Deployment estable verificado en @434; push normal sin --force; readback remoto 27/27, 25 JS, 0 drift, SHA agregado 9fa8e16eb462ccec60768aaa01c89cc343943d569941227b300b3e36b638a1fb; root Apps Script HTTP 200 y cuatro endpoints privados rechazaron acceso anónimo con sesion_requerida. El QA autenticado post-@434/#401 no se completó porque la sesión del Campus expiró al recargar y cayó al login."
+    "functionalVerified": true,
+    "functionalVerificationNote": "Deployment estable @436; readback 28/28, 26 JS, 0 drift, SHA agregado 1c5c14878ac692d511ee8e6b02da25bcb2759f0bb1ba26285bb7da75276d585f. Superadmin previsualizó e importó el CSV real de 59 filas como baseline; estado persistente=59 y eventos persistentes=0. El panel filtrado por ASESOR_REF mostró el scope real. Falta observar un movimiento CONAPE real posterior al baseline para declarar probado en vivo su envejecimiento 7/14."
   },
-  "frontendCodeMainAtVerification": "a7e7995bcb4eda90dbea0e1ad81f83fb4189977e",
+  "frontendCodeMainAtVerification": "b0d208730ebe7bd6b87826e458204ad1a6d04315",
   "frontendHotfixPr": 401,
-  "latestFrontendMainPr": 401,
+  "latestFrontendMainPr": 405,
   "notes": [
     "Script ID y Deployment ID no son secretos; no guardar tokens ni credenciales aquí.",
     "La fuente de verdad de runtime es el Deployment ID estable apuntando a una versión numérica; HEAD remoto no equivale por sí solo a producción.",
-    "Rollback inmediato disponible: versión inmutable @433; fue readback 27/27 con 0 drift contra backend commit 26512c44484b5200da60fbd5f5c253c1b7da8f76. No ejecutarlo sin causa y autorización.",
-    "campus_backend/main quedó reconciliado con PROD @434 en faaa8e1893bcbacbf7b35cdaceb0746a3d5f5217.",
-    "C2-R14C tiene runtime/publicación verificados; QA autenticado post-release queda pendiente por sesión del Campus expirada. No declarar FULL_E2E=PASS.",
+    "Rollback conocido-bueno para el corte CONAPE V1: @434. No usar @435 como rollback operativo sin verificación separada.",
+    "campus_backend/main quedó reconciliado con PROD @436 en 4c5549150cf1fb2cb26cc49db077b2744cf0e6f1.",
+    "CONAPE Prospectación V1: baseline real 59 filas / 0 eventos persistentes; el próximo cambio real de CONAPE será la primera evidencia E2E de creación y envejecimiento de un movimiento.",
     "C2-R10 tuvo una excepción procedimental: clasp push normal devolvió Skipping push y se usó --force desde la carpeta temporal aislada del candidato aprobado; el readback posterior dio 0 drift. No tratar esto como precedente ni cambiar la regla general de no usar --force.",
     "Tras cambios de manifiesto/scopes, si SpreadsheetApp.openById devuelve falta de permiso incluso al volver de versión, revisar autorización OAuth del usuario desplegador antes de culpar al código.",
     "El redirect HTTP 302 de script.google.com a script.googleusercontent.com es normal en Web Apps de Apps Script."
   ],
-  "frontendLastVerifiedAt": "2026-10-04T08:45:58-06:00",
+  "frontendLastVerifiedAt": "2026-10-04T14:51:15-06:00",
   "frontendReleasePrs": [
     392,
     395,
     396,
     398,
     400,
-    401
+    401,
+    405
   ],
-  "frontendFunctionalVerified": false,
-  "frontendFunctionalVerificationNote": "GitHub Pages SUCCESS sobre a7e7995bcb4eda90dbea0e1ad81f83fb4189977e. El dominio real sirve el cache-bust F98.4Z6C2R14C1 y admin_students.jsx con controles de versión firmada, endpoints privados y generador canónico. El QA autenticado final de Ventas/Admin post-release queda pendiente porque la sesión del Campus expiró durante la recarga.",
+  "frontendFunctionalVerified": true,
+  "frontendFunctionalVerificationNote": "PR #405 y Pages SUCCESS. El dominio público carga el panel CPV1; sesión superadmin verificó previsualización e importación baseline. El estado filtrado por asesor se carga desde backend @436.",
   "fullE2EVerified": false,
-  "fullE2EVerificationNote": "NO declarar FULL_E2E ni FULL_BROWSER_E2E: además de la inscripción controlada completa pendiente, falta repetir QA autenticado post-@434/#401 de los controles de Ventas/Admin después del release.",
-  "ciMaintenancePr": 402
+  "fullE2EVerificationNote": "NO declarar FULL_E2E global. Para CONAPE V1 falta observar un movimiento externo real posterior al baseline y su persistencia/envejecimiento 7/14 en PROD; además permanecen pendientes E2E globales históricos no relacionados.",
+  "ciMaintenancePr": 402,
+  "frontendFeaturePr": 405,
+  "conapeProspectacionV1": {
+    "version": "CONAPE_PROSPECTACION_V1_20261004",
+    "backendVersion": 436,
+    "frontendPr": 405,
+    "baselineImportedAt": "2026-10-04T14:45:15-06:00",
+    "sourceRows": 59,
+    "stateRows": 59,
+    "eventRowsAfterBaseline": 0,
+    "sourceEncoding": "Windows-1252",
+    "semaphore": {
+      "nuevo": "0-6",
+      "pendiente": "7-13",
+      "vencido": "14+"
+    },
+    "realPostBaselineEventObserved": false
+  }
 }

@@ -1,22 +1,34 @@
 # CAMPUS VIRTUAL · Estado de producción
 
-Última verificación operativa: **2026-10-04 08:45 -06:00**.
+Última verificación operativa: **2026-10-04 14:51 -06:00**.
 
 ## Apps Script PROD
 
 - Script ID: `1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2`
 - Deployment ID estable: `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`
 - URL estable: `https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec`
-- Version desplegada: **@434**
-- Version estable anterior / rollback inmediato: **@433**.
-- Release actual: **C2-R14C · documentos privados de Ventas + ciclo de matrícula firmada + versionado Admin**.
-- Reconciliacion backend: **campus_backend/main = faaa8e1893bcbacbf7b35cdaceb0746a3d5f5217**; PR backend #5 y #6 mergeados.
-- Promocion backend: clasp push normal PASS, sin --force; readback remoto HEAD **27/27**, **25 JS**, **0 drift**, sintaxis PASS y SHA agregado **9fa8e16eb462ccec60768aaa01c89cc343943d569941227b300b3e36b638a1fb**. Se creó la versión inmutable **@434** y el mismo Deployment ID estable fue actualizado por la UI de Apps Script de @433 a **@434**.
-- Frontend C2-R14/C2-R14C: PR **#400** publicó documentos privados de Ventas y ciclo de matrícula firmada; PR **#401** publicó en Admin Abrir última firmada + Subir nueva versión firmada; main productivo vigente: **a7e7995bcb4eda90dbea0e1ad81f83fb4189977e**. PR **#402** corrigió guards CI obsoletos sin cambiar runtime.
-- Verificacion HTTP/runtime C2-R14C: **PASS**. clasp deployments confirma el Deployment ID estable en **@434**; root Apps Script HTTP **200**; descargarDocumentoProspectoPrivado, descargarMatriculaFirmadaPrivada, descargarDocumentoExtraPrivado y descargarComprobantePagoPrivado rechazan acceso anónimo con sesion_requerida.
-- Verificación autenticada previa conservada: C2-R12/C2-R13 tuvo PASS real para Mi Perfil/dashboard, navegación, inventario de certificados, Programa Completo, documento adicional de Ventas y reapertura privada de matrícula firmada histórica.
-- Límite de evidencia del corte @434/#401: la sesión autenticada del Campus expiró al recargar durante el QA post-release y cayó al login. Por eso **no marcar QA autenticado post-@434/#401 como PASS** y **no declarar FULL_BROWSER_E2E ni FULL_E2E**. La inscripción controlada completa indicada más abajo también sigue pendiente.
+- Version desplegada: **@436**
+- Version estable anterior / rollback inmediato conocido-bueno: **@434**. La V1 no usa @435 como rollback operativo sin una verificación separada.
+- Release actual: **CONAPE Prospectación V1 · importador CSV + estado actual + eventos persistentes + semáforo 7/14 + panel de Ventas**.
+- Reconciliacion backend: **campus_backend/main = 4c5549150cf1fb2cb26cc49db077b2744cf0e6f1**; PR backend **#7** implementó V1 y PR **#8** preservó desembolsos de prospectos vistos por primera vez ya avanzados.
+- Promocion backend: el Deployment ID estable fue verificado en **@436**. Readback inmutable: **28/28 archivos**, **26 JS**, **0 drift normalizado**, sintaxis PASS y SHA agregado **1c5c14878ac692d511ee8e6b02da25bcb2759f0bb1ba26285bb7da75276d585f**.
+- Frontend vigente: PR **#405** publicó el panel CONAPE Prospectación V1; main productivo verificado: **b0d208730ebe7bd6b87826e458204ad1a6d04315**. Pages SUCCESS y el dominio real sirve ventas_conape_prospectacion_v1.jsx?v=CPV1-20261004.
+- Verificacion HTTP/runtime V1: **PASS**. Root Apps Script HTTP **200**; getConapeProspectacionVentas, previsualizarConapeProspectacionCsv e importarConapeProspectacionCsv rechazan acceso anónimo con sesion_requerida.
+- Verificación autenticada V1: **PASS para línea base y panel**. Superadmin previsualizó el CSV real de CONAPE con **59 registros**, baseline=true y **0 movimientos persistentes**; luego importó la línea base. CONAPE_PROSPECTACION_ACTUAL quedó con **59 filas** y CONAPE_PROSPECTACION_EVENTOS con **0 eventos**, evitando alertas históricas falsas. El panel filtrado por ASESOR_REF mostró correctamente **1** registro para Camila Solis.
+- Límite de evidencia V1: todavía **no ha ocurrido un movimiento CONAPE real posterior a la línea base** para observar en PROD su persistencia y envejecimiento verde 0-6 / amarillo 7-13 / rojo 14+. Esa parte queda cubierta por QA sintético y código, pero no se declara E2E real hasta que ocurra un cambio externo. **FULL_E2E sigue false**.
 - Excepción procedimental C2-R10: el `clasp push` normal devolvió `Skipping push`; se terminó usando `clasp push --force` desde la carpeta temporal aislada que contenía únicamente el candidato aprobado. El pull post-push dio **0 drift** contra ese candidato. **Esto no modifica la regla general de no usar `--force`; queda registrado como excepción histórica, no como procedimiento recomendado.**
+
+### CONAPE Prospectación V1 · evidencia de corte @436
+
+- Fuente operativa: reporte Oracle APEX de Prospectación Reclutador con Academia Norteamericana + Plataforma de Servicios + Rows=All.
+- CSV real observado: **59 prospectos, 14 columnas**, codificación Windows-1252. El importador valida por encabezado y tipo; no depende de posición.
+- Estado actual persistente: CONAPE_PROSPECTACION_ACTUAL, **59 filas** después de la línea base del 2026-10-04 14:45:15 -06:00.
+- Eventos persistentes: CONAPE_PROSPECTACION_EVENTOS, **0 filas** inmediatamente después de la línea base; esto es intencional para no convertir historia previa en alertas nuevas.
+- Semáforo contractual: **NUEVO 0-6 días, PENDIENTE 7-13 días, VENCIDO 14+ días**, basado en DETECTADO_EN, no en cantidad de refresh.
+- Alcance Ventas: getConapeProspectacionVentas filtra rol ventas por PROSPECTOS.ASESOR_REF; admin/superadmin puede usar scope de asesor.
+- Separación de dominios: Estado CONAPE externo se muestra separado de ETAPA del Campus; V1 no sobreescribe ETAPA automáticamente.
+- El WS viejo GetEstudiantesFinanciados se conserva como segunda fuente; V1 no lo reemplaza ni lo modifica.
+- Reclutar Prospectos / automatización APEX **no forma parte de V1**.
 
 ### Incidente OAuth histórico resuelto durante el release @419
 
@@ -33,14 +45,15 @@ Regla futura: si `SpreadsheetApp.openById` devuelve falta de permiso y el error 
 ## Frontend público
 
 - Rama productiva: `main`.
-- Frontend productivo publicado/verificado por Pages: **a7e7995bcb4eda90dbea0e1ad81f83fb4189977e** (main, merge de PR #401 sobre PR #402).
+- Frontend productivo publicado/verificado por Pages: **b0d208730ebe7bd6b87826e458204ad1a6d04315** (main, merge de PR #405).
 - PR **#395**: Mi Perfil quedó exclusivamente en `#dashboard`; `#perfil` y `#perfil_estudiante` resuelven a dashboard; el estado azul del menú se sincroniza con la ruta visible y contempla clic repetido + Atrás/Adelante.
 - PR **#396**: elimina la interferencia residual de `additional_resources_panel_cs21a68.jsx` sobre el sidebar estudiantil; «Recursos adicionales» conserva correctamente el estado azul.
 - PR **#398**: C2-R13 corrigió la reapertura privada de matrícula firmada histórica en Ventas; tuvo QA autenticado real PASS antes de este corte.
 - PR **#400**: C2-R14 conectó Cédula frente, Cédula dorso y Título a entrega privada y aplicó el ciclo de firma de una sola carga para Ventas.
 - PR **#401**: C2-R14C agrega a Admin apertura de la última matrícula firmada y carga de nuevas versiones conservando históricos; no duplica el generador de matrícula.
 - PR **#402**: mantenimiento de CI/guards descendant-safe; **sin cambio de runtime**.
-- Verificación de publicación: GitHub Pages **SUCCESS** sobre a7e7995b; el dominio real sirve src/app.jsx con cache-bust F98.4Z6C2R14C1 y src/admin_students.jsx HTTP 200 con controles de matrícula firmada, endpoint privado, versionado y generador canónico. QA autenticado post-release pendiente por sesión expirada.
+- PR **#405**: CONAPE Prospectación V1 en Ventas: panel persistente, estado actual, semáforo 7/14 y carga CSV restringida a admin/superadmin.
+- Verificación de publicación V1: GitHub Pages **SUCCESS** sobre b0d20873; el dominio real sirve ventas.html con la referencia CPV1 y src/ventas_conape_prospectacion_v1.jsx HTTP 200 con build CONAPE_PROSPECTACION_V1_UI_20261004.
 - PR **#394** queda supersedido por #395; no usar su ruta estudiantil `PerfilView` como referencia funcional.
 - PR #118: mergeado; scanner/documentos CONAPE publicados.
 - PR #119: mergeado; hotfix visual de tildes/símbolos del Paso 5 + cache-bust.
