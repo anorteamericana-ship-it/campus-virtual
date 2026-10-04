@@ -44,4 +44,3 @@ const historyEffect=app.slice(app.indexOf('  useEffect(() => {',app.indexOf('// 
  assert.deepEqual(errors,[]);console.log('PASS: JSX, profile aliases, unique active menu, repeated clicks, native/custom transitions, Back/Forward (synthetic browser; no production data).');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
-
