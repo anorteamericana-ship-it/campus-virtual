@@ -1,0 +1,27 @@
+name: QA CONAPE Prospectacion V1
+
+on:
+  pull_request:
+    paths:
+      - 'src/ventas_conape_prospectacion_v1.jsx'
+      - 'src/ventas_dashboard.jsx'
+      - 'ventas.html'
+      - 'scripts/qa_conape_prospectacion_v1_ui.mjs'
+      - '.github/workflows/qa-conape-prospectacion-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa-conape-prospectacion-v1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate CONAPE Prospectacion V1 UI contract
+        run: node scripts/qa_conape_prospectacion_v1_ui.mjs
