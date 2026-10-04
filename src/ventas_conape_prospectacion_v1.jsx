@@ -3,7 +3,7 @@
   'use strict';
 
   const { useCallback, useEffect, useMemo, useState } = React;
-  const BUILD = 'CONAPE_PROSPECTACION_V1_UI_20261004';
+  const BUILD = 'CONAPE_PROSPECTACION_V2_SALES_UI_20261004';
   const MAX_BYTES = 2 * 1024 * 1024;
 
   function injectStyles() {
@@ -176,7 +176,7 @@
             <div className="cpv1-kicker">CONAPE · Prospectación</div>
             <h3 className="cpv1-title">Movimientos que no desaparecen al actualizar</h3>
             <div className="cpv1-sub">
-              Estado externo de CONAPE separado de la ETAPA del Campus · verde 0–6 días · amarillo 7–13 · rojo 14+.
+              Ventas usa el estado operativo derivado de Prospectación. Los valores 01/09/2026 son códigos: depósito 01 · período 09 · año 2026, no fechas.
               {data?.actualizado_en ? ` Última lectura: ${data.actualizado_en}.` : ''}
             </div>
           </div>
@@ -229,12 +229,12 @@
             <summary>Estado actual CONAPE ({rows.length})</summary>
             <div className="cpv1-table-wrap">
               <table className="cpv1-table">
-                <thead><tr><th>Prospecto</th><th>Estado CONAPE</th><th>Aprobación</th><th>Formalización</th><th>Último desembolso</th><th>Próximo desembolso</th></tr></thead>
+                <thead><tr><th>Prospecto</th><th>CONAPE operativo</th><th>Acción Ventas</th><th>Aprobación</th><th>Formalización</th><th>Código último depósito</th><th>Código próximo depósito</th></tr></thead>
                 <tbody>
                   {rows.map(row => (
                     <tr key={row.cedula}>
                       <td><button type="button" className="cpv1-open" onClick={() => onOpenProspecto && onOpenProspecto(row.cedula)}>{row.nombre || row.cedula}</button></td>
-                      <td>{formatValue(row.estado)}</td><td>{formatValue(row.aprobacion)}</td><td>{formatValue(row.formalizacion)}</td><td>{formatValue(row.ultimo_desembolso)}</td><td>{formatValue(row.proximo_desembolso)}</td>
+                      <td>{formatValue(row.conape_estado || row.estado)}</td><td>{formatValue(row.conape_accion)}</td><td>{formatValue(row.aprobacion)}</td><td>{formatValue(row.formalizacion)}</td><td>{formatValue(row.ultimo_desembolso)}</td><td>{formatValue(row.proximo_desembolso)}</td>
                     </tr>
                   ))}
                 </tbody>

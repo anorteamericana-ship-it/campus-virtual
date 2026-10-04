@@ -34,6 +34,20 @@
     const active=sort.key===col.key,direction=active?sort.dir:'',ariaSort=!active?'none':direction==='asc'?'ascending':'descending';
     return <th aria-sort={ariaSort}><button type="button" className={`vx-sort-head${active?' active':''}`} onClick={()=>onSort(col.key)} title={`Ordenar por ${col.label}`}><span>{col.label}</span><span className="vx-sort-icon" aria-hidden="true">{active?(direction==='asc'?'▲':'▼'):'↕'}</span></button></th>;
   }
+  function ConapeStateCell({p,onChanged,onToast}){
+    const isConape=text(p?.financiamiento||p?.FINANCIAMIENTO).toUpperCase()==='CONAPE';
+    if(!isConape)return <span aria-label="No aplica CONAPE">—</span>;
+    const state=text(p?.conape_estado||p?.estado_conape_raw||p?.estado_conape||'');
+    const isV2=text(p?.conape_motor).toUpperCase()==='PROSPECTACION_V2';
+    const noRegistro=isV2&&(!state||state.toUpperCase()==='SIN REGISTRO CONAPE');
+    const tone=String(p?.estado_ventas_color||'').toLowerCase();
+    const palette=tone==='verde'?{bg:'#E8F7ED',fg:'#237342'}:tone==='amarillo'?{bg:'#FFF3DF',fg:'#8B5700'}:{bg:'#FDECEC',fg:'#A91E16'};
+    return <div style={{display:'flex',flexDirection:'column',gap:5,alignItems:'flex-start'}}>
+      <span className="vx-badge" style={{background:palette.bg,color:palette.fg,whiteSpace:'normal',lineHeight:1.15}} title={state}>{state||'Sin registro'}</span>
+      {isV2&&p?.conape_ultimo_desembolso?<small style={{fontSize:10.5,color:'var(--v-ink-3)'}}>Código {text(p.conape_ultimo_desembolso)}</small>:null}
+      {noRegistro&&window.ConapeRecruitRowButtonC35?<window.ConapeRecruitRowButtonC35 prospecto={p} onChanged={onChanged} onToast={onToast}/>:null}
+    </div>;
+  }
   function SortableProspectoTable({lista,onOpen,onChanged,onToast}){
     const [sort,setSort]=React.useState({key:'',dir:'asc'});
     const [conapeEtapas,setConapeEtapas]=React.useState({});
@@ -52,8 +66,8 @@
         <td title={text(window.fmtTelV(p.telefono))}><span className="vx-tel"><window.WaLink tel={p.whatsapp||p.telefono} className="vx-wa-mini"><window.Vico d={window.VI.wa} size={15} fill="currentColor"/></window.WaLink>{window.fmtTelV(p.telefono)}</span></td>
         <td className="vx-td-grupo" title={text(p.grupo_tentativo||'—')}>{p.grupo_tentativo||'—'}</td><td className="vx-td-prog" title={text(window.progLabel(p.programa))}>{window.progLabel(p.programa)}</td><td><window.FinBadge financiamiento={p.financiamiento}/></td>
         <td title={etapa}><window.EtapaBadge etapa={etapa}/></td><td><window.EstadoBadge est={est}/></td><td className="vx-td-dias">{dias!=null?<><b>{dias}</b> d</>:'—'}</td>
-        <td onClick={e=>e.stopPropagation()}>{window.ConapeRecruitRowButtonC35?<window.ConapeRecruitRowButtonC35 prospecto={p} onChanged={handleConapeChanged} onToast={onToast}/>:null}</td>
-        <td onClick={e=>e.stopPropagation()}><div className="vx-rowacts"><button className="vx-iconbtn ver" onClick={()=>onOpen(p)}><window.Vico d={window.VI.eye} size={13}/> Ver</button></div></td>
+        <td onClick={e=>e.stopPropagation()}><ConapeStateCell p={p} onChanged={handleConapeChanged} onToast={onToast}/></td>
+        <td onClick={e=>e.stopPropagation()}><div className="vx-rowacts" style={{flexDirection:'column',alignItems:'flex-start',gap:5}}>{p?.conape_accion?<small style={{maxWidth:180,lineHeight:1.2,color:p?.conape_alerta?'#A91E16':'var(--v-ink-2)',fontWeight:p?.conape_alerta?700:600}}>{p.conape_accion}</small>:null}<button className="vx-iconbtn ver" onClick={()=>onOpen(p)}><window.Vico d={window.VI.eye} size={13}/> Ver</button></div></td>
       </tr>;})}</tbody>
     </table></div></div>;
   }

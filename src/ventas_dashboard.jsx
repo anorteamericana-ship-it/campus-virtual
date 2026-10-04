@@ -146,7 +146,8 @@ function VentasApp({ sesion }) {
         setDash(baseDash);
 
         const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
-        if (bridge && typeof bridge.salesStatuses === 'function') {
+        const conapeV2 = data.conape_motor_version === 'PROSPECTACION_V2';
+        if (!conapeV2 && bridge && typeof bridge.salesStatuses === 'function') {
           try {
             const conape = await bridge.salesStatuses(scopeAsesor);
             if (!cancel && conape?.ok && Array.isArray(conape.rows)) {

@@ -17,7 +17,10 @@ check(panel.includes("const isAdmin = rol === 'admin' || rol === 'superadmin'"),
 check(panel.includes('const MAX_BYTES = 2 * 1024 * 1024'), 'Frontend enforces 2 MB CSV limit');
 check(panel.includes('accept=".csv,text/csv"'), 'File picker accepts CSV only');
 check(panel.includes('Movimientos que no desaparecen al actualizar'), 'Persistent-event purpose is explicit in UI');
-check(panel.includes('verde 0–6 días · amarillo 7–13 · rojo 14+'), 'UI exposes 7/14-day semaphore contract');
+check(panel.includes('depósito 01 · período 09 · año 2026, no fechas'), 'UI explains disbursement codes are not dates');
+check(panel.includes('CONAPE operativo'), 'Current-state table exposes derived operational CONAPE state');
+check(panel.includes('Acción Ventas'), 'Current-state table exposes seller action');
+check(panel.includes('Código último depósito'), 'UI labels the last disbursement as a code');
 check(panel.includes('onOpenProspecto && onOpenProspecto(ev.cedula)'), 'Event opens linked Campus prospect');
 check(panel.includes('onOpenProspecto && onOpenProspecto(row.cedula)'), 'Current-state row opens linked Campus prospect');
 check(!panel.includes('\uFFFD'), 'Panel contains no Unicode replacement characters');
@@ -28,8 +31,8 @@ check(dashboard.includes('window.ConapeProspectacionPanelV1'), 'Ventas dashboard
 check(dashboard.includes('asesor={scopeAsesor}'), 'Panel follows active advisor scope');
 check(dashboard.includes('rol={rolReal}'), 'Panel receives real role, not simulated advisor role');
 
-const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CPV1-20261004';
-const dashScript = 'src/ventas_dashboard.jsx?v=CPV1-20261004';
+const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-SALES-20261004';
+const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-SALES-20261004';
 check(html.includes(panelScript), 'ventas.html loads V1 panel with cache bust');
 check(html.includes(dashScript), 'ventas.html cache-busts dashboard integration');
 check(html.indexOf(panelScript) < html.indexOf(dashScript), 'Panel script loads before dashboard consumer');
