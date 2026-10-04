@@ -171,6 +171,12 @@ function VentasApp({ sesion }) {
     return () => { cancel = true; };
   }, [scopeAsesor, reloadTick, previewKey, esSupervisor]);
 
+  // Prospectación CONAPE de Ventas: después de un snapshot nuevo, releer el
+  // dashboard para recalcular ETAPA / ESTADO / CONAPE con el motor V2.
+  const onConapeUpdated = useCallback(() => {
+    setReloadTick(t => t + 1);
+  }, []);
+
   // Update optimista cuando el drawer cambia algo del prospecto.
   const onChanged = useCallback(({ cedula, ...campos }) => {
     setDash(prev => {
@@ -316,6 +322,7 @@ function VentasApp({ sesion }) {
                   asesor={scopeAsesor}
                   rol={rolReal}
                   onOpenProspecto={cedula => setDrawerCed(cedula)}
+                  onConapeUpdated={onConapeUpdated}
                 />
               </div>
             ) : null}

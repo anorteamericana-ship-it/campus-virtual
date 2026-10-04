@@ -1,12 +1,12 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { chromium } from 'playwright';
-import { buildConapeV44DryRunSummary } from './conape_v44_publisher.mjs';
+import { buildConapeProspectacionV2SignedEnvelope } from './conape_v44_publisher.mjs';
 import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.4-PUBLISHER-DRYRUN-APEX-CSV-DOUBLE';
+const VERSION = 'V4.4.7-PROSPECTACION-V2-ON-DEMAND';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1727,16 +1727,36 @@ async function resetProspectListReport(p, sessionId) {
   return ir_filters_before;
 }
 
+function prospectSnapshotFingerprint(rows) {
+  const normalized = normalizeProspectRows(rows).sort((a,b) => a.cedula.localeCompare(b.cedula));
+  return sha(normalized.map(row => PROSPECT_LIST_FIELDS.map(key => txt(row?.[key] || '')).join('\u001f')).join('\u001e'));
+}
+
+async function readHtmlProspectSnapshot(p, sessionId) {
+  const irFiltersBefore = await resetProspectListReport(p, sessionId);
+  await waitProspectListReady(p);
+  const rowsByCedula = new Map();
+  const pages = await readPagedProspects(p, rowsByCedula);
+  const rows = [...rowsByCedula.values()].sort((a,b) => a.cedula.localeCompare(b.cedula));
+  if (!rows.length) throw new AppError('CONAPE_LIST_HTML_EMPTY', 'La lista visible de CONAPE no devolvió prospectos.', 503, 'LIST');
+  return {
+    rows,
+    pages,
+    ir_filters_before:irFiltersBefore,
+    fingerprint:prospectSnapshotFingerprint(rows),
+  };
+}
+
 async function listProspectsFromHome() {
   const started = Date.now();
   let pages = 0;
-  let method = 'CSV_DOWNLOAD';
+  let method = 'UNKNOWN';
   let columnsOk = false;
   let irFiltersBefore = 0;
-  let rowsCsv = null;
-  let rowsHtmlAll = null;
+  let rowsA = null;
+  let rowsB = null;
   let countsMatch = false;
-  const verificationMethod = 'CSV_DOUBLE';
+  let verificationMethod = 'NONE';
   const rowsByCedula = new Map();
 
   try {
@@ -1744,98 +1764,72 @@ async function listProspectsFromHome() {
     await ConapeSession.login(p);
 
     const sessionId = await readApexSession(p);
-
     if (!sessionId) {
-      throw new AppError(
-        'CONAPE_APEX_SESSION_MISSING',
-        'CONAPE no expuso una sesión válida.',
-        409,
-        'LIST'
-      );
+      throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'LIST');
     }
 
-    irFiltersBefore = await resetProspectListReport(p, sessionId);
-
-    const csvA = await downloadProspectCsv(p);
-
-    if (!csvA?.ok || csvA?.columns_ok !== true) {
-      const error = new AppError(
-        'CONAPE_LIST_CSV_A_NOT_READY',
-        'CONAPE no permitió obtener la primera exportación CSV válida.',
-        503,
-        'LIST'
-      );
-      error.reason = txt(csvA?.reason || 'UNKNOWN');
-      throw error;
-    }
-
-    await p.goto(prospectListResetUrl(sessionId), {
-      waitUntil:'domcontentloaded',
-      timeout:30_000,
-    });
-
-    await waitForApexDynamicAction(p);
-
-    const csvB = await downloadProspectCsv(p);
-
-    if (!csvB?.ok || csvB?.columns_ok !== true) {
-      const error = new AppError(
-        'CONAPE_LIST_CSV_B_NOT_READY',
-        'CONAPE no permitió obtener la segunda exportación CSV válida.',
-        503,
-        'LIST'
-      );
-      error.reason = txt(csvB?.reason || 'UNKNOWN');
-      throw error;
-    }
-
-    let verified;
-
+    // Camino preferido: dos exportaciones CSV nativas e idénticas.
     try {
-      verified = verifyDoubleCsv(csvA, csvB);
-    } catch (cause) {
-      const code = txt(
-        cause?.code ||
-        cause?.message ||
-        'CONAPE_V444_CSV_DOUBLE_MISMATCH'
-      );
+      irFiltersBefore = await resetProspectListReport(p, sessionId);
+      await waitProspectListReady(p);
+      const csvA = await downloadProspectCsv(p);
+      if (!csvA?.ok || csvA?.columns_ok !== true) {
+        const error = new AppError('CONAPE_LIST_CSV_A_NOT_READY', 'CONAPE no permitió obtener la primera exportación CSV válida.', 503, 'LIST');
+        error.reason = txt(csvA?.reason || 'UNKNOWN');
+        throw error;
+      }
 
-      const mismatch = new AppError(
-        code,
-        'Las dos exportaciones CSV de CONAPE no coincidieron.',
-        503,
-        'LIST'
-      );
+      await resetProspectListReport(p, sessionId);
+      await waitProspectListReady(p);
+      const csvB = await downloadProspectCsv(p);
+      if (!csvB?.ok || csvB?.columns_ok !== true) {
+        const error = new AppError('CONAPE_LIST_CSV_B_NOT_READY', 'CONAPE no permitió obtener la segunda exportación CSV válida.', 503, 'LIST');
+        error.reason = txt(csvB?.reason || 'UNKNOWN');
+        throw error;
+      }
 
-      Object.assign(mismatch, {
-        rows_csv:Number(cause?.rows_csv_a ?? csvA?.rows?.length ?? 0),
-        rows_html_all:Number(cause?.rows_csv_b ?? csvB?.rows?.length ?? 0),
-        counts_match:false,
-        columns_ok:true,
-        method:'CSV_DOWNLOAD',
-        verification_method:verificationMethod,
-        ms:Date.now() - started,
-        ir_filters_before:irFiltersBefore,
-      });
+      const verified = verifyDoubleCsv(csvA, csvB);
+      addProspectRows(rowsByCedula, verified.rows);
+      rowsA = Number(verified.rows_csv_a);
+      rowsB = Number(verified.rows_csv_b);
+      countsMatch = verified.counts_match === true;
+      columnsOk = verified.columns_ok === true;
+      pages = 1;
+      method = 'CSV_DOUBLE';
+      verificationMethod = 'CSV_DOUBLE';
+    } catch (csvError) {
+      console.log(JSON.stringify({
+        event:'conape_list_csv_fallback',
+        version:VERSION,
+        code:txt(csvError?.code || 'CSV_UNAVAILABLE'),
+        reason:txt(csvError?.reason || csvError?.message || 'UNKNOWN').slice(0,120),
+        pii:false,
+      }));
 
-      throw mismatch;
+      // Fallback seguro: dos recorridos completos e independientes de la tabla
+      // visible. Un reset separa A de B y el fingerprint cubre todos los campos.
+      rowsByCedula.clear();
+      const htmlA = await readHtmlProspectSnapshot(p, sessionId);
+      const htmlB = await readHtmlProspectSnapshot(p, sessionId);
+      rowsA = htmlA.rows.length;
+      rowsB = htmlB.rows.length;
+      irFiltersBefore = htmlA.ir_filters_before;
+      pages = Math.max(htmlA.pages, htmlB.pages);
+      countsMatch = rowsA === rowsB && htmlA.fingerprint === htmlB.fingerprint;
+      if (!countsMatch) {
+        const mismatch = new AppError('CONAPE_LIST_HTML_DOUBLE_MISMATCH', 'Las dos lecturas visibles de CONAPE no coincidieron.', 503, 'LIST');
+        mismatch.rows_a = rowsA;
+        mismatch.rows_b = rowsB;
+        throw mismatch;
+      }
+      addProspectRows(rowsByCedula, htmlB.rows);
+      columnsOk = true;
+      method = 'HTML_DOUBLE';
+      verificationMethod = 'HTML_DOUBLE';
     }
 
-    const csvRows = new Map();
-    addProspectRows(csvRows, verified.rows);
-
-    rowsCsv = verified.rows_csv_a;
-
-    // Campo legacy conservado para no cambiar todavía el contrato HMAC.
-    // En V4.4.4 contiene el conteo de la segunda exportación CSV.
-    rowsHtmlAll = verified.rows_csv_b;
-
-    countsMatch = verified.counts_match === true;
-    columnsOk = verified.columns_ok === true;
-    pages = 1;
-
-    for (const row of csvRows.values()) {
-      rowsByCedula.set(row.cedula, row);
+    if (!columnsOk || !countsMatch || rowsByCedula.size <= 0 || rowsByCedula.size !== rowsA || rowsA !== rowsB) {
+      throw new AppError('CONAPE_LIST_VERIFICATION_FAILED', 'La lectura de CONAPE no superó la verificación doble.', 503, 'LIST');
     }
 
     ConapeSession.state = 'CONNECTED';
@@ -1844,14 +1838,17 @@ async function listProspectsFromHome() {
     return {
       ok:true,
       code:'PROSPECT_LIST_READY',
-      rows:[...rowsByCedula.values()],
+      rows:[...rowsByCedula.values()].sort((a,b) => a.cedula.localeCompare(b.cedula)),
       row_count:rowsByCedula.size,
       pages,
       method,
-      rows_csv:rowsCsv,
-      rows_html_all:rowsHtmlAll,
-      counts_match:countsMatch,
-      columns_ok:columnsOk,
+      rows_a:rowsA,
+      rows_b:rowsB,
+      // aliases legacy para telemetría y QA existentes
+      rows_csv:rowsA,
+      rows_html_all:rowsB,
+      counts_match:true,
+      columns_ok:true,
       verification_method:verificationMethod,
       ms:Date.now() - started,
       ir_filters_before:irFiltersBefore,
@@ -1862,8 +1859,8 @@ async function listProspectsFromHome() {
       event:'conape_list_dump',
       method,
       rows:rowsByCedula.size,
-      rows_csv:rowsCsv,
-      rows_html_all:rowsHtmlAll,
+      rows_a:rowsA,
+      rows_b:rowsB,
       counts_match:countsMatch,
       columns_ok:columnsOk,
       verification_method:verificationMethod,
@@ -1872,6 +1869,67 @@ async function listProspectsFromHome() {
       pii:false,
     }));
   }
+}
+
+
+async function publishProspectacionSnapshot(list) {
+  if (!CAMPUS_URL) throw new AppError('CAMPUS_URL_MISSING', 'El backend del Campus no está configurado.', 503, 'CAMPUS');
+  let signed;
+  try {
+    signed = buildConapeProspectacionV2SignedEnvelope(list);
+  } catch (cause) {
+    const error = new AppError('CONAPE_V2_SIGN_FAILED', 'No se pudo firmar el snapshot de Prospectación.', 503, 'PUBLISH');
+    error.cause = cause;
+    throw error;
+  }
+
+  let response;
+  try {
+    response = await fetch(CAMPUS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body:JSON.stringify(signed.envelope),
+      redirect:'follow',
+      signal:AbortSignal.timeout(Math.max(10_000, REQUEST_TIMEOUT_MS)),
+    });
+  } catch (cause) {
+    const error = new AppError('CAMPUS_PROSPECTACION_UNAVAILABLE', 'No se pudo publicar la actualización de Prospectación.', 503, 'PUBLISH');
+    error.cause = cause;
+    throw error;
+  }
+
+  const raw = await response.text();
+  let data;
+  try { data = JSON.parse(raw || '{}'); }
+  catch {
+    throw new AppError('CAMPUS_PROSPECTACION_INVALID_RESPONSE', 'El Campus devolvió una respuesta inválida al actualizar Prospectación.', 503, 'PUBLISH');
+  }
+  if (!response.ok || !data || data.ok !== true) {
+    const code = txt(data?.error?.code || data?.error || data?.code || 'CAMPUS_PROSPECTACION_APPLY_FAILED');
+    const error = new AppError(code, 'El Campus rechazó la actualización de Prospectación.', 503, 'PUBLISH');
+    throw error;
+  }
+  return data;
+}
+
+async function refreshProspectacionVentas(body) {
+  await authorizeCampusSession(body?.token);
+  const list = await listProspectsFromHome();
+  const applied = await publishProspectacionSnapshot(list);
+  return {
+    ok:true,
+    code:'PROSPECTACION_VENTAS_REFRESHED',
+    method:list.method,
+    row_count:list.row_count,
+    rows_a:list.rows_a,
+    rows_b:list.rows_b,
+    counts_match:list.counts_match === true,
+    captured_at:list.captured_at,
+    ultimo_sync:txt(applied.ultimo_sync || ''),
+    nuevos:Number(applied.nuevos || 0),
+    filas_actualizadas:Number(applied.filas_actualizadas || 0),
+    movimientos_registrados:Number(applied.movimientos_registrados || 0),
+  };
 }
 
 
@@ -1885,22 +1943,19 @@ function salesStatusRow(row) {
 async function listProspectStatusesForSales(body) {
   const auth = await authorizeCampusSession(body?.token);
   const asesor = txt(body?.asesor || '');
-  const dashboard = await campusCall({ fn:'getDashboardVentas', token:auth.token, asesor });
-  if (!dashboard?.ok || !Array.isArray(dashboard?.prospectos)) {
-    throw new AppError('CAMPUS_SALES_SCOPE_UNAVAILABLE', 'No se pudo resolver el alcance de Ventas.', 503, 'CAMPUS');
+  const snapshot = await campusCall({ fn:'getConapeProspectacionVentas', token:auth.token, asesor });
+  if (!snapshot?.ok || !Array.isArray(snapshot?.rows)) {
+    throw new AppError('CAMPUS_PROSPECTACION_SNAPSHOT_UNAVAILABLE', 'No se pudo leer el snapshot de Prospectación.', 503, 'CAMPUS');
   }
-  const allowedCedulas = new Set(dashboard.prospectos.map(campusCedula).filter(Boolean));
-  const list = await listProspectsFromHome();
-  const rows = (Array.isArray(list?.rows) ? list.rows : [])
-    .filter(row => allowedCedulas.has(digits(row?.cedula)))
-    .map(salesStatusRow);
+  const rows = snapshot.rows.map(salesStatusRow);
   return {
     ok:true,
     code:'PROSPECT_SALES_STATUS_READY',
-    method:list.method,
+    source:'CAMPUS_SNAPSHOT',
     row_count:rows.length,
-    columns_ok:list.columns_ok === true,
-    captured_at:list.captured_at || nowIso(),
+    actualizado_en:txt(snapshot.actualizado_en || ''),
+    edad_minutos:Number.isFinite(Number(snapshot.edad_minutos)) ? Number(snapshot.edad_minutos) : null,
+    requiere_actualizacion:snapshot.requiere_actualizacion === true,
     rows,
   };
 }
@@ -2146,11 +2201,24 @@ const server = http.createServer(async (req, res) => {
       const auth = await authorizeCampusSession(campusTokenFromRequest(req));
       const previewRole = roleOf(auth.session);
       if (!['ADMIN','ADMINISTRADOR','SUPERADMIN','SUPER ADMIN'].includes(previewRole)) {
-        throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para preparar el publisher V4.4.', 403, 'CAMPUS');
+        throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para preparar el publisher de Prospectación.', 403, 'CAMPUS');
       }
       const result = await serial(() => listProspectsFromHome());
-      const payload = buildConapeV44DryRunSummary(result, process.env);
-      console.log(JSON.stringify({ rid, action, result:payload.code, method:payload.method, rows_csv:payload.rows_csv, rows_html_all:payload.rows_html_all, counts_match:payload.counts_match, columns_ok:payload.columns_ok, apply_enabled:false, ms:Date.now()-started, pii:false }));
+      const signed = buildConapeProspectacionV2SignedEnvelope(result);
+      const payload = {
+        ok:true,
+        code:'CONAPE_PROSPECTACION_V2_PUBLISHER_READY',
+        action:signed.meta.action,
+        method:result.method,
+        rows_a:result.rows_a,
+        rows_b:result.rows_b,
+        row_count:result.row_count,
+        counts_match:result.counts_match === true,
+        columns_ok:result.columns_ok === true,
+        captured_at:result.captured_at,
+        apply_enabled:true,
+      };
+      console.log(JSON.stringify({ rid, action, result:payload.code, method:payload.method, rows_a:payload.rows_a, rows_b:payload.rows_b, counts_match:payload.counts_match, columns_ok:payload.columns_ok, apply_enabled:true, ms:Date.now()-started, pii:false }));
       sendJson(res, 200, payload, origin);
       return;
     }
@@ -2177,6 +2245,7 @@ const server = http.createServer(async (req, res) => {
     else if (url.pathname === '/v1/session/connect') action = 'session_connect';
     else if (url.pathname === '/v1/session/disconnect') action = 'session_disconnect';
     else if (url.pathname === '/v1/prospects/sales-status') action = 'prospects_sales_status';
+    else if (url.pathname === '/v1/prospects/refresh') action = 'prospects_refresh';
     else if (url.pathname === '/v1/recruit/preview') action = 'preview';
     else if (url.pathname === '/v1/recruit/submit') action = 'submit';
     else if (url.pathname === '/v1/recruit/execute') action = 'execute';
@@ -2187,6 +2256,7 @@ const server = http.createServer(async (req, res) => {
     else if (action === 'session_connect') { await authorizeCampusSession(body?.token); result = await serial(() => ConapeSession.connect()); }
     else if (action === 'session_disconnect') { await authorizeCampusSession(body?.token); result = await serial(async () => { await ConapeSession.close(); return ConapeSession.snapshot({ ready:null }); }); }
     else if (action === 'prospects_sales_status') result = await serial(() => listProspectStatusesForSales(body));
+    else if (action === 'prospects_refresh') result = await serial(() => refreshProspectacionVentas(body));
     else if (action === 'preview') result = await serial(() => preview(body));
     else if (action === 'submit') result = await serial(() => submit(body));
     else result = await serial(() => execute(body));

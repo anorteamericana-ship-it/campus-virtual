@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 const CONAPE_V44_ACTION = 'agentConapeMirrorApplySnapshotV44';
+const CONAPE_PROSPECTACION_V2_ACTION = 'agentConapeProspectacionApplySnapshotV2';
 const CONAPE_V44_ROW_FIELDS = Object.freeze([
   'cedula','apellido_1','apellido_2','nombre','telefono','celular','correo','estado',
   'fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion',
@@ -182,8 +183,83 @@ function buildConapeV44DryRunSummary(listResult, env = process.env) {
   };
 }
 
+function buildConapeProspectacionV2Snapshot(listResult) {
+  if (!plainObject(listResult)) throw publisherError('CONAPE_V2_PUBLISHER_SOURCE_INVALID');
+
+  const method = text(listResult.method).toUpperCase();
+  if (!['CSV_DOUBLE','HTML_DOUBLE'].includes(method)) {
+    throw publisherError('CONAPE_V2_PUBLISHER_METHOD_INVALID', { method });
+  }
+  if (listResult.columns_ok !== true) throw publisherError('CONAPE_V2_PUBLISHER_COLUMNS_NOT_OK');
+  if (listResult.counts_match !== true) throw publisherError('CONAPE_V2_PUBLISHER_COUNTS_NOT_MATCHED');
+
+  const rowsA = Number(listResult.rows_a ?? listResult.rows_csv);
+  const rowsB = Number(listResult.rows_b ?? listResult.rows_html_all);
+  const rows = Array.isArray(listResult.rows) ? listResult.rows : [];
+  if (!Number.isInteger(rowsA) || rowsA <= 0 || !Number.isInteger(rowsB) || rowsB <= 0 ||
+      rowsA !== rowsB || rows.length !== rowsA) {
+    throw publisherError('CONAPE_V2_PUBLISHER_COUNT_INVALID', {
+      rows_a:Number.isInteger(rowsA) ? rowsA : null,
+      rows_b:Number.isInteger(rowsB) ? rowsB : null,
+      rows_length:rows.length,
+    });
+  }
+
+  const projectedRows = [];
+  const seenCedulas = new Set();
+  for (let i = 0; i < rows.length; i += 1) {
+    const projected = projectRow(rows[i], i + 1);
+    if (seenCedulas.has(projected.cedula)) {
+      throw publisherError('CONAPE_V2_PUBLISHER_DUPLICATE_CEDULA', { row_index:i + 1 });
+    }
+    seenCedulas.add(projected.cedula);
+    projectedRows.push(projected);
+  }
+
+  const capturedAt = text(listResult.captured_at);
+  if (!capturedAt || Number.isNaN(Date.parse(capturedAt))) {
+    throw publisherError('CONAPE_V2_PUBLISHER_CAPTURED_AT_INVALID');
+  }
+
+  return {
+    method,
+    columns_ok:true,
+    counts_match:true,
+    rows_a:rowsA,
+    rows_b:rowsB,
+    captured_at:capturedAt,
+    rows:projectedRows,
+  };
+}
+
+function buildConapeProspectacionV2SignedEnvelope(listResult, options = {}) {
+  const data = buildConapeProspectacionV2Snapshot(listResult);
+  const serviceId = text(options.serviceId ?? process.env.CAMPUS_SERVICE_ID);
+  const secret = rawText(options.secret ?? process.env.CAMPUS_SERVICE_SECRET);
+  if (!serviceId) throw publisherError('CONAPE_V2_PUBLISHER_SERVICE_ID_MISSING');
+  if (!secret) throw publisherError('CONAPE_V2_PUBLISHER_SECRET_MISSING');
+
+  const timestamp = options.timestamp == null ? Date.now() : Number(options.timestamp);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) throw publisherError('CONAPE_V2_PUBLISHER_TIMESTAMP_INVALID');
+
+  const nonce = text(options.nonce || crypto.randomBytes(16).toString('hex'));
+  const requestId = text(options.requestId || `conape-prospectacion-v2-${crypto.randomUUID()}`);
+  if (nonce.length < 16) throw publisherError('CONAPE_V2_PUBLISHER_NONCE_INVALID');
+  if (requestId.length < 8) throw publisherError('CONAPE_V2_PUBLISHER_REQUEST_ID_INVALID');
+
+  const action = CONAPE_PROSPECTACION_V2_ACTION;
+  const { payloadHash, canonical } = canonicalForEnvelope({ serviceId, timestamp, nonce, requestId, action, data });
+  const signature = hmacSha256Hex(secret, canonical);
+
+  return {
+    envelope:{ action, serviceId, requestId, timestamp, nonce, signature, data },
+    meta:{ action, payload_hash:payloadHash, row_count:data.rows.length, apply_enabled:true },
+  };
+}
+
 export {
   CONAPE_V44_ACTION,
+  CONAPE_PROSPECTACION_V2_ACTION,
   CONAPE_V44_ROW_FIELDS,
   stableJson,
   sha256Hex,
@@ -192,4 +268,6 @@ export {
   canonicalForEnvelope,
   buildConapeV44SignedEnvelope,
   buildConapeV44DryRunSummary,
+  buildConapeProspectacionV2Snapshot,
+  buildConapeProspectacionV2SignedEnvelope,
 };

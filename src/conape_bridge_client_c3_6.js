@@ -61,6 +61,12 @@
     return postBridge('/v1/prospects/sales-status', { asesor:String(asesor || '').trim() });
   }
 
+  // Prospectación de Ventas únicamente. Fuerza lectura CONAPE + snapshot firmado.
+  // No llama sincronizarCONAPE ni toca el flujo administrativo de desembolsos.
+  async function refreshProspectacionVentas(){
+    return postBridge('/v1/prospects/refresh', {});
+  }
+
   async function sessionStatus(){ return postBridge('/v1/session/status', {}); }
   async function connect(){ return postBridge('/v1/session/connect', {}); }
   async function disconnect(){ return postBridge('/v1/session/disconnect', {}); }
@@ -84,8 +90,9 @@
     submit,
     listProspects,
     salesStatuses,
+    refreshProspectacionVentas,
     active:!!bridgeBase(),
-    version:'V3.2',
+    version:'V4.4.7',
   });
 
   window.CONAPE_PORTAL_BRIDGE_V3 = api;
