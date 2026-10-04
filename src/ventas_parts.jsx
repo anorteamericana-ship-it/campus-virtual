@@ -181,12 +181,13 @@ function ProspectoTable({ lista, onOpen }) {
           <col style={{ width: '13%' }} />
           <col style={{ width: '10.5%' }} />
           <col style={{ width: '4%' }} />
-          <col style={{ width: '7%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '10%' }} />
         </colgroup>
         <thead>
           <tr>
             <th>Cédula</th><th>Nombre</th><th>Teléfono</th><th>Grupo</th><th>Programa</th>
-            <th>Financiam.</th><th>Etapa</th><th>Estado</th><th>Días</th><th>Acción</th>
+            <th>Financiam.</th><th>Etapa</th><th>Estado</th><th>Días</th><th>CONAPE</th><th>Acción</th>
           </tr>
         </thead>
         <tbody>
@@ -210,8 +211,10 @@ function ProspectoTable({ lista, onOpen }) {
                 <td><EtapaBadge etapa={p.etapa} /></td>
                 <td><EstadoBadge est={est} /></td>
                 <td className="vx-td-dias">{dias != null ? <><b>{dias}</b> d</> : '—'}</td>
+                <td><span className="vx-badge" title={p.conape_estado || ''}>{p.conape_estado || '—'}</span></td>
                 <td onClick={e => e.stopPropagation()}>
-                  <div className="vx-rowacts">
+                  <div className="vx-rowacts" style={{ flexDirection:'column', alignItems:'flex-start' }}>
+                    {p.conape_accion ? <small style={{ maxWidth:180, lineHeight:1.2 }}>{p.conape_accion}</small> : null}
                     <button className="vx-iconbtn ver" onClick={() => onOpen(p)}><Vico d={VI.eye} size={13} /> Ver</button>
                   </div>
                 </td>
@@ -248,7 +251,9 @@ function ProspectoCards({ lista, onOpen }) {
               <FinBadge financiamiento={p.financiamiento} />
               <span className="vx-td-prog">{progLabel(p.programa)}</span>
               {p.grupo_tentativo ? <span className="vx-td-grupo">{p.grupo_tentativo}</span> : null}
+              {p.conape_estado ? <span className="vx-badge">CONAPE · {p.conape_estado}</span> : null}
             </div>
+            {p.conape_accion ? <div style={{fontSize:12,fontWeight:p.conape_alerta?700:600,color:p.conape_alerta?'#A91E16':'var(--v-ink-2)',marginTop:6}}>{p.conape_accion}</div> : null}
             <div className="vx-card-foot">
               <span className="vx-td-dias">{dias != null ? <><b>{dias}</b> días</> : '—'}</span>
               <WaLink tel={p.whatsapp || p.telefono} className="vx-wa-mini"><Vico d={VI.wa} size={16} fill="currentColor" /></WaLink>

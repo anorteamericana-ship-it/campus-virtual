@@ -16,11 +16,14 @@ const WA_NUMBER_V = '50689528787';
 // `accion` = sugerencia que se muestra en el panel lateral del prospecto.
 const EMBUDO_ETAPAS = [
   { key: 'LEAD',                  label: 'Lead',                          color: '#94A3B8', accion: 'Llamada de seguimiento inicial' },
-  { key: 'CONAPE_SOLICITUD',      label: 'CONAPE Solicitud',              color: '#2B7FC1', accion: 'Verificar envío de documentos a CONAPE' },
+  { key: 'CONAPE_SOLICITUD',      label: 'CONAPE Solicitud',              color: '#2B7FC1', accion: 'Verificar avance en CONAPE' },
   { key: 'CONAPE_DOCUMENTOS',     label: 'CONAPE Documentos pendientes',  color: '#B6BDC9', placeholder: true, accion: '' },
-  { key: 'CONAPE_APROBADO_FIRMA', label: 'CONAPE Aprobado para firma',    color: '#6366F1', accion: 'Avisar al cliente para firma de contrato' },
-  { key: 'CONAPE_DESEMBOLSO',     label: 'CONAPE Desembolso',             color: '#8B5CF6', accion: 'Coordinar matrícula y horario' },
-  { key: 'CONAPE_MATRICULA',      label: 'CONAPE Matrícula',              color: '#10B981', decay: true, accion: 'Ya pagó CONAPE — confirmar inicio de clases' },
+  { key: 'CONAPE_ANALISIS',       label: 'CONAPE Análisis',               color: '#2B7FC1', accion: 'Dar seguimiento al análisis' },
+  { key: 'CONAPE_BPM',            label: 'CONAPE BPM',                    color: '#406EB4', accion: 'Dar seguimiento al trámite CONAPE' },
+  { key: 'CONAPE_APROBADO_FIRMA', label: 'CONAPE Aprobado para firma',    color: '#6366F1', accion: 'Contactar y enviar a formalizar' },
+  { key: 'CONAPE_FORMALIZADO',    label: 'CONAPE Formalizado',            color: '#7C5FD6', accion: 'Esperar y vigilar el primer desembolso' },
+  { key: 'CONAPE_DESEMBOLSO',     label: 'CONAPE Depósito detectado',     color: '#DA291C', accion: 'MATRICULAR AHORA · seguimiento prioritario' },
+  { key: 'CONAPE_MATRICULA',      label: 'CONAPE Matriculado',            color: '#10B981', decay: true, accion: 'Matrícula completada' },
   { key: 'PAGO_ACADEMIA',         label: 'Pago Academia',                 color: '#E5A823', decay: true, accion: 'Ya pagó propio — confirmar inicio de clases' },
 ];
 // ETAPAS = alias para el código que aún itera window.ETAPAS (FilterBar).
@@ -126,6 +129,9 @@ function etapaDesdeFilaConape(row) {
 
 function mergeConapeStatusVentas(prospecto, row) {
   if (!prospecto || typeof prospecto !== 'object' || !row || typeof row !== 'object') return prospecto;
+  // V2 ya viene derivado en el backend con Prospectación persistida. El bridge
+  // temporal no debe volver a pisar ETAPA / ESTADO / CONAPE.
+  if (String(prospecto.conape_motor || '').toUpperCase() === 'PROSPECTACION_V2') return prospecto;
   if (String(prospecto.financiamiento || prospecto.FINANCIAMIENTO || '').toUpperCase() !== 'CONAPE') return prospecto;
   const rawEstado = String(row.estado || '').trim();
   const current = String(prospecto.etapa || prospecto.ETAPA || '').toUpperCase().trim();
@@ -181,6 +187,18 @@ function calcularPrioridadProspecto(p) {
 
   const etapa  = String(p.etapa || p.ETAPA || '').toUpperCase();
   const codigo = String(p.codigo || p.codigo_estudiante || p.CODIGO_ESTUDIANTE || '').trim();
+  const motorConape = String(p.conape_motor || '').toUpperCase() === 'PROSPECTACION_V2';
+  const prioridadConape = String(p.conape_prioridad || '').toUpperCase();
+
+  // Prospectación V2 es autoridad para CONAPE: tener un código de estudiante
+  // sin la matrícula B1 aplicada ya no convierte por sí solo el caso en cerrado.
+  if (motorConape) {
+    if (String(p.estado_ventas || '').toUpperCase() === 'MATRICULADO' || prioridadConape === 'CERRADO') {
+      return { ...GRIS, texto: 'Matriculado' };
+    }
+    if (prioridadConape === 'ALTA') return { ...ROJO, texto: p.conape_accion || 'Atender hoy' };
+    if (prioridadConape === 'MEDIA') return { ...AMARILLO, texto: p.conape_accion || 'Seguimiento' };
+  }
   // Días desde el último cambio de etapa; fallback a la fecha de lead/registro.
   const ref  = p.fecha_etapa || p.fecha_registro || p.f_lead || '';
   const dias = diasDesde(ref);
@@ -223,10 +241,20 @@ function calcularPrioridadProspecto(p) {
 //   MATRICULADO   (verde)    → admin aplicó la matrícula (hay código / ACTIVO / MATRICULADO).
 const MATRICULADO_TOKENS = ['ACTIVO', 'MATRICULADO'];
 function calcularEstadoEstudianteVentas(p) {
-  const SEGUIMIENTO = { estado: 'SEGUIMIENTO',   color: 'rojo',     razon: 'En trámite · faltan documentos' };
+  const SEGUIMIENTO = { estado: 'SEGUIMIENTO',   color: 'rojo',     razon: 'En trámite · seguimiento pendiente' };
   const PRE         = { estado: 'PRE MATRICULA', color: 'amarillo', razon: 'Pago reportado · esperando admin' };
   const MATRIC      = { estado: 'MATRICULADO',   color: 'verde',    razon: 'Matrícula aplicada' };
   if (!p || typeof p !== 'object') return SEGUIMIENTO;
+
+  // Prospectación V2 ya resolvió el estado con la matrícula real B1.
+  if (String(p.conape_motor || '').toUpperCase() === 'PROSPECTACION_V2') {
+    const explicit = String(p.estado_ventas || '').toUpperCase().trim();
+    const color = String(p.estado_ventas_color || '').toLowerCase().trim();
+    const razon = String(p.estado_ventas_razon || p.conape_accion || '').trim();
+    if (explicit === 'MATRICULADO') return { estado:'MATRICULADO', color:color || 'verde', razon:razon || 'Matrícula aplicada' };
+    if (explicit === 'PRE MATRICULA') return { estado:'PRE MATRICULA', color:color || 'amarillo', razon:razon || PRE.razon };
+    if (explicit) return { estado:explicit, color:color || 'rojo', razon:razon || SEGUIMIENTO.razon };
+  }
 
   // 1) ¿YA matriculado? Código real de estudiante, o etapa/estado ACTIVO/MATRICULADO.
   const codigo = String(
