@@ -11,20 +11,30 @@
     "backendMain": "f5cd1e8317c77a5c8306c739081bae8cc7496c30",
     "previousVersion": 431,
     "runtimeVerified": true,
-    "functionalVerified": false,
-    "functionalVerificationNote": "Deployment estable verificado en @432; push normal sin --force; readback remoto 27/27, 25 JS y 0 drift; root Apps Script HTTP 200; GitHub Pages publicó frontend PR #392 y el sitio público sirve los cache-busters C2-R12. Falta repetir QA autenticado en navegador de Mi Perfil, saludo y quinto certificado antes de declarar cierre funcional/FULL_E2E."
+    "functionalVerified": true,
+    "functionalVerificationNote": "Deployment estable verificado en @432; push normal sin --force; readback remoto 27/27, 25 JS y 0 drift; root Apps Script HTTP 200. QA autenticado en producción PASS para saludo, inventario de 5 certificados, apertura privada de Programa Completo, Mi Perfil → dashboard únicamente y estado azul del menú tras PR #395/#396. Este PASS cubre las superficies C2-R12 verificadas; no equivale a FULL_E2E de toda la plataforma."
   },
-  "frontendCodeMainAtVerification": "ddc70655543da160a539faeae7e71740a00e2fe4",
-  "frontendHotfixPr": 119,
-  "latestFrontendMainPr": 392,
+  "frontendCodeMainAtVerification": "60455f9f2f4088878d1fcd5d889c9392e71e64ac",
+  "frontendHotfixPr": 396,
+  "latestFrontendMainPr": 396,
   "notes": [
     "Script ID y Deployment ID no son secretos; no guardar tokens ni credenciales aquí.",
     "La fuente de verdad de runtime es el Deployment ID estable apuntando a una versión numérica; HEAD remoto no equivale por sí solo a producción.",
     "Rollback inmediato disponible: versión inmutable @431; no ejecutarlo sin causa y autorización.",
     "campus_backend/main quedó reconciliado con PROD @432 en f5cd1e8317c77a5c8306c739081bae8cc7496c30.",
-    "No declarar FULL_E2E=PASS: C2-R12 está promovido y publicado, pero requiere QA autenticado post-promoción en navegador.",
+    "C2-R12 tiene QA autenticado PASS en sus superficies verificadas tras PR #395/#396; aun así, no declarar FULL_E2E=PASS para toda la plataforma.",
     "C2-R10 tuvo una excepción procedimental: clasp push normal devolvió Skipping push y se usó --force desde la carpeta temporal aislada del candidato aprobado; el readback posterior dio 0 drift. No tratar esto como precedente ni cambiar la regla general de no usar --force.",
     "Tras cambios de manifiesto/scopes, si SpreadsheetApp.openById devuelve falta de permiso incluso al volver de versión, revisar autorización OAuth del usuario desplegador antes de culpar al código.",
     "El redirect HTTP 302 de script.google.com a script.googleusercontent.com es normal en Web Apps de Apps Script."
-  ]
+  ],
+  "frontendLastVerifiedAt": "2026-10-03T19:48:00-06:00",
+  "frontendReleasePrs": [
+    392,
+    395,
+    396
+  ],
+  "frontendFunctionalVerified": true,
+  "frontendFunctionalVerificationNote": "GitHub Pages SUCCESS. Sesión autenticada real: Mi Perfil abre únicamente #dashboard; #perfil y #perfil_estudiante terminan en dashboard; Syllabus, Planeamiento por lección, Libros y Audios y Recursos adicionales mantienen una única selección azul; clic repetido y Atrás/Adelante PASS. PR #396 corrige la interferencia legacy residual de Recursos adicionales.",
+  "fullE2EVerified": false,
+  "fullE2EVerificationNote": "NO declarar FULL_E2E ni FULL_BROWSER_E2E para toda la plataforma: sigue pendiente, entre otros alcances, la inscripción controlada completa con documentos y verificación posterior."
 }
