@@ -2,39 +2,47 @@
   "environment": "production",
   "scriptId": "1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2",
   "deploymentId": "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ",
-  "deployedVersion": 432,
-  "lastVerifiedAt": "2026-10-03T16:10:56-06:00",
-  "lastVerifiedBy": "authenticated-clasp-runtime-readback-pages-smoke",
+  "deployedVersion": 434,
+  "lastVerifiedAt": "2026-10-04T08:45:58-06:00",
+  "lastVerifiedBy": "authenticated-clasp-ui-deployment-readback-pages-public-source-smoke",
   "lastChange": {
-    "summary": "C2-R12 · PROD @432 · Mi Perfil + saludo + inventario dinámico de certificados + Programa Completo/INA",
-    "sourceBackendPr": 3,
-    "backendMain": "f5cd1e8317c77a5c8306c739081bae8cc7496c30",
-    "previousVersion": 431,
+    "summary": "C2-R14C · PROD @434 · documentos privados de Ventas + ciclo de matrícula firmada + versionado Admin",
+    "sourceBackendPr": 6,
+    "backendReleasePrs": [
+      5,
+      6
+    ],
+    "backendMain": "faaa8e1893bcbacbf7b35cdaceb0746a3d5f5217",
+    "previousVersion": 433,
     "runtimeVerified": true,
-    "functionalVerified": true,
-    "functionalVerificationNote": "Deployment estable verificado en @432; push normal sin --force; readback remoto 27/27, 25 JS y 0 drift; root Apps Script HTTP 200. QA autenticado en producción PASS para saludo, inventario de 5 certificados, apertura privada de Programa Completo, Mi Perfil → dashboard únicamente y estado azul del menú tras PR #395/#396. Este PASS cubre las superficies C2-R12 verificadas; no equivale a FULL_E2E de toda la plataforma."
+    "functionalVerified": false,
+    "functionalVerificationNote": "Deployment estable verificado en @434; push normal sin --force; readback remoto 27/27, 25 JS, 0 drift, SHA agregado 9fa8e16eb462ccec60768aaa01c89cc343943d569941227b300b3e36b638a1fb; root Apps Script HTTP 200 y cuatro endpoints privados rechazaron acceso anónimo con sesion_requerida. El QA autenticado post-@434/#401 no se completó porque la sesión del Campus expiró al recargar y cayó al login."
   },
-  "frontendCodeMainAtVerification": "60455f9f2f4088878d1fcd5d889c9392e71e64ac",
-  "frontendHotfixPr": 396,
-  "latestFrontendMainPr": 396,
+  "frontendCodeMainAtVerification": "a7e7995bcb4eda90dbea0e1ad81f83fb4189977e",
+  "frontendHotfixPr": 401,
+  "latestFrontendMainPr": 401,
   "notes": [
     "Script ID y Deployment ID no son secretos; no guardar tokens ni credenciales aquí.",
     "La fuente de verdad de runtime es el Deployment ID estable apuntando a una versión numérica; HEAD remoto no equivale por sí solo a producción.",
-    "Rollback inmediato disponible: versión inmutable @431; no ejecutarlo sin causa y autorización.",
-    "campus_backend/main quedó reconciliado con PROD @432 en f5cd1e8317c77a5c8306c739081bae8cc7496c30.",
-    "C2-R12 tiene QA autenticado PASS en sus superficies verificadas tras PR #395/#396; aun así, no declarar FULL_E2E=PASS para toda la plataforma.",
+    "Rollback inmediato disponible: versión inmutable @433; fue readback 27/27 con 0 drift contra backend commit 26512c44484b5200da60fbd5f5c253c1b7da8f76. No ejecutarlo sin causa y autorización.",
+    "campus_backend/main quedó reconciliado con PROD @434 en faaa8e1893bcbacbf7b35cdaceb0746a3d5f5217.",
+    "C2-R14C tiene runtime/publicación verificados; QA autenticado post-release queda pendiente por sesión del Campus expirada. No declarar FULL_E2E=PASS.",
     "C2-R10 tuvo una excepción procedimental: clasp push normal devolvió Skipping push y se usó --force desde la carpeta temporal aislada del candidato aprobado; el readback posterior dio 0 drift. No tratar esto como precedente ni cambiar la regla general de no usar --force.",
     "Tras cambios de manifiesto/scopes, si SpreadsheetApp.openById devuelve falta de permiso incluso al volver de versión, revisar autorización OAuth del usuario desplegador antes de culpar al código.",
     "El redirect HTTP 302 de script.google.com a script.googleusercontent.com es normal en Web Apps de Apps Script."
   ],
-  "frontendLastVerifiedAt": "2026-10-03T19:48:00-06:00",
+  "frontendLastVerifiedAt": "2026-10-04T08:45:58-06:00",
   "frontendReleasePrs": [
     392,
     395,
-    396
+    396,
+    398,
+    400,
+    401
   ],
-  "frontendFunctionalVerified": true,
-  "frontendFunctionalVerificationNote": "GitHub Pages SUCCESS. Sesión autenticada real: Mi Perfil abre únicamente #dashboard; #perfil y #perfil_estudiante terminan en dashboard; Syllabus, Planeamiento por lección, Libros y Audios y Recursos adicionales mantienen una única selección azul; clic repetido y Atrás/Adelante PASS. PR #396 corrige la interferencia legacy residual de Recursos adicionales.",
+  "frontendFunctionalVerified": false,
+  "frontendFunctionalVerificationNote": "GitHub Pages SUCCESS sobre a7e7995bcb4eda90dbea0e1ad81f83fb4189977e. El dominio real sirve el cache-bust F98.4Z6C2R14C1 y admin_students.jsx con controles de versión firmada, endpoints privados y generador canónico. El QA autenticado final de Ventas/Admin post-release queda pendiente porque la sesión del Campus expiró durante la recarga.",
   "fullE2EVerified": false,
-  "fullE2EVerificationNote": "NO declarar FULL_E2E ni FULL_BROWSER_E2E para toda la plataforma: sigue pendiente, entre otros alcances, la inscripción controlada completa con documentos y verificación posterior."
+  "fullE2EVerificationNote": "NO declarar FULL_E2E ni FULL_BROWSER_E2E: además de la inscripción controlada completa pendiente, falta repetir QA autenticado post-@434/#401 de los controles de Ventas/Admin después del release.",
+  "ciMaintenancePr": 402
 }
