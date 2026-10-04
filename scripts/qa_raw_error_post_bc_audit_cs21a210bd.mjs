@@ -8,7 +8,7 @@ const findings=Number((out.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
 const files=Number((out.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
 if(!Number.isFinite(findings)||!Number.isFinite(files)) throw new Error('V3 summary missing');
 if(exact){ if(findings!==28||files!==12) throw new Error(`BD exact V3 mismatch ${findings}/${files}`); }
-else { if(findings>24||files>13) throw new Error(`BD V3 regression above current main baseline 24/13: ${findings}/${files}`); }
+else { if(findings>28||files>12) throw new Error(`BD V3 regression ${findings}/${files}`); }
 
 const app=fs.readFileSync('src/app.jsx','utf8');
 const campus=fs.readFileSync('campus.html','utf8');

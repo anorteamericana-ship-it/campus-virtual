@@ -35,11 +35,10 @@ if(blob===EXPECTED_BLOB){
 } else {
   execFileSync('node',['scripts/qa_admin_students_safe_errors_cs21a210bg.mjs'],{stdio:'inherit'});
   for(const token of effective){ if(src.includes(token)) throw new Error(`BF descendant resurrected raw effective sink: ${token}`); }
-  if(!src.includes("error: (preview && (preview.error || preview.mensaje)) ||")||!src.includes("error:(preview && (preview.error || preview.mensaje)) ||")) throw new Error('BF descendant preview setter structure changed');
-  if(!src.includes("adminStudentsSafeUserError(certEstado.mensaje || certEstado.error")) throw new Error('BF descendant render sanitizer missing');
+  if(!src.includes(certPreview1)||!src.includes(certPreview2)) throw new Error('BF descendant preview setters changed');
+  if(!src.includes("adminStudentsSafeUserError(certEstado.mensaje || certEstado.error, 'No se pudo completar la operación de certificados. Intentá de nuevo.', 'certificados')")) throw new Error('BF descendant render sanitizer missing');
   const out=execFileSync('node',['scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs'],{encoding:'utf8'});
-  const adminMatch=out.match(/FILE_COUNT\|(\d+)\|src[\\/]admin_students\.jsx/);
-  if(!adminMatch || Number(adminMatch[1])!==2) throw new Error('BF descendant should retain exactly two render-sanitized scanner findings');
+  if(!out.includes('FILE_COUNT|2|src/admin_students.jsx')) throw new Error('BF descendant should retain exactly two render-sanitized scanner findings');
   console.log('CS21A210BF descendant safe via BG PASS');
   console.log('EFFECTIVE_VISIBLE_RAW=0');
   console.log('ALREADY_SANITIZED_AT_RENDER=2');

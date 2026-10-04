@@ -49,6 +49,7 @@ if(adminFindings!==2) throw new Error(`admin_students raw-error residual changed
 const findings=Number((out.match(/DIRECT_RAW_SINK_FINDINGS=(\d+)/)||[])[1]);
 const files=Number((out.match(/FILES_WITH_FINDINGS=(\d+)/)||[])[1]);
 if(!Number.isFinite(findings)||!Number.isFinite(files)) throw new Error('V3 scanner totals unavailable');
+if(findings>24||files>13) throw new Error('V3 regression above current main baseline 24/13: '+findings+'/'+files);
 
 console.log('CS21A210BG admin_students safe errors PASS');
 console.log(`MODE=${exactHistoricalCandidate?'EXACT_HISTORICAL':'DESCENDANT_SAFE'}`);

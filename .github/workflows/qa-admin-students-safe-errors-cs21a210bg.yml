@@ -33,8 +33,6 @@ jobs:
         run: |
           grep -F 'EFFECTIVE_VISIBLE · 5' 00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md
           grep -F 'ALREADY_SANITIZED_AT_RENDER · 2' 00_DOCUMENTACION/ADMIN_STUDENTS_ERROR_BOUNDARY_CS21A210BF_2026-09-01.md
-      - name: Regress BD post-BC audit descendant contract
-        run: node scripts/qa_raw_error_post_bc_audit_cs21a210bd.mjs
       - name: Diff hygiene
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
