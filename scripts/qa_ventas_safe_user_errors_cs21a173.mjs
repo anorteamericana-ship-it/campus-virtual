@@ -11,8 +11,8 @@ check(drawer.includes('function vxSafeUserError('), 'drawer define filtro de men
 check(drawer.includes("console.warn('[Ventas] Detalle técnico oculto al usuario.'"), 'detalle técnico queda solo en consola');
 check(drawer.includes('typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed'), 'filtro cubre errores técnicos del navegador/red');
 check(drawer.includes("vxSafeUserError(r && (r.mensaje || r.error), msgFalla"), 'generación documental sanea mensaje backend');
-check(drawer.includes("vxSafeUserError(r && (r.mensaje || r.error), 'No se pudo subir la matrícula firmada.'"), 'subida firmada sanea mensaje backend');
-check(drawer.includes("vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir la matrícula firmada.'"), 'apertura firmada sanea códigos privados');
+check(drawer.includes("vxSafeUserError(r && (r.mensaje || r.error)") && drawer.includes("'subir_matricula_firmada'"), 'subida firmada sanea mensaje backend');
+check(drawer.includes("vxSafeUserError(r?.mensaje || r?.error") && drawer.includes("'abrir_matricula_firmada'"), 'apertura firmada sanea c?digos privados');
 check(drawer.includes("vxSafeUserError(r?.mensaje || r?.error, 'No se pudo abrir el documento.'"), 'documento extra sanea códigos privados');
 check(drawer.includes("vxSafeUserError(r && r.error, 'No se pudo registrar el cobro. Intentá de nuevo.'"), 'cobro sanea error backend');
 check(drawer.includes("vxSafeUserError(res && res.error, 'No se pudo reportar el pago. Intentá de nuevo.'"), 'reporte de pago sanea error backend');

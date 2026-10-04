@@ -312,7 +312,7 @@ function vxDriveCandidates(url) {
   }
   return [...new Set(list.filter(Boolean))];
 }
-function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
+function VxDocPhoto({ src, cap, onView }) {
   const [idx, setIdx] = React.useState(0);
   React.useEffect(() => { setIdx(0); }, [src]);   // reset al cambiar de prospecto
   const cands = vxDriveCandidates(src);
@@ -321,7 +321,9 @@ function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
       <div className="vx-doc-empty">
         <div className="vx-doc-ph">Foto no disponible</div>
         <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
-        <button className="vx-mini-btn" onClick={() => onSubirManual(docKey, cap)}>Subir manualmente</button>
+        <div style={{ fontSize:11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35 }}>
+          No se pudo abrir. Solicitar revisi?n a Administraci?n.
+        </div>
       </div>
     );
   }
@@ -334,7 +336,7 @@ function VxDocPhoto({ src, cap, docKey, onView, onSubirManual }) {
   );
 }
 
-function DocsBlock({ detalle, onView, onSubirManual }) {
+function DocsBlock({ detalle, onView, onViewPrivate }) {
   // SEC-002 CS21A174: se conserva el consumidor legacy FOTO_* hasta que exista
   // entrega privada específica de identidad/título. El mapa FILE_ID solo evita
   // presentar como ausente un archivo que el backend ya tiene registrado.
@@ -348,6 +350,11 @@ function DocsBlock({ detalle, onView, onSubirManual }) {
     foto_ced_dorso:  ['ced_dorso_file_id','doc_identidad_file_id'],
     foto_titulo:     ['titulo_file_id'],
   };
+  const privateTypeByLegacy = {
+    foto_ced_frente: 'CED_FRENTE',
+    foto_ced_dorso: 'CED_DORSO',
+    foto_titulo: 'TITULO',
+  };
   return (
     <div className="vx-docs">
       {docs.map(([key, cap]) => {
@@ -355,24 +362,33 @@ function DocsBlock({ detalle, onView, onSubirManual }) {
         const privateKeys = privateKeysByLegacy[key] || [];
         const privateFileId = privateKeys.map(k => String(detalle[k] || '').trim()).find(Boolean) || '';
         if (src) {
-          return <VxDocPhoto key={key} src={src} cap={cap} docKey={key} onView={onView} onSubirManual={onSubirManual} />;
+          return <VxDocPhoto key={key} src={src} cap={cap} onView={onView} />;
         }
         if (privateFileId) {
           return (
-            <div key={key} className="vx-doc-empty" data-private-document="true">
-              <div className="vx-doc-ph">Archivo guardado</div>
+            <button
+              key={key}
+              type="button"
+              className="vx-doc-empty"
+              data-private-document="true"
+              onClick={() => onViewPrivate && onViewPrivate(privateTypeByLegacy[key], privateFileId, cap)}
+              style={{ width:'100%', cursor:'pointer', font:'inherit' }}
+            >
+              <div className="vx-doc-ph">Abrir documento</div>
               <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
               <div style={{ fontSize: 11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35 }}>
-                Documento privado registrado
+                Documento privado disponible
               </div>
-            </div>
+            </button>
           );
         }
         return (
           <div key={key} className="vx-doc-empty">
-            <div className="vx-doc-ph">Sin archivo</div>
+            <div className="vx-doc-ph">No registrado</div>
             <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
-            <button className="vx-mini-btn" onClick={() => onSubirManual(key, cap)}>Subir manualmente</button>
+            <div style={{ fontSize:11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35 }}>
+              Solicitar correcci?n a Administraci?n.
+            </div>
           </div>
         );
       })}

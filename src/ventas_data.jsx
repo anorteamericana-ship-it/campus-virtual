@@ -583,7 +583,15 @@ async function getProspectoDetalle(cedula) {
     const docsExtra = normalizarDocsExtraVentas(
       Array.isArray(d?.docs_extra) ? d.docs_extra : p.docs_extra
     );
-    const norm = { ...normalizarProspecto(p), docs_extra: docsExtra };
+    const mfRaw = d?.matricula_firmada || p.matricula_firmada || {};
+    const norm = {
+      ...normalizarProspecto(p),
+      docs_extra: docsExtra,
+      matricula_firmada: {
+        existe: mfRaw?.existe === true || String(mfRaw?.existe || '').toUpperCase() === 'TRUE',
+        nombre: String(mfRaw?.nombre || '').trim(),
+      },
+    };
     if (d.prospecto) { d.prospecto = norm; return d; }
     return { ...d, ok: d.ok !== false, prospecto: norm };
   }
@@ -631,6 +639,44 @@ async function descargarDocumentoExtraPrivado(cedula, fileId) {
   return {
     ok:true,
     private_delivery:true,
+    nombre:_ventasPrivateDocSafeName(r.nombre || 'documento'),
+    mime_type:mime,
+    size_bytes:bytes.length,
+    sha256:expectedHash,
+    blob:new Blob([bytes], { type:mime }),
+  };
+}
+
+
+async function descargarDocumentoProspectoPrivado(cedula, tipo, fileId = '') {
+  const ced = String(cedula || '').trim();
+  const kind = String(tipo || '').trim().toUpperCase();
+  const id = String(fileId || '').trim();
+  if (!ced || !kind) return { ok:false, error:'cedula_tipo_requeridos' };
+  const r = await postVentasData('descargarDocumentoProspectoPrivado', {
+    cedula: ced,
+    tipo: kind,
+    file_id: id,
+  });
+  if (!r?.ok) return r || { ok:false, error:'respuesta_vacia' };
+  const bytes = _ventasPrivateDecodeBase64(r.data_base64);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes?.length || bytes.length > 15 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'documento_incompleto_o_grande' };
+  }
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digestHex = await _ventasPrivateDocSha256Hex(bytes);
+    if (!digestHex || digestHex !== expectedHash) return { ok:false, error:'integridad_documento_invalida' };
+  }
+  const mime = String(r.mime_type || 'application/octet-stream').trim().toLowerCase();
+  if (!(mime === 'application/pdf' || /^image\//.test(mime))) {
+    return { ok:false, error:'tipo_documento_privado_no_permitido' };
+  }
+  return {
+    ok:true,
+    private_delivery:true,
+    tipo:String(r.tipo || kind),
     nombre:_ventasPrivateDocSafeName(r.nombre || 'documento'),
     mime_type:mime,
     size_bytes:bytes.length,
@@ -1056,7 +1102,7 @@ Object.assign(window, {
   formatHorarioGrupo, fmtFechaLarga, diasParaIniciar, diasCompletos,
   normalizarProspecto, mapResumenVentas,
   getDashboardVentas, adaptProspectoDash,
-  getProspectosAsesor, getProspectoDetalle, descargarDocumentoExtraPrivado, getResumenVentas, getGruposVentas, ventasDashCacheClear,
+  getProspectosAsesor, getProspectoDetalle, descargarDocumentoExtraPrivado, descargarDocumentoProspectoPrivado, getResumenVentas, getGruposVentas, ventasDashCacheClear,
   agregarNotaProspecto, subirDocumentoExtra, marcarEtapaProspecto,
   cobrarMatriculaProspecto, activarEstudiante, fileToBase64V,
   generarDocumentoVentasSeguro, subirMatriculaFirmadaVentasSeguro, notificarMatriculaFirmadaVentasSeguro, descargarMatriculaFirmadaPrivadaVentasSeguro,
