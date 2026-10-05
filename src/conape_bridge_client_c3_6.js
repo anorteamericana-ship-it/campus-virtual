@@ -92,7 +92,7 @@
     salesStatuses,
     refreshProspectacionVentas,
     active:!!bridgeBase(),
-    version:'V4.4.7',
+    version:'V4.5.0',
   });
 
   window.CONAPE_PORTAL_BRIDGE_V3 = api;

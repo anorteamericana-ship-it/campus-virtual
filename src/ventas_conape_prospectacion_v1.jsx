@@ -131,7 +131,7 @@
 
       setRefreshing(true);
       setRefreshOk(true);
-      setRefreshMsg(automatic ? 'Actualizando CONAPE en segundo plano…' : 'Consultando CONAPE…');
+      setRefreshMsg(automatic ? 'Actualizando CONAPE en segundo plano…' : 'Conectando y consultando CONAPE…');
       try {
         let refreshTicket = ticket;
         const ticketExp = Number(refreshTicket?.exp || 0);
@@ -149,6 +149,7 @@
         const changes = Number(r.movimientos_registrados || 0);
         setRefreshOk(true);
         setRefreshMsg(changes > 0 ? `Actualizado · ${changes} cambio${changes === 1 ? '' : 's'} detectado${changes === 1 ? '' : 's'}.` : 'Actualizado · sin cambios nuevos.');
+        window.dispatchEvent(new CustomEvent('an:conape-refresh-complete',{ detail:r }));
         if (typeof onConapeUpdated === 'function') onConapeUpdated();
         return fresh;
       } catch (e) {
