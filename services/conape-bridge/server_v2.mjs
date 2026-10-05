@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.9-POPUP-LOV-SEARCH';
+const VERSION = 'V4.5.10-GO-MATERIALIZE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2217,12 +2217,31 @@ async function ensureProspectReportContext(p) {
   if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
   await rows.selectOption({ label:allText });
   await waitForApexDynamicAction(p);
-  await sleep(1400);
 
-  const materialized = await readProspectListPage(p);
-  materializedRows = materialized?.ok && Array.isArray(materialized.rows) ? materialized.rows.length : 0;
+  // SIFA 302:1 no materializa necesariamente el Interactive Report solo por
+  // cambiar Rows. La secuencia real comprobada en navegador termina en Go.
+  const go = p.getByRole('button', { name:/^go$/i }).first();
+  const goFallback = p.locator('button[id$="_search_button"]:visible').first();
+  const goButton = (await go.count()) ? go : goFallback;
+  if (!(await goButton.count())) {
+    throw new AppError('CONAPE_REPORT_GO_MISSING', 'CONAPE no expuso el boton Go del reporte.', 503, 'REPORT');
+  }
+  await goButton.click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+
+  let materialized = null;
+  const rowsUntil = Date.now() + 12_000;
+  while (Date.now() < rowsUntil) {
+    const candidate = await readProspectListPage(p);
+    if (candidate?.ok === true && Array.isArray(candidate.rows) && candidate.rows.length > 0) {
+      materialized = candidate;
+      break;
+    }
+    await sleep(250);
+  }
+  materializedRows = materialized?.rows?.length || 0;
   if (materializedRows <= 0) {
-    throw new AppError('CONAPE_REPORT_EMPTY_AFTER_SEQUENCE', 'CONAPE confirm? el contexto pero no materializ? filas del reporte.', 503, 'REPORT');
+    throw new AppError('CONAPE_REPORT_EMPTY_AFTER_GO', 'CONAPE ejecuto Go pero no materializo filas del reporte.', 503, 'REPORT');
   }
 
   state = await readProspectReportContext(p);
@@ -2237,7 +2256,7 @@ async function ensureProspectReportContext(p) {
     prospectador:true,
     evento:true,
     rows_all:true,
-    selection_method:'POPUP_LOV_VISIBLE_TEXT',
+    selection_method:'POPUP_LOV_VISIBLE_TEXT_GO',
     materialized_rows:materializedRows,
     pro_matches_env:state.pro_matches_env,
     eve_matches_env:state.eve_matches_env,
