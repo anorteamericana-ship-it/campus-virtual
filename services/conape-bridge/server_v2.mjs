@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.3-REPORT-3021';
+const VERSION = 'V4.5.4-REPORT-GO';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2213,7 +2213,16 @@ async function ensureProspectReportContext(p) {
   if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
   await rows.selectOption({ label:allText });
   await waitForApexDynamicAction(p);
-  await sleep(200);
+
+  const go = p.getByRole('button', { name:/^go$/i }).first();
+  const goFallback = p.locator('button[id$="_search_button"]:visible').first();
+  const goButton = (await go.count()) ? go : goFallback;
+  if (!(await goButton.count())) {
+    throw new AppError('CONAPE_REPORT_GO_MISSING', 'CONAPE no expuso el botón Go del reporte.', 503, 'REPORT');
+  }
+  await goButton.click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+  await sleep(250);
 
   state = await readProspectReportContext(p);
   if (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL') {
