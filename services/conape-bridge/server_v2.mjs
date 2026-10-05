@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.11-CSV-DOM-CLICK';
+const VERSION = 'V4.4.12-RESTORE-HOME-AFTER-RR';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1728,8 +1728,24 @@ async function resetProspectListReport(p, sessionId) {
     waitUntil:'domcontentloaded',
     timeout:30_000,
   });
-
   await waitForApexDynamicAction(p);
+
+  // clear=RR limpia el Interactive Report, pero APEX puede dejar esta
+  // navegación sin los controles Actions/Download. Volvemos a la Home ya
+  // limpia para restaurar el shell interactivo antes de exportar.
+  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
+    waitUntil:'domcontentloaded',
+    timeout:30_000,
+  });
+  await waitForApexDynamicAction(p);
+
+  const restoredNav = await readHomeNavDebug(p);
+  console.log(JSON.stringify({
+    event:'conape_list_home_restored', version:VERSION,
+    actions_visible:(restoredNav.visible_button_labels || []).some(label => /(^| )Actions( |$)/i.test(label)),
+    frames_count:restoredNav.frames_count,
+    pii:false,
+  }));
 
   return ir_filters_before;
 }
