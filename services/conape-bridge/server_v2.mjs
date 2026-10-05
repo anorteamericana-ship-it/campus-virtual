@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.34-DYNAMIC-EVENT-CONTEXT';
+const VERSION = 'V4.4.35-SIGNED-MODULE-NAV';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -445,6 +445,48 @@ async function readHomeNavDebug(p) {
   return { url_path, frames_count:p.frames().length, visible_button_labels, visible_link_labels };
 }
 
+
+async function clickProspectacionModuleLink(p) {
+  const links = p.locator('a:visible');
+  const index = await links.evaluateAll(nodes => {
+    const norm = value => String(value || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toUpperCase().replace(/\s+/g,' ').trim();
+    return nodes.findIndex(node => norm([
+      node.textContent || '',
+      node.getAttribute('aria-label') || '',
+      node.getAttribute('title') || '',
+    ].join(' ')).includes('PROSPECTACION RECLUTADOR'));
+  }).catch(() => -1);
+  if (index < 0) return { found:false, clicked:false, signed_eve:false, signed_pro:false, has_cs:false };
+
+  const meta = await links.nth(index).evaluate(node => {
+    try {
+      const href = String(node.href || node.getAttribute('href') || '');
+      const u = new URL(href, location.href);
+      const param = name => {
+        for (const [key, value] of u.searchParams.entries()) {
+          if (String(key || '').toLowerCase() === name) return String(value || '').trim();
+        }
+        return '';
+      };
+      return {
+        found:true,
+        signed_eve:!!param('p2_eve_id'),
+        signed_pro:!!param('p2_pro_id'),
+        has_cs:!!param('cs'),
+      };
+    } catch {
+      return { found:true, signed_eve:false, signed_pro:false, has_cs:false };
+    }
+  }).catch(() => ({ found:true, signed_eve:false, signed_pro:false, has_cs:false }));
+
+  await links.nth(index).click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+  await sleep(150);
+  return { ...meta, clicked:true };
+}
+
 async function readSignedNavigationTelemetry(p) {
   return p.evaluate(({ expectedEve, expectedPro }) => {
     const u = new URL(location.href);
@@ -593,9 +635,23 @@ const ConapeSession = {
       return { p, meta };
     };
 
-    // Camino principal: Home firmada por APEX -> clic Playwright real en Reclutar Prospectos.
+    // Camino principal: entrar al módulo mediante su enlace real para conservar
+    // cualquier contexto firmado por APEX antes de buscar Reclutar Prospectos.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     await waitForApexDynamicAction(p);
+    const moduleNav = await clickProspectacionModuleLink(p);
+    sessionId = (await readApexSession(p)) || sessionId;
+    console.log(JSON.stringify({
+      event:'conape_module_navigation',
+      version:VERSION,
+      found:moduleNav.found === true,
+      clicked:moduleNav.clicked === true,
+      signed_eve:moduleNav.signed_eve === true,
+      signed_pro:moduleNav.signed_pro === true,
+      has_cs:moduleNav.has_cs === true,
+      pii:false,
+    }));
+
     let clicked = false;
     try {
       p.__conapeLabelSearchTimeoutMs = 6_000;
