@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.21-GO-NETWORK-DIAGNOSTIC';
+const VERSION = 'V4.4.22-GO-PAGE-ITEMS-DIAGNOSTIC';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1827,11 +1827,46 @@ async function resetProspectListReport(p, sessionId) {
       const resourceType = String(req.resourceType() || '');
       if (!['xhr','fetch','document'].includes(resourceType)) return;
       let postKeys = [];
+      let widget = {};
+      let pageItemNames = [];
       const raw = String(req.postData() || '');
       if (raw) {
         try {
           const parsed = new URLSearchParams(raw);
           postKeys = [...new Set([...parsed.keys()])].slice(0,40);
+          const safeValue = key => {
+            const value = String(parsed.get(key) || '');
+            return /^[A-Za-z0-9_:-]{0,80}$/.test(value) ? value : '';
+          };
+          widget = {
+            name:safeValue('p_widget_name'),
+            mod:safeValue('p_widget_mod'),
+            action:safeValue('p_widget_action'),
+            num_return:safeValue('p_widget_num_return'),
+          };
+          const jsonRaw = String(parsed.get('p_json') || '');
+          if (jsonRaw) {
+            try {
+              const payload = JSON.parse(jsonRaw);
+              const names = [];
+              const visit = value => {
+                if (!value || names.length >= 60) return;
+                if (Array.isArray(value)) {
+                  value.forEach(visit);
+                  return;
+                }
+                if (typeof value !== 'object') return;
+                for (const [key, child] of Object.entries(value)) {
+                  if ((key === 'n' || key === 'name' || key === 'id') && typeof child === 'string' && /^P\d+_[A-Z0-9_]+$/i.test(child)) {
+                    if (!names.includes(child)) names.push(child);
+                  }
+                  visit(child);
+                }
+              };
+              visit(payload);
+              pageItemNames = names;
+            } catch {}
+          }
         } catch {}
       }
       goRequests.push({
@@ -1840,6 +1875,8 @@ async function resetProspectListReport(p, sessionId) {
         resource_type:resourceType,
         query_keys:[...new Set([...url.searchParams.keys()])].slice(0,40),
         post_keys:postKeys,
+        widget,
+        page_item_names:pageItemNames,
       });
       if (goRequests.length > 20) goRequests.shift();
     } catch {}
