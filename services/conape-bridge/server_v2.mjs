@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.35-SIGNED-MODULE-NAV';
+const VERSION = 'V4.4.36-FRIENDLY-HOME-REPORT-RESET';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1933,22 +1933,16 @@ async function applyProspectEventFilter(p, eventId) {
 }
 
 async function resetProspectListReport(p, sessionId, eventId) {
-  await p.goto(confirmationResetUrl(sessionId), {
-    waitUntil:'domcontentloaded',
-    timeout:30_000,
-  });
-  await waitForApexDynamicAction(p);
-
-  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
-    waitUntil:'domcontentloaded',
-    timeout:30_000,
-  });
-  await waitForApexDynamicAction(p);
+  // La lista de Prospectación vive en la Friendly Home. No usar aquí el
+  // f?p=302:1:...:::RIR: clásico: en producción puede desviar a login y
+  // desmontar el dataset del Interactive Report.
+  await openProspectListHome(p, sessionId);
 
   const filtersBefore = await countIrFilters(p);
   if (filtersBefore > 0) {
     await resetInteractiveReport(p);
     await waitForApexDynamicAction(p);
+    await waitProspectListReady(p);
     const remaining = await countIrFilters(p);
     if (remaining !== 0) {
       throw new AppError('CONAPE_LIST_FILTER_RESET_FAILED', 'CONAPE no permitió limpiar los filtros previos de Prospectación.', 503, 'LIST');
@@ -1965,7 +1959,7 @@ async function resetProspectListReport(p, sessionId, eventId) {
   console.log(JSON.stringify({
     event:'conape_list_report_ready',
     version:VERSION,
-    reset_method:filtersBefore > 0 ? 'URL_RIR_THEN_CONSERVATIVE_RESET_EVENT' : 'URL_RIR_THEN_EVENT_FILTER',
+    reset_method:filtersBefore > 0 ? 'FRIENDLY_HOME_CONSERVATIVE_RESET_EVENT' : 'FRIENDLY_HOME_EVENT_FILTER',
     filters_before:filtersBefore,
     filters_after:filtersAfter,
     event_source:eventId ? 'PAGE' : 'ENV_FALLBACK',
