@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.27-CEDULA-NOT-NULL-FILTER';
+const VERSION = 'V4.4.28-NORMALIZED-FILTER-OPTIONS';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1749,8 +1749,18 @@ async function applyProspectCedulaNotNullFilter(p) {
   }
 
   if (await columnRadio.count()) await columnRadio.check({ timeout:3_000 }).catch(() => {});
-  await column.selectOption({ label:'Cedula' });
-  await operator.selectOption({ label:'is not null' });
+
+  const optionIndex = async (locator, expected) => locator.locator('option').evaluateAll((options, wanted) => {
+    const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    return options.findIndex(option => norm(option.textContent || '') === wanted);
+  }, expected);
+  const columnIndex = await optionIndex(column, 'CEDULA');
+  const operatorIndex = await optionIndex(operator, 'IS NOT NULL');
+  if (columnIndex < 0 || operatorIndex < 0) {
+    throw new AppError('CONAPE_LIST_FILTER_OPTION_NOT_FOUND', 'CONAPE cambió las opciones del filtro de Prospectación.', 503, 'LIST');
+  }
+  await column.selectOption({ index:columnIndex });
+  await operator.selectOption({ index:operatorIndex });
 
   const selected = await Promise.all([
     column.locator('option:checked').textContent().catch(() => ''),
