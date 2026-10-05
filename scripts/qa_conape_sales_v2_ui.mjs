@@ -16,7 +16,7 @@ check(data.includes("label: 'CONAPE Formalizado'"),'funnel contains formalized s
 check(data.includes("label: 'CONAPE Depósito detectado'"),'funnel names detected deposit explicitly');
 check(data.includes("String(p.conape_motor || '').toUpperCase() === 'PROSPECTACION_V2'"),'student status honors backend V2 authority');
 check(data.includes("prioridadConape === 'ALTA'"),'priority uses V2 high-priority alert');
-check(data.includes("return prospecto;\n  if (String(prospecto.financiamiento"),'legacy bridge merge stops before mutating V2');
+check(data.includes("if (String(prospecto.conape_motor || '').toUpperCase() === 'PROSPECTACION_V2') return prospecto;"),'legacy bridge merge stops before mutating V2');
 check(dash.includes("const conapeV2 = data.conape_motor_version === 'PROSPECTACION_V2'"),'dashboard detects backend V2');
 check(dash.includes("if (!conapeV2 && bridge"),'legacy bridge is disabled for V2');
 check(table.includes('<th>CONAPE</th>'),'desktop table has CONAPE column');
@@ -28,9 +28,9 @@ check(panel.includes('Código último depósito'),'Prospectación panel labels d
 for (const f of ['ventas_data.jsx','ventas_parts.jsx','ventas_sortable_table_cs21a20.jsx']) {
   check(html.includes('src/'+f+'?v=CONAPE-V2-SALES-20261004'),f+' cache-bust is V2');
 }
-check(html.includes('src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-REFRESH-20261004'),'ventas_conape_prospectacion_v1.jsx cache-bust is refresh V2');
+check(html.includes('src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-TICKET-20261004'),'ventas_conape_prospectacion_v1.jsx cache-bust is ticket V2');
 check(html.includes('src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004'),'ventas_dashboard.jsx cache-bust is refresh V2');
-check(html.includes('src/conape_bridge_client_c3_6.js?v=V4.4.7'),'CONAPE bridge client cache-bust is V4.4.7');
+check(html.includes('src/conape_bridge_client_c3_6.js?v=V4.4.31-TICKET'),'CONAPE bridge client cache-bust is V4.4.31 ticket');
 
 // JSX parse/transform with the exact Babel bundle shipped by the site.
 const sandbox={window:{},self:{},console,setTimeout,clearTimeout};

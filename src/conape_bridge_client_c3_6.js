@@ -63,8 +63,8 @@
 
   // Prospectación de Ventas únicamente. Fuerza lectura CONAPE + snapshot firmado.
   // No llama sincronizarCONAPE ni toca el flujo administrativo de desembolsos.
-  async function refreshProspectacionVentas(){
-    return postBridge('/v1/prospects/refresh', {});
+  async function refreshProspectacionVentas(refreshTicket){
+    return postBridge('/v1/prospects/refresh', { refresh_ticket:refreshTicket || null });
   }
 
   async function sessionStatus(){ return postBridge('/v1/session/status', {}); }

@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.30-EVENT-CONTEXT-FILTER';
+const VERSION = 'V4.4.31-SIGNED-REFRESH-TICKET';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -275,6 +275,65 @@ async function authorizeCampusSessionStatus(token) {
   rateLimit(cleanToken);
   const session = await cachedSessionValidation(cleanToken, SESSION_STATUS_CACHE_TTL_MS);
   return { ...validateSessionResult(session), token:cleanToken };
+}
+
+const REFRESH_TICKET_PURPOSE = 'CONAPE_PROSPECTACION_REFRESH_V1';
+const REFRESH_TICKET_MAX_FUTURE_MS = 6 * 60 * 1000;
+
+function timingSafeHexEqual(a, b) {
+  const aa = txt(a).toLowerCase();
+  const bb = txt(b).toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(aa) || !/^[0-9a-f]{64}$/.test(bb)) return false;
+  return crypto.timingSafeEqual(Buffer.from(aa, 'hex'), Buffer.from(bb, 'hex'));
+}
+
+function authorizeProspectRefreshTicket(token, ticket) {
+  const cleanToken = txt(token);
+  if (!cleanToken) throw new AppError('CAMPUS_TOKEN_REQUIRED', 'Sesión de Campus requerida.', 401, 'CAMPUS');
+  rateLimit(cleanToken);
+
+  const t = ticket && typeof ticket === 'object' && !Array.isArray(ticket) ? ticket : null;
+  if (!t) throw new AppError('CONAPE_REFRESH_TICKET_REQUIRED', 'Autorización de actualización requerida.', 401, 'CAMPUS');
+
+  const secret = String(process.env.CAMPUS_SERVICE_SECRET || '');
+  const expectedServiceId = txt(process.env.CAMPUS_SERVICE_ID);
+  const purpose = txt(t.purpose);
+  const serviceId = txt(t.service_id);
+  const exp = Number(t.exp);
+  const nonce = txt(t.nonce);
+  const tokenHash = txt(t.token_hash).toLowerCase();
+  const role = txt(t.role).toLowerCase();
+  const signature = txt(t.signature).toLowerCase();
+  const now = Date.now();
+
+  if (!secret || !expectedServiceId) throw new AppError('CONAPE_REFRESH_TICKET_CONFIG_MISSING', 'El servicio de actualización no está configurado.', 503, 'CAMPUS');
+  if (Number(t.v) !== 1 || purpose !== REFRESH_TICKET_PURPOSE || serviceId !== expectedServiceId) {
+    throw new AppError('CONAPE_REFRESH_TICKET_INVALID', 'Autorización de actualización inválida.', 401, 'CAMPUS');
+  }
+  if (!Number.isFinite(exp) || exp <= now || exp - now > REFRESH_TICKET_MAX_FUTURE_MS || nonce.length < 16) {
+    throw new AppError('CONAPE_REFRESH_TICKET_EXPIRED', 'La autorización de actualización expiró.', 401, 'CAMPUS');
+  }
+  if (tokenHash !== sha(cleanToken)) {
+    throw new AppError('CONAPE_REFRESH_TICKET_TOKEN_MISMATCH', 'La autorización no corresponde a esta sesión.', 401, 'CAMPUS');
+  }
+  if (!ROLE_ALLOW.has(upper(role))) {
+    throw new AppError('CAMPUS_ROLE_FORBIDDEN', 'Rol no autorizado para usar CONAPE.', 403, 'CAMPUS');
+  }
+
+  const canonical = [
+    REFRESH_TICKET_PURPOSE,
+    serviceId,
+    String(exp),
+    nonce,
+    tokenHash,
+    role
+  ].join('\n');
+  const expected = crypto.createHmac('sha256', secret).update(canonical, 'utf8').digest('hex');
+  if (!timingSafeHexEqual(expected, signature)) {
+    throw new AppError('CONAPE_REFRESH_TICKET_BAD_SIGNATURE', 'La autorización de actualización no es válida.', 401, 'CAMPUS');
+  }
+
+  return { token:cleanToken, role:upper(role), ticket:true };
 }
 
 async function authorizeCampus(token, cedula) {
@@ -2029,7 +2088,8 @@ async function refreshProspectacionVentas(body) {
   // Reutilizar la misma sesión Campus recientemente validada que usa el
   // monitor /session/status. Evita un cold start adicional de Apps Script
   // justo al forzar Prospectación, sin omitir roles/demo/read-only.
-  await authorizeCampusSessionStatus(body?.token);
+  if (body?.refresh_ticket) authorizeProspectRefreshTicket(body?.token, body.refresh_ticket);
+  else await authorizeCampusSessionStatus(body?.token);
   const list = await listProspectsFromHome();
   const applied = await publishProspectacionSnapshot(list);
   return {
