@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.11-EXACT-REPORT-CONTEXT';
+const VERSION = 'V4.5.12-WAIT-DEPENDENT-LOV';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2121,6 +2121,8 @@ async function selectSingleReportLov(p, inputId, expectedLabel = '', force = fal
     const exactOption = dialog.getByRole('option', { name:expectedLabel, exact:true }).first();
     if (await exactOption.count()) {
       await exactOption.click({ timeout:5_000 });
+      await waitForApexDynamicAction(p);
+      await sleep(500);
     }
   }
 
@@ -2204,6 +2206,10 @@ async function ensureProspectReportContext(p) {
   if (proNeedsSelection) {
     const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL, true);
     if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitio seleccionar el Prospectador.', 503, 'REPORT');
+    // Evento depende de Prospectador en SIFA. Esperar la Dynamic Action y su LOV dependiente
+    // antes de intentar abrirlo evita leer una lista todavía vacía.
+    await waitForApexDynamicAction(p);
+    await sleep(900);
   }
 
   state = await readProspectReportContext(p);
