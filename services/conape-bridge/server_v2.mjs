@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.23-PRESERVE-CLEAN-REPORT';
+const VERSION = 'V4.4.24-ROW-SEARCH-LOAD-ALL';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1722,6 +1722,48 @@ async function openProspectListHome(p, sessionId) {
   return waitProspectListReady(p);
 }
 
+async function ensureProspectReportRows(p) {
+  const current = await readProspectListPage(p);
+  if (current.ok === true && Array.isArray(current.rows) && current.rows.length > 0) {
+    console.log(JSON.stringify({
+      event:'conape_list_rows_ready', version:VERSION,
+      method:'EXISTING_REPORT',
+      first_page_rows:current.rows.length,
+      pii:false,
+    }));
+    return { method:'EXISTING_REPORT', first_page_rows:current.rows.length };
+  }
+
+  const search = p.locator('input[id$="_search_field"][type="search"]:visible').first();
+  const go = p.locator('button[id$="_search_button"]:visible').first();
+  if (!(await search.count()) || !(await go.count())) {
+    throw new AppError('CONAPE_LIST_ROW_SEARCH_NOT_FOUND', 'CONAPE no expuso el buscador de Prospectación.', 503, 'LIST');
+  }
+
+  // La Home del reclutador es search-on-demand. % es un criterio comodín
+  // de solo lectura para materializar el conjunto antes de exportarlo.
+  await search.fill('%');
+  await go.click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+
+  const until = Date.now() + 12_000;
+  while (Date.now() < until) {
+    const loaded = await readProspectListPage(p);
+    if (loaded.ok === true && Array.isArray(loaded.rows) && loaded.rows.length > 0) {
+      console.log(JSON.stringify({
+        event:'conape_list_rows_ready', version:VERSION,
+        method:'ROW_SEARCH_WILDCARD',
+        first_page_rows:loaded.rows.length,
+        pii:false,
+      }));
+      return { method:'ROW_SEARCH_WILDCARD', first_page_rows:loaded.rows.length };
+    }
+    await sleep(250);
+  }
+
+  throw new AppError('CONAPE_LIST_ROW_SEARCH_EMPTY', 'CONAPE no devolvió filas para la consulta completa de Prospectación.', 503, 'LIST');
+}
+
 async function resetProspectListReport(p, sessionId) {
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
     waitUntil:'domcontentloaded',
@@ -1748,6 +1790,7 @@ async function resetProspectListReport(p, sessionId) {
       reset_method:'NONE_CLEAN',
       pii:false,
     }));
+    await ensureProspectReportRows(p);
     return ir_filters_before;
   }
 
@@ -1768,6 +1811,7 @@ async function resetProspectListReport(p, sessionId) {
     pii:false,
   }));
 
+  await ensureProspectReportRows(p);
   return ir_filters_before;
 }
 function prospectSnapshotFingerprint(rows) {
