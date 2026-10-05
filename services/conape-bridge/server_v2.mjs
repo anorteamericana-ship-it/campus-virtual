@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.13-SEARCH-EXACT-LOV';
+const VERSION = 'V4.5.14-POLL-POPUP-LOV';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2104,49 +2104,51 @@ async function selectSingleReportLov(p, inputId, expectedLabel = '', force = fal
 
   const searchInput = dialog.locator('input[type="search"]:visible,input:visible').first();
   if (await searchInput.count()) {
-    await searchInput.fill('');
+    await searchInput.fill(expectedLabel || '');
   }
-  // En SIFA el bot?n de b?squeda del Popup LOV no tiene texto interno:
-  // expone aria-label="Search" y clase a-PopupLOV-doSearch.
+  // En SIFA el boton Search del Popup LOV dispara una consulta AJAX. El resultado
+  // real expone la etiqueta en textContent del <li role="option">, no en aria-label.
   let search = dialog.getByRole('button', { name:/^search$|^buscar$/i }).first();
   if (!(await search.count())) search = dialog.locator('button.a-PopupLOV-doSearch:visible,[aria-label="Search"]:visible,[aria-label="Buscar"]:visible').first();
   if (await search.count()) {
     await search.click({ timeout:5_000 });
     await waitForApexDynamicAction(p);
-    await sleep(250);
   }
 
   const expected = upper(expectedLabel);
-  if (expected) {
-    const exactOption = dialog.getByRole('option', { name:expectedLabel, exact:true }).first();
-    if (await exactOption.count()) {
-      await exactOption.click({ timeout:5_000 });
-      await waitForApexDynamicAction(p);
-      await sleep(500);
+  const options = dialog.locator('li:visible,[role="option"]:visible');
+  const optionsUntil = Date.now() + 5_000;
+  let optionIndex = -1;
+  while (Date.now() < optionsUntil) {
+    const labels = await options.evaluateAll(nodes => nodes.map((node, index) => ({
+      index,
+      text:String(node.textContent || node.getAttribute('aria-label') || '').replace(/\s+/g,' ').trim(),
+    }))).catch(() => []);
+    const usable = labels.filter(item => {
+      const label = upper(item.text);
+      return !!label && !/^(SELECCIONE EL PROSPECTADOR|SELECCIONE EL EVENTO|NO RESULTS FOUND|SIN RESULTADOS)$/.test(label);
+    });
+    if (expected) {
+      const exact = usable.find(item => upper(item.text) === expected);
+      const contains = usable.find(item => upper(item.text).includes(expected));
+      optionIndex = (exact || contains)?.index ?? -1;
+    } else if (usable.length === 1) {
+      optionIndex = usable[0].index;
     }
+    if (optionIndex >= 0) break;
+    await sleep(150);
   }
+  if (optionIndex < 0) return false;
+
+  await options.nth(optionIndex).click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+  await sleep(500);
 
   let after = await p.evaluate(id => {
     try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
     catch { return ''; }
   }, inputId).catch(() => '');
   if (after) return true;
-
-  const options = dialog.locator('li:visible,[role="option"]:visible');
-  const labels = await options.evaluateAll(nodes => nodes.map((node, index) => ({
-    index,
-    text:String(node.textContent || node.getAttribute('aria-label') || '').replace(/\s+/g,' ').trim(),
-  }))).catch(() => []);
-  const usable = labels.filter(item => {
-    const label = upper(item.text);
-    return !!label && !/^(SELECCIONE EL PROSPECTADOR|SELECCIONE EL EVENTO|NO RESULTS FOUND|SIN RESULTADOS)$/.test(label);
-  });
-
-  if (usable.length === 1) {
-    await options.nth(usable[0].index).click({ timeout:5_000 });
-  } else {
-    return false;
-  }
 
   const until = Date.now() + 8_000;
   while (Date.now() < until) {
