@@ -42,7 +42,9 @@ assert.match(helperSource, /downloadProspectCsvViaUiDialog\(page, parseProspectC
   assert.match(helperSource, /\[role="radio"\]/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)ACTIONS/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)DOWNLOAD/);
-  assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\^CSV\$\/i/);
+  assert.match(helperSource, /async function readDownloadFormatDebug/);
+  assert.match(helperSource, /event:'conape_csv_format_controls'/);
+  assert.match(uiBlock, /COMMA\.\{0,24\}SEPARATED/);
   assert.match(uiBlock, /CSV_FINAL_DOWNLOAD_NOT_FOUND/);
   assert.match(uiBlock, /GET_DOWNLOAD_LINK/);
   assert.match(uiBlock, /APEX_ACTIONS_DOWNLOAD_UI/);
