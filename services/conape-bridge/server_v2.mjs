@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.7-SEQUENCE-EVIDENCE';
+const VERSION = 'V4.5.8-POPUP-LOV-LIVE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2102,6 +2102,10 @@ async function selectSingleReportLov(p, inputId, expectedLabel = '') {
   const dialog = p.locator('.a-PopupLOV-dialog:visible,[role="dialog"]:visible').last();
   try { await dialog.waitFor({ state:'visible', timeout:5_000 }); } catch { return false; }
 
+  const searchInput = dialog.locator('input[type="search"]:visible,input:visible').first();
+  if (await searchInput.count()) {
+    await searchInput.fill('');
+  }
   const search = dialog.locator('.a-PopupLOV-doSearch:visible,button:visible').filter({ hasText:/^search$|^buscar$/i }).first();
   if (await search.count()) {
     await search.click({ timeout:5_000 }).catch(() => {});
@@ -2189,89 +2193,37 @@ async function ensureProspectReportContext(p) {
   }
 
   let materializedRows = null;
-  let browserSequenceVerified = false;
-  if (CONAPE_REPORT_PRO_ID && CONAPE_REPORT_EVE_ID) {
-    // Ejecutar dentro del navegador la misma secuencia que devolvió 60 filas
-    // en la sesión SIFA real: limpiar LOVs -> Prospectador -> Evento -> Rows All.
-    const prepared = await p.evaluate(async ({ proId, eveId, proLabel, eveLabel }) => {
-      const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-      try {
-        const eve = window.apex?.item?.('P1_EVE_ID');
-        const pro = window.apex?.item?.('P1_PRO_ID');
-        const rows = document.querySelector('select[id$="_row_select"]');
-        if (!eve?.setValue || !pro?.setValue || !rows) return { ok:false, reason:'CONTROLS_MISSING', row_count:0 };
 
-        eve.setValue('', '', false);
-        pro.setValue('', '', false);
-        await delay(700);
-
-        pro.setValue(proId, proLabel || undefined, false);
-        await delay(900);
-
-        eve.setValue(eveId, eveLabel || undefined, false);
-        await delay(900);
-
-        const all = Array.from(rows.options || []).find(option => String(option.textContent || '').trim().toUpperCase() === 'ALL');
-        if (!all) return { ok:false, reason:'ROWS_ALL_MISSING', row_count:0 };
-        rows.value = all.value;
-        rows.dispatchEvent(new Event('change', { bubbles:true }));
-        await delay(1400);
-
-        let rowCount = 0;
-        for (const table of document.querySelectorAll('table')) {
-          const count = Array.from(table.querySelectorAll('tbody tr')).filter(tr => tr.querySelectorAll('td').length > 1).length;
-          if (count > rowCount) rowCount = count;
-        }
-
-        const proValue = String(pro.getValue?.() ?? '').trim();
-        const eveValue = String(eve.getValue?.() ?? '').trim();
-        const rowsLabel = String(rows.options?.[rows.selectedIndex]?.text || '').trim().toUpperCase();
-        return {
-          ok:proValue === String(proId).trim() && eveValue === String(eveId).trim() && rowsLabel === 'ALL',
-          reason:'',
-          row_count:rowCount,
-        };
-      } catch {
-        return { ok:false, reason:'BROWSER_SEQUENCE_FAILED', row_count:0 };
-      }
-    }, {
-      proId:CONAPE_REPORT_PRO_ID,
-      eveId:CONAPE_REPORT_EVE_ID,
-      proLabel:CONAPE_REPORT_PROSPECTADOR_LABEL,
-      eveLabel:CONAPE_REPORT_EVENT_LABEL,
-    }).catch(() => ({ ok:false, reason:'EVALUATE_FAILED', row_count:0 }));
-
-    if (!prepared?.ok) {
-      const error = new AppError('CONAPE_REPORT_CONTEXT_SEQUENCE_FAILED', 'CONAPE no confirmó la secuencia Prospectador, Evento y Rows = All.', 503, 'REPORT');
-      error.reason = txt(prepared?.reason || 'UNKNOWN');
-      throw error;
-    }
-    materializedRows = Number(prepared.row_count || 0);
-    if (materializedRows <= 0) {
-      throw new AppError('CONAPE_REPORT_EMPTY_AFTER_SEQUENCE', 'CONAPE confirmó el contexto pero no materializó filas del reporte.', 503, 'REPORT');
-    }
-    browserSequenceVerified = true;
-  } else {
-    if (!state.pro_present) {
-      const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
-      if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
-    }
-    state = await readProspectReportContext(p);
-    if (!state.eve_present) {
-      const ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
-      if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
-    }
-    const rows = p.locator('select[id$="_row_select"]:visible').first();
-    if (!(await rows.count())) throw new AppError('CONAPE_REPORT_ROWS_SELECTOR_MISSING', 'CONAPE no expuso el selector Rows.', 503, 'REPORT');
-    const allText = (await rows.locator('option').allTextContents()).find(value => upper(value) === 'ALL');
-    if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
-    await rows.selectOption({ label:allText });
-    await waitForApexDynamicAction(p);
-    await sleep(1400);
+  // Ruta can?nica probada en SIFA real: usar los Popup LOV visibles.
+  // No escribir IDs ocultos con apex.item.setValue(): APEX necesita el clic
+  // real del LOV para disparar sus Dynamic Actions y materializar el reporte.
+  if (!state.pro_present) {
+    const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
+    if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permiti? seleccionar el Prospectador.', 503, 'REPORT');
   }
 
   state = await readProspectReportContext(p);
-  if (!browserSequenceVerified && (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL')) {
+  if (!state.eve_present) {
+    const ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
+    if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permiti? seleccionar el Evento.', 503, 'REPORT');
+  }
+
+  const rows = p.locator('select[id$="_row_select"]:visible').first();
+  if (!(await rows.count())) throw new AppError('CONAPE_REPORT_ROWS_SELECTOR_MISSING', 'CONAPE no expuso el selector Rows.', 503, 'REPORT');
+  const allText = (await rows.locator('option').allTextContents()).find(value => upper(value) === 'ALL');
+  if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
+  await rows.selectOption({ label:allText });
+  await waitForApexDynamicAction(p);
+  await sleep(1400);
+
+  const materialized = await readProspectListPage(p);
+  materializedRows = materialized?.ok && Array.isArray(materialized.rows) ? materialized.rows.length : 0;
+  if (materializedRows <= 0) {
+    throw new AppError('CONAPE_REPORT_EMPTY_AFTER_SEQUENCE', 'CONAPE confirm? el contexto pero no materializ? filas del reporte.', 503, 'REPORT');
+  }
+
+  state = await readProspectReportContext(p);
+  if (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL') {
     throw new AppError('CONAPE_REPORT_CONTEXT_INCOMPLETE', 'CONAPE no confirmó Prospectador, Evento y Rows = All.', 503, 'REPORT');
   }
 
@@ -2282,6 +2234,7 @@ async function ensureProspectReportContext(p) {
     prospectador:true,
     evento:true,
     rows_all:true,
+    selection_method:'POPUP_LOV_VISIBLE_TEXT',
     materialized_rows:materializedRows,
     pro_matches_env:state.pro_matches_env,
     eve_matches_env:state.eve_matches_env,
