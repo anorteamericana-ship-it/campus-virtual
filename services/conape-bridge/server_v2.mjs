@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.32-TICKET-SAFE-FALLBACK';
+const VERSION = 'V4.4.34-DYNAMIC-EVENT-CONTEXT';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1781,9 +1781,23 @@ async function openProspectListHome(p, sessionId) {
   return waitProspectListReady(p);
 }
 
-async function applyProspectEventFilter(p) {
-  if (!CONAPE_EVE_ID) {
-    throw new AppError('CONAPE_LIST_EVENT_CONTEXT_MISSING', 'No existe un Evento configurado para Prospectación.', 503, 'LIST');
+async function readEventContextValues(p) {
+  return p.evaluate(() => {
+    const read = id => {
+      try {
+        const item = window.apex?.item?.(id);
+        if (item && typeof item.getValue === 'function') return String(item.getValue() ?? '').trim();
+      } catch {}
+      return String(document.getElementById(id)?.value || '').trim();
+    };
+    return { eve:read('P2_EVE_ID'), pro:read('P2_PRO_ID') };
+  }).catch(() => ({ eve:'', pro:'' }));
+}
+
+async function applyProspectEventFilter(p, eventId) {
+  const effectiveEventId = txt(eventId || CONAPE_EVE_ID);
+  if (!effectiveEventId) {
+    throw new AppError('CONAPE_LIST_EVENT_CONTEXT_MISSING', 'No existe un Evento disponible para Prospectación.', 503, 'LIST');
   }
   const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
   if (!(await actions.count())) {
@@ -1829,13 +1843,13 @@ async function applyProspectEventFilter(p) {
     throw new AppError('CONAPE_LIST_FILTER_OPERATOR_NOT_FOUND', 'CONAPE cambió el operador del filtro de Prospectación.', 503, 'LIST');
   }
   await operator.selectOption({ index:operatorIndex });
-  await expression.fill(CONAPE_EVE_ID);
+  await expression.fill(effectiveEventId);
 
   const selected = await Promise.all([
     column.locator('option:checked').textContent().catch(() => ''),
     operator.locator('option:checked').textContent().catch(() => ''),
   ]);
-  const expressionOk = (await expression.inputValue().catch(() => '')) === CONAPE_EVE_ID;
+  const expressionOk = (await expression.inputValue().catch(() => '')) === effectiveEventId;
   if (upper(selected[0]) !== 'REG EVE ID' || upper(selected[1]) !== '=' || !expressionOk) {
     throw new AppError('CONAPE_LIST_FILTER_SELECTION_FAILED', 'CONAPE no confirmó el contexto de Evento de Prospectación.', 503, 'LIST');
   }
@@ -1862,10 +1876,7 @@ async function applyProspectEventFilter(p) {
   throw new AppError('CONAPE_LIST_EVENT_FILTER_EMPTY', 'CONAPE no devolvió filas para el Evento configurado de Prospectación.', 503, 'LIST');
 }
 
-async function resetProspectListReport(p, sessionId) {
-  // RIR elimina cualquier estado previo del Interactive Report. Después se
-  // vuelve a Friendly Home y se aplica el contexto de Evento configurado.
-  // El filtro es de solo lectura: Reg Eve Id = CONAPE_EVE_ID.
+async function resetProspectListReport(p, sessionId, eventId) {
   await p.goto(confirmationResetUrl(sessionId), {
     waitUntil:'domcontentloaded',
     timeout:30_000,
@@ -1879,11 +1890,16 @@ async function resetProspectListReport(p, sessionId) {
   await waitForApexDynamicAction(p);
 
   const filtersBefore = await countIrFilters(p);
-  if (filtersBefore !== 0) {
-    throw new AppError('CONAPE_LIST_RIR_RESET_FAILED', 'CONAPE conservó filtros después de restaurar el reporte.', 503, 'LIST');
+  if (filtersBefore > 0) {
+    await resetInteractiveReport(p);
+    await waitForApexDynamicAction(p);
+    const remaining = await countIrFilters(p);
+    if (remaining !== 0) {
+      throw new AppError('CONAPE_LIST_FILTER_RESET_FAILED', 'CONAPE no permitió limpiar los filtros previos de Prospectación.', 503, 'LIST');
+    }
   }
 
-  await applyProspectEventFilter(p);
+  await applyProspectEventFilter(p, eventId);
 
   const filtersAfter = await countIrFilters(p);
   if (filtersAfter < 1) {
@@ -1893,21 +1909,24 @@ async function resetProspectListReport(p, sessionId) {
   console.log(JSON.stringify({
     event:'conape_list_report_ready',
     version:VERSION,
-    reset_method:'URL_RIR_THEN_EVENT_FILTER',
+    reset_method:filtersBefore > 0 ? 'URL_RIR_THEN_CONSERVATIVE_RESET_EVENT' : 'URL_RIR_THEN_EVENT_FILTER',
     filters_before:filtersBefore,
     filters_after:filtersAfter,
+    event_source:eventId ? 'PAGE' : 'ENV_FALLBACK',
+    event_matches_env:eventId && CONAPE_EVE_ID ? txt(eventId) === txt(CONAPE_EVE_ID) : null,
     pii:false,
   }));
 
   return filtersBefore;
 }
+
 function prospectSnapshotFingerprint(rows) {
   const normalized = normalizeProspectRows(rows).sort((a,b) => a.cedula.localeCompare(b.cedula));
   return sha(normalized.map(row => PROSPECT_LIST_FIELDS.map(key => txt(row?.[key] || '')).join('\u001f')).join('\u001e'));
 }
 
-async function readHtmlProspectSnapshot(p, sessionId) {
-  const irFiltersBefore = await resetProspectListReport(p, sessionId);
+async function readHtmlProspectSnapshot(p, sessionId, eventId) {
+  const irFiltersBefore = await resetProspectListReport(p, sessionId, eventId);
   await waitProspectListReady(p);
   const rowsByCedula = new Map();
   const pages = await readPagedProspects(p, rowsByCedula);
@@ -1934,17 +1953,30 @@ async function listProspectsFromHome() {
   const rowsByCedula = new Map();
 
   try {
-    const p = await ConapeSession.browserPage();
-    await ConapeSession.login(p);
-
-    const sessionId = await readApexSession(p);
+    const fresh = await ConapeSession.freshProspectoFromHome();
+    const p = fresh.p;
+    const sessionId = fresh?.meta?.sessionId || await readApexSession(p);
     if (!sessionId) {
       throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'LIST');
     }
 
+    const pageContext = await readEventContextValues(p);
+    const eventId = txt(pageContext.eve || CONAPE_EVE_ID);
+    if (!eventId) {
+      throw new AppError('CONAPE_LIST_EVENT_CONTEXT_MISSING', 'CONAPE no expuso el Evento activo de Prospectación.', 503, 'LIST');
+    }
+    console.log(JSON.stringify({
+      event:'conape_list_event_context',
+      version:VERSION,
+      source:pageContext.eve ? 'PAGE' : 'ENV_FALLBACK',
+      present:true,
+      matches_env:pageContext.eve && CONAPE_EVE_ID ? txt(pageContext.eve) === txt(CONAPE_EVE_ID) : null,
+      pii:false,
+    }));
+
     // Camino preferido: dos exportaciones CSV nativas e idénticas.
     try {
-      irFiltersBefore = await resetProspectListReport(p, sessionId);
+      irFiltersBefore = await resetProspectListReport(p, sessionId, eventId);
       const csvA = await downloadProspectCsv(p);
       if (!csvA?.ok || csvA?.columns_ok !== true) {
         const error = new AppError('CONAPE_LIST_CSV_A_NOT_READY', 'CONAPE no permitió obtener la primera exportación CSV válida.', 503, 'LIST');
@@ -1952,7 +1984,7 @@ async function listProspectsFromHome() {
         throw error;
       }
 
-      await resetProspectListReport(p, sessionId);
+      await resetProspectListReport(p, sessionId, eventId);
       const csvB = await downloadProspectCsv(p);
       if (!csvB?.ok || csvB?.columns_ok !== true) {
         const error = new AppError('CONAPE_LIST_CSV_B_NOT_READY', 'CONAPE no permitió obtener la segunda exportación CSV válida.', 503, 'LIST');
@@ -1981,8 +2013,8 @@ async function listProspectsFromHome() {
       // Fallback seguro: dos recorridos completos e independientes de la tabla
       // visible. Un reset separa A de B y el fingerprint cubre todos los campos.
       rowsByCedula.clear();
-      const htmlA = await readHtmlProspectSnapshot(p, sessionId);
-      const htmlB = await readHtmlProspectSnapshot(p, sessionId);
+      const htmlA = await readHtmlProspectSnapshot(p, sessionId, eventId);
+      const htmlB = await readHtmlProspectSnapshot(p, sessionId, eventId);
       rowsA = htmlA.rows.length;
       rowsB = htmlB.rows.length;
       irFiltersBefore = htmlA.ir_filters_before;
