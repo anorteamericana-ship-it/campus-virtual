@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.6-BROWSER-NATIVE-SEQUENCE';
+const VERSION = 'V4.5.7-SEQUENCE-EVIDENCE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2189,6 +2189,7 @@ async function ensureProspectReportContext(p) {
   }
 
   let materializedRows = null;
+  let browserSequenceVerified = false;
   if (CONAPE_REPORT_PRO_ID && CONAPE_REPORT_EVE_ID) {
     // Ejecutar dentro del navegador la misma secuencia que devolvió 60 filas
     // en la sesión SIFA real: limpiar LOVs -> Prospectador -> Evento -> Rows All.
@@ -2246,6 +2247,10 @@ async function ensureProspectReportContext(p) {
       throw error;
     }
     materializedRows = Number(prepared.row_count || 0);
+    if (materializedRows <= 0) {
+      throw new AppError('CONAPE_REPORT_EMPTY_AFTER_SEQUENCE', 'CONAPE confirmó el contexto pero no materializó filas del reporte.', 503, 'REPORT');
+    }
+    browserSequenceVerified = true;
   } else {
     if (!state.pro_present) {
       const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
@@ -2266,7 +2271,7 @@ async function ensureProspectReportContext(p) {
   }
 
   state = await readProspectReportContext(p);
-  if (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL') {
+  if (!browserSequenceVerified && (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL')) {
     throw new AppError('CONAPE_REPORT_CONTEXT_INCOMPLETE', 'CONAPE no confirmó Prospectador, Evento y Rows = All.', 503, 'REPORT');
   }
 
