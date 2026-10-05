@@ -11,9 +11,9 @@ const connectBlock = connectStart >= 0 && statusStart > connectStart ? server.sl
 const listReadStart = server.indexOf('async function readProspectListPage');
 const listEnd = server.indexOf('function categoryStatus', listReadStart);
 const listBlock = listReadStart >= 0 && listEnd > listReadStart ? server.slice(listReadStart, listEnd) : '';
-const ensureRowsStart = server.indexOf('async function ensureProspectReportRows(p)');
-const ensureRowsEnd = server.indexOf('async function resetProspectListReport(p, sessionId)', ensureRowsStart);
-const ensureRowsBlock = ensureRowsStart >= 0 && ensureRowsEnd > ensureRowsStart ? server.slice(ensureRowsStart, ensureRowsEnd) : '';
+const filterRowsStart = server.indexOf('async function applyProspectCedulaNotNullFilter(p)');
+const filterRowsEnd = server.indexOf('async function resetProspectListReport(p, sessionId)', filterRowsStart);
+const filterRowsBlock = filterRowsStart >= 0 && filterRowsEnd > filterRowsStart ? server.slice(filterRowsStart, filterRowsEnd) : '';
 const resetListStart = server.indexOf('async function resetProspectListReport(p, sessionId)');
 const resetListEnd = server.indexOf('function prospectSnapshotFingerprint', resetListStart);
 const resetListBlock = resetListStart >= 0 && resetListEnd > resetListStart ? server.slice(resetListStart, resetListEnd) : '';
@@ -128,10 +128,10 @@ const checks = [
     "['LTIMODESEMBOLSO','ultimo_desembolso']",
     "['PR_XIMODESEMBOLSO','proximo_desembolso']"
   ].every(v => server.includes(v)) && /prospectListMissingFields\(headers\)/.test(server)],
-  ['V4.4.25 prioriza reporte primario RIR antes del fallback Friendly Home', /confirmationResetUrl\(sessionId\)/.test(resetListBlock) && /event:'conape_list_primary_report_ready'/.test(resetListBlock) && /reset_method:'URL_RIR'/.test(resetListBlock) && resetListBlock.indexOf('confirmationResetUrl(sessionId)') < resetListBlock.indexOf('CONAPE_FRIENDLY_HOME')],
-  ['V4.4.24 preserva Home limpia y solo resetea cuando existen filtros', /if \(ir_filters_before === 0\)/.test(resetListBlock) && /event:'conape_list_report_preserved'/.test(resetListBlock) && /reset_method:'NONE_CLEAN'/.test(resetListBlock) && /resetInteractiveReport\(p\)/.test(resetListBlock) && /CONAPE_LIST_FILTER_RESET_FAILED/.test(resetListBlock)],
-  ['V4.4.24 no destruye reporte limpio con clear RR ni Go vacío', !/prospectListResetUrl\(sessionId\)/.test(resetListBlock) && !/clear.*RR/i.test(resetListBlock) && !/goControls|CONAPE_LIST_GO_NOT_FOUND|conape_list_go_loaded/.test(resetListBlock)],
-  ['V4.4.24 materializa search-on-demand con wildcard read-only y falla cerrado', /search\.fill\('%'\)/.test(ensureRowsBlock) && /button\[id\$="_search_button"\]/.test(ensureRowsBlock) && /go\.click\(\{ timeout:5_000 \}\)/.test(ensureRowsBlock) && /CONAPE_LIST_ROW_SEARCH_EMPTY/.test(ensureRowsBlock) && /ROW_SEARCH_WILDCARD/.test(ensureRowsBlock) && /EXISTING_REPORT/.test(ensureRowsBlock)],
+  ['V4.4.27 aplica filtro nativo Cedula IS NOT NULL con controles APEX reales', /select\[id\$="_column_name"\]/.test(filterRowsBlock) && /select\[id\$="_OPT"\]/.test(filterRowsBlock) && /selectOption\(\{ label:'Cedula' \}\)/.test(filterRowsBlock) && /selectOption\(\{ label:'is not null' \}\)/.test(filterRowsBlock) && /getByRole\('button', \{ name:\/\^apply\$\|\^aplicar\$\/i \}\)/.test(filterRowsBlock)],
+  ['V4.4.27 verifica selección, filas y falla cerrado antes de exportar', /CONAPE_LIST_FILTER_SELECTION_FAILED/.test(filterRowsBlock) && /CONAPE_LIST_CEDULA_FILTER_EMPTY/.test(filterRowsBlock) && /method:'CEDULA_NOT_NULL_FILTER'/.test(filterRowsBlock) && /readProspectListPage\(p\)/.test(filterRowsBlock)],
+  ['V4.4.27 cada lectura parte de RIR limpio y exige que el filtro quede aplicado', /confirmationResetUrl\(sessionId\)/.test(resetListBlock) && resetListBlock.indexOf('confirmationResetUrl(sessionId)') < resetListBlock.indexOf('CONAPE_FRIENDLY_HOME') && /CONAPE_LIST_RIR_RESET_FAILED/.test(resetListBlock) && /applyProspectCedulaNotNullFilter\(p\)/.test(resetListBlock) && /CONAPE_LIST_FILTER_NOT_APPLIED/.test(resetListBlock) && /URL_RIR_THEN_CEDULA_NOT_NULL/.test(resetListBlock)],
+  ['V4.4.27 elimina diagnóstico y wildcard del camino de carga completa', !/inspectProspectFilterDialog|FILTER_DIALOG_DIAGNOSTIC|ROW_SEARCH_WILDCARD|search\.fill\('%'\)/.test(filterRowsBlock + resetListBlock)],
   ['V4.4.7 HTML se usa solo como fallback doble después del intento CSV', listProspectsBlock.indexOf('const csvA = await downloadProspectCsv(p)') >= 0 && listProspectsBlock.indexOf('const htmlA = await readHtmlProspectSnapshot(p, sessionId)') > listProspectsBlock.indexOf('catch (csvError)') && listProspectsBlock.includes('const htmlB = await readHtmlProspectSnapshot(p, sessionId)')],
   ['V4.4.4 valida origen, ruta, PLUGIN, FILE_ID, sesión y checksum de la URL firmada', ['CSV_DOWNLOAD_LINK_ORIGIN_INVALID','CSV_DOWNLOAD_LINK_PATH_INVALID','CSV_DOWNLOAD_LINK_REQUEST_INVALID','CSV_DOWNLOAD_LINK_SESSION_INVALID','CSV_DOWNLOAD_LINK_FILE_INVALID','CSV_DOWNLOAD_LINK_CHECKSUM_INVALID'].every(v => csvV444.includes(v)) && /CONAPE_ORIGIN/.test(csvV444)],
   ['V4.4.4 runtime importa helper CSV firmado y doble verificación', /from '\.\/conape_v444_csv\.mjs'/.test(server) && /downloadProspectCsvViaDialog/.test(server) && /verifyDoubleCsv/.test(server)],
