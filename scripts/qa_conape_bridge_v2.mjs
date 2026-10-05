@@ -110,6 +110,18 @@ const checks = [
   ['V4.2.9 summary=1 no devuelve filas con PII al navegador', server.includes('summaryOnly') && server.includes("url.searchParams.get('summary')") && server.includes('const payload = summaryOnly ? {')],
   ['V4.4.4 telemetría de lista conserva solo conteos y pii false', server.includes("event:'conape_list_dump'") && ['rows_csv','rows_html_all','counts_match','columns_ok','verification_method','ir_filters_before','pii:false'].every(v=>server.includes(v))],
   ['V4.3.2 contrato de lista conserva 15 columnas incluyendo teléfono y celular separados', listFields.length === 15 && listFields.includes('telefono') && listFields.includes('celular') && server.includes("['TELEFONO','telefono'],['CELULAR','celular']")],
+  ['V4.4.19 tolera cabeceras mojibake observadas en CSV real sin relajar contrato', [
+    "['C_DULA','cedula']",
+    "['TEL_FONOCELULAR','celular']",
+    "['CORREO_ELECTR_NICO','correo']",
+    "['FECHA_DEESTADO','fecha_estado']",
+    "['FECHA_DEREGISTRO','fecha_registro']",
+    "['USUARIO_QUEREGISTR','usuario_registro']",
+    "['APROBACI_N','aprobacion']",
+    "['FORMALIZACI_N','formalizacion']",
+    "['LTIMODESEMBOLSO','ultimo_desembolso']",
+    "['PR_XIMODESEMBOLSO','proximo_desembolso']"
+  ].every(v => server.includes(v)) && /prospectListMissingFields\(headers\)/.test(server)],
   ['V4.4.12 resetea RR y restaura Home interactiva antes de cada exportación', /async function resetProspectListReport/.test(listBlock) && (listBlock.match(/prospectListResetUrl\(sessionId\)/g) || []).length >= 2 && /event:'conape_list_home_restored'/.test(listBlock) && /actions_visible/.test(listBlock) && /const csvA = await downloadProspectCsv\(p\)/.test(listProspectsBlock) && /const csvB = await downloadProspectCsv\(p\)/.test(listProspectsBlock)],
   ['V4.4.7 HTML se usa solo como fallback doble después del intento CSV', listProspectsBlock.indexOf('const csvA = await downloadProspectCsv(p)') >= 0 && listProspectsBlock.indexOf('const htmlA = await readHtmlProspectSnapshot(p, sessionId)') > listProspectsBlock.indexOf('catch (csvError)') && listProspectsBlock.includes('const htmlB = await readHtmlProspectSnapshot(p, sessionId)')],
   ['V4.4.4 valida origen, ruta, PLUGIN, FILE_ID, sesión y checksum de la URL firmada', ['CSV_DOWNLOAD_LINK_ORIGIN_INVALID','CSV_DOWNLOAD_LINK_PATH_INVALID','CSV_DOWNLOAD_LINK_REQUEST_INVALID','CSV_DOWNLOAD_LINK_SESSION_INVALID','CSV_DOWNLOAD_LINK_FILE_INVALID','CSV_DOWNLOAD_LINK_CHECKSUM_INVALID'].every(v => csvV444.includes(v)) && /CONAPE_ORIGIN/.test(csvV444)],
