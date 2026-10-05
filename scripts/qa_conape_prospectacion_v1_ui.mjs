@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const panel = fs.readFileSync('src/ventas_conape_prospectacion_v1.jsx', 'utf8');
 const dashboard = fs.readFileSync('src/ventas_dashboard.jsx', 'utf8');
+const sessionUi = fs.readFileSync('src/conape_session_ui_c3_7.js', 'utf8');
 const html = fs.readFileSync('ventas.html', 'utf8');
 
 let fail = 0;
@@ -37,9 +38,13 @@ check(!/Reclutar|reclutarProspecto|Crear nuevo Prospecto/.test(panel), 'V1 panel
 check(dashboard.includes('window.ConapeProspectacionPanelV1'), 'Ventas dashboard mounts CONAPE Prospectacion V1 panel');
 check(dashboard.includes('asesor={scopeAsesor}'), 'Panel follows active advisor scope');
 check(dashboard.includes('rol={rolReal}'), 'Panel receives real role, not simulated advisor role');
+check(sessionUi.includes('Sesión CONAPE activa') && sessionUi.includes('Sesión CONAPE inactiva'), 'Session UI is a read-only CONAPE status indicator');
+check(sessionUi.includes("an:conape-refresh-complete") && sessionUi.includes('setInterval(refreshStatus,300000)'), 'Session indicator refreshes after live refresh and periodically');
+check(!/Conectar CONAPE|showPrompt|connectNow|progress-pct|an-conape-session-c37-connect/.test(sessionUi), 'Session UI exposes no manual CONAPE connect action or modal');
+check(sessionUi.includes('Para actualizar datos use Actualizar CONAPE.'), 'Session indicator explains that data refresh belongs to Actualizar CONAPE');
 
 const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.5.0-ROWS-ALL';
-const sessionScript = 'src/conape_session_ui_c3_7.js?v=C3.7.2-STATUS-ONLY';
+const sessionScript = 'src/conape_session_ui_c3_7.js?v=C3.7.3-INDICATOR-ONLY';
 const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-ROWS-ALL-20261005';
 const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004';
 check(html.includes(bridgeScript), 'ventas.html cache-busts Prospectacion bridge client');
