@@ -406,11 +406,11 @@ async function firstVisible(locator, timeoutMs = 5_000) {
 
 async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
   const actionableSelector = 'button,a,label,[role="button"],[role="menuitem"],[role="radio"],[role="option"],input[type="button"],input[type="submit"],input[type="radio"]';
-  const textSelector = actionableSelector + ',span';
   const until = Date.now() + Math.max(250, Number(timeoutMs || 5_000));
   do {
     for (const frame of page.frames()) {
-      const clicked = await frame.evaluate(({ actionableSelector, textSelector, source }) => {
+      const controls = frame.locator(actionableSelector);
+      const index = await controls.evaluateAll((nodes, source) => {
         const re = new RegExp(source, 'i');
         const norm = value => String(value || '')
           .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -421,30 +421,19 @@ async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
             return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
           } catch { return false; }
         };
-        const matchesLabel = el => re.test(norm([
+        return nodes.findIndex(el => visible(el) && re.test(norm([
           el.textContent || '',
           el.value || '',
           el.getAttribute('aria-label') || '',
           el.getAttribute('title') || '',
-        ].join(' ')));
+        ].join(' '))));
+      }, regex.source).catch(() => -1);
 
-        // Prefer real actionable controls. APEX menu labels are frequently nested
-        // inside spans; clicking that span may not dispatch the menu action.
-        const actionable = Array.from(document.querySelectorAll(actionableSelector))
-          .find(el => visible(el) && matchesLabel(el));
-        if (actionable) {
-          actionable.click();
-          return true;
-        }
-
-        const textHit = Array.from(document.querySelectorAll(textSelector))
-          .find(el => visible(el) && matchesLabel(el));
-        const promoted = textHit && textHit.closest ? textHit.closest(actionableSelector) : null;
-        if (!promoted || !visible(promoted)) return false;
-        promoted.click();
-        return true;
-      }, { actionableSelector, textSelector, source:regex.source }).catch(() => false);
-      if (clicked) return true;
+      if (index >= 0) {
+        const candidate = controls.nth(index);
+        const clicked = await candidate.click({ timeout:2_500 }).then(() => true).catch(() => false);
+        if (clicked) return true;
+      }
     }
     if (Date.now() >= until) break;
     await new Promise(resolve => setTimeout(resolve, 100));
