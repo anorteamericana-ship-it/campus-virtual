@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.28-NORMALIZED-FILTER-OPTIONS';
+const VERSION = 'V4.4.29-REFRESH-AUTH-CACHE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2015,7 +2015,10 @@ async function publishProspectacionSnapshot(list) {
 }
 
 async function refreshProspectacionVentas(body) {
-  await authorizeCampusSession(body?.token);
+  // Reutilizar la misma sesión Campus recientemente validada que usa el
+  // monitor /session/status. Evita un cold start adicional de Apps Script
+  // justo al forzar Prospectación, sin omitir roles/demo/read-only.
+  await authorizeCampusSessionStatus(body?.token);
   const list = await listProspectsFromHome();
   const applied = await publishProspectacionSnapshot(list);
   return {
