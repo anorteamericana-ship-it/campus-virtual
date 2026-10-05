@@ -38,10 +38,12 @@ check(dashboard.includes('window.ConapeProspectacionPanelV1'), 'Ventas dashboard
 check(dashboard.includes('asesor={scopeAsesor}'), 'Panel follows active advisor scope');
 check(dashboard.includes('rol={rolReal}'), 'Panel receives real role, not simulated advisor role');
 
-const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.4.31-TICKET';
-const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-TICKET-20261004';
+const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.5.0-ROWS-ALL';
+const sessionScript = 'src/conape_session_ui_c3_7.js?v=C3.7.2-STATUS-ONLY';
+const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-ROWS-ALL-20261005';
 const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004';
 check(html.includes(bridgeScript), 'ventas.html cache-busts Prospectacion bridge client');
+check(html.includes(sessionScript), 'ventas.html cache-busts status-only CONAPE session UI');
 check(html.includes(panelScript), 'ventas.html loads V1 panel with cache bust');
 check(html.includes(dashScript), 'ventas.html cache-busts dashboard integration');
 check(html.indexOf(panelScript) < html.indexOf(dashScript), 'Panel script loads before dashboard consumer');

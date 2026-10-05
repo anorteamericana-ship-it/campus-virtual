@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.36-FRIENDLY-HOME-REPORT-RESET';
+const VERSION = 'V4.5.0-ROWS-ALL';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -16,6 +16,8 @@ const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '').trim();
 const CONAPE_PASSWORD = String(process.env.CONAPE_PORTAL_PASSWORD || '');
 const CONAPE_EVE_ID = String(process.env.CONAPE_EVE_ID || '').trim();
 const CONAPE_PRO_ID = String(process.env.CONAPE_PRO_ID || '').trim();
+const CONAPE_REPORT_PROSPECTADOR_LABEL = String(process.env.CONAPE_REPORT_PROSPECTADOR_LABEL || 'ACADEMIA NORTEAMERICANA').trim();
+const CONAPE_REPORT_EVENT_LABEL = String(process.env.CONAPE_REPORT_EVENT_LABEL || '').trim();
 const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.CAMPUS_REQUEST_TIMEOUT_MS || 70_000));
 const SESSION_CACHE_TTL_MS = 30_000;
 const SESSION_STATUS_CACHE_TTL_MS = 300_000;
@@ -563,10 +565,15 @@ const ConapeSession = {
       const visible = el => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0; };
       const password = Array.from(document.querySelectorAll('input[type="password"]')).some(visible);
       const form = ['P2_PRS_CEDULA','P2_PRS_APELLIDO_1','P2_PRS_APELLIDO_2','P2_PRS_NOMBRE','P2_PRS_CELULAR','P2_PRS_EMAIL'].every(id => !!document.getElementById(id));
+      const report = !!document.getElementById('P1_PRO_ID') && !!document.getElementById('P1_EVE_ID') &&
+        !!document.querySelector('select[id$="_row_select"]');
+      const flow = String(document.querySelector('input[name="p_flow_id"]')?.value || '').trim();
+      const step = String(document.querySelector('input[name="p_flow_step_id"]')?.value || '').trim();
+      const apexHome = flow === '500' && step === '1';
       const path = decodeURIComponent(location.pathname || '').toLowerCase();
       const route = path.includes('/prospectacion-reclutador/') || (path.includes('/prospectaci') && path.includes('reclutador'));
-      return { password, form, route, authenticated:!password && (form || route) };
-    }).catch(() => ({ password:false, form:false, route:false, authenticated:false }));
+      return { password, form, report, apexHome, route, authenticated:!password && (form || report || apexHome || route) };
+    }).catch(() => ({ password:false, form:false, report:false, apexHome:false, route:false, authenticated:false }));
   },
 
   async login(p) {
@@ -601,7 +608,7 @@ const ConapeSession = {
     this.connectedAt = this.connectedAt || nowIso();
     this.lastActivity = nowIso();
     this.generation += 1;
-    return this.snapshot({ ready:s.form ? 'PROSPECTO' : 'HOME' });
+    return this.snapshot({ ready:s.report ? 'REPORT' : (s.form ? 'PROSPECTO' : 'HOME') });
   },
 
   async status() {
@@ -616,7 +623,7 @@ const ConapeSession = {
     }
     this.state = 'CONNECTED';
     this.lastActivity = nowIso();
-    return this.snapshot({ ready:state.form ? 'PROSPECTO' : 'HOME' });
+    return this.snapshot({ ready:state.report ? 'REPORT' : (state.form ? 'PROSPECTO' : 'HOME') });
   },
 
   async freshProspectoFromHome() {
@@ -1990,103 +1997,232 @@ async function readHtmlProspectSnapshot(p, sessionId, eventId) {
   };
 }
 
+async function readProspectReportContext(p) {
+  return p.evaluate(({ expectedPro, expectedEve }) => {
+    const read = id => {
+      try {
+        const item = window.apex?.item?.(id);
+        if (item && typeof item.getValue === 'function') return String(item.getValue() ?? '').trim();
+      } catch {}
+      return '';
+    };
+    const rows = document.querySelector('select[id$="_row_select"]');
+    const selectedRows = String(rows?.options?.[rows.selectedIndex]?.text || '').trim();
+    const pro = read('P1_PRO_ID');
+    const eve = read('P1_EVE_ID');
+    return {
+      ready:!!document.getElementById('P1_PRO_ID') && !!document.getElementById('P1_EVE_ID') && !!rows,
+      pro_present:!!pro,
+      eve_present:!!eve,
+      pro_matches_env:expectedPro ? pro === expectedPro : null,
+      eve_matches_env:expectedEve ? eve === expectedEve : null,
+      rows:selectedRows,
+    };
+  }, { expectedPro:CONAPE_PRO_ID, expectedEve:CONAPE_EVE_ID }).catch(() => ({
+    ready:false, pro_present:false, eve_present:false,
+    pro_matches_env:CONAPE_PRO_ID ? false : null,
+    eve_matches_env:CONAPE_EVE_ID ? false : null,
+    rows:'',
+  }));
+}
+
+async function setReportApexItem(p, id, value) {
+  const clean = txt(value);
+  if (!clean) return false;
+  const written = await p.evaluate(({ id, value }) => {
+    try {
+      const item = window.apex?.item?.(id);
+      if (!item || typeof item.setValue !== 'function' || typeof item.getValue !== 'function') return false;
+      item.setValue(value);
+      return String(item.getValue() ?? '').trim() === String(value).trim();
+    } catch {
+      return false;
+    }
+  }, { id, value:clean }).catch(() => false);
+  if (!written) return false;
+  await waitForApexDynamicAction(p);
+  await sleep(150);
+  return p.evaluate(({ id, value }) => {
+    try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim() === String(value).trim(); }
+    catch { return false; }
+  }, { id, value:clean }).catch(() => false);
+}
+
+async function selectSingleReportLov(p, inputId, expectedLabel = '') {
+  const current = await p.evaluate(id => {
+    try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
+    catch { return ''; }
+  }, inputId).catch(() => '');
+  if (current) return true;
+
+  const button = p.locator('#' + inputId + '_lov_btn:visible').first();
+  if (!(await button.count())) return false;
+  await button.click({ timeout:5_000 });
+
+  const dialog = p.locator('.a-PopupLOV-dialog:visible,[role="dialog"]:visible').last();
+  try { await dialog.waitFor({ state:'visible', timeout:5_000 }); } catch { return false; }
+
+  const search = dialog.locator('.a-PopupLOV-doSearch:visible,button:visible').filter({ hasText:/^search$|^buscar$/i }).first();
+  if (await search.count()) {
+    await search.click({ timeout:5_000 }).catch(() => {});
+    await waitForApexDynamicAction(p);
+    await sleep(250);
+  }
+
+  const expected = upper(expectedLabel);
+  if (expected) {
+    const exact = dialog.getByText(expectedLabel, { exact:true }).last();
+    if (await exact.count()) {
+      await exact.click({ timeout:5_000 }).catch(() => {});
+    }
+  }
+
+  let after = await p.evaluate(id => {
+    try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
+    catch { return ''; }
+  }, inputId).catch(() => '');
+  if (after) return true;
+
+  const options = dialog.locator('li:visible,[role="option"]:visible');
+  const labels = await options.evaluateAll(nodes => nodes.map((node, index) => ({
+    index,
+    text:String(node.textContent || node.getAttribute('aria-label') || '').replace(/\s+/g,' ').trim(),
+  }))).catch(() => []);
+  const usable = labels.filter(item => {
+    const label = upper(item.text);
+    return !!label && !/^(SELECCIONE EL PROSPECTADOR|SELECCIONE EL EVENTO|NO RESULTS FOUND|SIN RESULTADOS)$/.test(label);
+  });
+
+  if (usable.length === 1) {
+    await options.nth(usable[0].index).click({ timeout:5_000 });
+  } else {
+    return false;
+  }
+
+  const until = Date.now() + 8_000;
+  while (Date.now() < until) {
+    after = await p.evaluate(id => {
+      try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
+      catch { return ''; }
+    }, inputId).catch(() => '');
+    if (after) {
+      await waitForApexDynamicAction(p);
+      return true;
+    }
+    await sleep(150);
+  }
+  return false;
+}
+
+async function ensureProspectReportContext(p) {
+  await ConapeSession.login(p);
+  let sessionId = await readApexSession(p);
+  if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'REPORT');
+
+  let state = await readProspectReportContext(p);
+  if (!state.ready) {
+    await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+    await waitForApexDynamicAction(p);
+    sessionId = (await readApexSession(p)) || sessionId;
+    state = await readProspectReportContext(p);
+  }
+  if (!state.ready) {
+    throw new AppError('CONAPE_REPORT_NOT_READY', 'CONAPE no dejó listo el reporte de Prospectación.', 503, 'REPORT');
+  }
+
+  if (!state.pro_present) {
+    let ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
+    if (!ok && CONAPE_PRO_ID) ok = await setReportApexItem(p, 'P1_PRO_ID', CONAPE_PRO_ID);
+    if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
+  }
+
+  state = await readProspectReportContext(p);
+  if (!state.eve_present) {
+    let ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
+    if (!ok && CONAPE_EVE_ID) ok = await setReportApexItem(p, 'P1_EVE_ID', CONAPE_EVE_ID);
+    if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
+  }
+
+  const rows = p.locator('select[id$="_row_select"]:visible').first();
+  if (!(await rows.count())) throw new AppError('CONAPE_REPORT_ROWS_SELECTOR_MISSING', 'CONAPE no expuso el selector Rows.', 503, 'REPORT');
+  const allText = (await rows.locator('option').allTextContents()).find(value => upper(value) === 'ALL');
+  if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
+  await rows.selectOption({ label:allText });
+  await waitForApexDynamicAction(p);
+  await sleep(200);
+
+  state = await readProspectReportContext(p);
+  if (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL') {
+    throw new AppError('CONAPE_REPORT_CONTEXT_INCOMPLETE', 'CONAPE no confirmó Prospectador, Evento y Rows = All.', 503, 'REPORT');
+  }
+
+  console.log(JSON.stringify({
+    event:'conape_report_context_ready',
+    version:VERSION,
+    prospectador:true,
+    evento:true,
+    rows_all:true,
+    pro_matches_env:state.pro_matches_env,
+    eve_matches_env:state.eve_matches_env,
+    pii:false,
+  }));
+
+  return { sessionId, state };
+}
+
+async function readRowsAllSnapshot(p) {
+  await ensureProspectReportContext(p);
+  const loaded = await waitProspectListReady(p, 12_000);
+  if (!loaded?.ok) {
+    const error = new AppError('CONAPE_REPORT_SCHEMA_NOT_READY', 'CONAPE no expuso las columnas esperadas del reporte.', 503, 'REPORT');
+    error.reason = txt(loaded?.reason || 'UNKNOWN');
+    throw error;
+  }
+  const rows = normalizeProspectRows(loaded.rows).sort((a,b) => a.cedula.localeCompare(b.cedula));
+  if (!rows.length) throw new AppError('CONAPE_REPORT_EMPTY', 'CONAPE no devolvió prospectos en el reporte.', 503, 'REPORT');
+  if ((await prospectNextPageIndex(p)) >= 0) {
+    throw new AppError('CONAPE_REPORT_ROWS_ALL_INCOMPLETE', 'Rows = All dejó paginación activa.', 503, 'REPORT');
+  }
+  return { rows, fingerprint:prospectSnapshotFingerprint(rows) };
+}
+
 async function listProspectsFromHome() {
   const started = Date.now();
-  let pages = 0;
-  let method = 'UNKNOWN';
-  let columnsOk = false;
-  let irFiltersBefore = 0;
+  const method = 'HTML_DOUBLE';
+  const verificationMethod = 'ROWS_ALL_DOUBLE';
+  const irFiltersBefore = 0;
+  const rowsByCedula = new Map();
   let rowsA = null;
   let rowsB = null;
   let countsMatch = false;
-  let verificationMethod = 'NONE';
-  const rowsByCedula = new Map();
+  let columnsOk = false;
 
   try {
-    const fresh = await ConapeSession.freshProspectoFromHome();
-    const p = fresh.p;
-    const sessionId = fresh?.meta?.sessionId || await readApexSession(p);
-    if (!sessionId) {
-      throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'LIST');
+    const p = await ConapeSession.browserPage();
+    const first = await readRowsAllSnapshot(p);
+
+    await p.reload({ waitUntil:'domcontentloaded', timeout:30_000 });
+    await waitForApexDynamicAction(p);
+    const second = await readRowsAllSnapshot(p);
+
+    rowsA = first.rows.length;
+    rowsB = second.rows.length;
+    countsMatch = rowsA === rowsB && first.fingerprint === second.fingerprint;
+    if (!countsMatch) {
+      const mismatch = new AppError('CONAPE_REPORT_DOUBLE_MISMATCH', 'Las dos lecturas completas de CONAPE no coincidieron.', 503, 'REPORT');
+      mismatch.rows_a = rowsA;
+      mismatch.rows_b = rowsB;
+      throw mismatch;
     }
 
-    const pageContext = await readEventContextValues(p);
-    const eventId = txt(pageContext.eve || CONAPE_EVE_ID);
-    if (!eventId) {
-      throw new AppError('CONAPE_LIST_EVENT_CONTEXT_MISSING', 'CONAPE no expuso el Evento activo de Prospectación.', 503, 'LIST');
-    }
-    console.log(JSON.stringify({
-      event:'conape_list_event_context',
-      version:VERSION,
-      source:pageContext.eve ? 'PAGE' : 'ENV_FALLBACK',
-      present:true,
-      matches_env:pageContext.eve && CONAPE_EVE_ID ? txt(pageContext.eve) === txt(CONAPE_EVE_ID) : null,
-      pii:false,
-    }));
-
-    // Camino preferido: dos exportaciones CSV nativas e idénticas.
-    try {
-      irFiltersBefore = await resetProspectListReport(p, sessionId, eventId);
-      const csvA = await downloadProspectCsv(p);
-      if (!csvA?.ok || csvA?.columns_ok !== true) {
-        const error = new AppError('CONAPE_LIST_CSV_A_NOT_READY', 'CONAPE no permitió obtener la primera exportación CSV válida.', 503, 'LIST');
-        error.reason = txt(csvA?.reason || 'UNKNOWN');
-        throw error;
-      }
-
-      await resetProspectListReport(p, sessionId, eventId);
-      const csvB = await downloadProspectCsv(p);
-      if (!csvB?.ok || csvB?.columns_ok !== true) {
-        const error = new AppError('CONAPE_LIST_CSV_B_NOT_READY', 'CONAPE no permitió obtener la segunda exportación CSV válida.', 503, 'LIST');
-        error.reason = txt(csvB?.reason || 'UNKNOWN');
-        throw error;
-      }
-
-      const verified = verifyDoubleCsv(csvA, csvB);
-      addProspectRows(rowsByCedula, verified.rows);
-      rowsA = Number(verified.rows_csv_a);
-      rowsB = Number(verified.rows_csv_b);
-      countsMatch = verified.counts_match === true;
-      columnsOk = verified.columns_ok === true;
-      pages = 1;
-      method = 'CSV_DOUBLE';
-      verificationMethod = 'CSV_DOUBLE';
-    } catch (csvError) {
-      console.log(JSON.stringify({
-        event:'conape_list_csv_fallback',
-        version:VERSION,
-        code:txt(csvError?.code || 'CSV_UNAVAILABLE'),
-        reason:txt(csvError?.reason || csvError?.message || 'UNKNOWN').slice(0,120),
-        pii:false,
-      }));
-
-      // Fallback seguro: dos recorridos completos e independientes de la tabla
-      // visible. Un reset separa A de B y el fingerprint cubre todos los campos.
-      rowsByCedula.clear();
-      const htmlA = await readHtmlProspectSnapshot(p, sessionId, eventId);
-      const htmlB = await readHtmlProspectSnapshot(p, sessionId, eventId);
-      rowsA = htmlA.rows.length;
-      rowsB = htmlB.rows.length;
-      irFiltersBefore = htmlA.ir_filters_before;
-      pages = Math.max(htmlA.pages, htmlB.pages);
-      countsMatch = rowsA === rowsB && htmlA.fingerprint === htmlB.fingerprint;
-      if (!countsMatch) {
-        const mismatch = new AppError('CONAPE_LIST_HTML_DOUBLE_MISMATCH', 'Las dos lecturas visibles de CONAPE no coincidieron.', 503, 'LIST');
-        mismatch.rows_a = rowsA;
-        mismatch.rows_b = rowsB;
-        throw mismatch;
-      }
-      addProspectRows(rowsByCedula, htmlB.rows);
-      columnsOk = true;
-      method = 'HTML_DOUBLE';
-      verificationMethod = 'HTML_DOUBLE';
-    }
-
-    if (!columnsOk || !countsMatch || rowsByCedula.size <= 0 || rowsByCedula.size !== rowsA || rowsA !== rowsB) {
-      throw new AppError('CONAPE_LIST_VERIFICATION_FAILED', 'La lectura de CONAPE no superó la verificación doble.', 503, 'LIST');
+    addProspectRows(rowsByCedula, second.rows);
+    columnsOk = rowsByCedula.size === rowsB && rowsB > 0;
+    if (!columnsOk) {
+      throw new AppError('CONAPE_REPORT_VERIFICATION_FAILED', 'La lectura completa de CONAPE no superó la verificación.', 503, 'REPORT');
     }
 
     ConapeSession.state = 'CONNECTED';
+    ConapeSession.connectedAt = ConapeSession.connectedAt || nowIso();
     ConapeSession.lastActivity = nowIso();
 
     return {
@@ -2094,11 +2230,10 @@ async function listProspectsFromHome() {
       code:'PROSPECT_LIST_READY',
       rows:[...rowsByCedula.values()].sort((a,b) => a.cedula.localeCompare(b.cedula)),
       row_count:rowsByCedula.size,
-      pages,
+      pages:1,
       method,
       rows_a:rowsA,
       rows_b:rowsB,
-      // aliases legacy para telemetría y QA existentes
       rows_csv:rowsA,
       rows_html_all:rowsB,
       counts_match:true,
@@ -2115,6 +2250,8 @@ async function listProspectsFromHome() {
       rows:rowsByCedula.size,
       rows_a:rowsA,
       rows_b:rowsB,
+      rows_csv:rowsA,
+      rows_html_all:rowsB,
       counts_match:countsMatch,
       columns_ok:columnsOk,
       verification_method:verificationMethod,

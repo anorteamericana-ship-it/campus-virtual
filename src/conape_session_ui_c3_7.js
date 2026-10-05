@@ -42,10 +42,10 @@
   }
 
   function labelFor(state){
-    if(state==='CONNECTED') return 'CONAPE conectado';
-    if(state==='CONNECTING') return 'Conectando..';
-    if(state==='ERROR') return 'CONAPE desconectado';
-    return 'CONAPE sin conectar';
+    if(state==='CONNECTED') return 'Sesión CONAPE activa';
+    if(state==='CONNECTING') return 'Sesión CONAPE iniciando';
+    if(state==='ERROR') return 'Sesión CONAPE inactiva';
+    return 'Sesión CONAPE inactiva';
   }
 
   function renderBar(){
@@ -53,15 +53,11 @@
     let bar=document.getElementById(ID+'-bar');
     if(!bar){
       bar=document.createElement('div'); bar.id=ID+'-bar';
-      bar.innerHTML=`<span id="${ID}-dot"></span><span id="${ID}-label"></span><button id="${ID}-barbtn" type="button">Conectar</button>`;
+      bar.innerHTML=`<span id="${ID}-dot"></span><span id="${ID}-label"></span>`;
       document.body.appendChild(bar);
-      document.getElementById(ID+'-barbtn').addEventListener('click',()=>connectNow(true));
     }
     bar.dataset.state=last.status||'DISCONNECTED';
     document.getElementById(ID+'-label').textContent=labelFor(last.status);
-    const btn=document.getElementById(ID+'-barbtn');
-    btn.style.display=last.connected?'none':'';
-    btn.disabled=busy;
   }
 
   function closePrompt(){
@@ -172,7 +168,7 @@
     if(!api()||!token()) return;
     renderBar();
     await refreshStatus();
-    if(!last.connected){let prompted=false;try{prompted=sessionStorage.getItem(PROMPT_KEY)==='1';}catch{}if(!prompted)showPrompt();}
+    window.addEventListener('an:conape-refresh-complete',refreshStatus);
     setInterval(refreshStatus,60000);
   }
 
