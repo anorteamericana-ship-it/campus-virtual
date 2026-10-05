@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.4-REPORT-GO';
+const VERSION = 'V4.5.5-CONTEXT-RESET';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2188,23 +2188,42 @@ async function ensureProspectReportContext(p) {
     throw new AppError('CONAPE_REPORT_NOT_READY', 'CONAPE no dejó listo el reporte 302:1.', 503, 'REPORT');
   }
 
-  if (!state.pro_present) {
-    let ok = false;
-    if (CONAPE_REPORT_PRO_ID) {
-      ok = await setReportApexItem(p, 'P1_PRO_ID', CONAPE_REPORT_PRO_ID, CONAPE_REPORT_PROSPECTADOR_LABEL);
-    }
-    if (!ok) ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
-    if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
-  }
+  if (CONAPE_REPORT_PRO_ID && CONAPE_REPORT_EVE_ID) {
+    // Secuencia reproducida en la UI real de SIFA: limpiar ambos LOV para
+    // forzar las Dynamic Actions, luego Prospectador -> Evento -> Rows All.
+    const resetOk = await p.evaluate(() => {
+      try {
+        const eve = window.apex?.item?.('P1_EVE_ID');
+        const pro = window.apex?.item?.('P1_PRO_ID');
+        if (!eve?.setValue || !pro?.setValue) return false;
+        eve.setValue('', '', false);
+        pro.setValue('', '', false);
+        return true;
+      } catch {
+        return false;
+      }
+    }).catch(() => false);
+    if (!resetOk) throw new AppError('CONAPE_REPORT_CONTEXT_RESET_FAILED', 'CONAPE no permitió reiniciar el contexto del reporte.', 503, 'REPORT');
+    await waitForApexDynamicAction(p);
+    await sleep(700);
 
-  state = await readProspectReportContext(p);
-  if (!state.eve_present) {
-    let ok = false;
-    if (CONAPE_REPORT_EVE_ID) {
-      ok = await setReportApexItem(p, 'P1_EVE_ID', CONAPE_REPORT_EVE_ID, CONAPE_REPORT_EVENT_LABEL);
+    const proOk = await setReportApexItem(p, 'P1_PRO_ID', CONAPE_REPORT_PRO_ID, CONAPE_REPORT_PROSPECTADOR_LABEL);
+    if (!proOk) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
+    await sleep(650);
+
+    const eveOk = await setReportApexItem(p, 'P1_EVE_ID', CONAPE_REPORT_EVE_ID, CONAPE_REPORT_EVENT_LABEL);
+    if (!eveOk) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
+    await sleep(650);
+  } else {
+    if (!state.pro_present) {
+      const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
+      if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
     }
-    if (!ok) ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
-    if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
+    state = await readProspectReportContext(p);
+    if (!state.eve_present) {
+      const ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
+      if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
+    }
   }
 
   const rows = p.locator('select[id$="_row_select"]:visible').first();
@@ -2213,16 +2232,7 @@ async function ensureProspectReportContext(p) {
   if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
   await rows.selectOption({ label:allText });
   await waitForApexDynamicAction(p);
-
-  const go = p.getByRole('button', { name:/^go$/i }).first();
-  const goFallback = p.locator('button[id$="_search_button"]:visible').first();
-  const goButton = (await go.count()) ? go : goFallback;
-  if (!(await goButton.count())) {
-    throw new AppError('CONAPE_REPORT_GO_MISSING', 'CONAPE no expuso el botón Go del reporte.', 503, 'REPORT');
-  }
-  await goButton.click({ timeout:5_000 });
-  await waitForApexDynamicAction(p);
-  await sleep(250);
+  await sleep(1400);
 
   state = await readProspectReportContext(p);
   if (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL') {
