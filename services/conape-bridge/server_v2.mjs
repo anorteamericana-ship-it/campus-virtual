@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.18-CSV-SCHEMA-TELEMETRY';
+const VERSION = 'V4.4.19-MOJIBAKE-HEADER-ALIASES';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1354,11 +1354,18 @@ async function confirmAfterCreate(cedula, sessionId) {
 
 const PROSPECT_LIST_FIELDS = ['cedula','apellido_1','apellido_2','nombre','telefono','celular','correo','estado','fecha_estado','fecha_registro','usuario_registro','aprobacion','formalizacion','ultimo_desembolso','proximo_desembolso'];
 const PROSPECT_LIST_HEADER_ALIASES = new Map([
-  ['CEDULA','cedula'],['PRIMER_APELLIDO','apellido_1'],['SEGUNDO_APELLIDO','apellido_2'],['NOMBRE','nombre'],
-  ['TELEFONO','telefono'],['CELULAR','celular'],['TELEFONO_CELULAR','celular'],['CORREO_ELECTRONICO','correo'],['CORREO','correo'],
-  ['ESTADO','estado'],['FECHA_DE_ESTADO','fecha_estado'],['FECHA_ESTADO','fecha_estado'],['FECHA_DE_REGISTRO','fecha_registro'],['FECHA_REGISTRO','fecha_registro'],
-  ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
-  ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
+  ['CEDULA','cedula'],['C_DULA','cedula'],
+  ['PRIMER_APELLIDO','apellido_1'],['SEGUNDO_APELLIDO','apellido_2'],['NOMBRE','nombre'],
+  ['TELEFONO','telefono'],['CELULAR','celular'],['TELEFONO_CELULAR','celular'],['TELEFONOCELULAR','celular'],['TEL_FONOCELULAR','celular'],
+  ['CORREO_ELECTRONICO','correo'],['CORREO_ELECTR_NICO','correo'],['CORREO','correo'],
+  ['ESTADO','estado'],
+  ['FECHA_DE_ESTADO','fecha_estado'],['FECHA_ESTADO','fecha_estado'],['FECHA_DEESTADO','fecha_estado'],
+  ['FECHA_DE_REGISTRO','fecha_registro'],['FECHA_REGISTRO','fecha_registro'],['FECHA_DEREGISTRO','fecha_registro'],
+  ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_QUEREGISTRO','usuario_registro'],['USUARIO_QUEREGISTR','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],
+  ['APROBACION','aprobacion'],['APROBACI_N','aprobacion'],
+  ['FORMALIZACION','formalizacion'],['FORMALIZACI_N','formalizacion'],
+  ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['ULTIMODESEMBOLSO','ultimo_desembolso'],['LTIMODESEMBOLSO','ultimo_desembolso'],
+  ['PROXIMO_DESEMBOLSO','proximo_desembolso'],['PROXIMODESEMBOLSO','proximo_desembolso'],['PR_XIMODESEMBOLSO','proximo_desembolso'],
 ]);
 const PROSPECT_LIST_PHONE_FIELDS = ['telefono','celular'];
 const PROSPECT_LIST_REQUIRED_FIELDS = PROSPECT_LIST_FIELDS.filter(key => !PROSPECT_LIST_PHONE_FIELDS.includes(key));
@@ -1486,11 +1493,18 @@ async function readProspectListPage(p) {
     const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
     const text = v => String(v || '').replace(/\s+/g,' ').trim();
     const aliases = new Map([
-      ['CEDULA','cedula'],['PRIMER_APELLIDO','apellido_1'],['SEGUNDO_APELLIDO','apellido_2'],['NOMBRE','nombre'],
-      ['TELEFONO','telefono'],['CELULAR','celular'],['TELEFONO_CELULAR','celular'],['CORREO_ELECTRONICO','correo'],['CORREO','correo'],
-      ['ESTADO','estado'],['FECHA_DE_ESTADO','fecha_estado'],['FECHA_ESTADO','fecha_estado'],['FECHA_DE_REGISTRO','fecha_registro'],['FECHA_REGISTRO','fecha_registro'],
-      ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],['APROBACION','aprobacion'],['FORMALIZACION','formalizacion'],
-      ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['PROXIMO_DESEMBOLSO','proximo_desembolso'],
+      ['CEDULA','cedula'],['C_DULA','cedula'],
+      ['PRIMER_APELLIDO','apellido_1'],['SEGUNDO_APELLIDO','apellido_2'],['NOMBRE','nombre'],
+      ['TELEFONO','telefono'],['CELULAR','celular'],['TELEFONO_CELULAR','celular'],['TELEFONOCELULAR','celular'],['TEL_FONOCELULAR','celular'],
+      ['CORREO_ELECTRONICO','correo'],['CORREO_ELECTR_NICO','correo'],['CORREO','correo'],
+      ['ESTADO','estado'],
+      ['FECHA_DE_ESTADO','fecha_estado'],['FECHA_ESTADO','fecha_estado'],['FECHA_DEESTADO','fecha_estado'],
+      ['FECHA_DE_REGISTRO','fecha_registro'],['FECHA_REGISTRO','fecha_registro'],['FECHA_DEREGISTRO','fecha_registro'],
+      ['USUARIO_QUE_REGISTRO','usuario_registro'],['USUARIO_QUEREGISTRO','usuario_registro'],['USUARIO_QUEREGISTR','usuario_registro'],['USUARIO_REGISTRO','usuario_registro'],
+      ['APROBACION','aprobacion'],['APROBACI_N','aprobacion'],
+      ['FORMALIZACION','formalizacion'],['FORMALIZACI_N','formalizacion'],
+      ['ULTIMO_DESEMBOLSO','ultimo_desembolso'],['ULTIMODESEMBOLSO','ultimo_desembolso'],['LTIMODESEMBOLSO','ultimo_desembolso'],
+      ['PROXIMO_DESEMBOLSO','proximo_desembolso'],['PROXIMODESEMBOLSO','proximo_desembolso'],['PR_XIMODESEMBOLSO','proximo_desembolso'],
     ]);
     let best = null;
     for (const table of Array.from(document.querySelectorAll('table'))) {
