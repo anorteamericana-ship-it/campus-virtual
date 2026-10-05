@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.14-POLL-POPUP-LOV';
+const VERSION = 'V4.5.15-ROWS-SETTLE-REPORT-GO';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2236,6 +2236,9 @@ async function ensureProspectReportContext(p) {
   if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
   await rows.selectOption({ label:allText });
   await waitForApexDynamicAction(p);
+  // selectOption dispara el change de APEX; su AJAX puede arrancar unas décimas
+  // después de que jQuery.active todavía reporta 0. Dar margen antes de Go.
+  await sleep(800);
 
   state = await readProspectReportContext(p);
   if (!state.pro_present || !state.eve_present ||
@@ -2246,9 +2249,9 @@ async function ensureProspectReportContext(p) {
 
   // SIFA 302:1 no materializa necesariamente el Interactive Report solo por
   // cambiar Rows. La secuencia real comprobada en navegador termina en Go.
-  const go = p.getByRole('button', { name:/^go$/i }).first();
-  const goFallback = p.locator('button[id$="_search_button"]:visible').first();
-  const goButton = (await go.count()) ? go : goFallback;
+  const reportGo = p.locator('button[id$="_search_button"]:visible').first();
+  const roleGo = p.getByRole('button', { name:/^go$/i }).first();
+  const goButton = (await reportGo.count()) ? reportGo : roleGo;
   if (!(await goButton.count())) {
     throw new AppError('CONAPE_REPORT_GO_MISSING', 'CONAPE no expuso el boton Go del reporte.', 503, 'REPORT');
   }
@@ -2256,9 +2259,11 @@ async function ensureProspectReportContext(p) {
   await waitForApexDynamicAction(p);
 
   let materialized = null;
+  let lastCandidate = null;
   const rowsUntil = Date.now() + 12_000;
   while (Date.now() < rowsUntil) {
     const candidate = await readProspectListPage(p);
+    lastCandidate = candidate;
     if (candidate?.ok === true && Array.isArray(candidate.rows) && candidate.rows.length > 0) {
       materialized = candidate;
       break;
@@ -2267,6 +2272,31 @@ async function ensureProspectReportContext(p) {
   }
   materializedRows = materialized?.rows?.length || 0;
   if (materializedRows <= 0) {
+    const shape = await p.evaluate(() => {
+      const tables = [...document.querySelectorAll('table')];
+      const rowSelect = document.querySelector('select[id$="_row_select"]');
+      const rowText = String(rowSelect?.options?.[rowSelect.selectedIndex]?.text || '').trim();
+      return {
+        table_count:tables.length,
+        max_tr:tables.reduce((m,t) => Math.max(m, t.querySelectorAll('tr').length), 0),
+        max_th:tables.reduce((m,t) => Math.max(m, t.querySelectorAll('th').length), 0),
+        rows_all:rowText.toUpperCase() === 'ALL',
+      };
+    }).catch(() => ({ table_count:0, max_tr:0, max_th:0, rows_all:false }));
+    console.log(JSON.stringify({
+      event:'conape_report_after_go_debug',
+      version:VERSION,
+      read_ok:lastCandidate?.ok === true,
+      reason:txt(lastCandidate?.reason || 'NO_RESULT'),
+      missing_count:Array.isArray(lastCandidate?.missing) ? lastCandidate.missing.length : 0,
+      table_count:Number(shape.table_count || 0),
+      max_tr:Number(shape.max_tr || 0),
+      max_th:Number(shape.max_th || 0),
+      rows_all:shape.rows_all === true,
+      pro_matches_env:state.pro_matches_env,
+      eve_matches_env:state.eve_matches_env,
+      pii:false,
+    }));
     throw new AppError('CONAPE_REPORT_EMPTY_AFTER_GO', 'CONAPE ejecuto Go pero no materializo filas del reporte.', 503, 'REPORT');
   }
 
