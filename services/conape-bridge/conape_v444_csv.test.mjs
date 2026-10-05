@@ -28,13 +28,18 @@ assert.match(helperSource, /APEX_WIDGET_DATA/);
 assert.match(helperSource, /REGION_DOM_DATA/);
 assert.match(helperSource, /event:'conape_csv_v446'/);
 assert.match(helperSource, /credentials:'same-origin'/);
-assert.match(helperSource, /return downloadProspectCsvViaApexDirect\(page, parseProspectCsv\)/);
+assert.match(helperSource, /const direct = await downloadProspectCsvViaApexDirect\(page, parseProspectCsv\)/);
+assert.match(helperSource, /DIRECT_TO_UI_FALLBACK/);
+assert.match(helperSource, /downloadProspectCsvViaUiDialog\(page, parseProspectCsv\)/);
 {
-  const start = helperSource.indexOf('async function downloadProspectCsvViaDialog');
-  const exportStart = helperSource.indexOf('export {', start);
-  const compatibilityBlock = start >= 0 && exportStart > start ? helperSource.slice(start, exportStart) : '';
-  assert.ok(compatibilityBlock);
-  assert.doesNotMatch(compatibilityBlock, /getByRole|locator\(|\.click\(/);
+  const uiStart = helperSource.indexOf('async function downloadProspectCsvViaUiDialog');
+  const wrapperStart = helperSource.indexOf('async function downloadProspectCsvViaDialog');
+  const uiBlock = uiStart >= 0 && wrapperStart > uiStart ? helperSource.slice(uiStart, wrapperStart) : '';
+  assert.ok(uiBlock);
+  assert.match(uiBlock, /getByRole\('button', \{ name:\/actions\|acciones\/i \}\)/);
+  assert.match(uiBlock, /getByRole\('menuitem', \{ name:\/download\|descargar\/i \}\)/);
+  assert.match(uiBlock, /GET_DOWNLOAD_LINK/);
+  assert.match(uiBlock, /APEX_ACTIONS_DOWNLOAD_UI/);
 }
 
 {

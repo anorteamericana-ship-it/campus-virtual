@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.8-PROSPECT-LIST-NAV-DIAG';
+const VERSION = 'V4.4.9-CSV-UI-FALLBACK';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1778,7 +1778,6 @@ async function listProspectsFromHome() {
     // Camino preferido: dos exportaciones CSV nativas e idénticas.
     try {
       irFiltersBefore = await resetProspectListReport(p, sessionId);
-      await waitProspectListReady(p);
       const csvA = await downloadProspectCsv(p);
       if (!csvA?.ok || csvA?.columns_ok !== true) {
         const error = new AppError('CONAPE_LIST_CSV_A_NOT_READY', 'CONAPE no permitió obtener la primera exportación CSV válida.', 503, 'LIST');
@@ -1787,7 +1786,6 @@ async function listProspectsFromHome() {
       }
 
       await resetProspectListReport(p, sessionId);
-      await waitProspectListReady(p);
       const csvB = await downloadProspectCsv(p);
       if (!csvB?.ok || csvB?.columns_ok !== true) {
         const error = new AppError('CONAPE_LIST_CSV_B_NOT_READY', 'CONAPE no permitió obtener la segunda exportación CSV válida.', 503, 'LIST');
