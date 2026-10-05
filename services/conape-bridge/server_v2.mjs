@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.8-POPUP-LOV-LIVE';
+const VERSION = 'V4.5.9-POPUP-LOV-SEARCH';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2106,18 +2106,21 @@ async function selectSingleReportLov(p, inputId, expectedLabel = '') {
   if (await searchInput.count()) {
     await searchInput.fill('');
   }
-  const search = dialog.locator('.a-PopupLOV-doSearch:visible,button:visible').filter({ hasText:/^search$|^buscar$/i }).first();
+  // En SIFA el bot?n de b?squeda del Popup LOV no tiene texto interno:
+  // expone aria-label="Search" y clase a-PopupLOV-doSearch.
+  let search = dialog.getByRole('button', { name:/^search$|^buscar$/i }).first();
+  if (!(await search.count())) search = dialog.locator('button.a-PopupLOV-doSearch:visible,[aria-label="Search"]:visible,[aria-label="Buscar"]:visible').first();
   if (await search.count()) {
-    await search.click({ timeout:5_000 }).catch(() => {});
+    await search.click({ timeout:5_000 });
     await waitForApexDynamicAction(p);
     await sleep(250);
   }
 
   const expected = upper(expectedLabel);
   if (expected) {
-    const exact = dialog.getByText(expectedLabel, { exact:true }).last();
-    if (await exact.count()) {
-      await exact.click({ timeout:5_000 }).catch(() => {});
+    const exactOption = dialog.getByRole('option', { name:expectedLabel, exact:true }).first();
+    if (await exactOption.count()) {
+      await exactOption.click({ timeout:5_000 });
     }
   }
 
