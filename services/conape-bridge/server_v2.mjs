@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.19-MOJIBAKE-HEADER-ALIASES';
+const VERSION = 'V4.4.20-GO-BEFORE-EXPORT';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1759,6 +1759,34 @@ async function resetProspectListReport(p, sessionId) {
     event:'conape_list_home_restored', version:VERSION,
     actions_visible:(restoredNav.visible_button_labels || []).some(label => /(^| )Actions( |$)/i.test(label)),
     frames_count:restoredNav.frames_count,
+    pii:false,
+  }));
+
+  // Home limpia carga el shell del Interactive Report, pero no materializa
+  // filas hasta ejecutar Go. Disparar Go con filtros vacíos equivale a la
+  // consulta completa que usa el asesor manualmente antes de descargar CSV.
+  const goControls = p.locator('button,input[type="submit"],input[type="button"]');
+  const goIndex = await goControls.evaluateAll(nodes => {
+    const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+    const visible = el => {
+      try {
+        const s = getComputedStyle(el), r = el.getBoundingClientRect();
+        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+      } catch { return false; }
+    };
+    return nodes.findIndex(el => visible(el) && /^GO$/.test(norm([
+      el.textContent || '', el.value || '', el.getAttribute('aria-label') || '', el.getAttribute('title') || ''
+    ].join(' '))));
+  }).catch(() => -1);
+  if (goIndex < 0) {
+    throw new AppError('CONAPE_LIST_GO_NOT_FOUND', 'CONAPE no expuso el botón Go para cargar Prospectación.', 503, 'LIST');
+  }
+  await goControls.nth(goIndex).click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+  await waitProspectListReady(p, 12_000);
+  console.log(JSON.stringify({
+    event:'conape_list_go_loaded', version:VERSION,
+    go_clicked:true,
     pii:false,
   }));
 
