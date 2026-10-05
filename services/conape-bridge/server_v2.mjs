@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.31-SIGNED-REFRESH-TICKET';
+const VERSION = 'V4.4.32-TICKET-SAFE-FALLBACK';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2085,11 +2085,23 @@ async function publishProspectacionSnapshot(list) {
 }
 
 async function refreshProspectacionVentas(body) {
-  // Reutilizar la misma sesión Campus recientemente validada que usa el
-  // monitor /session/status. Evita un cold start adicional de Apps Script
-  // justo al forzar Prospectación, sin omitir roles/demo/read-only.
-  if (body?.refresh_ticket) authorizeProspectRefreshTicket(body?.token, body.refresh_ticket);
-  else await authorizeCampusSessionStatus(body?.token);
+  // Fast path: ticket firmado. Si no verifica, NO autoriza; obliga a pasar por
+  // la validación Campus normal/caché. El ticket es optimización, no requisito.
+  let ticketAuthorized = false;
+  if (body?.refresh_ticket) {
+    try {
+      authorizeProspectRefreshTicket(body?.token, body.refresh_ticket);
+      ticketAuthorized = true;
+    } catch (ticketError) {
+      console.log(JSON.stringify({
+        event:'conape_refresh_ticket_fallback',
+        version:VERSION,
+        code:txt(ticketError?.code || 'TICKET_REJECTED'),
+        pii:false,
+      }));
+    }
+  }
+  if (!ticketAuthorized) await authorizeCampusSessionStatus(body?.token);
   const list = await listProspectsFromHome();
   const applied = await publishProspectacionSnapshot(list);
   return {
