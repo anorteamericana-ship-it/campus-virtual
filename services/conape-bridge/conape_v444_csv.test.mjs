@@ -39,8 +39,9 @@ assert.match(helperSource, /downloadProspectCsvViaUiDialog\(page, parseProspectC
   assert.match(helperSource, /async function clickVisibleControlByLabel/);
   assert.match(helperSource, /\[role="menuitem"\]/);
   assert.match(helperSource, /actionableSelector/);
-  assert.match(helperSource, /textHit\.closest\(actionableSelector\)/);
-  assert.match(helperSource, /Prefer real actionable controls/);
+  assert.match(helperSource, /controls\.nth\(index\)/);
+  assert.match(helperSource, /candidate\.click\(\{ timeout:2_500 \}\)/);
+  assert.doesNotMatch(helperSource, /actionable\.click\(\)/);
   assert.match(helperSource, /\[role="radio"\]/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)ACTIONS/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)DOWNLOAD/);
