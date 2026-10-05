@@ -409,8 +409,7 @@ async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
   const until = Date.now() + Math.max(250, Number(timeoutMs || 5_000));
   do {
     for (const frame of page.frames()) {
-      const controls = frame.locator(selector);
-      const index = await controls.evaluateAll((nodes, source) => {
+      const clicked = await frame.evaluate(({ selector, source }) => {
         const re = new RegExp(source, 'i');
         const norm = value => String(value || '')
           .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -421,17 +420,17 @@ async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
             return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
           } catch { return false; }
         };
-        return nodes.findIndex(el => visible(el) && re.test(norm([
+        const hit = Array.from(document.querySelectorAll(selector)).find(el => visible(el) && re.test(norm([
           el.textContent || '',
           el.value || '',
           el.getAttribute('aria-label') || '',
           el.getAttribute('title') || '',
         ].join(' '))));
-      }, regex.source).catch(() => -1);
-      if (index >= 0) {
-        await controls.nth(index).click({ timeout:5_000 });
+        if (!hit) return false;
+        hit.click();
         return true;
-      }
+      }, { selector, source:regex.source }).catch(() => false);
+      if (clicked) return true;
     }
     if (Date.now() >= until) break;
     await new Promise(resolve => setTimeout(resolve, 100));
