@@ -390,10 +390,109 @@ async function downloadProspectCsvViaApexDirect(page, parseProspectCsv) {
   }
 }
 
-// Nombre legacy conservado para no cambiar todavía el contrato del runtime.
-// Desde V4.4.5 NO abre Actions/Download/CSV ni depende de controles DOM.
+async function firstVisible(locator, timeoutMs = 5_000) {
+  const until = Date.now() + Math.max(250, Number(timeoutMs || 5_000));
+  do {
+    const count = await locator.count().catch(() => 0);
+    for (let i = 0; i < count; i += 1) {
+      const candidate = locator.nth(i);
+      if (await candidate.isVisible().catch(() => false)) return candidate;
+    }
+    if (Date.now() >= until) break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } while (true);
+  return null;
+}
+
+async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
+  if (!page || typeof parseProspectCsv !== 'function') {
+    return { ok:false, reason:'CSV_UI_ARGUMENT_INVALID', columns_ok:false, rows:[] };
+  }
+
+  try {
+    csvDiag('UI_START');
+
+    const actions = await firstVisible(page.getByRole('button', { name:/actions|acciones/i }), 6_000);
+    if (!actions) {
+      csvDiag('UI_FAIL', { reason:'ACTIONS_NOT_FOUND' });
+      return { ok:false, reason:'ACTIONS_NOT_FOUND', columns_ok:false, rows:[] };
+    }
+    await actions.click({ timeout:5_000 });
+
+    const downloadItem = await firstVisible(page.getByRole('menuitem', { name:/download|descargar/i }), 5_000);
+    if (!downloadItem) {
+      csvDiag('UI_FAIL', { reason:'DOWNLOAD_NOT_FOUND' });
+      return { ok:false, reason:'DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
+    }
+    await downloadItem.click({ timeout:5_000 });
+
+    const dialogCandidates = page.locator('[role="dialog"],.ui-dialog,.a-Dialog');
+    let dialog = await firstVisible(dialogCandidates, 3_000);
+    const scope = dialog || page;
+
+    let csv = await firstVisible(scope.getByRole('button', { name:/^CSV$/i }), 2_000);
+    if (!csv) csv = await firstVisible(scope.getByRole('link', { name:/^CSV$/i }), 1_000);
+    if (!csv) csv = await firstVisible(scope.getByText(/^CSV$/i), 1_000);
+    if (!csv) {
+      csvDiag('UI_FAIL', { reason:'CSV_CONTROL_NOT_FOUND' });
+      return { ok:false, reason:'CSV_CONTROL_NOT_FOUND', columns_ok:false, rows:[] };
+    }
+    await csv.click({ timeout:5_000 });
+
+    let finalDownload = await firstVisible(scope.getByRole('button', { name:/^(download|descargar)$/i }), 3_000);
+    if (!finalDownload) finalDownload = await firstVisible(page.getByRole('button', { name:/^(download|descargar)$/i }), 2_000);
+    if (!finalDownload) {
+      csvDiag('UI_FAIL', { reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND' });
+      return { ok:false, reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
+    }
+
+    const linkResponsePromise = page.waitForResponse(response => {
+      try {
+        const request = response.request();
+        return request.method() === 'POST'
+          && /\/wwv_flow\.ajax(?:\?|$)/.test(response.url())
+          && String(request.postData() || '').includes('GET_DOWNLOAD_LINK');
+      } catch {
+        return false;
+      }
+    }, { timeout:10_000 }).catch(() => null);
+
+    await finalDownload.click({ timeout:5_000 });
+    const linkResponse = await linkResponsePromise;
+    if (!linkResponse) {
+      csvDiag('UI_FAIL', { reason:'CSV_DOWNLOAD_LINK_NOT_OBSERVED' });
+      return { ok:false, reason:'CSV_DOWNLOAD_LINK_NOT_OBSERVED', columns_ok:false, rows:[] };
+    }
+    if (linkResponse.status() !== 200) {
+      csvDiag('UI_FAIL', { reason:'CSV_DOWNLOAD_LINK_HTTP', http_status:linkResponse.status() });
+      return { ok:false, reason:'CSV_DOWNLOAD_LINK_HTTP', columns_ok:false, rows:[] };
+    }
+
+    const signedLink = normalizeDownloadLink(await linkResponse.text(), page.url());
+    const result = await parseSignedCsvResponse(page, signedLink, parseProspectCsv);
+    if (!result?.ok) {
+      csvDiag('UI_FAIL', { reason:result?.reason || 'CSV_UI_PARSE_FAILED' });
+      return result;
+    }
+    csvDiag('UI_OK');
+    return { ...result, transport:'APEX_ACTIONS_DOWNLOAD_UI' };
+  } catch (error) {
+    const reason = safeReason(error, 'CSV_UI_DOWNLOAD_FAILED');
+    csvDiag('UI_EXCEPTION', { reason });
+    return { ok:false, reason, columns_ok:false, rows:[] };
+  } finally {
+    try { await page.keyboard.press('Escape'); } catch {}
+  }
+}
+
+// Contrato legacy conservado para el runtime. Primero intenta el método directo
+// sin DOM; si APEX cambia sus IDs internos, cae al menú visible Actions→Download→CSV.
 async function downloadProspectCsvViaDialog(page, parseProspectCsv) {
-  return downloadProspectCsvViaApexDirect(page, parseProspectCsv);
+  const direct = await downloadProspectCsvViaApexDirect(page, parseProspectCsv);
+  if (direct?.ok === true && direct?.columns_ok === true) return direct;
+
+  csvDiag('DIRECT_TO_UI_FALLBACK', { reason:direct?.reason || 'DIRECT_UNAVAILABLE' });
+  return downloadProspectCsvViaUiDialog(page, parseProspectCsv);
 }
 
 export {
