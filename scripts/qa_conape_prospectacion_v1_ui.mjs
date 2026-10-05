@@ -12,8 +12,9 @@ function check(ok, label) {
 
 check(panel.includes("callApi('getConapeProspectacionVentas'"), 'Panel reads CONAPE Prospectacion through authenticated endpoint');
 check(panel.includes("snapshot.requiere_actualizacion !== true"), 'Open refresh runs only when backend marks snapshot stale');
-check(panel.includes("refreshLive({ automatic:true })"), 'Stale snapshot triggers one background live refresh on open');
-check(panel.includes("onClick={() => refreshLive({ automatic:false })}"), 'Actualizar CONAPE always forces a live refresh');
+check(panel.includes("refreshLive({ automatic:true, ticket:snapshot.refresh_ticket || null })"), 'Stale snapshot triggers one background live refresh with signed ticket');
+check(panel.includes("authorized?.refresh_ticket || null"), 'Expired/missing ticket is renewed through authenticated snapshot load');
+check(panel.includes("onClick={() => refreshLive({ automatic:false, ticket:data?.refresh_ticket || null })}"), 'Actualizar CONAPE always forces a live refresh with signed ticket');
 check(panel.includes("refreshProspectacionVentas"), 'Seller refresh uses dedicated Prospectacion bridge action');
 check(panel.includes("Se consulta CONAPE al abrir solo cuando han pasado"), 'UI explains the freshness-window behavior');
 check(dashboard.includes('onConapeUpdated={onConapeUpdated}'), 'Successful Prospectacion refresh reloads main Sales dashboard');
@@ -37,8 +38,8 @@ check(dashboard.includes('window.ConapeProspectacionPanelV1'), 'Ventas dashboard
 check(dashboard.includes('asesor={scopeAsesor}'), 'Panel follows active advisor scope');
 check(dashboard.includes('rol={rolReal}'), 'Panel receives real role, not simulated advisor role');
 
-const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.4.7';
-const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-REFRESH-20261004';
+const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.4.31-TICKET';
+const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-TICKET-20261004';
 const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004';
 check(html.includes(bridgeScript), 'ventas.html cache-busts Prospectacion bridge client');
 check(html.includes(panelScript), 'ventas.html loads V1 panel with cache bust');

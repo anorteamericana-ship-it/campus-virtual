@@ -120,7 +120,7 @@
       }
     }, [asesor, rol]);
 
-    const refreshLive = useCallback(async ({ automatic = false } = {}) => {
+    const refreshLive = useCallback(async ({ automatic = false, ticket = null } = {}) => {
       if (!asesor && rol === 'ventas') return null;
       const bridge = window.CONAPE_PORTAL_BRIDGE_V3 || window.CONAPE_PORTAL_BRIDGE_C37 || window.CONAPE_PORTAL_BRIDGE_C36;
       if (!bridge || typeof bridge.refreshProspectacionVentas !== 'function') {
@@ -133,7 +133,13 @@
       setRefreshOk(true);
       setRefreshMsg(automatic ? 'Actualizando CONAPE en segundo plano…' : 'Consultando CONAPE…');
       try {
-        const r = await bridge.refreshProspectacionVentas();
+        let refreshTicket = ticket;
+        const ticketExp = Number(refreshTicket?.exp || 0);
+        if (!refreshTicket || ticketExp <= Date.now() + 10000) {
+          const authorized = await load();
+          refreshTicket = authorized?.refresh_ticket || null;
+        }
+        const r = await bridge.refreshProspectacionVentas(refreshTicket);
         if (!r || r.ok !== true) {
           setRefreshOk(false);
           setRefreshMsg('No se pudo actualizar · se conserva la última lectura válida.');
@@ -163,7 +169,7 @@
         const key = `${asesor || 'ALL'}|${snapshot.actualizado_en || 'SIN_SNAPSHOT'}`;
         if (autoAttemptRef.current === key) return;
         autoAttemptRef.current = key;
-        await refreshLive({ automatic:true });
+        await refreshLive({ automatic:true, ticket:snapshot.refresh_ticket || null });
       })();
       return () => { alive = false; };
     }, [asesor, load, refreshLive]);
@@ -235,7 +241,7 @@
             </div>
             {refreshMsg ? <div className={`cpv1-msg ${refreshOk ? 'ok' : 'err'}`}>{refreshMsg}</div> : null}
           </div>
-          <button type="button" className="cpv1-refresh" onClick={() => refreshLive({ automatic:false })} disabled={refreshing}>{refreshing ? 'Actualizando…' : 'Actualizar CONAPE'}</button>
+          <button type="button" className="cpv1-refresh" onClick={() => refreshLive({ automatic:false, ticket:data?.refresh_ticket || null })} disabled={refreshing}>{refreshing ? 'Actualizando…' : 'Actualizar CONAPE'}</button>
         </div>
 
         <div className="cpv1-kpis">
