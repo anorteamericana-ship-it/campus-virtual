@@ -6,11 +6,11 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.2-REPORT-500101';
+const VERSION = 'V4.5.3-REPORT-3021';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
-const CONAPE_REPORT_URL = String(process.env.CONAPE_REPORT_URL || 'https://online.conape.go.cr/apex/f?p=500:101::::::').trim();
+const CONAPE_REPORT_URL = String(process.env.CONAPE_REPORT_URL || 'https://online.conape.go.cr/apex/f?p=302:1::::::').trim();
 const CONAPE_FRIENDLY_HOME = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/home';
 const CONAPE_FRIENDLY_PROSPECTO = 'https://online.conape.go.cr/apex/r/conaweb/prospectaci%C3%B3n-reclutador/prospecto';
 const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '').trim();
@@ -2004,7 +2004,7 @@ function conapeReportUrlWithSession(sessionId) {
   const cleanSession = digits(sessionId);
   if (!cleanSession) return CONAPE_REPORT_URL;
   const u = new URL(CONAPE_REPORT_URL);
-  u.searchParams.set('p', '500:101:' + cleanSession + ':::::');
+  u.searchParams.set('p', '302:1:' + cleanSession + ':::::');
   return u.href;
 }
 
@@ -2155,8 +2155,7 @@ async function selectSingleReportLov(p, inputId, expectedLabel = '') {
 }
 
 async function ensureProspectReportContext(p) {
-  // 302:1 queda únicamente como puerta de autenticación. La fuente del refresh
-  // es explícitamente el reporte SIFA 500:101.
+  // El refresh usa directamente el reporte SIFA 302:1 como fuente canónica.
   await ConapeSession.login(p);
   let sessionId = await readApexSession(p);
   if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'REPORT');
@@ -2176,18 +2175,17 @@ async function ensureProspectReportContext(p) {
 
     state = await readProspectReportContext(p);
     if (!state.ready) {
-      // App 500 puede aterrizar en Inicio tras autenticar. Reabrir página 101
-      // usando la sesión APEX recién creada, sin volver a la app 302.
-      const app500Session = (await readApexSession(p)) || sessionId;
-      await p.goto(conapeReportUrlWithSession(app500Session), { waitUntil:'domcontentloaded', timeout:30_000 });
+      // Si el login aterriza en Inicio, reabrir 302:1 con la sesión APEX recién creada.
+      const reportSession = (await readApexSession(p)) || sessionId;
+      await p.goto(conapeReportUrlWithSession(reportSession), { waitUntil:'domcontentloaded', timeout:30_000 });
       await waitForApexDynamicAction(p);
-      sessionId = (await readApexSession(p)) || app500Session;
+      sessionId = (await readApexSession(p)) || reportSession;
       state = await readProspectReportContext(p);
     }
   }
 
   if (!state.ready) {
-    throw new AppError('CONAPE_REPORT_NOT_READY', 'CONAPE no dejó listo el reporte 500:101.', 503, 'REPORT');
+    throw new AppError('CONAPE_REPORT_NOT_READY', 'CONAPE no dejó listo el reporte 302:1.', 503, 'REPORT');
   }
 
   if (!state.pro_present) {
@@ -2225,7 +2223,7 @@ async function ensureProspectReportContext(p) {
   console.log(JSON.stringify({
     event:'conape_report_context_ready',
     version:VERSION,
-    source:'500:101',
+    source:'302:1',
     prospectador:true,
     evento:true,
     rows_all:true,
