@@ -102,6 +102,8 @@ function csvDiag(step, extra = {}) {
     ...(typeof extra.apex_present === 'boolean' ? { apex_present:extra.apex_present } : {}),
     ...(typeof extra.region_dom_present === 'boolean' ? { region_dom_present:extra.region_dom_present } : {}),
     ...(typeof extra.region_api_present === 'boolean' ? { region_api_present:extra.region_api_present } : {}),
+    ...(Array.isArray(extra.schema) ? { schema:extra.schema.slice(0,40).map(v => text(v).slice(0,64)) } : {}),
+    ...(Array.isArray(extra.missing) ? { missing:extra.missing.slice(0,40).map(v => text(v).slice(0,64)) } : {}),
     pii:false,
   };
   console.log(JSON.stringify(safe));
