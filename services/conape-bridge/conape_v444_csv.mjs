@@ -438,6 +438,53 @@ async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
   return false;
 }
 
+async function readDownloadFormatDebug(page) {
+  const frames = [];
+  for (const frame of page.frames()) {
+    const info = await frame.evaluate(() => {
+      const selector = 'button,a,label,span,[role],input';
+      const visible = el => {
+        try {
+          const s = getComputedStyle(el), r = el.getBoundingClientRect();
+          return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+        } catch { return false; }
+      };
+      const norm = value => String(value || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/\s+/g,' ').trim().toUpperCase();
+      const hits = [];
+      for (const el of Array.from(document.querySelectorAll(selector))) {
+        if (!visible(el)) continue;
+        const hay = norm([
+          el.textContent || '',
+          el.value || '',
+          el.getAttribute('aria-label') || '',
+          el.getAttribute('title') || '',
+        ].join(' '));
+        const flags = {
+          csv:/\bCSV\b/.test(hay),
+          comma:/COMMA|SEPARATED/.test(hay),
+          excel:/EXCEL|XLSX|XLS/.test(hay),
+          pdf:/\bPDF\b/.test(hay),
+          html:/\bHTML\b/.test(hay),
+          download:/DOWNLOAD|DESCARGAR/.test(hay),
+        };
+        if (!Object.values(flags).some(Boolean)) continue;
+        hits.push({
+          tag:String(el.tagName || '').toLowerCase().slice(0,16),
+          role:String(el.getAttribute('role') || '').slice(0,24),
+          type:String(el.getAttribute('type') || '').slice(0,24),
+          ...flags,
+        });
+        if (hits.length >= 30) break;
+      }
+      return { hits };
+    }).catch(() => ({ hits:[] }));
+    frames.push(info);
+  }
+  return frames;
+}
+
 async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
   if (!page || typeof parseProspectCsv !== 'function') {
     return { ok:false, reason:'CSV_UI_ARGUMENT_INVALID', columns_ok:false, rows:[] };
@@ -458,7 +505,14 @@ async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
       return { ok:false, reason:'DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
     }
 
-    const csvClicked = await clickVisibleControlByLabel(page, /^CSV$/i, 4_000);
+    const formatDebug = await readDownloadFormatDebug(page);
+    console.log(JSON.stringify({
+      event:'conape_csv_format_controls',
+      frames:formatDebug,
+      pii:false,
+    }));
+
+    const csvClicked = await clickVisibleControlByLabel(page, /(^| )CSV( |$)|COMMA.{0,24}SEPARATED/i, 8_000);
     if (!csvClicked) {
       csvDiag('UI_FAIL', { reason:'CSV_CONTROL_NOT_FOUND' });
       return { ok:false, reason:'CSV_CONTROL_NOT_FOUND', columns_ok:false, rows:[] };
