@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.25-PRIMARY-REPORT-RIR';
+const VERSION = 'V4.4.26-FILTER-DIALOG-DIAGNOSTIC';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1722,6 +1722,67 @@ async function openProspectListHome(p, sessionId) {
   return waitProspectListReady(p);
 }
 
+async function inspectProspectFilterDialog(p) {
+  const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
+  if (!(await actions.count())) {
+    throw new AppError('CONAPE_LIST_ACTIONS_NOT_FOUND', 'CONAPE no expuso Actions en Prospectación.', 503, 'LIST');
+  }
+  await actions.click({ timeout:5_000 });
+  await sleep(150);
+  const filter = p.getByRole('menuitem', { name:/^filter$|^filtro$/i }).first();
+  if (!(await filter.count())) {
+    throw new AppError('CONAPE_LIST_FILTER_MENU_NOT_FOUND', 'CONAPE no expuso Filter en Actions.', 503, 'LIST');
+  }
+  await filter.click({ timeout:5_000 });
+  await waitForApexDynamicAction(p);
+  await sleep(200);
+
+  const meta = await p.evaluate(() => {
+    const norm = value => String(value || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/\s+/g,' ').trim();
+    const visible = el => {
+      try {
+        const s = getComputedStyle(el), r = el.getBoundingClientRect();
+        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+      } catch { return false; }
+    };
+    const dialogs = Array.from(document.querySelectorAll('[role="dialog"],.ui-dialog,.a-IRR-dialog')).filter(visible);
+    const root = dialogs[dialogs.length - 1] || document;
+    const controls = Array.from(root.querySelectorAll('select,input,button,[role="button"],[role="combobox"]'))
+      .filter(visible)
+      .slice(0,80)
+      .map(el => ({
+        tag:String(el.tagName || '').toLowerCase(),
+        id:/^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(String(el.id || '')) ? String(el.id) : '',
+        type:String(el.getAttribute('type') || '').toLowerCase().slice(0,24),
+        role:String(el.getAttribute('role') || '').toLowerCase().slice(0,24),
+        label:norm([
+          el.getAttribute('aria-label') || '',
+          el.getAttribute('title') || '',
+          el.tagName === 'BUTTON' ? (el.textContent || '') : ''
+        ].join(' ')).slice(0,80),
+        options:el.tagName === 'SELECT'
+          ? Array.from(el.options || []).map(o => norm(o.textContent || '')).filter(Boolean).slice(0,80)
+          : []
+      }));
+    return {
+      dialog_count:dialogs.length,
+      controls
+    };
+  }).catch(() => ({ dialog_count:0, controls:[] }));
+
+  console.log(JSON.stringify({
+    event:'conape_list_filter_dialog_meta',
+    version:VERSION,
+    dialog_count:Number(meta.dialog_count || 0),
+    controls:Array.isArray(meta.controls) ? meta.controls : [],
+    pii:false,
+  }));
+
+  throw new AppError('CONAPE_LIST_FILTER_DIALOG_DIAGNOSTIC', 'Diagnóstico seguro del filtro de Prospectación completado.', 503, 'LIST');
+}
+
 async function ensureProspectReportRows(p) {
   const current = await readProspectListPage(p);
   if (current.ok === true && Array.isArray(current.rows) && current.rows.length > 0) {
@@ -1733,6 +1794,8 @@ async function ensureProspectReportRows(p) {
     }));
     return { method:'EXISTING_REPORT', first_page_rows:current.rows.length };
   }
+
+  await inspectProspectFilterDialog(p);
 
   const search = p.locator('input[id$="_search_field"][type="search"]:visible').first();
   const go = p.locator('button[id$="_search_button"]:visible').first();
