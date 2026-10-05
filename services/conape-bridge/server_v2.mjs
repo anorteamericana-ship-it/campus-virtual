@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.29-REFRESH-AUTH-CACHE';
+const VERSION = 'V4.4.30-EVENT-CONTEXT-FILTER';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1722,7 +1722,10 @@ async function openProspectListHome(p, sessionId) {
   return waitProspectListReady(p);
 }
 
-async function applyProspectCedulaNotNullFilter(p) {
+async function applyProspectEventFilter(p) {
+  if (!CONAPE_EVE_ID) {
+    throw new AppError('CONAPE_LIST_EVENT_CONTEXT_MISSING', 'No existe un Evento configurado para Prospectación.', 503, 'LIST');
+  }
   const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
   if (!(await actions.count())) {
     throw new AppError('CONAPE_LIST_ACTIONS_NOT_FOUND', 'CONAPE no expuso Actions en Prospectación.', 503, 'LIST');
@@ -1741,10 +1744,11 @@ async function applyProspectCedulaNotNullFilter(p) {
   const columnRadio = p.locator('input[id$="_filter_type_0"][type="radio"]:visible').first();
   const column = p.locator('select[id$="_column_name"]:visible').first();
   const operator = p.locator('select[id$="_OPT"]:visible').first();
+  const expression = p.locator('input[id$="_expression"]:visible,textarea[id$="_expression"]:visible').first();
   const dialog = p.locator('[role="dialog"]:visible,.ui-dialog:visible,.a-IRR-dialog:visible').last();
   const apply = dialog.getByRole('button', { name:/^apply$|^aplicar$/i }).first();
 
-  if (!(await column.count()) || !(await operator.count()) || !(await apply.count())) {
+  if (!(await column.count()) || !(await operator.count()) || !(await expression.count()) || !(await apply.count())) {
     throw new AppError('CONAPE_LIST_FILTER_CONTROLS_NOT_FOUND', 'CONAPE no expuso los controles requeridos del filtro.', 503, 'LIST');
   }
 
@@ -1754,20 +1758,27 @@ async function applyProspectCedulaNotNullFilter(p) {
     const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
     return options.findIndex(option => norm(option.textContent || '') === wanted);
   }, expected);
-  const columnIndex = await optionIndex(column, 'CEDULA');
-  const operatorIndex = await optionIndex(operator, 'IS NOT NULL');
-  if (columnIndex < 0 || operatorIndex < 0) {
-    throw new AppError('CONAPE_LIST_FILTER_OPTION_NOT_FOUND', 'CONAPE cambió las opciones del filtro de Prospectación.', 503, 'LIST');
+  const columnIndex = await optionIndex(column, 'REG EVE ID');
+  if (columnIndex < 0) {
+    throw new AppError('CONAPE_LIST_FILTER_OPTION_NOT_FOUND', 'CONAPE cambió la columna de contexto de Prospectación.', 503, 'LIST');
   }
   await column.selectOption({ index:columnIndex });
+  await waitForApexDynamicAction(p);
+  await sleep(120);
+  const operatorIndex = await optionIndex(operator, '=');
+  if (operatorIndex < 0) {
+    throw new AppError('CONAPE_LIST_FILTER_OPERATOR_NOT_FOUND', 'CONAPE cambió el operador del filtro de Prospectación.', 503, 'LIST');
+  }
   await operator.selectOption({ index:operatorIndex });
+  await expression.fill(CONAPE_EVE_ID);
 
   const selected = await Promise.all([
     column.locator('option:checked').textContent().catch(() => ''),
     operator.locator('option:checked').textContent().catch(() => ''),
   ]);
-  if (upper(selected[0]) !== 'CEDULA' || upper(selected[1]) !== 'IS NOT NULL') {
-    throw new AppError('CONAPE_LIST_FILTER_SELECTION_FAILED', 'CONAPE no confirmó el filtro completo de Prospectación.', 503, 'LIST');
+  const expressionOk = (await expression.inputValue().catch(() => '')) === CONAPE_EVE_ID;
+  if (upper(selected[0]) !== 'REG EVE ID' || upper(selected[1]) !== '=' || !expressionOk) {
+    throw new AppError('CONAPE_LIST_FILTER_SELECTION_FAILED', 'CONAPE no confirmó el contexto de Evento de Prospectación.', 503, 'LIST');
   }
 
   await apply.click({ timeout:5_000 });
@@ -1780,7 +1791,7 @@ async function applyProspectCedulaNotNullFilter(p) {
       console.log(JSON.stringify({
         event:'conape_list_rows_ready',
         version:VERSION,
-        method:'CEDULA_NOT_NULL_FILTER',
+        method:'EVENT_CONTEXT_FILTER',
         first_page_rows:loaded.rows.length,
         pii:false,
       }));
@@ -1789,13 +1800,13 @@ async function applyProspectCedulaNotNullFilter(p) {
     await sleep(250);
   }
 
-  throw new AppError('CONAPE_LIST_CEDULA_FILTER_EMPTY', 'CONAPE no devolvió filas con el filtro completo de Prospectación.', 503, 'LIST');
+  throw new AppError('CONAPE_LIST_EVENT_FILTER_EMPTY', 'CONAPE no devolvió filas para el Evento configurado de Prospectación.', 503, 'LIST');
 }
 
 async function resetProspectListReport(p, sessionId) {
   // RIR elimina cualquier estado previo del Interactive Report. Después se
-  // vuelve a Friendly Home y se aplica un filtro determinista que representa
-  // todos los prospectos válidos: Cédula IS NOT NULL.
+  // vuelve a Friendly Home y se aplica el contexto de Evento configurado.
+  // El filtro es de solo lectura: Reg Eve Id = CONAPE_EVE_ID.
   await p.goto(confirmationResetUrl(sessionId), {
     waitUntil:'domcontentloaded',
     timeout:30_000,
@@ -1813,7 +1824,7 @@ async function resetProspectListReport(p, sessionId) {
     throw new AppError('CONAPE_LIST_RIR_RESET_FAILED', 'CONAPE conservó filtros después de restaurar el reporte.', 503, 'LIST');
   }
 
-  await applyProspectCedulaNotNullFilter(p);
+  await applyProspectEventFilter(p);
 
   const filtersAfter = await countIrFilters(p);
   if (filtersAfter < 1) {
@@ -1823,7 +1834,7 @@ async function resetProspectListReport(p, sessionId) {
   console.log(JSON.stringify({
     event:'conape_list_report_ready',
     version:VERSION,
-    reset_method:'URL_RIR_THEN_CEDULA_NOT_NULL',
+    reset_method:'URL_RIR_THEN_EVENT_FILTER',
     filters_before:filtersBefore,
     filters_after:filtersAfter,
     pii:false,
