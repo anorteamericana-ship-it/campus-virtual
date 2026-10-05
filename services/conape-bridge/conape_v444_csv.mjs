@@ -404,6 +404,41 @@ async function firstVisible(locator, timeoutMs = 5_000) {
   return null;
 }
 
+async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
+  const selector = 'button,a,[role="button"],[role="menuitem"],input[type="button"],input[type="submit"]';
+  const until = Date.now() + Math.max(250, Number(timeoutMs || 5_000));
+  do {
+    for (const frame of page.frames()) {
+      const controls = frame.locator(selector);
+      const index = await controls.evaluateAll((nodes, source) => {
+        const re = new RegExp(source, 'i');
+        const norm = value => String(value || '')
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/\s+/g,' ').trim();
+        const visible = el => {
+          try {
+            const s = getComputedStyle(el), r = el.getBoundingClientRect();
+            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+          } catch { return false; }
+        };
+        return nodes.findIndex(el => visible(el) && re.test(norm([
+          el.textContent || '',
+          el.value || '',
+          el.getAttribute('aria-label') || '',
+          el.getAttribute('title') || '',
+        ].join(' '))));
+      }, regex.source).catch(() => -1);
+      if (index >= 0) {
+        await controls.nth(index).click({ timeout:5_000 });
+        return true;
+      }
+    }
+    if (Date.now() >= until) break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  } while (true);
+  return false;
+}
+
 async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
   if (!page || typeof parseProspectCsv !== 'function') {
     return { ok:false, reason:'CSV_UI_ARGUMENT_INVALID', columns_ok:false, rows:[] };
@@ -412,38 +447,22 @@ async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
   try {
     csvDiag('UI_START');
 
-    const actions = await firstVisible(page.getByRole('button', { name:/actions|acciones/i }), 6_000);
-    if (!actions) {
+    const actionsClicked = await clickVisibleControlByLabel(page, /(^| )ACTIONS( |$)|(^| )ACCIONES( |$)/i, 6_000);
+    if (!actionsClicked) {
       csvDiag('UI_FAIL', { reason:'ACTIONS_NOT_FOUND' });
       return { ok:false, reason:'ACTIONS_NOT_FOUND', columns_ok:false, rows:[] };
     }
-    await actions.click({ timeout:5_000 });
 
-    const downloadItem = await firstVisible(page.getByRole('menuitem', { name:/download|descargar/i }), 5_000);
-    if (!downloadItem) {
+    const downloadClicked = await clickVisibleControlByLabel(page, /(^| )DOWNLOAD( |$)|(^| )DESCARGAR( |$)/i, 5_000);
+    if (!downloadClicked) {
       csvDiag('UI_FAIL', { reason:'DOWNLOAD_NOT_FOUND' });
       return { ok:false, reason:'DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
     }
-    await downloadItem.click({ timeout:5_000 });
 
-    const dialogCandidates = page.locator('[role="dialog"],.ui-dialog,.a-Dialog');
-    let dialog = await firstVisible(dialogCandidates, 3_000);
-    const scope = dialog || page;
-
-    let csv = await firstVisible(scope.getByRole('button', { name:/^CSV$/i }), 2_000);
-    if (!csv) csv = await firstVisible(scope.getByRole('link', { name:/^CSV$/i }), 1_000);
-    if (!csv) csv = await firstVisible(scope.getByText(/^CSV$/i), 1_000);
-    if (!csv) {
+    const csvClicked = await clickVisibleControlByLabel(page, /^CSV$/i, 4_000);
+    if (!csvClicked) {
       csvDiag('UI_FAIL', { reason:'CSV_CONTROL_NOT_FOUND' });
       return { ok:false, reason:'CSV_CONTROL_NOT_FOUND', columns_ok:false, rows:[] };
-    }
-    await csv.click({ timeout:5_000 });
-
-    let finalDownload = await firstVisible(scope.getByRole('button', { name:/^(download|descargar)$/i }), 3_000);
-    if (!finalDownload) finalDownload = await firstVisible(page.getByRole('button', { name:/^(download|descargar)$/i }), 2_000);
-    if (!finalDownload) {
-      csvDiag('UI_FAIL', { reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND' });
-      return { ok:false, reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
     }
 
     const linkResponsePromise = page.waitForResponse(response => {
@@ -457,7 +476,12 @@ async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
       }
     }, { timeout:10_000 }).catch(() => null);
 
-    await finalDownload.click({ timeout:5_000 });
+    const finalDownloadClicked = await clickVisibleControlByLabel(page, /^(DOWNLOAD|DESCARGAR)$/i, 5_000);
+    if (!finalDownloadClicked) {
+      csvDiag('UI_FAIL', { reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND' });
+      return { ok:false, reason:'CSV_FINAL_DOWNLOAD_NOT_FOUND', columns_ok:false, rows:[] };
+    }
+
     const linkResponse = await linkResponsePromise;
     if (!linkResponse) {
       csvDiag('UI_FAIL', { reason:'CSV_DOWNLOAD_LINK_NOT_OBSERVED' });

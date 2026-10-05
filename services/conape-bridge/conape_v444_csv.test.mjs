@@ -36,8 +36,12 @@ assert.match(helperSource, /downloadProspectCsvViaUiDialog\(page, parseProspectC
   const wrapperStart = helperSource.indexOf('async function downloadProspectCsvViaDialog');
   const uiBlock = uiStart >= 0 && wrapperStart > uiStart ? helperSource.slice(uiStart, wrapperStart) : '';
   assert.ok(uiBlock);
-  assert.match(uiBlock, /getByRole\('button', \{ name:\/actions\|acciones\/i \}\)/);
-  assert.match(uiBlock, /getByRole\('menuitem', \{ name:\/download\|descargar\/i \}\)/);
+  assert.match(helperSource, /async function clickVisibleControlByLabel/);
+  assert.match(helperSource, /\[role="menuitem"\]/);
+  assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)ACTIONS/);
+  assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)DOWNLOAD/);
+  assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\^CSV\$\/i/);
+  assert.match(uiBlock, /CSV_FINAL_DOWNLOAD_NOT_FOUND/);
   assert.match(uiBlock, /GET_DOWNLOAD_LINK/);
   assert.match(uiBlock, /APEX_ACTIONS_DOWNLOAD_UI/);
 }
