@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.6-BROWSER-NATIVE-SEQUENCE';
+const VERSION = 'V4.5.7-HIDDEN-LOV-CONTEXT';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2039,28 +2039,44 @@ async function loginCurrentConapePage(p) {
 async function readProspectReportContext(p) {
   return p.evaluate(({ expectedPro, expectedEve }) => {
     const read = id => {
+      let apexValue = '';
       try {
         const item = window.apex?.item?.(id);
-        if (item && typeof item.getValue === 'function') return String(item.getValue() ?? '').trim();
+        if (item && typeof item.getValue === 'function') {
+          apexValue = String(item.getValue() ?? '').trim();
+        }
       } catch {}
-      return '';
+      const hiddenValue = String(document.getElementById(id + '_HIDDENVALUE')?.value || '').trim();
+      const value = apexValue || hiddenValue;
+      return {
+        value,
+        from_hidden:!apexValue && !!hiddenValue,
+      };
     };
+
     const rows = document.querySelector('select[id$="_row_select"]');
     const selectedRows = String(rows?.options?.[rows.selectedIndex]?.text || '').trim();
-    const pro = read('P1_PRO_ID');
-    const eve = read('P1_EVE_ID');
+    const proState = read('P1_PRO_ID');
+    const eveState = read('P1_EVE_ID');
+    const pro = proState.value;
+    const eve = eveState.value;
+
     return {
       ready:!!document.getElementById('P1_PRO_ID') && !!document.getElementById('P1_EVE_ID') && !!rows,
       pro_present:!!pro,
       eve_present:!!eve,
       pro_matches_env:expectedPro ? pro === expectedPro : null,
       eve_matches_env:expectedEve ? eve === expectedEve : null,
+      pro_from_hidden:proState.from_hidden,
+      eve_from_hidden:eveState.from_hidden,
       rows:selectedRows,
     };
   }, { expectedPro:CONAPE_REPORT_PRO_ID, expectedEve:CONAPE_REPORT_EVE_ID }).catch(() => ({
     ready:false, pro_present:false, eve_present:false,
     pro_matches_env:CONAPE_REPORT_PRO_ID ? false : null,
     eve_matches_env:CONAPE_REPORT_EVE_ID ? false : null,
+    pro_from_hidden:false,
+    eve_from_hidden:false,
     rows:'',
   }));
 }
@@ -2280,6 +2296,8 @@ async function ensureProspectReportContext(p) {
     materialized_rows:materializedRows,
     pro_matches_env:state.pro_matches_env,
     eve_matches_env:state.eve_matches_env,
+    pro_from_hidden:state.pro_from_hidden === true,
+    eve_from_hidden:state.eve_from_hidden === true,
     pii:false,
   }));
 

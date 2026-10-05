@@ -110,6 +110,7 @@ const checks = [
   ['prospects/list conserva contrato de 15 campos con teléfono/celular flexibles', listFields.length === 15 && listFields.every(field => listBlock.includes(`'${field}'`)) && /PROSPECT_LIST_READY/.test(listBlock)],
   ['V4.5.6 conserva 302:1 y los LOV P1 configurados sin exponer IDs', /CONAPE_REPORT_URL/.test(server) && /f\?p=302:1::::::/.test(server) && /p\.goto\(CONAPE_REPORT_URL/.test(server) && /conapeReportUrlWithSession\(reportSession\)/.test(server) && /CONAPE_REPORT_PRO_ID/.test(server) && /CONAPE_REPORT_EVE_ID/.test(server) && /P1_PRO_ID/.test(server) && /P1_EVE_ID/.test(server) && !/console\.log.*(?:P1_PRO_ID|P1_EVE_ID|CONAPE_REPORT_PRO_ID|CONAPE_REPORT_EVE_ID)/.test(listProspectsBlock)],
   ['V4.5.6 ejecuta en browser la secuencia probada y mide filas materializadas', /CONAPE_REPORT_CONTEXT_SEQUENCE_FAILED/.test(server) && /eve\.setValue\('', '', false\)/.test(server) && /pro\.setValue\('', '', false\)/.test(server) && /delay\(700\)/.test(server) && /delay\(900\)/.test(server) && /rows\.dispatchEvent\(new Event\('change'/.test(server) && /delay\(1400\)/.test(server) && /materialized_rows:materializedRows/.test(server) && !/CONAPE_REPORT_GO_MISSING|goButton\.click/.test(server)],
+  ['V4.5.7 valida LOV con fallback a hidden values sin exponer IDs', /id \+ '_HIDDENVALUE'/.test(server) && /from_hidden:!apexValue && !!hiddenValue/.test(server) && /pro_from_hidden:state\.pro_from_hidden === true/.test(server) && /eve_from_hidden:state\.eve_from_hidden === true/.test(server) && !/console\.log.*(?:HIDDENVALUE|CONAPE_REPORT_PRO_ID|CONAPE_REPORT_EVE_ID)/.test(listProspectsBlock)],
   ['V4.4.4 CSV usa GET_DOWNLOAD_LINK + GET firmado y no persiste archivos', /GET_DOWNLOAD_LINK/.test(csvV444) && /page\.context\(\)\.request\.get\(signedLink/.test(csvV444) && /text\/csv/.test(csvV444) && /content-disposition/.test(csvV444) && !/saveAs|savePath|writeFile.*csv/i.test(csvV444)],
   ['V4.5 valida doble lectura Rows All por conteo y fingerprint', /const first = await readRowsAllSnapshot\(p\)/.test(listProspectsBlock) && /const second = await readRowsAllSnapshot\(p\)/.test(listProspectsBlock) && /rowsA = first\.rows\.length/.test(listProspectsBlock) && /rowsB = second\.rows\.length/.test(listProspectsBlock) && /first\.fingerprint === second\.fingerprint/.test(listProspectsBlock)],
   ['prospects/list nunca usa Save Report', !/SAVE REPORT|SAVE_REPORT|guardar informe|guardar reporte/i.test(listProspectsBlock)],
@@ -155,4 +156,4 @@ for (const [name, ok] of checks) {
   else { console.error(`FAIL: ${name}`); failed += 1; }
 }
 if (failed) process.exit(1);
-console.log(`CONAPE Bridge V4.5.6 QA PASS · ${checks.length}/${checks.length}`);
+console.log(`CONAPE Bridge V4.5.7 QA PASS · ${checks.length}/${checks.length}`);
