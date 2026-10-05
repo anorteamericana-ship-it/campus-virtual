@@ -38,6 +38,8 @@ assert.match(helperSource, /downloadProspectCsvViaUiDialog\(page, parseProspectC
   assert.ok(uiBlock);
   assert.match(helperSource, /async function clickVisibleControlByLabel/);
   assert.match(helperSource, /\[role="menuitem"\]/);
+  assert.match(helperSource, /label,span/);
+  assert.match(helperSource, /\[role="radio"\]/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)ACTIONS/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\(\^\| \)DOWNLOAD/);
   assert.match(uiBlock, /clickVisibleControlByLabel\(page, \/\^CSV\$\/i/);

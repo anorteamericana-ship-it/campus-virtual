@@ -405,7 +405,7 @@ async function firstVisible(locator, timeoutMs = 5_000) {
 }
 
 async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
-  const selector = 'button,a,[role="button"],[role="menuitem"],input[type="button"],input[type="submit"]';
+  const selector = 'button,a,label,span,[role="button"],[role="menuitem"],[role="radio"],[role="option"],input[type="button"],input[type="submit"],input[type="radio"]';
   const until = Date.now() + Math.max(250, Number(timeoutMs || 5_000));
   do {
     for (const frame of page.frames()) {
