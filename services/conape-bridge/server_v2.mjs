@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.0-ROWS-ALL';
+const VERSION = 'V4.5.1-REPORT-LOV-SETTER';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -16,6 +16,8 @@ const CONAPE_USER = String(process.env.CONAPE_PORTAL_USERNAME || '').trim();
 const CONAPE_PASSWORD = String(process.env.CONAPE_PORTAL_PASSWORD || '');
 const CONAPE_EVE_ID = String(process.env.CONAPE_EVE_ID || '').trim();
 const CONAPE_PRO_ID = String(process.env.CONAPE_PRO_ID || '').trim();
+const CONAPE_REPORT_PRO_ID = String(process.env.CONAPE_REPORT_PRO_ID || '').trim();
+const CONAPE_REPORT_EVE_ID = String(process.env.CONAPE_REPORT_EVE_ID || '').trim();
 const CONAPE_REPORT_PROSPECTADOR_LABEL = String(process.env.CONAPE_REPORT_PROSPECTADOR_LABEL || 'ACADEMIA NORTEAMERICANA').trim();
 const CONAPE_REPORT_EVENT_LABEL = String(process.env.CONAPE_REPORT_EVENT_LABEL || '').trim();
 const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.CAMPUS_REQUEST_TIMEOUT_MS || 70_000));
@@ -2018,30 +2020,31 @@ async function readProspectReportContext(p) {
       eve_matches_env:expectedEve ? eve === expectedEve : null,
       rows:selectedRows,
     };
-  }, { expectedPro:CONAPE_PRO_ID, expectedEve:CONAPE_EVE_ID }).catch(() => ({
+  }, { expectedPro:CONAPE_REPORT_PRO_ID, expectedEve:CONAPE_REPORT_EVE_ID }).catch(() => ({
     ready:false, pro_present:false, eve_present:false,
-    pro_matches_env:CONAPE_PRO_ID ? false : null,
-    eve_matches_env:CONAPE_EVE_ID ? false : null,
+    pro_matches_env:CONAPE_REPORT_PRO_ID ? false : null,
+    eve_matches_env:CONAPE_REPORT_EVE_ID ? false : null,
     rows:'',
   }));
 }
 
-async function setReportApexItem(p, id, value) {
+async function setReportApexItem(p, id, value, displayValue = '') {
   const clean = txt(value);
+  const display = txt(displayValue);
   if (!clean) return false;
-  const written = await p.evaluate(({ id, value }) => {
+  const written = await p.evaluate(({ id, value, display }) => {
     try {
       const item = window.apex?.item?.(id);
       if (!item || typeof item.setValue !== 'function' || typeof item.getValue !== 'function') return false;
-      item.setValue(value);
+      item.setValue(value, display || undefined, false);
       return String(item.getValue() ?? '').trim() === String(value).trim();
     } catch {
       return false;
     }
-  }, { id, value:clean }).catch(() => false);
+  }, { id, value:clean, display }).catch(() => false);
   if (!written) return false;
   await waitForApexDynamicAction(p);
-  await sleep(150);
+  await sleep(250);
   return p.evaluate(({ id, value }) => {
     try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim() === String(value).trim(); }
     catch { return false; }
@@ -2131,15 +2134,21 @@ async function ensureProspectReportContext(p) {
   }
 
   if (!state.pro_present) {
-    let ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
-    if (!ok && CONAPE_PRO_ID) ok = await setReportApexItem(p, 'P1_PRO_ID', CONAPE_PRO_ID);
+    let ok = false;
+    if (CONAPE_REPORT_PRO_ID) {
+      ok = await setReportApexItem(p, 'P1_PRO_ID', CONAPE_REPORT_PRO_ID, CONAPE_REPORT_PROSPECTADOR_LABEL);
+    }
+    if (!ok) ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
     if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
   }
 
   state = await readProspectReportContext(p);
   if (!state.eve_present) {
-    let ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
-    if (!ok && CONAPE_EVE_ID) ok = await setReportApexItem(p, 'P1_EVE_ID', CONAPE_EVE_ID);
+    let ok = false;
+    if (CONAPE_REPORT_EVE_ID) {
+      ok = await setReportApexItem(p, 'P1_EVE_ID', CONAPE_REPORT_EVE_ID, CONAPE_REPORT_EVENT_LABEL);
+    }
+    if (!ok) ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
     if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
   }
 
