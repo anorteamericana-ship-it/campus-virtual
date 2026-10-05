@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.20-GO-BEFORE-EXPORT';
+const VERSION = 'V4.4.21-GO-NETWORK-DIAGNOSTIC';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1781,8 +1781,81 @@ async function resetProspectListReport(p, sessionId) {
   if (goIndex < 0) {
     throw new AppError('CONAPE_LIST_GO_NOT_FOUND', 'CONAPE no expuso el botón Go para cargar Prospectación.', 503, 'LIST');
   }
-  await goControls.nth(goIndex).click({ timeout:5_000 });
-  await waitForApexDynamicAction(p);
+
+  const searchMeta = await p.evaluate(() => {
+    const visible = el => {
+      try {
+        const s = getComputedStyle(el), r = el.getBoundingClientRect();
+        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+      } catch { return false; }
+    };
+    const controls = Array.from(document.querySelectorAll('input,select,button'))
+      .filter(visible)
+      .map(el => ({
+        tag:String(el.tagName || '').toLowerCase(),
+        id:String(el.id || '').slice(0,100),
+        name:String(el.getAttribute('name') || '').slice(0,100),
+        type:String(el.getAttribute('type') || '').slice(0,40),
+        placeholder:String(el.getAttribute('placeholder') || '').slice(0,100),
+        aria_label:String(el.getAttribute('aria-label') || '').slice(0,100),
+        data_action:String(el.getAttribute('data-action') || '').slice(0,100),
+        value_len:String(el.value || '').length,
+      }))
+      .filter(x => /SEARCH|GO|ROW|FILA|COLUMN|IRR|REPORT/i.test([x.id,x.name,x.placeholder,x.aria_label,x.data_action].join(' ')))
+      .slice(0,40);
+    const regionIds = ['R204245917046361543','204245917046361543','204246013985361544'];
+    const regions = regionIds.map(id => {
+      try {
+        const r = window.apex?.region?.(id);
+        return { id, exists:!!r, type:String(r?.type || ''), widget_name:String(r?.widgetName || '') };
+      } catch { return { id, exists:false, type:'', widget_name:'' }; }
+    });
+    return { controls, regions };
+  }).catch(() => ({ controls:[], regions:[] }));
+  console.log(JSON.stringify({
+    event:'conape_list_search_meta', version:VERSION,
+    controls:searchMeta.controls,
+    regions:searchMeta.regions,
+    pii:false,
+  }));
+
+  const goRequests = [];
+  const requestListener = req => {
+    try {
+      const url = new URL(req.url());
+      if (url.origin !== 'https://online.conape.go.cr') return;
+      const resourceType = String(req.resourceType() || '');
+      if (!['xhr','fetch','document'].includes(resourceType)) return;
+      let postKeys = [];
+      const raw = String(req.postData() || '');
+      if (raw) {
+        try {
+          const parsed = new URLSearchParams(raw);
+          postKeys = [...new Set([...parsed.keys()])].slice(0,40);
+        } catch {}
+      }
+      goRequests.push({
+        method:req.method(),
+        path:decodeURIComponent(url.pathname || '').slice(0,160),
+        resource_type:resourceType,
+        query_keys:[...new Set([...url.searchParams.keys()])].slice(0,40),
+        post_keys:postKeys,
+      });
+      if (goRequests.length > 20) goRequests.shift();
+    } catch {}
+  };
+  p.on('request', requestListener);
+  try {
+    await goControls.nth(goIndex).click({ timeout:5_000 });
+    await waitForApexDynamicAction(p);
+  } finally {
+    p.off('request', requestListener);
+  }
+  console.log(JSON.stringify({
+    event:'conape_list_go_requests', version:VERSION,
+    requests:goRequests,
+    pii:false,
+  }));
   await waitProspectListReady(p, 12_000);
   console.log(JSON.stringify({
     event:'conape_list_go_loaded', version:VERSION,
