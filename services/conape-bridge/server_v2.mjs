@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.16-TRUSTED-ACTION-CLICK';
+const VERSION = 'V4.4.17-CSV-SCHEMA-DIAGNOSTIC';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1446,10 +1446,11 @@ function parseCsvRecords(raw) {
 
 function parseProspectCsv(raw) {
   const records = parseCsvRecords(raw);
-  if (!records.length) return { ok:false, reason:'CSV_EMPTY', columns_ok:false, rows:[] };
-  const headers = records.shift().map(header => PROSPECT_LIST_HEADER_ALIASES.get(normalizeProspectListHeader(header)) || null);
+  if (!records.length) return { ok:false, reason:'CSV_EMPTY', columns_ok:false, rows:[], schema:[], missing:[] };
+  const rawHeaders = records.shift().map(header => normalizeProspectListHeader(header));
+  const headers = rawHeaders.map(header => PROSPECT_LIST_HEADER_ALIASES.get(header) || null);
   const missing = prospectListMissingFields(headers);
-  if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', columns_ok:false, rows:[] };
+  if (missing.length) return { ok:false, reason:'REQUIRED_COLUMN_MISSING', columns_ok:false, rows:[], schema:rawHeaders, missing };
   const rows = [];
   for (const cells of records) {
     const row = Object.fromEntries(PROSPECT_LIST_FIELDS.map(key => [key,'']));
@@ -1459,7 +1460,7 @@ function parseProspectCsv(raw) {
     }
     if (Object.values(row).some(Boolean)) rows.push(row);
   }
-  return { ok:true, reason:'', columns_ok:true, rows };
+  return { ok:true, reason:'', columns_ok:true, rows, schema:rawHeaders, missing:[] };
 }
 
 async function readDownloadUtf8(download) {

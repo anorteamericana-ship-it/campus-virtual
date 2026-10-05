@@ -551,7 +551,11 @@ async function downloadProspectCsvViaUiDialog(page, parseProspectCsv) {
     const signedLink = normalizeDownloadLink(await linkResponse.text(), page.url());
     const result = await parseSignedCsvResponse(page, signedLink, parseProspectCsv);
     if (!result?.ok) {
-      csvDiag('UI_FAIL', { reason:result?.reason || 'CSV_UI_PARSE_FAILED' });
+      csvDiag('UI_FAIL', {
+        reason:result?.reason || 'CSV_UI_PARSE_FAILED',
+        schema:Array.isArray(result?.schema) ? result.schema.slice(0,40) : [],
+        missing:Array.isArray(result?.missing) ? result.missing.slice(0,40) : [],
+      });
       return result;
     }
     csvDiag('UI_OK');
