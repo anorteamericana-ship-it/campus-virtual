@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.15-ROWS-SETTLE-REPORT-GO';
+const VERSION = 'V4.5.16-PREFER-DATA-TABLE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1636,7 +1636,13 @@ async function readProspectListPage(p) {
       const headers = Array.from(table.querySelectorAll('th')).map(th => aliases.get(norm(th.textContent)) || null);
       const phoneOk = phoneFields.some(key => headers.includes(key));
       const score = required.filter(key => headers.includes(key)).length + (phoneOk ? 1 : 0);
-      if (!best || score > best.score) best = { table, headers, score };
+      const dataRows = Array.from(table.querySelectorAll('tbody tr')).filter(tr => {
+        const cells = Array.from(tr.querySelectorAll('td'));
+        return cells.length > 1 || (cells.length === 1 && !cells[0].hasAttribute('colspan'));
+      }).length;
+      if (!best || score > best.score || (score === best.score && dataRows > best.dataRows)) {
+        best = { table, headers, score, dataRows };
+      }
     }
     if (!best || best.score < 2) return { ok:false, reason:'REPORT_NOT_FOUND', missing:required, rows:[] };
     const missing = required.filter(key => !best.headers.includes(key));
