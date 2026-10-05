@@ -128,6 +128,7 @@ const checks = [
     "['LTIMODESEMBOLSO','ultimo_desembolso']",
     "['PR_XIMODESEMBOLSO','proximo_desembolso']"
   ].every(v => server.includes(v)) && /prospectListMissingFields\(headers\)/.test(server)],
+  ['V4.4.25 prioriza reporte primario RIR antes del fallback Friendly Home', /confirmationResetUrl\(sessionId\)/.test(resetListBlock) && /event:'conape_list_primary_report_ready'/.test(resetListBlock) && /reset_method:'URL_RIR'/.test(resetListBlock) && resetListBlock.indexOf('confirmationResetUrl(sessionId)') < resetListBlock.indexOf('CONAPE_FRIENDLY_HOME')],
   ['V4.4.24 preserva Home limpia y solo resetea cuando existen filtros', /if \(ir_filters_before === 0\)/.test(resetListBlock) && /event:'conape_list_report_preserved'/.test(resetListBlock) && /reset_method:'NONE_CLEAN'/.test(resetListBlock) && /resetInteractiveReport\(p\)/.test(resetListBlock) && /CONAPE_LIST_FILTER_RESET_FAILED/.test(resetListBlock)],
   ['V4.4.24 no destruye reporte limpio con clear RR ni Go vacío', !/prospectListResetUrl\(sessionId\)/.test(resetListBlock) && !/clear.*RR/i.test(resetListBlock) && !/goControls|CONAPE_LIST_GO_NOT_FOUND|conape_list_go_loaded/.test(resetListBlock)],
   ['V4.4.24 materializa search-on-demand con wildcard read-only y falla cerrado', /search\.fill\('%'\)/.test(ensureRowsBlock) && /button\[id\$="_search_button"\]/.test(ensureRowsBlock) && /go\.click\(\{ timeout:5_000 \}\)/.test(ensureRowsBlock) && /CONAPE_LIST_ROW_SEARCH_EMPTY/.test(ensureRowsBlock) && /ROW_SEARCH_WILDCARD/.test(ensureRowsBlock) && /EXISTING_REPORT/.test(ensureRowsBlock)],
