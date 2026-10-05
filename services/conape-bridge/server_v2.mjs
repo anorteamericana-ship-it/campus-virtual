@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.22-GO-PAGE-ITEMS-DIAGNOSTIC';
+const VERSION = 'V4.4.23-PRESERVE-CLEAN-REPORT';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1727,7 +1727,6 @@ async function resetProspectListReport(p, sessionId) {
     waitUntil:'domcontentloaded',
     timeout:30_000,
   });
-
   await waitForApexDynamicAction(p);
 
   const homeNav = await readHomeNavDebug(p);
@@ -1739,170 +1738,38 @@ async function resetProspectListReport(p, sessionId) {
 
   const ir_filters_before = await countIrFilters(p);
 
-  await p.goto(prospectListResetUrl(sessionId), {
-    waitUntil:'domcontentloaded',
-    timeout:30_000,
-  });
-  await waitForApexDynamicAction(p);
-
-  // clear=RR limpia el Interactive Report, pero APEX puede dejar esta
-  // navegación sin los controles Actions/Download. Volvemos a la Home ya
-  // limpia para restaurar el shell interactivo antes de exportar.
-  await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
-    waitUntil:'domcontentloaded',
-    timeout:30_000,
-  });
-  await waitForApexDynamicAction(p);
-
-  const restoredNav = await readHomeNavDebug(p);
-  console.log(JSON.stringify({
-    event:'conape_list_home_restored', version:VERSION,
-    actions_visible:(restoredNav.visible_button_labels || []).some(label => /(^| )Actions( |$)/i.test(label)),
-    frames_count:restoredNav.frames_count,
-    pii:false,
-  }));
-
-  // Home limpia carga el shell del Interactive Report, pero no materializa
-  // filas hasta ejecutar Go. Disparar Go con filtros vacíos equivale a la
-  // consulta completa que usa el asesor manualmente antes de descargar CSV.
-  const goControls = p.locator('button,input[type="submit"],input[type="button"]');
-  const goIndex = await goControls.evaluateAll(nodes => {
-    const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
-    const visible = el => {
-      try {
-        const s = getComputedStyle(el), r = el.getBoundingClientRect();
-        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
-      } catch { return false; }
-    };
-    return nodes.findIndex(el => visible(el) && /^GO$/.test(norm([
-      el.textContent || '', el.value || '', el.getAttribute('aria-label') || '', el.getAttribute('title') || ''
-    ].join(' '))));
-  }).catch(() => -1);
-  if (goIndex < 0) {
-    throw new AppError('CONAPE_LIST_GO_NOT_FOUND', 'CONAPE no expuso el botón Go para cargar Prospectación.', 503, 'LIST');
+  // Si la Home ya está limpia, conservar el Interactive Report exactamente
+  // como CONAPE lo entregó. El reset forzado destruía el dataset materializado
+  // y dejaba solo el shell Search/Go/Actions.
+  if (ir_filters_before === 0) {
+    console.log(JSON.stringify({
+      event:'conape_list_report_preserved', version:VERSION,
+      filters_before:0,
+      reset_method:'NONE_CLEAN',
+      pii:false,
+    }));
+    return ir_filters_before;
   }
 
-  const searchMeta = await p.evaluate(() => {
-    const visible = el => {
-      try {
-        const s = getComputedStyle(el), r = el.getBoundingClientRect();
-        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
-      } catch { return false; }
-    };
-    const controls = Array.from(document.querySelectorAll('input,select,button'))
-      .filter(visible)
-      .map(el => ({
-        tag:String(el.tagName || '').toLowerCase(),
-        id:String(el.id || '').slice(0,100),
-        name:String(el.getAttribute('name') || '').slice(0,100),
-        type:String(el.getAttribute('type') || '').slice(0,40),
-        placeholder:String(el.getAttribute('placeholder') || '').slice(0,100),
-        aria_label:String(el.getAttribute('aria-label') || '').slice(0,100),
-        data_action:String(el.getAttribute('data-action') || '').slice(0,100),
-        value_len:String(el.value || '').length,
-      }))
-      .filter(x => /SEARCH|GO|ROW|FILA|COLUMN|IRR|REPORT/i.test([x.id,x.name,x.placeholder,x.aria_label,x.data_action].join(' ')))
-      .slice(0,40);
-    const regionIds = ['R204245917046361543','204245917046361543','204246013985361544'];
-    const regions = regionIds.map(id => {
-      try {
-        const r = window.apex?.region?.(id);
-        return { id, exists:!!r, type:String(r?.type || ''), widget_name:String(r?.widgetName || '') };
-      } catch { return { id, exists:false, type:'', widget_name:'' }; }
-    });
-    return { controls, regions };
-  }).catch(() => ({ controls:[], regions:[] }));
-  console.log(JSON.stringify({
-    event:'conape_list_search_meta', version:VERSION,
-    controls:searchMeta.controls,
-    regions:searchMeta.regions,
-    pii:false,
-  }));
-
-  const goRequests = [];
-  const requestListener = req => {
-    try {
-      const url = new URL(req.url());
-      if (url.origin !== 'https://online.conape.go.cr') return;
-      const resourceType = String(req.resourceType() || '');
-      if (!['xhr','fetch','document'].includes(resourceType)) return;
-      let postKeys = [];
-      let widget = {};
-      let pageItemNames = [];
-      const raw = String(req.postData() || '');
-      if (raw) {
-        try {
-          const parsed = new URLSearchParams(raw);
-          postKeys = [...new Set([...parsed.keys()])].slice(0,40);
-          const safeValue = key => {
-            const value = String(parsed.get(key) || '');
-            return /^[A-Za-z0-9_:-]{0,80}$/.test(value) ? value : '';
-          };
-          widget = {
-            name:safeValue('p_widget_name'),
-            mod:safeValue('p_widget_mod'),
-            action:safeValue('p_widget_action'),
-            num_return:safeValue('p_widget_num_return'),
-          };
-          const jsonRaw = String(parsed.get('p_json') || '');
-          if (jsonRaw) {
-            try {
-              const payload = JSON.parse(jsonRaw);
-              const names = [];
-              const visit = value => {
-                if (!value || names.length >= 60) return;
-                if (Array.isArray(value)) {
-                  value.forEach(visit);
-                  return;
-                }
-                if (typeof value !== 'object') return;
-                for (const [key, child] of Object.entries(value)) {
-                  if ((key === 'n' || key === 'name' || key === 'id') && typeof child === 'string' && /^P\d+_[A-Z0-9_]+$/i.test(child)) {
-                    if (!names.includes(child)) names.push(child);
-                  }
-                  visit(child);
-                }
-              };
-              visit(payload);
-              pageItemNames = names;
-            } catch {}
-          }
-        } catch {}
-      }
-      goRequests.push({
-        method:req.method(),
-        path:decodeURIComponent(url.pathname || '').slice(0,160),
-        resource_type:resourceType,
-        query_keys:[...new Set([...url.searchParams.keys()])].slice(0,40),
-        post_keys:postKeys,
-        widget,
-        page_item_names:pageItemNames,
-      });
-      if (goRequests.length > 20) goRequests.shift();
-    } catch {}
-  };
-  p.on('request', requestListener);
-  try {
-    await goControls.nth(goIndex).click({ timeout:5_000 });
-    await waitForApexDynamicAction(p);
-  } finally {
-    p.off('request', requestListener);
+  // Solo cuando existen filtros visibles usamos el reset conservador ya
+  // probado: Actions > Reset o cierre de chips. Sin reiniciar el reporte por URL.
+  const reset = await resetInteractiveReport(p);
+  await waitForApexDynamicAction(p);
+  const remaining = await countIrFilters(p);
+  if (remaining !== 0) {
+    throw new AppError('CONAPE_LIST_FILTER_RESET_FAILED', 'CONAPE no permitió limpiar los filtros de Prospectación.', 503, 'LIST');
   }
+
   console.log(JSON.stringify({
-    event:'conape_list_go_requests', version:VERSION,
-    requests:goRequests,
-    pii:false,
-  }));
-  await waitProspectListReady(p, 12_000);
-  console.log(JSON.stringify({
-    event:'conape_list_go_loaded', version:VERSION,
-    go_clicked:true,
+    event:'conape_list_report_reset', version:VERSION,
+    filters_before:ir_filters_before,
+    reset_method:reset.ir_reset_method || 'UNKNOWN',
+    filters_after:remaining,
     pii:false,
   }));
 
   return ir_filters_before;
 }
-
 function prospectSnapshotFingerprint(rows) {
   const normalized = normalizeProspectRows(rows).sort((a,b) => a.cedula.localeCompare(b.cedula));
   return sha(normalized.map(row => PROSPECT_LIST_FIELDS.map(key => txt(row?.[key] || '')).join('\u001f')).join('\u001e'));
