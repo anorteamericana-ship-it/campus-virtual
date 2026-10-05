@@ -405,11 +405,12 @@ async function firstVisible(locator, timeoutMs = 5_000) {
 }
 
 async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
-  const selector = 'button,a,label,span,[role="button"],[role="menuitem"],[role="radio"],[role="option"],input[type="button"],input[type="submit"],input[type="radio"]';
+  const actionableSelector = 'button,a,label,[role="button"],[role="menuitem"],[role="radio"],[role="option"],input[type="button"],input[type="submit"],input[type="radio"]';
+  const textSelector = actionableSelector + ',span';
   const until = Date.now() + Math.max(250, Number(timeoutMs || 5_000));
   do {
     for (const frame of page.frames()) {
-      const clicked = await frame.evaluate(({ selector, source }) => {
+      const clicked = await frame.evaluate(({ actionableSelector, textSelector, source }) => {
         const re = new RegExp(source, 'i');
         const norm = value => String(value || '')
           .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -420,16 +421,29 @@ async function clickVisibleControlByLabel(page, regex, timeoutMs = 5_000) {
             return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
           } catch { return false; }
         };
-        const hit = Array.from(document.querySelectorAll(selector)).find(el => visible(el) && re.test(norm([
+        const matchesLabel = el => re.test(norm([
           el.textContent || '',
           el.value || '',
           el.getAttribute('aria-label') || '',
           el.getAttribute('title') || '',
-        ].join(' '))));
-        if (!hit) return false;
-        hit.click();
+        ].join(' ')));
+
+        // Prefer real actionable controls. APEX menu labels are frequently nested
+        // inside spans; clicking that span may not dispatch the menu action.
+        const actionable = Array.from(document.querySelectorAll(actionableSelector))
+          .find(el => visible(el) && matchesLabel(el));
+        if (actionable) {
+          actionable.click();
+          return true;
+        }
+
+        const textHit = Array.from(document.querySelectorAll(textSelector))
+          .find(el => visible(el) && matchesLabel(el));
+        const promoted = textHit && textHit.closest ? textHit.closest(actionableSelector) : null;
+        if (!promoted || !visible(promoted)) return false;
+        promoted.click();
         return true;
-      }, { selector, source:regex.source }).catch(() => false);
+      }, { actionableSelector, textSelector, source:regex.source }).catch(() => false);
       if (clicked) return true;
     }
     if (Date.now() >= until) break;
