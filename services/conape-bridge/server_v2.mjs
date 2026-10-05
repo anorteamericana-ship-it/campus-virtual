@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.24-ROW-SEARCH-LOAD-ALL';
+const VERSION = 'V4.4.25-PRIMARY-REPORT-RIR';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1765,6 +1765,27 @@ async function ensureProspectReportRows(p) {
 }
 
 async function resetProspectListReport(p, sessionId) {
+  // Preferir el reporte primario APEX. RIR restaura el Interactive Report
+  // a su definición base sin borrar su dataset ni depender de Search/Go.
+  await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+  await waitForApexDynamicAction(p);
+  const primary = await readProspectListPage(p);
+  if (primary.ok === true && Array.isArray(primary.rows) && primary.rows.length > 0) {
+    console.log(JSON.stringify({
+      event:'conape_list_primary_report_ready', version:VERSION,
+      first_page_rows:primary.rows.length,
+      reset_method:'URL_RIR',
+      pii:false,
+    }));
+    return 0;
+  }
+
+  console.log(JSON.stringify({
+    event:'conape_list_primary_report_unavailable', version:VERSION,
+    reason:txt(primary.reason || 'REPORT_NOT_FOUND'),
+    pii:false,
+  }));
+
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
     waitUntil:'domcontentloaded',
     timeout:30_000,
