@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.7-PROSPECTACION-V2-ON-DEMAND';
+const VERSION = 'V4.4.8-PROSPECT-LIST-NAV-DIAG';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1714,6 +1714,13 @@ async function resetProspectListReport(p, sessionId) {
   });
 
   await waitForApexDynamicAction(p);
+
+  const homeNav = await readHomeNavDebug(p);
+  console.log(JSON.stringify({
+    event:'conape_list_home_nav', version:VERSION,
+    ...homeNav,
+    pii:false,
+  }));
 
   const ir_filters_before = await countIrFilters(p);
 
