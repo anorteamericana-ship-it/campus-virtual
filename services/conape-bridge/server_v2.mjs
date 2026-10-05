@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.6-REAL-LOV-GO';
+const VERSION = 'V4.5.6-BROWSER-NATIVE-SEQUENCE';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2088,111 +2088,69 @@ async function setReportApexItem(p, id, value, displayValue = '') {
   }, { id, value:clean }).catch(() => false);
 }
 
-async function selectSingleReportLov(p, inputId, expectedLabel = '', options = {}) {
-  const force = options?.force === true;
-  const expectedValue = txt(options?.expectedValue || '');
-  const readValue = () => p.evaluate(id => {
+async function selectSingleReportLov(p, inputId, expectedLabel = '') {
+  const current = await p.evaluate(id => {
     try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
     catch { return ''; }
   }, inputId).catch(() => '');
-
-  const current = await readValue();
-  if (current && !force) return !expectedValue || current === expectedValue;
-
-  if (force && current) {
-    await p.evaluate(id => {
-      try {
-        const item = window.apex?.item?.(id);
-        if (item && typeof item.setValue === 'function') item.setValue('', '', false);
-        const el = document.getElementById(id);
-        if (el) el.dispatchEvent(new Event('change', { bubbles:true }));
-      } catch {}
-    }, inputId).catch(() => {});
-    await waitForApexDynamicAction(p);
-    await sleep(250);
-  }
+  if (current) return true;
 
   const button = p.locator('#' + inputId + '_lov_btn:visible').first();
   if (!(await button.count())) return false;
   await button.click({ timeout:5_000 });
 
   const dialog = p.locator('.a-PopupLOV-dialog:visible,[role="dialog"]:visible').last();
-  try { await dialog.waitFor({ state:'visible', timeout:5_000 }); }
-  catch { return false; }
+  try { await dialog.waitFor({ state:'visible', timeout:5_000 }); } catch { return false; }
 
-  const expected = upper(expectedLabel);
-  const searchInput = dialog.locator(
-    'input[type="search"]:visible,input.a-PopupLOV-search:visible,input[placeholder*="search" i]:visible,input[aria-label*="search" i]:visible'
-  ).first();
-
-  if (expected && await searchInput.count()) {
-    await searchInput.fill(expectedLabel);
-    await searchInput.press('Enter').catch(() => {});
+  const search = dialog.locator('.a-PopupLOV-doSearch:visible,button:visible').filter({ hasText:/^search$|^buscar$/i }).first();
+  if (await search.count()) {
+    await search.click({ timeout:5_000 }).catch(() => {});
     await waitForApexDynamicAction(p);
-    await sleep(300);
-  } else {
-    const searchButton = dialog.locator('.a-PopupLOV-doSearch:visible,button:visible').filter({ hasText:/^search$|^buscar$/i }).first();
-    if (await searchButton.count()) {
-      await searchButton.click({ timeout:5_000 }).catch(() => {});
-      await waitForApexDynamicAction(p);
-      await sleep(300);
-    }
+    await sleep(250);
   }
 
-  let clicked = false;
+  const expected = upper(expectedLabel);
   if (expected) {
     const exact = dialog.getByText(expectedLabel, { exact:true }).last();
     if (await exact.count()) {
       await exact.click({ timeout:5_000 }).catch(() => {});
-      clicked = true;
     }
   }
 
-  if (!clicked) {
-    const optionsLoc = dialog.locator(
-      '[role="option"]:visible,.a-PopupLOV-results li:visible,table tbody tr:visible,li:visible'
-    );
-    const labels = await optionsLoc.evaluateAll(nodes => nodes.map((node, index) => ({
-      index,
-      text:String(node.textContent || node.getAttribute('aria-label') || '').replace(/\s+/g,' ').trim(),
-    }))).catch(() => []);
-    const exactMatches = labels.filter(item => upper(item.text) === expected);
-    const usable = labels.filter(item => {
-      const label = upper(item.text);
-      return !!label && !/^(SELECCIONE EL PROSPECTADOR|SELECCIONE EL EVENTO|NO RESULTS FOUND|SIN RESULTADOS)$/.test(label);
-    });
-    const target = exactMatches[0] || (usable.length === 1 ? usable[0] : null);
-    if (target) {
-      await optionsLoc.nth(target.index).click({ timeout:5_000 }).catch(() => {});
-      clicked = true;
-    }
-  }
+  let after = await p.evaluate(id => {
+    try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
+    catch { return ''; }
+  }, inputId).catch(() => '');
+  if (after) return true;
 
-  if (!clicked) {
-    await p.keyboard.press('Escape').catch(() => {});
+  const options = dialog.locator('li:visible,[role="option"]:visible');
+  const labels = await options.evaluateAll(nodes => nodes.map((node, index) => ({
+    index,
+    text:String(node.textContent || node.getAttribute('aria-label') || '').replace(/\s+/g,' ').trim(),
+  }))).catch(() => []);
+  const usable = labels.filter(item => {
+    const label = upper(item.text);
+    return !!label && !/^(SELECCIONE EL PROSPECTADOR|SELECCIONE EL EVENTO|NO RESULTS FOUND|SIN RESULTADOS)$/.test(label);
+  });
+
+  if (usable.length === 1) {
+    await options.nth(usable[0].index).click({ timeout:5_000 });
+  } else {
     return false;
   }
 
-  const until = Date.now() + 10_000;
+  const until = Date.now() + 8_000;
   while (Date.now() < until) {
-    const after = await readValue();
-    const matches = !!after && (!expectedValue || after === expectedValue);
-    if (matches) {
+    after = await p.evaluate(id => {
+      try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
+      catch { return ''; }
+    }, inputId).catch(() => '');
+    if (after) {
       await waitForApexDynamicAction(p);
-      await sleep(300);
-      console.log(JSON.stringify({
-        event:'conape_report_lov_selected',
-        version:VERSION,
-        item:inputId === 'P1_PRO_ID' ? 'PROSPECTADOR' : (inputId === 'P1_EVE_ID' ? 'EVENTO' : 'OTHER'),
-        selected:true,
-        matches_expected:expectedValue ? after === expectedValue : null,
-        pii:false,
-      }));
       return true;
     }
     await sleep(150);
   }
-
   return false;
 }
 
@@ -2230,87 +2188,86 @@ async function ensureProspectReportContext(p) {
     throw new AppError('CONAPE_REPORT_NOT_READY', 'CONAPE no dejó listo el reporte 302:1.', 503, 'REPORT');
   }
 
-  // Reiniciar ambos LOV evita heredar contexto persistente de APEX.
-  const resetOk = await p.evaluate(() => {
-    try {
-      const eve = window.apex?.item?.('P1_EVE_ID');
-      const pro = window.apex?.item?.('P1_PRO_ID');
-      if (!eve?.setValue || !pro?.setValue) return false;
-      eve.setValue('', '', false);
-      pro.setValue('', '', false);
-      const eveEl = document.getElementById('P1_EVE_ID');
-      const proEl = document.getElementById('P1_PRO_ID');
-      if (eveEl) eveEl.dispatchEvent(new Event('change', { bubbles:true }));
-      if (proEl) proEl.dispatchEvent(new Event('change', { bubbles:true }));
-      return true;
-    } catch {
-      return false;
+  let materializedRows = null;
+  if (CONAPE_REPORT_PRO_ID && CONAPE_REPORT_EVE_ID) {
+    // Ejecutar dentro del navegador la misma secuencia que devolvió 60 filas
+    // en la sesión SIFA real: limpiar LOVs -> Prospectador -> Evento -> Rows All.
+    const prepared = await p.evaluate(async ({ proId, eveId, proLabel, eveLabel }) => {
+      const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+      try {
+        const eve = window.apex?.item?.('P1_EVE_ID');
+        const pro = window.apex?.item?.('P1_PRO_ID');
+        const rows = document.querySelector('select[id$="_row_select"]');
+        if (!eve?.setValue || !pro?.setValue || !rows) return { ok:false, reason:'CONTROLS_MISSING', row_count:0 };
+
+        eve.setValue('', '', false);
+        pro.setValue('', '', false);
+        await delay(700);
+
+        pro.setValue(proId, proLabel || undefined, false);
+        await delay(900);
+
+        eve.setValue(eveId, eveLabel || undefined, false);
+        await delay(900);
+
+        const all = Array.from(rows.options || []).find(option => String(option.textContent || '').trim().toUpperCase() === 'ALL');
+        if (!all) return { ok:false, reason:'ROWS_ALL_MISSING', row_count:0 };
+        rows.value = all.value;
+        rows.dispatchEvent(new Event('change', { bubbles:true }));
+        await delay(1400);
+
+        let rowCount = 0;
+        for (const table of document.querySelectorAll('table')) {
+          const count = Array.from(table.querySelectorAll('tbody tr')).filter(tr => tr.querySelectorAll('td').length > 1).length;
+          if (count > rowCount) rowCount = count;
+        }
+
+        const proValue = String(pro.getValue?.() ?? '').trim();
+        const eveValue = String(eve.getValue?.() ?? '').trim();
+        const rowsLabel = String(rows.options?.[rows.selectedIndex]?.text || '').trim().toUpperCase();
+        return {
+          ok:proValue === String(proId).trim() && eveValue === String(eveId).trim() && rowsLabel === 'ALL',
+          reason:'',
+          row_count:rowCount,
+        };
+      } catch {
+        return { ok:false, reason:'BROWSER_SEQUENCE_FAILED', row_count:0 };
+      }
+    }, {
+      proId:CONAPE_REPORT_PRO_ID,
+      eveId:CONAPE_REPORT_EVE_ID,
+      proLabel:CONAPE_REPORT_PROSPECTADOR_LABEL,
+      eveLabel:CONAPE_REPORT_EVENT_LABEL,
+    }).catch(() => ({ ok:false, reason:'EVALUATE_FAILED', row_count:0 }));
+
+    if (!prepared?.ok) {
+      const error = new AppError('CONAPE_REPORT_CONTEXT_SEQUENCE_FAILED', 'CONAPE no confirmó la secuencia Prospectador, Evento y Rows = All.', 503, 'REPORT');
+      error.reason = txt(prepared?.reason || 'UNKNOWN');
+      throw error;
     }
-  }).catch(() => false);
-  if (!resetOk) {
-    throw new AppError('CONAPE_REPORT_CONTEXT_RESET_FAILED', 'CONAPE no permiti? reiniciar el contexto del reporte.', 503, 'REPORT');
-  }
-  await waitForApexDynamicAction(p);
-  await sleep(400);
-
-  // Camino can?nico: seleccionar desde los Popup LOV reales, igual que un usuario.
-  const proOk = await selectSingleReportLov(
-    p,
-    'P1_PRO_ID',
-    CONAPE_REPORT_PROSPECTADOR_LABEL,
-    { force:true, expectedValue:CONAPE_REPORT_PRO_ID }
-  );
-  if (!proOk) {
-    throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitio seleccionar el Prospectador mediante el LOV.', 503, 'REPORT');
-  }
-
-  const eveOk = await selectSingleReportLov(
-    p,
-    'P1_EVE_ID',
-    CONAPE_REPORT_EVENT_LABEL,
-    { force:true, expectedValue:CONAPE_REPORT_EVE_ID }
-  );
-  if (!eveOk) {
-    throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitio seleccionar el Evento mediante el LOV.', 503, 'REPORT');
-  }
-
-  state = await readProspectReportContext(p);
-  if (!state.pro_present || !state.eve_present) {
-    throw new AppError('CONAPE_REPORT_LOV_CONTEXT_INCOMPLETE', 'CONAPE no confirmo Prospectador y Evento despues de seleccionarlos.', 503, 'REPORT');
-  }
-
-  const rows = p.locator('select[id$="_row_select"]:visible').first();
-  if (!(await rows.count())) throw new AppError('CONAPE_REPORT_ROWS_SELECTOR_MISSING', 'CONAPE no expuso el selector Rows.', 503, 'REPORT');
-  const allText = (await rows.locator('option').allTextContents()).find(value => upper(value) === 'ALL');
-  if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
-  await rows.selectOption({ label:allText });
-  await waitForApexDynamicAction(p);
-  const go = p.getByRole('button', { name:/^go$/i }).first();
-  const goFallback = p.locator('button[id$="_search_button"]:visible').first();
-  const goButton = (await go.count()) ? go : goFallback;
-  if (!(await goButton.count())) {
-    throw new AppError('CONAPE_REPORT_GO_MISSING', 'CONAPE no expuso el boton Go del reporte.', 503, 'REPORT');
-  }
-  await goButton.click({ timeout:5_000 });
-  await waitForApexDynamicAction(p);
-
-  let loaded = null;
-  const rowsUntil = Date.now() + 12_000;
-  while (Date.now() < rowsUntil) {
-    const candidate = await readProspectListPage(p);
-    if (candidate?.ok && Array.isArray(candidate.rows) && candidate.rows.length > 0) {
-      loaded = candidate;
-      break;
+    materializedRows = Number(prepared.row_count || 0);
+  } else {
+    if (!state.pro_present) {
+      const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
+      if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitió seleccionar el Prospectador.', 503, 'REPORT');
     }
-    await sleep(200);
-  }
-  if (!loaded) {
-    throw new AppError('CONAPE_REPORT_EMPTY_AFTER_GO', 'CONAPE ejecuto Go pero no materializo filas del reporte.', 503, 'REPORT');
+    state = await readProspectReportContext(p);
+    if (!state.eve_present) {
+      const ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
+      if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitió seleccionar el Evento.', 503, 'REPORT');
+    }
+    const rows = p.locator('select[id$="_row_select"]:visible').first();
+    if (!(await rows.count())) throw new AppError('CONAPE_REPORT_ROWS_SELECTOR_MISSING', 'CONAPE no expuso el selector Rows.', 503, 'REPORT');
+    const allText = (await rows.locator('option').allTextContents()).find(value => upper(value) === 'ALL');
+    if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
+    await rows.selectOption({ label:allText });
+    await waitForApexDynamicAction(p);
+    await sleep(1400);
   }
 
   state = await readProspectReportContext(p);
   if (!state.pro_present || !state.eve_present || upper(state.rows) !== 'ALL') {
-    throw new AppError('CONAPE_REPORT_CONTEXT_INCOMPLETE', 'CONAPE no confirmo Prospectador, Evento y Rows = All.', 503, 'REPORT');
+    throw new AppError('CONAPE_REPORT_CONTEXT_INCOMPLETE', 'CONAPE no confirmó Prospectador, Evento y Rows = All.', 503, 'REPORT');
   }
 
   console.log(JSON.stringify({
@@ -2320,18 +2277,18 @@ async function ensureProspectReportContext(p) {
     prospectador:true,
     evento:true,
     rows_all:true,
+    materialized_rows:materializedRows,
     pro_matches_env:state.pro_matches_env,
     eve_matches_env:state.eve_matches_env,
-    first_page_rows:loaded.rows.length,
     pii:false,
   }));
 
-  return { sessionId, state, loaded };
+  return { sessionId, state };
 }
 
 async function readRowsAllSnapshot(p) {
-  const prepared = await ensureProspectReportContext(p);
-  const loaded = prepared?.loaded;
+  await ensureProspectReportContext(p);
+  const loaded = await waitProspectListReady(p, 12_000);
   if (!loaded?.ok) {
     const error = new AppError('CONAPE_REPORT_SCHEMA_NOT_READY', 'CONAPE no expuso las columnas esperadas del reporte.', 503, 'REPORT');
     error.reason = txt(loaded?.reason || 'UNKNOWN');
