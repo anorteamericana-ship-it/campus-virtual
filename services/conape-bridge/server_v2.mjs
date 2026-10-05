@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.10-GO-MATERIALIZE';
+const VERSION = 'V4.5.11-EXACT-REPORT-CONTEXT';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -2088,12 +2088,12 @@ async function setReportApexItem(p, id, value, displayValue = '') {
   }, { id, value:clean }).catch(() => false);
 }
 
-async function selectSingleReportLov(p, inputId, expectedLabel = '') {
+async function selectSingleReportLov(p, inputId, expectedLabel = '', force = false) {
   const current = await p.evaluate(id => {
     try { return String(window.apex?.item?.(id)?.getValue?.() ?? '').trim(); }
     catch { return ''; }
   }, inputId).catch(() => '');
-  if (current) return true;
+  if (current && !force) return true;
 
   const button = p.locator('#' + inputId + '_lov_btn:visible').first();
   if (!(await button.count())) return false;
@@ -2200,15 +2200,26 @@ async function ensureProspectReportContext(p) {
   // Ruta can?nica probada en SIFA real: usar los Popup LOV visibles.
   // No escribir IDs ocultos con apex.item.setValue(): APEX necesita el clic
   // real del LOV para disparar sus Dynamic Actions y materializar el reporte.
-  if (!state.pro_present) {
-    const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL);
-    if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permiti? seleccionar el Prospectador.', 503, 'REPORT');
+  const proNeedsSelection = !state.pro_present || state.pro_matches_env === false;
+  if (proNeedsSelection) {
+    const ok = await selectSingleReportLov(p, 'P1_PRO_ID', CONAPE_REPORT_PROSPECTADOR_LABEL, true);
+    if (!ok) throw new AppError('CONAPE_REPORT_PROSPECTADOR_NOT_SELECTED', 'CONAPE no permitio seleccionar el Prospectador.', 503, 'REPORT');
   }
 
   state = await readProspectReportContext(p);
-  if (!state.eve_present) {
-    const ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL);
-    if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permiti? seleccionar el Evento.', 503, 'REPORT');
+  if (CONAPE_REPORT_PRO_ID && state.pro_matches_env !== true) {
+    throw new AppError('CONAPE_REPORT_PROSPECTADOR_MISMATCH', 'CONAPE no confirmo el Prospectador esperado.', 503, 'REPORT');
+  }
+
+  const eveNeedsSelection = !state.eve_present || state.eve_matches_env === false;
+  if (eveNeedsSelection) {
+    const ok = await selectSingleReportLov(p, 'P1_EVE_ID', CONAPE_REPORT_EVENT_LABEL, true);
+    if (!ok) throw new AppError('CONAPE_REPORT_EVENTO_NOT_SELECTED', 'CONAPE no permitio seleccionar el Evento.', 503, 'REPORT');
+  }
+
+  state = await readProspectReportContext(p);
+  if (CONAPE_REPORT_EVE_ID && state.eve_matches_env !== true) {
+    throw new AppError('CONAPE_REPORT_EVENTO_MISMATCH', 'CONAPE no confirmo el Evento esperado.', 503, 'REPORT');
   }
 
   const rows = p.locator('select[id$="_row_select"]:visible').first();
@@ -2217,6 +2228,13 @@ async function ensureProspectReportContext(p) {
   if (!allText) throw new AppError('CONAPE_REPORT_ROWS_ALL_MISSING', 'CONAPE no expuso Rows = All.', 503, 'REPORT');
   await rows.selectOption({ label:allText });
   await waitForApexDynamicAction(p);
+
+  state = await readProspectReportContext(p);
+  if (!state.pro_present || !state.eve_present ||
+      (CONAPE_REPORT_PRO_ID && state.pro_matches_env !== true) ||
+      (CONAPE_REPORT_EVE_ID && state.eve_matches_env !== true)) {
+    throw new AppError('CONAPE_REPORT_CONTEXT_LOST_BEFORE_GO', 'CONAPE perdio el contexto antes de ejecutar Go.', 503, 'REPORT');
+  }
 
   // SIFA 302:1 no materializa necesariamente el Interactive Report solo por
   // cambiar Rows. La secuencia real comprobada en navegador termina en Go.
@@ -2256,7 +2274,7 @@ async function ensureProspectReportContext(p) {
     prospectador:true,
     evento:true,
     rows_all:true,
-    selection_method:'POPUP_LOV_VISIBLE_TEXT_GO',
+    selection_method:'POPUP_LOV_EXACT_CONTEXT_GO',
     materialized_rows:materializedRows,
     pro_matches_env:state.pro_matches_env,
     eve_matches_env:state.eve_matches_env,
