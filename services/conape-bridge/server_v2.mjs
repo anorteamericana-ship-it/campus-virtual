@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.4.26-FILTER-DIALOG-DIAGNOSTIC';
+const VERSION = 'V4.4.27-CEDULA-NOT-NULL-FILTER';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1722,91 +1722,45 @@ async function openProspectListHome(p, sessionId) {
   return waitProspectListReady(p);
 }
 
-async function inspectProspectFilterDialog(p) {
+async function applyProspectCedulaNotNullFilter(p) {
   const actions = p.getByRole('button', { name:/actions|acciones/i }).first();
   if (!(await actions.count())) {
     throw new AppError('CONAPE_LIST_ACTIONS_NOT_FOUND', 'CONAPE no expuso Actions en Prospectación.', 503, 'LIST');
   }
   await actions.click({ timeout:5_000 });
-  await sleep(150);
+  await sleep(120);
+
   const filter = p.getByRole('menuitem', { name:/^filter$|^filtro$/i }).first();
   if (!(await filter.count())) {
     throw new AppError('CONAPE_LIST_FILTER_MENU_NOT_FOUND', 'CONAPE no expuso Filter en Actions.', 503, 'LIST');
   }
   await filter.click({ timeout:5_000 });
   await waitForApexDynamicAction(p);
-  await sleep(200);
+  await sleep(150);
 
-  const meta = await p.evaluate(() => {
-    const norm = value => String(value || '')
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/\s+/g,' ').trim();
-    const visible = el => {
-      try {
-        const s = getComputedStyle(el), r = el.getBoundingClientRect();
-        return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0;
-      } catch { return false; }
-    };
-    const dialogs = Array.from(document.querySelectorAll('[role="dialog"],.ui-dialog,.a-IRR-dialog')).filter(visible);
-    const root = dialogs[dialogs.length - 1] || document;
-    const controls = Array.from(root.querySelectorAll('select,input,button,[role="button"],[role="combobox"]'))
-      .filter(visible)
-      .slice(0,80)
-      .map(el => ({
-        tag:String(el.tagName || '').toLowerCase(),
-        id:/^[A-Za-z][A-Za-z0-9_:\-.]{0,79}$/.test(String(el.id || '')) ? String(el.id) : '',
-        type:String(el.getAttribute('type') || '').toLowerCase().slice(0,24),
-        role:String(el.getAttribute('role') || '').toLowerCase().slice(0,24),
-        label:norm([
-          el.getAttribute('aria-label') || '',
-          el.getAttribute('title') || '',
-          el.tagName === 'BUTTON' ? (el.textContent || '') : ''
-        ].join(' ')).slice(0,80),
-        options:el.tagName === 'SELECT'
-          ? Array.from(el.options || []).map(o => norm(o.textContent || '')).filter(Boolean).slice(0,80)
-          : []
-      }));
-    return {
-      dialog_count:dialogs.length,
-      controls
-    };
-  }).catch(() => ({ dialog_count:0, controls:[] }));
+  const columnRadio = p.locator('input[id$="_filter_type_0"][type="radio"]:visible').first();
+  const column = p.locator('select[id$="_column_name"]:visible').first();
+  const operator = p.locator('select[id$="_OPT"]:visible').first();
+  const dialog = p.locator('[role="dialog"]:visible,.ui-dialog:visible,.a-IRR-dialog:visible').last();
+  const apply = dialog.getByRole('button', { name:/^apply$|^aplicar$/i }).first();
 
-  console.log(JSON.stringify({
-    event:'conape_list_filter_dialog_meta',
-    version:VERSION,
-    dialog_count:Number(meta.dialog_count || 0),
-    controls:Array.isArray(meta.controls) ? meta.controls : [],
-    pii:false,
-  }));
-
-  throw new AppError('CONAPE_LIST_FILTER_DIALOG_DIAGNOSTIC', 'Diagnóstico seguro del filtro de Prospectación completado.', 503, 'LIST');
-}
-
-async function ensureProspectReportRows(p) {
-  const current = await readProspectListPage(p);
-  if (current.ok === true && Array.isArray(current.rows) && current.rows.length > 0) {
-    console.log(JSON.stringify({
-      event:'conape_list_rows_ready', version:VERSION,
-      method:'EXISTING_REPORT',
-      first_page_rows:current.rows.length,
-      pii:false,
-    }));
-    return { method:'EXISTING_REPORT', first_page_rows:current.rows.length };
+  if (!(await column.count()) || !(await operator.count()) || !(await apply.count())) {
+    throw new AppError('CONAPE_LIST_FILTER_CONTROLS_NOT_FOUND', 'CONAPE no expuso los controles requeridos del filtro.', 503, 'LIST');
   }
 
-  await inspectProspectFilterDialog(p);
+  if (await columnRadio.count()) await columnRadio.check({ timeout:3_000 }).catch(() => {});
+  await column.selectOption({ label:'Cedula' });
+  await operator.selectOption({ label:'is not null' });
 
-  const search = p.locator('input[id$="_search_field"][type="search"]:visible').first();
-  const go = p.locator('button[id$="_search_button"]:visible').first();
-  if (!(await search.count()) || !(await go.count())) {
-    throw new AppError('CONAPE_LIST_ROW_SEARCH_NOT_FOUND', 'CONAPE no expuso el buscador de Prospectación.', 503, 'LIST');
+  const selected = await Promise.all([
+    column.locator('option:checked').textContent().catch(() => ''),
+    operator.locator('option:checked').textContent().catch(() => ''),
+  ]);
+  if (upper(selected[0]) !== 'CEDULA' || upper(selected[1]) !== 'IS NOT NULL') {
+    throw new AppError('CONAPE_LIST_FILTER_SELECTION_FAILED', 'CONAPE no confirmó el filtro completo de Prospectación.', 503, 'LIST');
   }
 
-  // La Home del reclutador es search-on-demand. % es un criterio comodín
-  // de solo lectura para materializar el conjunto antes de exportarlo.
-  await search.fill('%');
-  await go.click({ timeout:5_000 });
+  await apply.click({ timeout:5_000 });
   await waitForApexDynamicAction(p);
 
   const until = Date.now() + 12_000;
@@ -1814,40 +1768,29 @@ async function ensureProspectReportRows(p) {
     const loaded = await readProspectListPage(p);
     if (loaded.ok === true && Array.isArray(loaded.rows) && loaded.rows.length > 0) {
       console.log(JSON.stringify({
-        event:'conape_list_rows_ready', version:VERSION,
-        method:'ROW_SEARCH_WILDCARD',
+        event:'conape_list_rows_ready',
+        version:VERSION,
+        method:'CEDULA_NOT_NULL_FILTER',
         first_page_rows:loaded.rows.length,
         pii:false,
       }));
-      return { method:'ROW_SEARCH_WILDCARD', first_page_rows:loaded.rows.length };
+      return loaded.rows.length;
     }
     await sleep(250);
   }
 
-  throw new AppError('CONAPE_LIST_ROW_SEARCH_EMPTY', 'CONAPE no devolvió filas para la consulta completa de Prospectación.', 503, 'LIST');
+  throw new AppError('CONAPE_LIST_CEDULA_FILTER_EMPTY', 'CONAPE no devolvió filas con el filtro completo de Prospectación.', 503, 'LIST');
 }
 
 async function resetProspectListReport(p, sessionId) {
-  // Preferir el reporte primario APEX. RIR restaura el Interactive Report
-  // a su definición base sin borrar su dataset ni depender de Search/Go.
-  await p.goto(confirmationResetUrl(sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
+  // RIR elimina cualquier estado previo del Interactive Report. Después se
+  // vuelve a Friendly Home y se aplica un filtro determinista que representa
+  // todos los prospectos válidos: Cédula IS NOT NULL.
+  await p.goto(confirmationResetUrl(sessionId), {
+    waitUntil:'domcontentloaded',
+    timeout:30_000,
+  });
   await waitForApexDynamicAction(p);
-  const primary = await readProspectListPage(p);
-  if (primary.ok === true && Array.isArray(primary.rows) && primary.rows.length > 0) {
-    console.log(JSON.stringify({
-      event:'conape_list_primary_report_ready', version:VERSION,
-      first_page_rows:primary.rows.length,
-      reset_method:'URL_RIR',
-      pii:false,
-    }));
-    return 0;
-  }
-
-  console.log(JSON.stringify({
-    event:'conape_list_primary_report_unavailable', version:VERSION,
-    reason:txt(primary.reason || 'REPORT_NOT_FOUND'),
-    pii:false,
-  }));
 
   await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), {
     waitUntil:'domcontentloaded',
@@ -1855,48 +1798,28 @@ async function resetProspectListReport(p, sessionId) {
   });
   await waitForApexDynamicAction(p);
 
-  const homeNav = await readHomeNavDebug(p);
-  console.log(JSON.stringify({
-    event:'conape_list_home_nav', version:VERSION,
-    ...homeNav,
-    pii:false,
-  }));
-
-  const ir_filters_before = await countIrFilters(p);
-
-  // Si la Home ya está limpia, conservar el Interactive Report exactamente
-  // como CONAPE lo entregó. El reset forzado destruía el dataset materializado
-  // y dejaba solo el shell Search/Go/Actions.
-  if (ir_filters_before === 0) {
-    console.log(JSON.stringify({
-      event:'conape_list_report_preserved', version:VERSION,
-      filters_before:0,
-      reset_method:'NONE_CLEAN',
-      pii:false,
-    }));
-    await ensureProspectReportRows(p);
-    return ir_filters_before;
+  const filtersBefore = await countIrFilters(p);
+  if (filtersBefore !== 0) {
+    throw new AppError('CONAPE_LIST_RIR_RESET_FAILED', 'CONAPE conservó filtros después de restaurar el reporte.', 503, 'LIST');
   }
 
-  // Solo cuando existen filtros visibles usamos el reset conservador ya
-  // probado: Actions > Reset o cierre de chips. Sin reiniciar el reporte por URL.
-  const reset = await resetInteractiveReport(p);
-  await waitForApexDynamicAction(p);
-  const remaining = await countIrFilters(p);
-  if (remaining !== 0) {
-    throw new AppError('CONAPE_LIST_FILTER_RESET_FAILED', 'CONAPE no permitió limpiar los filtros de Prospectación.', 503, 'LIST');
+  await applyProspectCedulaNotNullFilter(p);
+
+  const filtersAfter = await countIrFilters(p);
+  if (filtersAfter < 1) {
+    throw new AppError('CONAPE_LIST_FILTER_NOT_APPLIED', 'CONAPE no conservó el filtro completo de Prospectación.', 503, 'LIST');
   }
 
   console.log(JSON.stringify({
-    event:'conape_list_report_reset', version:VERSION,
-    filters_before:ir_filters_before,
-    reset_method:reset.ir_reset_method || 'UNKNOWN',
-    filters_after:remaining,
+    event:'conape_list_report_ready',
+    version:VERSION,
+    reset_method:'URL_RIR_THEN_CEDULA_NOT_NULL',
+    filters_before:filtersBefore,
+    filters_after:filtersAfter,
     pii:false,
   }));
 
-  await ensureProspectReportRows(p);
-  return ir_filters_before;
+  return filtersBefore;
 }
 function prospectSnapshotFingerprint(rows) {
   const normalized = normalizeProspectRows(rows).sort((a,b) => a.cedula.localeCompare(b.cedula));
