@@ -1,0 +1,15 @@
+PLAY_ITEM_ID,LEVEL_ID,UNIT_ID,AREA_ID,TEMPLATE_ID,GAME_ID,GAME_TITLE,ITEM_TYPE,PROMPT_ES,PROMPT_EN,STEM,OPTION_A,OPTION_B,OPTION_C,OPTION_D,CORRECT_OPTION,MATCH_LEFT,MATCH_RIGHT,WORDS_TO_ORDER,CORRECT_SENTENCE,MINI_TEXT_OR_DIALOGUE,EXPLANATION_ES,DIFFICULTY_1_10,SOURCE_ITEM_ID,STATUS
+QA-001,B1,B1-U01,VOCAB,VOCAB_01,QA-B1-U01-VOCAB-01,QA,MCQ,Elige.,Choose.,reliable,confiable,honesto,amigo,vecino,A,,,,,"A: Hello.
+B: Hi, how are you?",Muestra.,2,,ACTIVE
+QA-002,B1,B1-U01,VOCAB,VOCAB_01,QA-B1-U01-VOCAB-01,QA,MCQ,Elige.,Choose.,honest,confiable,honesto,amigo,vecino,B,,,,,,Muestra.,2,,ACTIVE
+QA-003,B1,B1-U01,VOCAB,VOCAB_01,QA-B1-U01-VOCAB-01,QA,MCQ,Elige.,Choose.,friend,confiable,honesto,amigo,vecino,,,,,,,Muestra.,2,,ACTIVE
+QA-004,B1,B1-U01,VOCAB,VOCAB_01,QA-B1-U01-VOCAB-01,QA,MCQ,Elige.,Choose.,neighbor,vecino,honesto,amigo,,A,,,,,,Muestra.,2,,ACTIVE
+QA-005,B1,,VOCAB,VOCAB_01,QA-B1-U01-VOCAB-01,QA,MCQ,Elige.,Choose.,hello,Hola,chao,hola ,gracias,C,,,,,,Muestra.,2,,DRAFT
+QA-006,,,READ,READ_01,QA-B1-U01-READ-01,QA,READING_MCQ,Lee.,Read.,Sure?,No,Nunca,Tal vez,"Sí, claro",D,,,,,,Muestra.,2,,ACTIVE
+QA-007,B2,B1-U02,GRAM,GRAM_01,QA-B2-U02-GRAM-01,QA,MCQ,Elige.,Choose.,She ___,is,are,am,be,A,,,,,,Muestra.,2,,ACTIVE
+QA-008,B1,B1-U01,VOCAB,VOCAB_02,QA-B1-U01-VOCAB-02,QA,MATCH,Une.,Match.,,,,,,,reliable,confiable,,,,Muestra.,2,,ACTIVE
+QA-009,B1,B1-U01,VOCAB,VOCAB_02,QA-B1-U01-VOCAB-02,QA,MATCH,Une.,Match.,,,,,,,reliable,,,,,Muestra.,2,,ACTIVE
+QA-010,B1,B1-U01,GRAM,GRAM_02,QA-B1-U01-GRAM-02,QA,ORDER,Ordena.,Order.,,,,,,,,,A | reliable | friend,A reliable friend,,Muestra.,2,,ACTIVE
+QA-011,B1,B1-U01,GRAM,GRAM_02,QA-B1-U01-GRAM-02,QA,ORDER,Ordena.,Order.,,,,,,,,,,I trust friends,,Muestra.,2,,ACTIVE
+QA-012,B1,B1-U01,GRAM,GRAM_02,QA-B1-U01-GRAM-02,QA,ORDER,Ordena.,Order.,,,,,,,,,friends | I,I trust friends,,Muestra.,2,,ACTIVE
+QA-013,B1,B1-U01,GRAM,GRAM_02,QA-B1-U01-GRAM-02,QA,ORDER,Ordena.,Order.,,,,,,,,,friends | trust | I,I trust friends,,Muestra.,2,,ACTIVE

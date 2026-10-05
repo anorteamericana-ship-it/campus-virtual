@@ -68,7 +68,7 @@ function LazyRoute({ title, component, files, ...props }) {
 const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z6CS21A146CAL'],
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
-  academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
+  academia_play: ['src/academia_play.jsx?v=F98.4Z6JUEGOS_F1'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
   student_modules: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6CS21A147'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
