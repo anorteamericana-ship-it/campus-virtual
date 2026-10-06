@@ -41,5 +41,11 @@ jobs:
           node scripts/qa_sec004_session_demo_isolation_cs21a198.mjs
           node scripts/qa_sec004_matriculas_preview_readonly_cs21a198b.mjs
           node scripts/qa_sec004_admin_preview_readonly_cs21a198c.mjs
-      - name: Diff hygiene against exact stacked base
-        run: git diff --check bf06348723aa7b4bf78a634541f26e5601e95fb4...HEAD -- ':!00_DOCUMENTACION/**'
+      - name: Diff hygiene against validated scope
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "${{ github.event.pull_request.base.sha }}...HEAD" -- ':!00_DOCUMENTACION/**'
+          else
+            git diff --check bf06348723aa7b4bf78a634541f26e5601e95fb4...HEAD -- ':!00_DOCUMENTACION/**'
+          fi
