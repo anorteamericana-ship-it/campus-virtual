@@ -2,8 +2,13 @@
 (function () {
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A65';
-  const VIEWER_SELECTOR = 'section[data-screen-label*="CS21A60"][data-screen-label*="Libros"]';
+  const VERSION = 'F98.4-Z6-CS21A211';
+  const VIEWER_SELECTOR = [
+    'section[data-book-viewer="institutional"]',
+    'section[data-screen-label*="CS21A75"][data-screen-label*="Libros"]',
+    'section[data-screen-label*="CS21A60"][data-screen-label*="Libros"]',
+    'section[data-screen-label*="CS21A58"][data-screen-label*="libros"]',
+  ].join(',');
   const MOUNT_CLASS = 'an-book-inline-audio-cs21a65';
   const CACHE = window.__AN_BOOK_AUDIO_CATALOG_CACHE_CS21A65__ ||
     (window.__AN_BOOK_AUDIO_CATALOG_CACHE_CS21A65__ = Object.create(null));
