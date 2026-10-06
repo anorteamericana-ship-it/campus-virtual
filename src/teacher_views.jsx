@@ -1053,7 +1053,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
         <div style={{minWidth:240,flex:'1 1 320px'}}>
           <div className="card-title">Estudiantes · asistencia y notas</div>
-          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?'Vista TOTAL: lecciones e I CAN mezclados por fecha y hora.':viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
+          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN mezclados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap',flex:'1 1 420px'}}>
           <div role="tablist" aria-label="Filtrar asistencia" style={{display:'inline-flex',gap:5,padding:4,border:'1px solid var(--line)',borderRadius:12,background:'#F7F9FC',flexWrap:'wrap'}}>
@@ -1066,7 +1066,6 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
               return <button key={opt.id} type="button" role="tab" aria-selected={active} onClick={()=>selectView(opt.id)} style={{border:'1px solid '+(active?(purple?'#6A3D91':'var(--an-navy)'):'transparent'),background:active?(purple?'#6A3D91':'var(--an-navy)'):'#FFF',color:active?'#FFF':purple?'#6A3D91':'var(--ink-2)',borderRadius:9,padding:'7px 10px',fontSize:9.5,fontWeight:900,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap'}}>{opt.label} <span style={{opacity:.78}}>({opt.count})</span></button>;
             })}
           </div>
-          {!iCanApplies&&<span title="No existen sesiones I CAN configuradas para este grupo y nivel" style={{padding:'7px 9px',borderRadius:9,background:'#F1F3F6',color:'var(--ink-3)',fontSize:9,fontWeight:850,whiteSpace:'nowrap'}}>I CAN · NO APLICA</span>}
           <div style={{display:'flex',gap:7}}>
             <button type="button" onClick={()=>scrollBy(-6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la izquierda">←</button>
             <button type="button" onClick={()=>scrollBy(6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la derecha">→</button>
