@@ -4348,7 +4348,7 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       const resp = await fetch(SCRIPT_URL_AS, {
         method:'POST',
         headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({ fn:'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
+        body: JSON.stringify({ fn: tipo === 'CERTIFICADO' ? 'generarDocumentoVentas' : 'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
       });
       const data = await resp.json();
       setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data.error || data.mensaje, 'No pudimos generar el documento. Intentá de nuevo.', 'generar_documento') }}));
