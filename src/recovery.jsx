@@ -40,12 +40,24 @@ const secondary = {
   fontSize:13, fontWeight:700, fontFamily:'inherit',
 };
 
+// El mismo icono de mostrar/ocultar que utiliza el login principal.
+const EyeIcon = ({ off }) => (
+  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {off
+      ? <><path d="M17.94 17.94A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.06-5.94M9.9 4.24A10 10 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M1 1l22 22M14.12 14.12a3 3 0 1 1-4.24-4.24" /></>
+      : <><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" /><circle cx="12" cy="12" r="3" /></>}
+  </svg>
+);
+
 function RecoveryApp() {
   const [step, setStep] = React.useState('request');
   const [identificador, setIdentificador] = React.useState('');
   const [codigo, setCodigo] = React.useState('');
   const [clave, setClave] = React.useState('');
   const [confirmar, setConfirmar] = React.useState('');
+  const [verClave, setVerClave] = React.useState(false);
+  const [verConfirmar, setVerConfirmar] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const [info, setInfo] = React.useState('');
@@ -136,16 +148,32 @@ function RecoveryApp() {
               value={codigo} onChange={e => { setCodigo(e.target.value.replace(/\D/g,'').slice(0,6)); setError(''); }}
               placeholder="000000" autoFocus style={{...field, marginBottom:14, letterSpacing:'0.22em', fontWeight:700}} />
 
-            <label style={{ fontSize:12, fontWeight:600, display:'block' }}>Nueva contraseña</label>
-            <input type="password" autoComplete="new-password" value={clave}
-              onChange={e => { setClave(e.target.value); setError(''); }}
-              placeholder="Mínimo 8 caracteres" style={{...field, marginBottom:14}} />
+            <label htmlFor="nueva-clave" style={{ fontSize:12, fontWeight:600, display:'block' }}>Nueva contraseña</label>
+            <div style={{ position:'relative', marginBottom:14 }}>
+              <input id="nueva-clave" type={verClave ? 'text' : 'password'} autoComplete="new-password" value={clave}
+                onChange={e => { setClave(e.target.value); setError(''); }}
+                placeholder="Mínimo 8 caracteres" style={{...field, paddingRight:54}} />
+              <button type="button" className="toggle-eye" onClick={() => setVerClave(v => !v)}
+                aria-label={verClave ? 'Ocultar nueva contraseña' : 'Mostrar nueva contraseña'}
+                aria-pressed={verClave} title={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                style={{ top:'calc(50% + 3px)' }}>
+                <EyeIcon off={verClave} />
+              </button>
+            </div>
 
-            <label style={{ fontSize:12, fontWeight:600, display:'block' }}>Confirmar contraseña</label>
-            <input type="password" autoComplete="new-password" value={confirmar}
-              onChange={e => { setConfirmar(e.target.value); setError(''); }}
-              onKeyDown={e => e.key === 'Enter' && cambiarClave()}
-              placeholder="Repetí tu nueva contraseña" style={{...field, marginBottom:16}} />
+            <label htmlFor="confirmar-clave" style={{ fontSize:12, fontWeight:600, display:'block' }}>Confirmar contraseña</label>
+            <div style={{ position:'relative', marginBottom:16 }}>
+              <input id="confirmar-clave" type={verConfirmar ? 'text' : 'password'} autoComplete="new-password" value={confirmar}
+                onChange={e => { setConfirmar(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && cambiarClave()}
+                placeholder="Repetí tu nueva contraseña" style={{...field, paddingRight:54}} />
+              <button type="button" className="toggle-eye" onClick={() => setVerConfirmar(v => !v)}
+                aria-label={verConfirmar ? 'Ocultar confirmación de contraseña' : 'Mostrar confirmación de contraseña'}
+                aria-pressed={verConfirmar} title={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                style={{ top:'calc(50% + 3px)' }}>
+                <EyeIcon off={verConfirmar} />
+              </button>
+            </div>
 
             <button type="button" disabled={busy} onClick={cambiarClave}
               style={{...primary, cursor:busy?'wait':'pointer', opacity:busy?0.65:1, marginBottom:10}}>
