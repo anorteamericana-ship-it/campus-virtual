@@ -17,9 +17,9 @@ assert(teacher.includes("const [intent, setIntent] = React.useState("));
 assert(teacher.includes("window.addEventListener('an:teacher-material-tab', sync)"));
 assert(panel.includes("sessionStorage.setItem('an_teacher_materiales_tab', 'libros')"));
 assert(!teacher.includes("{ id:'english_lab_live'"));
-assert(!sidebar.includes("{ id: 'english_lab_live'"));
+assert(html.includes('aside[data-role="student"] button[data-nav-id="english_lab_live"]'));
 assert(html.includes('src/teacher_cs21a.jsx?v=F98.4Z6NAVF1'));
-assert(html.includes('src/sidebar.jsx?v=F98.4Z6NAVF1'));
+assert(html.includes('src/sidebar.jsx?v=F98.4Z6CS13'));
 assert(html.includes('src/additional_resources_panel_cs21a68.jsx?v=F98.4Z6NAVF1'));
 
 const eventCode=panel.match(/document\.addEventListener\('click', event => \{([\s\S]*?)\n  \}, true\);/);
