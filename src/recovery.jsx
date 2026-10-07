@@ -42,7 +42,7 @@ const secondary = {
 
 function RecoveryApp() {
   const [step, setStep] = React.useState('request');
-  const [cedula, setCedula] = React.useState('');
+  const [identificador, setIdentificador] = React.useState('');
   const [codigo, setCodigo] = React.useState('');
   const [clave, setClave] = React.useState('');
   const [confirmar, setConfirmar] = React.useState('');
@@ -51,10 +51,10 @@ function RecoveryApp() {
   const [info, setInfo] = React.useState('');
 
   const pedirCodigo = async () => {
-    const c = String(cedula || '').replace(/[-\s]/g,'');
-    if (!c) { setError('Ingresá tu número de cédula.'); return; }
+    const c = String(identificador || '').trim();
+    if (!c) { setError('Ingresá tu cédula o usuario.'); return; }
     setBusy(true); setError(''); setInfo('');
-    const data = await recoveryPost({ fn:'solicitarRecuperacionContrasena', cedula:c });
+    const data = await recoveryPost({ fn:'solicitarRecuperacionContrasena', usuario:c });
     setBusy(false);
     if (!data.ok) {
       if (data.error === 'demasiadas_solicitudes') {
@@ -65,7 +65,7 @@ function RecoveryApp() {
       setError(data.mensaje || 'No se pudo solicitar el código. Intentá de nuevo.');
       return;
     }
-    setCedula(c);
+    setIdentificador(c);
     setInfo(data.mensaje || 'Si existe una cuenta activa con correo registrado, enviamos un código.');
     setStep('reset');
   };
@@ -78,7 +78,7 @@ function RecoveryApp() {
     setBusy(true);
     const data = await recoveryPost({
       fn:'restablecerContrasena',
-      cedula:String(cedula || '').replace(/[-\s]/g,''),
+      usuario:String(identificador || '').trim(),
       codigo,
       nueva_clave:clave,
     });
@@ -109,12 +109,12 @@ function RecoveryApp() {
               Recuperar <em>acceso</em>
             </h2>
             <p style={{ margin:'0 0 22px', fontSize:13, color:'#6B7280', lineHeight:1.55 }}>
-              Ingresá tu cédula. Si tenés una cuenta activa, enviaremos un código de recuperación al correo registrado.
+              Ingresá tu cédula o usuario. Si tenés una cuenta activa, enviaremos un código de recuperación al correo registrado.
             </p>
-            <label style={{ fontSize:12, fontWeight:600, display:'block' }}>Número de cédula</label>
-            <input type="text" inputMode="numeric" autoComplete="username" value={cedula}
-              onChange={e => { setCedula(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && pedirCodigo()}
-              placeholder="Ej: 117100309" autoFocus style={{...field, marginBottom:16}} />
+            <label style={{ fontSize:12, fontWeight:600, display:'block' }}>Cédula o usuario</label>
+            <input type="text" autoComplete="username" value={identificador}
+              onChange={e => { setIdentificador(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && pedirCodigo()}
+              placeholder="Ej: 117100309 o FABIOLA" autoFocus style={{...field, marginBottom:16}} />
             <button type="button" disabled={busy} onClick={pedirCodigo}
               style={{...primary, cursor:busy?'wait':'pointer', opacity:busy?0.65:1}}>
               {busy ? 'Enviando…' : 'Enviar código'}
