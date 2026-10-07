@@ -17,9 +17,9 @@ check(admin.includes("window.crypto.subtle.digest('SHA-256', bytes)"), 'Admin ve
 check(admin.includes('bytes.length > 9 * 1024 * 1024'), 'Admin enforces signed PDF size limit');
 check(admin.includes('data-admin-signed-enrollment="true"'), 'Admin Documents tab exposes signed versioning controls');
 check(admin.includes('Las versiones anteriores se conservan'), 'Admin UI explains version preservation');
-check(admin.includes("fn:'generarDocumento'"), 'Admin keeps canonical enrollment generator');
+check(admin.includes("fn: tipo === 'CERTIFICADO' ? 'generarDocumentoVentas' : 'generarDocumento'"), 'Admin enrollment uses the same canonical renderer as Sales while preserving other admin documents');
 check(!admin.includes("fn:'generarDocumentoAdminFirmado'"), 'No duplicate enrollment generator was introduced');
-check(app.includes('src/admin_students.jsx?v=F98.4Z6C2R14C1'), 'Admin lazy bundle is cache-busted');
+check(app.includes('src/admin_students.jsx?v=F98.4Z6CS21A214'), 'Admin lazy bundle is cache-busted');
 
 if (fail) process.exit(1);
 console.log('C2-R14C ADMIN SIGNED ENROLLMENT QA PASS');
