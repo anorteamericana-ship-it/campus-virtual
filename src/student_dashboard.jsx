@@ -1792,7 +1792,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
               <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-3)' }}>1.0</span>
             </div>
             <div style={{ fontWeight:600, fontSize:13, color:'var(--ink)', lineHeight:1.3 }}>Inscripción firmada</div>
-            <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>Tu matrícula vigente. Abre siempre la versión firmada más reciente de tu expediente.</div>
+            <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>Tu matrícula vigente.</div>
             <div style={{ marginTop:'auto', fontSize:9.5, fontWeight:700, letterSpacing:'0.06em', color:'var(--an-granate)' }}>
               {signedBusy ? 'VERIFICANDO…' : 'REQUERIDO · ~5 min'}
             </div>
