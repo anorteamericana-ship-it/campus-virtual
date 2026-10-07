@@ -1643,13 +1643,102 @@ function AccesosRapidosDashboard({ onNavigate }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Bloque obligatorio — Antes de empezar tu programa (5 recuadros, colapsable)
+// Documento privado del estudiante — siempre entrega la versión firmada más reciente.
+// ─────────────────────────────────────────────────────────────────────────
+async function _studentDashboardSignedEnrollmentPdf_() {
+  const token = window.getSessionToken ? window.getSessionToken() : '';
+  const url = window.APPS_SCRIPT_URL;
+  if (!token || !url) return { ok:false, error:'sesion_no_disponible' };
+
+  const res = await fetch(`${url}?fn=descargarMatriculaFirmadaPrivada`, {
+    method:'POST',
+    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+    body:JSON.stringify({ fn:'descargarMatriculaFirmadaPrivada', token }),
+  });
+  const r = await res.json();
+  if (!r?.ok) return r || { ok:false, error:'respuesta_no_disponible' };
+  if (String(r.mime_type || '').toLowerCase() !== 'application/pdf') return { ok:false, error:'pdf_no_disponible' };
+
+  const base64 = String(r.data_base64 || '').replace(/\s+/g, '');
+  if (!base64) return { ok:false, error:'pdf_no_disponible' };
+  let binary;
+  try { binary = window.atob(base64); }
+  catch (_) { return { ok:false, error:'pdf_no_disponible' }; }
+
+  const bytes = new Uint8Array(binary.length);
+  for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const expectedSize = Number(r.size_bytes || 0);
+  if (!bytes.length || bytes.length > 9 * 1024 * 1024 || (expectedSize > 0 && expectedSize !== bytes.length)) {
+    return { ok:false, error:'pdf_no_disponible' };
+  }
+  if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70 && bytes[4] === 45)) {
+    return { ok:false, error:'pdf_no_disponible' };
+  }
+
+  const expectedHash = String(r.sha256 || '').trim().toLowerCase();
+  if (expectedHash && window.crypto?.subtle) {
+    const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+    const digestHex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (digestHex !== expectedHash) return { ok:false, error:'pdf_no_disponible' };
+  }
+
+  return {
+    ok:true,
+    nombre:String(r.nombre || 'matricula_firmada.pdf'),
+    blob:new Blob([bytes], { type:'application/pdf' }),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Bloque obligatorio — Antes de empezar tu programa (6 recuadros, colapsable)
 // ─────────────────────────────────────────────────────────────────────────
 function AntesDeEmpezar({ codigo, onNavigate }) {
   const KEY = 'an_antes_oculto_' + (codigo || 'anon');
   const [oculto, setOculto] = React.useState(() => {
     try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
   });
+  const [signedBusy, setSignedBusy] = React.useState(false);
+  const [signedError, setSignedError] = React.useState('');
+
+  const abrirInscripcionFirmada = async () => {
+    if (signedBusy) return;
+    setSignedBusy(true);
+    setSignedError('');
+    const preview = window.open('', '_blank');
+    if (preview) {
+      try {
+        preview.opener = null;
+        preview.document.title = 'Verificando inscripción firmada…';
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando inscripción firmada…</p>';
+      } catch (_) {}
+    }
+    try {
+      const r = await _studentDashboardSignedEnrollmentPdf_();
+      if (!r?.ok || !r.blob) {
+        const noFile = String(r?.error || '') === 'sin_pdf_firmado';
+        throw new Error(noFile
+          ? 'Tu inscripción firmada todavía no está disponible. Cuando Administración cargue la versión firmada, aparecerá aquí.'
+          : 'No se pudo abrir tu inscripción firmada. Intentá de nuevo.');
+      }
+      const objectUrl = URL.createObjectURL(r.blob);
+      if (preview && !preview.closed) preview.location.replace(objectUrl);
+      else {
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = r.nombre || 'matricula_firmada.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+    } catch (e) {
+      try { if (preview && !preview.closed) preview.close(); } catch (_) {}
+      setSignedError(e?.message || 'No se pudo abrir tu inscripción firmada. Intentá de nuevo.');
+    } finally {
+      setSignedBusy(false);
+    }
+  };
+
   // NOTA: localStorage solo recuerda si el estudiante colapsó el bloque en ESTE
   // navegador. NO es un registro oficial de lectura (eso requeriría un endpoint
   // de backend). Por eso el bloque/título siempre queda visible.
@@ -1683,9 +1772,32 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
         </button>
       </div>
 
-      {!oculto && (
-        <div className="grid-5" style={{ padding:'0 18px 18px' }}>
-          {items.map(item => (
+      <div className="grid-5" style={{ padding:'0 18px 18px', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))' }}>
+          <button
+            key="signed-enrollment"
+            className="before-card"
+            onClick={abrirInscripcionFirmada}
+            disabled={signedBusy}
+            aria-label="Abrir inscripción firmada vigente"
+            style={{ opacity:signedBusy ? .72 : 1 }}
+          >
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{
+                width:30, height:30, borderRadius:8, flexShrink:0,
+                background:'color-mix(in srgb, var(--an-granate) 12%, white)',
+                color:'var(--an-granate)', display:'flex', alignItems:'center', justifyContent:'center',
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 15l2 2 5-5"/></svg>
+              </span>
+              <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-3)' }}>1.0</span>
+            </div>
+            <div style={{ fontWeight:600, fontSize:13, color:'var(--ink)', lineHeight:1.3 }}>Inscripción firmada</div>
+            <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>Tu matrícula vigente. Abre siempre la versión firmada más reciente de tu expediente.</div>
+            <div style={{ marginTop:'auto', fontSize:9.5, fontWeight:700, letterSpacing:'0.06em', color:'var(--an-granate)' }}>
+              {signedBusy ? 'VERIFICANDO…' : 'REQUERIDO · ~5 min'}
+            </div>
+          </button>
+          {!oculto && items.map(item => (
             <button key={item.id} className="before-card" onClick={() => onNavigate('info_programa')}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <span style={{
@@ -1708,7 +1820,11 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
             </button>
           ))}
         </div>
-      )}
+      {signedError ? (
+        <div role="alert" style={{ margin:'-7px 18px 16px', padding:'10px 12px', borderRadius:10, background:'color-mix(in srgb, var(--danger) 7%, white)', color:'var(--danger)', fontSize:11.5, lineHeight:1.45 }}>
+          {signedError}
+        </div>
+      ) : null}
     </div>
   );
 }
