@@ -26,6 +26,60 @@ must(src.includes('const sesion = React.useMemo(() => leerSesionDocente(), []);'
 must(src.includes("window.cerrarSesionServidor") && src.includes("window.location.href = 'login.html'"),'Cambió cierre/redirección de sesión.');
 must(app.includes("teacher_views: ['src/vista_docente.jsx") && app.includes("vista_docente: ['src/vista_docente.jsx"),'app dejó de cargar vista_docente en rutas efectivas.');
 
-let restored=src.replace(HELPER+ANCHOR,ANCHOR).replace(NEW_REFETCH,OLD_REFETCH).replace(NEW_INITIAL,OLD_INITIAL);
+// F99 SIN_INA: inversión EXACTA de las seis sustituciones auditadas.
+// Mantiene la verificación SHA previa CS21A210AN sin aceptar cambios arbitrarios.
+const F99_REVERSALS = [
+  [
+    String.raw`      // La clasificación proviene del PROGRAMA del grupo (columna C);
+      // un flag PC heredado o un horario I CAN no obliga a SIN_INA.
+      const declarado=String(r.programa||lec.programa||'').trim().toUpperCase().replace(/\s+/g,'_');
+      const efectivo=(declarado==='INA'||declarado==='CON_INA')?'INA':(declarado||'SIN_INA');`,
+    String.raw`      const declarado=String(r.programa||lec.programa||'').trim().toUpperCase();
+      const efectivo=(declarado==='INA'||declarado==='CON_INA'||lec.progress_check===true)?'INA':(declarado||'SIN_INA');`
+  ],
+  [
+    String.raw`  const includesPC = esINA && esPCLec && riel === 'curso';`,
+    String.raw`  const includesPC = esPCLec && riel === 'curso' && (esINA || lec.progress_check === true);`
+  ],
+  [
+    String.raw`      if (esINA && !f.retro.trim()) {`,
+    String.raw`      if (!f.retro.trim()) {`
+  ],
+  [
+    String.raw`            {lec.riel === 'ican' && programa === 'INA' && (`,
+    String.raw`            {lec.riel === 'ican' && (`
+  ],
+  [
+    String.raw`  // Comentario individual obligatorio solo cuando GRUPOS.PROGRAMA es INA.
+  const esIcan = String(riel||'').toLowerCase()==='ican';
+  const retroObligatoria = !!esINA;`,
+    String.raw`  // Regla institucional F98.4-Z6-G: toda sesión requiere comentario individual.
+  const esIcan = String(riel||'').toLowerCase()==='ican';
+  const retroObligatoria = true;`
+  ],
+  [
+    String.raw`  const retroPlaceholder = !presente
+    ? (esIcan
+        ? 'Indicá qué se trabajó en I CAN y cómo puede recuperar la participación.'
+        : 'Podés avisar qué se vio, tareas y cómo ponerse al día.')
+    : (esIcan
+        ? 'Retroalimentación individual de la sesión Club I CAN.'
+        : 'Comentario sobre la clase y el avance del estudiante.');`,
+    String.raw`  const retroPlaceholder = !presente
+    ? (esIcan
+        ? 'Indicá qué se trabajó en I CAN y cómo puede recuperar la participación (obligatorio).'
+        : 'Avisá qué se vio, tareas y lo que debe ponerse al día (obligatorio).')
+    : (esIcan
+        ? 'Retroalimentación individual de la sesión Club I CAN (obligatorio).'
+        : 'Retroalimentación individual de la clase (obligatorio).');`
+  ]
+];
+let preF99=src;
+F99_REVERSALS.forEach(function(pair,i){
+  const matches=preF99.split(pair[0]).length-1;
+  must(matches===1,'F99: cambio '+(i+1)+' ausente, ambiguo o modificado ('+matches+')');
+  preF99=preF99.replace(pair[0],pair[1]);
+});
+let restored=preF99.replace(HELPER+ANCHOR,ANCHOR).replace(NEW_REFETCH,OLD_REFETCH).replace(NEW_INITIAL,OLD_INITIAL);
 must(sha(restored)===BASE_BLOB,`Reversión AN no reconstruye preimagen exacta: ${sha(restored)}`);
 console.log('QA VISTA DOCENTE SAFE ERRORS CS21A210AN PASS');

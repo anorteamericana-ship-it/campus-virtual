@@ -1,0 +1,22 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+const require=createRequire(import.meta.url);
+const Babel=require('../vendor/babel.js');
+const ui=fs.readFileSync('src/vista_docente.jsx','utf8');
+const app=fs.readFileSync('src/app.jsx','utf8');
+const html=fs.readFileSync('campus.html','utf8');
+function must(cond,label){assert(cond,label); console.log('PASS '+label);}
+Babel.transform(ui,{presets:['react'],plugins:['transform-block-scoping']});
+Babel.transform(app,{presets:['react'],plugins:['transform-block-scoping']});
+must(ui.includes("const efectivo=(declarado==='INA'||declarado==='CON_INA')?'INA':(declarado||'SIN_INA')"),'programa from declared roster, no PC inference');
+must(ui.includes("const includesPC = esINA && esPCLec && riel === 'curso';"),'Progress Check only when INA');
+must(ui.includes("if (esINA && !f.retro.trim())"),'individual feedback required only when INA');
+must(ui.includes('const retroObligatoria = !!esINA;'),'optional feedback badge SIN_INA');
+must(ui.includes("if (f.retro.trim()) retroalimentacion[s.code] = f.retro.trim()"),'voluntary feedback sent when present');
+must(ui.includes("{lec.riel === 'ican' && programa === 'INA' && ("),'I CAN compulsory badge shown only on INA');
+must(ui.includes("asistencias[s.code] = !!f.presente;"),'attendance remains submitted for all');
+must(!ui.includes("const retroObligatoria = true;"),'legacy universal comment requirement removed');
+must((app.match(/src\/vista_docente\.jsx\?v=F99SININA1/g)||[]).length===7,'all seven lazy routes cache-busted');
+must(html.includes('src/app.jsx?v=F99SININA1'),'app route map cache-busted');
+console.log('F99 SININA FRONTEND QA: 10 checks + Babel PASS (synthetic source inspection; no browser session).');
