@@ -341,6 +341,74 @@ function VxDocPhoto({ src, cap, onView }) {
   );
 }
 
+function VxPrivateDocPreview({ cedula, tipo, fileId, cap, onViewPrivate }) {
+  const [state, setState] = React.useState({ status:'loading', url:'', mime:'' });
+
+  React.useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    const ced = String(cedula || '').trim();
+    const kind = String(tipo || '').trim().toUpperCase();
+    const id = String(fileId || '').trim();
+
+    if (!ced || !kind || !id || typeof window.descargarDocumentoProspectoPrivado !== 'function') {
+      setState({ status:'error', url:'', mime:'' });
+      return () => {};
+    }
+
+    setState({ status:'loading', url:'', mime:'' });
+    (async () => {
+      try {
+        const r = await window.descargarDocumentoProspectoPrivado(ced, kind, id);
+        if (!active) return;
+        if (!r?.ok || !r.blob) {
+          setState({ status:'error', url:'', mime:'' });
+          return;
+        }
+        const mime = String(r.mime_type || '').toLowerCase();
+        if (/^image\/(jpeg|png|gif|webp)$/i.test(mime)) {
+          objectUrl = URL.createObjectURL(r.blob);
+          setState({ status:'ready', url:objectUrl, mime });
+        } else {
+          setState({ status:'ready-no-thumb', url:'', mime });
+        }
+      } catch (_) {
+        if (active) setState({ status:'error', url:'', mime:'' });
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [cedula, tipo, fileId]);
+
+  return (
+    <button
+      type="button"
+      className="vx-doc-empty"
+      data-private-document="true"
+      onClick={() => onViewPrivate && onViewPrivate(tipo, fileId, cap)}
+      style={{ width:'100%', cursor:'pointer', font:'inherit', overflow:'hidden', padding:0 }}
+      title={'Abrir ' + cap}
+    >
+      {state.url ? (
+        <div style={{ height:128, background:'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+          <img src={state.url} alt={cap} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+        </div>
+      ) : (
+        <div className="vx-doc-ph">
+          {state.status === 'loading' ? 'Cargando vista…' : 'Abrir documento'}
+        </div>
+      )}
+      <div className="vx-doc-cap" style={{ margin:'8px 8px 5px' }}>{cap}</div>
+      <div style={{ fontSize:11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35, padding:'0 8px 10px' }}>
+        {state.status === 'error' ? 'Vista previa no disponible · abrir documento' : 'Documento privado disponible'}
+      </div>
+    </button>
+  );
+}
+
 function DocsBlock({ detalle, onView, onViewPrivate }) {
   // SEC-002 CS21A174: se conserva el consumidor legacy FOTO_* hasta que exista
   // entrega privada específica de identidad/título. El mapa FILE_ID solo evita
@@ -371,20 +439,14 @@ function DocsBlock({ detalle, onView, onViewPrivate }) {
         }
         if (privateFileId) {
           return (
-            <button
+            <VxPrivateDocPreview
               key={key}
-              type="button"
-              className="vx-doc-empty"
-              data-private-document="true"
-              onClick={() => onViewPrivate && onViewPrivate(privateTypeByLegacy[key], privateFileId, cap)}
-              style={{ width:'100%', cursor:'pointer', font:'inherit' }}
-            >
-              <div className="vx-doc-ph">Abrir documento</div>
-              <div className="vx-doc-cap" style={{ marginBottom: 6 }}>{cap}</div>
-              <div style={{ fontSize: 11, color:'var(--v-ink-3)', textAlign:'center', lineHeight:1.35 }}>
-                Documento privado disponible
-              </div>
-            </button>
+              cedula={detalle.cedula || detalle.CEDULA || ''}
+              tipo={privateTypeByLegacy[key]}
+              fileId={privateFileId}
+              cap={cap}
+              onViewPrivate={onViewPrivate}
+            />
           );
         }
         return (
