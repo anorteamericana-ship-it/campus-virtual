@@ -6,7 +6,7 @@ import {
   downloadProspectCsvViaDialog,
   verifyDoubleCsv,
 } from './conape_v444_csv.mjs';
-const VERSION = 'V4.5.16-PREFER-DATA-TABLE';
+const VERSION = 'V4.5.17-ORDINAL14-RECOVERY';
 const PORT = Number(process.env.PORT || 8080);
 const CAMPUS_URL = String(process.env.CAMPUS_APPS_SCRIPT_URL || '').trim();
 const CONAPE_HOME = String(process.env.CONAPE_PORTAL_HOME_URL || 'https://online.conape.go.cr/apex/f?p=302:1').trim();
@@ -1632,7 +1632,9 @@ async function readProspectListPage(p) {
       ['PROXIMO_DESEMBOLSO','proximo_desembolso'],['PROXIMODESEMBOLSO','proximo_desembolso'],['PR_XIMODESEMBOLSO','proximo_desembolso'],
     ]);
     let best = null;
-    for (const table of Array.from(document.querySelectorAll('table'))) {
+    let schemaMode = 'HEADER';
+    const allTables = Array.from(document.querySelectorAll('table'));
+    for (const table of allTables) {
       const headers = Array.from(table.querySelectorAll('th')).map(th => aliases.get(norm(th.textContent)) || null);
       const phoneOk = phoneFields.some(key => headers.includes(key));
       const score = required.filter(key => headers.includes(key)).length + (phoneOk ? 1 : 0);
@@ -1644,6 +1646,50 @@ async function readProspectListPage(p) {
         best = { table, headers, score, dataRows };
       }
     }
+
+    // SIFA ha cambiado etiquetas visibles del Interactive Report sin cambiar
+    // el contrato/orden de sus 14 columnas. Si los headers no coinciden por
+    // texto, aceptar únicamente una tabla de 14 columnas cuyo primer campo se
+    // comporte como cédula en la gran mayoría de las filas. Esto evita elegir
+    // tablas auxiliares de APEX y mantiene una validación fuerte del esquema.
+    const ordinal14 = [
+      'cedula','apellido_1','apellido_2','nombre','telefono','correo','estado',
+      'fecha_estado','fecha_registro','usuario_registro','aprobacion',
+      'formalizacion','ultimo_desembolso','proximo_desembolso'
+    ];
+    const missingByHeader = best
+      ? required.filter(key => !best.headers.includes(key)).concat(
+          phoneFields.some(key => best.headers.includes(key)) ? [] : ['telefono_o_celular']
+        )
+      : required.slice();
+
+    if (!best || best.score < 2 || missingByHeader.length) {
+      let ordinalBest = null;
+      for (const table of allTables) {
+        const thCount = table.querySelectorAll('th').length;
+        if (thCount !== ordinal14.length) continue;
+        const trs = Array.from(table.querySelectorAll('tbody tr')).filter(tr => {
+          const cells = Array.from(tr.querySelectorAll('td'));
+          return cells.length === ordinal14.length;
+        });
+        if (!trs.length) continue;
+        const sample = trs.slice(0, Math.min(20, trs.length));
+        const cedulaLike = sample.filter(tr => {
+          const first = String(tr.querySelector('td')?.textContent || '').replace(/\D/g,'');
+          return first.length >= 8 && first.length <= 12;
+        }).length;
+        const ratio = sample.length ? cedulaLike / sample.length : 0;
+        if (ratio < 0.7) continue;
+        if (!ordinalBest || trs.length > ordinalBest.dataRows) {
+          ordinalBest = { table, headers:ordinal14.slice(), score:required.length + 1, dataRows:trs.length };
+        }
+      }
+      if (ordinalBest) {
+        best = ordinalBest;
+        schemaMode = 'ORDINAL14';
+      }
+    }
+
     if (!best || best.score < 2) return { ok:false, reason:'REPORT_NOT_FOUND', missing:required, rows:[] };
     const missing = required.filter(key => !best.headers.includes(key));
     if (!phoneFields.some(key => best.headers.includes(key))) missing.push('telefono_o_celular');
@@ -1659,7 +1705,7 @@ async function readProspectListPage(p) {
       }
       if (Object.values(row).some(Boolean)) rows.push(row);
     }
-    return { ok:true, missing:[], rows };
+    return { ok:true, missing:[], rows, schema_mode:schemaMode };
   }, { fields:PROSPECT_LIST_FIELDS, required:PROSPECT_LIST_REQUIRED_FIELDS, phoneFields:PROSPECT_LIST_PHONE_FIELDS }).catch(() => ({ ok:false, reason:'REPORT_READ_FAILED', missing:[], rows:[] }));
 }
 

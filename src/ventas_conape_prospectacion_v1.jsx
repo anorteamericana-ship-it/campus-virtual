@@ -3,7 +3,7 @@
   'use strict';
 
   const { useCallback, useEffect, useMemo, useRef, useState } = React;
-  const BUILD = 'CONAPE_PROSPECTACION_V2_REFRESH_UI_20261004';
+  const BUILD = 'CONAPE_PROSPECTACION_V2_HISTORY_UI_20261007';
   const MAX_BYTES = 2 * 1024 * 1024;
 
   function injectStyles() {
@@ -272,21 +272,27 @@
           )}
 
           {error ? <div className="cpv1-empty">No se pudo cargar Prospectación CONAPE: {error}</div> : null}
-          {!error && !loading && events.length === 0 ? <div className="cpv1-empty">Todavía no hay movimientos de Prospectación registrados. La primera importación crea la línea base sin generar alertas históricas.</div> : null}
 
-          <div className="cpv1-events">
-            {visibleEvents.map(ev => (
-              <div className="cpv1-event" data-sem={ev.semaforo} key={ev.movimiento_id}>
-                <span className="cpv1-dot" />
-                <div>
-                  <button type="button" className="cpv1-open" onClick={() => onOpenProspecto && onOpenProspecto(ev.cedula)}>{ev.titulo || ev.tipo}</button>
-                  <div className="cpv1-event-meta">{ev.nombre || ev.cedula} · {formatValue(ev.valor_antes)} → {formatValue(ev.valor_despues)}{ev.fecha_evento ? ` · fecha CONAPE ${ev.fecha_evento}` : ''}</div>
+          <details className="cpv1-current" open>
+            <summary>Historial de movimientos CONAPE ({events.length})</summary>
+            <div className="cpv1-sub" style={{ marginTop:8, marginBottom:10 }}>
+              Registro persistente: cada cambio detectado se conserva aunque después cambie nuevamente el estado actual.
+            </div>
+            {!error && !loading && events.length === 0 ? <div className="cpv1-empty">Todavía no hay movimientos de Prospectación registrados. La primera lectura crea la línea base y, desde la siguiente actualización, los cambios quedan guardados aquí.</div> : null}
+            <div className="cpv1-events">
+              {visibleEvents.map(ev => (
+                <div className="cpv1-event" data-sem={ev.semaforo} key={ev.movimiento_id}>
+                  <span className="cpv1-dot" />
+                  <div>
+                    <button type="button" className="cpv1-open" onClick={() => onOpenProspecto && onOpenProspecto(ev.cedula)}>{ev.titulo || ev.tipo}</button>
+                    <div className="cpv1-event-meta">{ev.nombre || ev.cedula} · {formatValue(ev.valor_antes)} → {formatValue(ev.valor_despues)}{ev.fecha_evento ? ` · fecha CONAPE ${ev.fecha_evento}` : ''}</div>
+                  </div>
+                  <div className="cpv1-event-age">{ev.semaforo} · {Number(ev.dias || 0)} d</div>
                 </div>
-                <div className="cpv1-event-age">{ev.semaforo} · {Number(ev.dias || 0)} d</div>
-              </div>
-            ))}
-          </div>
-          {events.length > 12 && <button type="button" className="cpv1-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'Mostrar menos' : `Ver todos los movimientos (${events.length})`}</button>}
+              ))}
+            </div>
+            {events.length > 12 && <button type="button" className="cpv1-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'Mostrar menos' : `Ver todos los movimientos (${events.length})`}</button>}
+          </details>
 
           <details className="cpv1-current">
             <summary>Estado actual CONAPE ({rows.length})</summary>

@@ -676,11 +676,16 @@ async function descargarDocumentoExtraPrivado(cedula, fileId) {
 }
 
 
+const _ventasProspectPrivateDocCache = new Map();
+
 async function descargarDocumentoProspectoPrivado(cedula, tipo, fileId = '') {
   const ced = String(cedula || '').trim();
   const kind = String(tipo || '').trim().toUpperCase();
   const id = String(fileId || '').trim();
   if (!ced || !kind) return { ok:false, error:'cedula_tipo_requeridos' };
+  const cacheKey = `${ced}|${kind}|${id}`;
+  const cached = _ventasProspectPrivateDocCache.get(cacheKey);
+  if (cached?.ok && cached.blob) return cached;
   const r = await postVentasData('descargarDocumentoProspectoPrivado', {
     cedula: ced,
     tipo: kind,
@@ -701,7 +706,7 @@ async function descargarDocumentoProspectoPrivado(cedula, tipo, fileId = '') {
   if (!(mime === 'application/pdf' || /^image\//.test(mime))) {
     return { ok:false, error:'tipo_documento_privado_no_permitido' };
   }
-  return {
+  const result = {
     ok:true,
     private_delivery:true,
     tipo:String(r.tipo || kind),
@@ -711,6 +716,8 @@ async function descargarDocumentoProspectoPrivado(cedula, tipo, fileId = '') {
     sha256:expectedHash,
     blob:new Blob([bytes], { type:mime }),
   };
+  _ventasProspectPrivateDocCache.set(cacheKey, result);
+  return result;
 }
 
 async function getResumenVentas(asesor) {
