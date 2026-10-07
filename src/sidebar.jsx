@@ -508,7 +508,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
         ...(mostrarAcademiaPlay ? [
           { id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' },
-          { id: 'english_lab_live', label: 'English LAB Live', icon: 'english_lab', badge: 'Nuevo' },
         ] : []),
       ],
     },
@@ -530,7 +529,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
     { id: 'materiales', label: 'Biblioteca del Programa', icon: 'materials' },
     ...(mostrarAcademiaPlay ? [
       { id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' },
-      { id: 'english_lab_live', label: 'English LAB Live', icon: 'english_lab', badge: 'Nuevo' },
     ] : []),
     { id: 'examenes', label: 'Exámenes', icon: 'check' },
     { id: 'cronograma_grupo', label: 'Cronograma Inglés Conversacional', icon: 'calendar' },

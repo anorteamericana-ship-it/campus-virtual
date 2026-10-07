@@ -255,7 +255,15 @@
   const OldSidebar = window.Sidebar || (typeof Sidebar === 'function' ? Sidebar : null);
   function setHubScreen(tab){ sessionStorage.setItem('an_teacher_materiales_tab', tab); try { window.dispatchEvent(new CustomEvent('an:teacher-material-tab', { detail:{ tab } })); } catch(_) {} }
   function TeacherSidebarCS21A({ active, setActive, usuario, onLogout }){
-    const usr = usuario || session() || {}; const name = usr.nombre || '—'; const init = name.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'AN'; const intent = sessionStorage.getItem('an_teacher_materiales_tab') || 'info';
+    const usr = usuario || session() || {}; const name = usr.nombre || '—'; const init = name.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'AN';
+    // Mantener el activo en estado React, no en una lectura aislada del storage.
+    // Al navegar dentro de materiales, la ruta principal puede seguir igual.
+    const [intent, setIntent] = React.useState(() => sessionStorage.getItem('an_teacher_materiales_tab') || 'info');
+    React.useEffect(() => {
+      const sync = event => setIntent(event?.detail?.tab || sessionStorage.getItem('an_teacher_materiales_tab') || 'info');
+      window.addEventListener('an:teacher-material-tab', sync);
+      return () => window.removeEventListener('an:teacher-material-tab', sync);
+    }, []);
     const nav = [
       { section:'Principal', items:[
         { id:'perfil', label:'Mi Perfil', icon:'profile' },
@@ -279,7 +287,7 @@
       ]},
       { section:'', items:[
         { id:'ican', label:'I CAN Conversation Club', icon:'ican' },
-        { id:'english_lab_live', label:'English LAB', icon:'english_lab', badge:'Live' },
+        // English LAB Live: oculto hasta que el piloto esté validado en producción.
       ]},
       { section:'Evaluación y comunicación', items:[
         { id:'examenes', label:'Exámenes', icon:'check' },

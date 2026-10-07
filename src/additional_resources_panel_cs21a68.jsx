@@ -348,6 +348,13 @@
 
     button.addEventListener('click', () => {
       window.__AN_ADDITIONAL_RESOURCES_OPENING_CS21A68__ = true;
+      // El botón de libros es el puente a la ruta materiales. Sincronizar
+      // primero su pestaña evita que otra opción (p. ej. Plan de Estudio)
+      // permanezca marcada a la vez que Recursos adicionales.
+      if (role === 'teacher') {
+        try { sessionStorage.setItem('an_teacher_materiales_tab', 'libros'); } catch (_) {}
+        try { window.dispatchEvent(new CustomEvent('an:teacher-material-tab', { detail:{ tab:'libros' } })); } catch (_) {}
+      }
       setMode('additional');
       booksButton.click();
       setTimeout(() => {
@@ -383,17 +390,18 @@
     const showActive = mode === 'additional' && (panelOpen || opening);
 
     if (showActive) {
-      if (booksButton.classList.contains('active')) {
-        booksButton.dataset.anCs21a68WasActive = '1';
-        booksButton.classList.remove('active');
-      }
-      additional.classList.add('active');
+      // Solo una opción activa por sidebar, incluso cuando React conserva
+      // temporalmente un estado de navegación anterior.
+      aside.querySelectorAll('button.sb-item').forEach(other => {
+        if (other !== additional && other.classList.contains('active')) other.classList.remove('active');
+        if (other !== additional && other.hasAttribute('aria-current')) other.removeAttribute('aria-current');
+      });
+      if (!additional.classList.contains('active')) additional.classList.add('active');
+      additional.setAttribute('aria-current', 'page');
     } else {
-      additional.classList.remove('active');
-      if (mode === 'books' && booksButton.dataset.anCs21a68WasActive === '1') {
-        booksButton.classList.add('active');
-        delete booksButton.dataset.anCs21a68WasActive;
-      }
+      if (additional.classList.contains('active')) additional.classList.remove('active');
+      additional.removeAttribute('aria-current');
+      delete booksButton.dataset.anCs21a68WasActive;
     }
   }
 
@@ -414,7 +422,10 @@
   document.addEventListener('click', event => {
     const button = event.target?.closest?.('aside button');
     if (!button || event.isTrusted !== true) return;
-    if (menuLabel(button) === 'Libros y Audios') {
+    // Toda navegación REAL que salga de Recursos adicionales debe apagar
+    // ese modo. Antes solo lo hacía Libros y Audios y las otras pestañas
+    // seguían mostrando recursos aunque se pulsara Plan de Estudio/Syllabus.
+    if (menuLabel(button) !== 'Recursos adicionales' && readMode() === 'additional') {
       window.__AN_ADDITIONAL_RESOURCES_OPENING_CS21A68__ = false;
       setMode('books');
     }
