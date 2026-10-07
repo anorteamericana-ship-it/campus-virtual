@@ -1028,8 +1028,10 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
       }
       const list = r.estudiantes || [];
       setStudents(list);
-      const declarado=String(r.programa||lec.programa||'').trim().toUpperCase();
-      const efectivo=(declarado==='INA'||declarado==='CON_INA'||lec.progress_check===true)?'INA':(declarado||'SIN_INA');
+      // La clasificación proviene del PROGRAMA del grupo (columna C);
+      // un flag PC heredado o un horario I CAN no obliga a SIN_INA.
+      const declarado=String(r.programa||lec.programa||'').trim().toUpperCase().replace(/\s+/g,'_');
+      const efectivo=(declarado==='INA'||declarado==='CON_INA')?'INA':(declarado||'SIN_INA');
       setPrograma(efectivo);
       const initial = {};
       list.forEach(e => { initial[e.code] = { presente: true, retro: '', pc: '' }; });
@@ -1040,7 +1042,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
   }, [lec.cod_grupo, lec.nivel]);
 
   const esINA      = programa === 'INA' || programa === 'CON_INA';
-  const includesPC = esPCLec && riel === 'curso' && (esINA || lec.progress_check === true);
+  const includesPC = esINA && esPCLec && riel === 'curso';
 
   // ¿Hay cambios? — para confirmar al cancelar
   const dirty = React.useMemo(() => {
@@ -1064,7 +1066,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
     for (const s of (students || [])) {
       const f = formData[s.code];
       if (!f) continue;
-      if (!f.retro.trim()) {
+      if (esINA && !f.retro.trim()) {
         errs[s.code] = !f.presente
           ? `Falta el mensaje para ${s.name} (ausente).`
           : `Falta retroalimentación para ${s.name}.`;
@@ -1335,7 +1337,7 @@ function ModalCierreHeader({ lec, pal, programa, includesPC, onClose, onSolicita
                 Progress Check obligatorio · {PC_UNIDADES_MAP[Number(lec.leccion)] || ''}
               </span>
             )}
-            {lec.riel === 'ican' && (
+            {lec.riel === 'ican' && programa === 'INA' && (
               <span style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
                 padding: '3px 8px', borderRadius: 'var(--r-pill)',
@@ -1468,16 +1470,16 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
   ref
 ) {
   const presente = data.presente;
-  // Regla institucional F98.4-Z6-G: toda sesión requiere comentario individual.
+  // Comentario individual obligatorio solo cuando GRUPOS.PROGRAMA es INA.
   const esIcan = String(riel||'').toLowerCase()==='ican';
-  const retroObligatoria = true;
+  const retroObligatoria = !!esINA;
   const retroPlaceholder = !presente
     ? (esIcan
-        ? 'Indicá qué se trabajó en I CAN y cómo puede recuperar la participación (obligatorio).'
-        : 'Avisá qué se vio, tareas y lo que debe ponerse al día (obligatorio).')
+        ? 'Indicá qué se trabajó en I CAN y cómo puede recuperar la participación.'
+        : 'Podés avisar qué se vio, tareas y cómo ponerse al día.')
     : (esIcan
-        ? 'Retroalimentación individual de la sesión Club I CAN (obligatorio).'
-        : 'Retroalimentación individual de la clase (obligatorio).');
+        ? 'Retroalimentación individual de la sesión Club I CAN.'
+        : 'Comentario sobre la clase y el avance del estudiante.');
 
   const hasError = !!error;
 
