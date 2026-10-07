@@ -15,6 +15,7 @@ const student = read('src/student_modules.jsx');
 const data = read('src/data.jsx');
 const pagos = read('src/solicitudes_pago.jsx');
 const experience = read('src/student_experience.jsx');
+const dashboard = read('src/student_dashboard.jsx');
 
 // CS21A160 · certificado estudiante privado.
 must(student, "postStudentModules('descargarMiCertificadoPrivado'", 'private student certificate route');
@@ -37,8 +38,16 @@ must(experience, "fn:'descargarMatriculaFirmadaPrivada'", 'private signed enroll
 must(experience, 'StudentSignedEnrollmentPrivateF984', 'private signed enrollment UI');
 must(experience, 'URL.createObjectURL', 'signed enrollment ObjectURL');
 
+// CS21A215 · matrícula firmada también visible como lectura obligatoria en Mi Perfil.
+must(dashboard, '_studentDashboardSignedEnrollmentPdf_', 'profile signed enrollment private helper');
+must(dashboard, "fn:'descargarMatriculaFirmadaPrivada'", 'profile private signed enrollment route');
+must(dashboard, 'Inscripción firmada', 'profile required signed enrollment card');
+must(dashboard, "'REQUERIDO · ~5 min'", 'profile signed enrollment required label');
+must(dashboard, 'URL.createObjectURL', 'profile signed enrollment ObjectURL');
+mustNot(dashboard, 'drive.google.com', 'profile direct Drive navigation');
+
 // Este corte es consumidor/source. No puede fingir que backend/ACL ya cerraron.
-for (const [name, text] of [['student_modules', student], ['data', data], ['solicitudes_pago', pagos], ['student_experience', experience]]) {
+for (const [name, text] of [['student_modules', student], ['data', data], ['solicitudes_pago', pagos], ['student_experience', experience], ['student_dashboard', dashboard]]) {
   mustNot(text, 'DriveApp.Access.ANYONE', `${name} public ACL mutation`);
   mustNot(text, '.setSharing(', `${name} sharing mutation`);
 }
