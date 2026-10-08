@@ -1473,10 +1473,10 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
             'Planificación inicial del grupo'}
         </span>
         {!planMode&&(planState==='SIN_PROPUESTA'||planState==='RECHAZADO')&&
-          <button type="button" onClick={comenzarPlan} style={{marginLeft:'auto',background:'#073B7A',color:'white',border:0,borderRadius:8,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>
+          <button type="button" onClick={comenzarPlan} style={{background:'#073B7A',color:'white',border:0,borderRadius:8,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>
             Organizar cronograma
           </button>}
-        {planMode&&<div style={{display:'flex',gap:6,marginLeft:'auto'}}>
+        {planMode&&<div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           <button type="button" className="btn btn-ghost" onClick={()=>{setPlanDates({});setPlanError('');}}>Restablecer</button>
           <button type="button" className="btn btn-ghost" onClick={()=>{setPlanMode(false);setPlanError('');}}>Salir sin enviar</button>
           <button type="button" className="btn btn-primary" disabled={planWorking||!planValidation.ok||!planChanged.length}

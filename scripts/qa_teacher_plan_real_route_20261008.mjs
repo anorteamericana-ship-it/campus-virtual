@@ -12,11 +12,13 @@ for(const [path,src] of [['teacher_views.jsx',tv],['panel_suspensiones.jsx',admi
   B.transform(src,{presets:['react'],plugins:['transform-block-scoping']});
 }
 assert(app.includes('cronograma_grupo: <LazyRoute title="Cronograma Inglés Conversacional" component="CronogramaDocenteSeguroF82"'));
-assert(app.includes('teacher_views.jsx?v=F99TEACHERLABELFIX20261008'));
-assert(bridge.includes('teacher_views.jsx?v=F99TEACHERLABELFIX20261008'));
-assert(page.includes('src/app.jsx?v=F99TEACHERLABELFIX20261008'));
-assert(page.includes('src/att77_bridge.js?v=F99TEACHERLABELFIX20261008'));
+assert(app.includes('teacher_views.jsx?v=F99PLANBTN20261008'));
+assert(bridge.includes('teacher_views.jsx?v=F99PLANBTN20261008'));
+assert(page.includes('src/app.jsx?v=F99PLANBTN20261008'));
+assert(page.includes('src/att77_bridge.js?v=F99PLANBTN20261008'));
 assert(tv.includes('Organizar cronograma'));
+assert(!tv.includes("onClick={comenzarPlan} style={{marginLeft:'auto'"),'Organizar must not be pushed beyond the right edge on narrow screens');
+assert(!tv.includes("gap:6,marginLeft:'auto'"),'Actions must wrap on narrow screens');
 // Regression: this undefined helper crashed the teacher's entire Calendar section in PROD.
 const monthStart=tv.indexOf('function TeacherAgendaMonthF82(');
 const monthEnd=tv.indexOf('function CronogramaDocenteSeguroF82(',monthStart);
