@@ -12,7 +12,7 @@ function att77SafeUserError(raw,fallback,context){
 }
 const DEPS=[
  'src/vista_docente.jsx?v=F98.4Z6CS19F',
- 'src/teacher_views.jsx?v=F99PLANBTN20261008',
+ 'src/teacher_views.jsx?v=F99DUALADVANCE20261008',
  'src/cronograma_todos.jsx?v=F98.4Z6CM',
  'src/cronograma_grupo.jsx?v=F99CALMOVE20261008'
 ];
