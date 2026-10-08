@@ -2390,6 +2390,45 @@ async function readRowsAllSnapshot(p) {
   return { rows, fingerprint:prospectSnapshotFingerprint(rows) };
 }
 
+// CONAPE Prospectación — recuperación de lectura contra sesión APEX caducada.
+// La ruta es exclusivamente de lectura: nunca publica snapshots ni altera eventos.
+// Si el primer intento falla, descartamos contexto/cookies/navegador y hacemos
+// UNA lectura nueva. Cada intento exige dos lecturas completas concordantes.
+async function readProspectRowsWithSessionRecovery() {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    let step = 'BROWSER';
+    try {
+      const p = await ConapeSession.browserPage();
+      step = 'FIRST_READ';
+      const first = await readRowsAllSnapshot(p);
+      step = 'RELOAD';
+      await p.reload({ waitUntil:'domcontentloaded', timeout:30_000 });
+      await waitForApexDynamicAction(p);
+      step = 'SECOND_READ';
+      const second = await readRowsAllSnapshot(p);
+      return { first, second, recovery_used:attempt === 2 };
+    } catch (error) {
+      const safeCode = txt(error?.code || error?.name || 'UNEXPECTED')
+        .toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 64);
+      console.log(JSON.stringify({
+        event:'conape_prospectacion_read_failed',
+        version:VERSION, step, attempt, code:safeCode,
+        recovery:attempt === 1 ? 'FRESH_BROWSER_RETRY' : 'EXHAUSTED',
+        pii:false,
+      }));
+      if (attempt === 2) {
+        // No exponer stack, URL, sesión, credenciales ni texto externo al cliente.
+        if (error instanceof AppError) throw error;
+        throw new AppError('CONAPE_REPORT_READ_UNEXPECTED',
+          'CONAPE no permitió completar la lectura del reporte.', 503, 'REPORT');
+      }
+      await ConapeSession.close().catch(() => {});
+    }
+  }
+  throw new AppError('CONAPE_REPORT_READ_EXHAUSTED',
+    'CONAPE no permitió completar el reporte.', 503, 'REPORT');
+}
+
 async function listProspectsFromHome() {
   const started = Date.now();
   const method = 'HTML_DOUBLE';
@@ -2400,14 +2439,11 @@ async function listProspectsFromHome() {
   let rowsB = null;
   let countsMatch = false;
   let columnsOk = false;
+  let recoveryUsed = false;
 
   try {
-    const p = await ConapeSession.browserPage();
-    const first = await readRowsAllSnapshot(p);
-
-    await p.reload({ waitUntil:'domcontentloaded', timeout:30_000 });
-    await waitForApexDynamicAction(p);
-    const second = await readRowsAllSnapshot(p);
+    const { first, second, recovery_used } = await readProspectRowsWithSessionRecovery();
+    recoveryUsed = recovery_used;
 
     rowsA = first.rows.length;
     rowsB = second.rows.length;
@@ -2443,6 +2479,7 @@ async function listProspectsFromHome() {
       counts_match:true,
       columns_ok:true,
       verification_method:verificationMethod,
+      recovery_used:recoveryUsed,
       ms:Date.now() - started,
       ir_filters_before:irFiltersBefore,
       captured_at:nowIso(),
@@ -2459,6 +2496,7 @@ async function listProspectsFromHome() {
       counts_match:countsMatch,
       columns_ok:columnsOk,
       verification_method:verificationMethod,
+      recovery_used:recoveryUsed,
       ms:Date.now() - started,
       ir_filters_before:irFiltersBefore,
       pii:false,
