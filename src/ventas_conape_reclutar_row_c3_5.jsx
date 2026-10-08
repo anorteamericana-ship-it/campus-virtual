@@ -82,7 +82,6 @@
   function RecruitRowModal({ prospecto, onClose, onChanged, onToast }){
     const [state, setState] = useState('running');
     const [phase, setPhase] = useState('Validando Campus');
-    const [comparison, setComparison] = useState(null);
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
     const [info, setInfo] = useState('');
@@ -94,7 +93,6 @@
       const resetAttemptUi = () => {
         setError('');
         setInfo('');
-        setComparison(null);
         setResult(null);
         setState('running');
         setPhase('Validando Campus');
@@ -103,8 +101,8 @@
       resetAttemptUi();
 
       timers.push(setTimeout(() => !cancel && setPhase('Abriendo formulario de CONAPE'), 4000));
-      timers.push(setTimeout(() => !cancel && setPhase('Consultando cédula y verificando identidad'), 8000));
-      timers.push(setTimeout(() => !cancel && setPhase('Aplicando contactos y enviando acción final'), 13000));
+      timers.push(setTimeout(() => !cancel && setPhase('Ingresando cédula y esperando el formulario'), 8000));
+      timers.push(setTimeout(() => !cancel && setPhase('Completando contactos y registrando en CONAPE'), 13000));
 
       (async () => {
         const cedula = digits(prospecto?.cedula || prospecto?.CEDULA);
@@ -116,14 +114,12 @@
           if (!cancel) {
             setError('');
             setInfo('');
-            setComparison(null);
             setResult(null);
           }
 
           const r = await bridge.execute(cedula);
           if (cancel) return;
           setResult(r || null);
-          setComparison(r?.comparison || null);
 
           const code = technical(r?.code || r?.error, 'UNKNOWN');
           if (!r || !r.ok || !['CREATED','UPDATED'].includes(code)) {
@@ -133,17 +129,18 @@
           }
 
           const estadoConape = text(r.estado_conape_raw || r.estado_conape || '');
+          onToast && onToast({ tipo:'ok', msg:code === 'UPDATED' ? 'Datos actualizados en CONAPE.' : (estadoConape ? `Prospecto reclutado · CONAPE: ${estadoConape}` : 'Prospecto reclutado en CONAPE.') });
+          if (typeof window.ventasDashCacheClear === 'function') window.ventasDashCacheClear();
           if (typeof onChanged === 'function') {
             onChanged({
               cedula,
               ...(estadoConape ? { estado_conape_raw:estadoConape } : {}),
               conape_reclutado:true,
+              _conape_recruit_refresh:true,
             });
           }
-          if (typeof window.ventasDashCacheClear === 'function') window.ventasDashCacheClear();
           setState('done');
           setPhase(code === 'UPDATED' ? 'Actualizado' : 'Confirmado');
-          onToast && onToast({ tipo:'ok', msg:code === 'UPDATED' ? 'Datos actualizados en CONAPE.' : (estadoConape ? `Prospecto reclutado · CONAPE: ${estadoConape}` : 'Prospecto reclutado en CONAPE.') });
         } catch (e) {
           if (cancel) return;
           setInfo('');
@@ -159,16 +156,13 @@
       };
     }, []);
 
-    const rows = comparison?.rows || [];
-    const timing = result?.timing || {};
-    const confirmationMethod = technical(result?.confirmation_method || result?.confirmation?.confirmation_method, '');
     return (
       <div className="vx-c33-back" onMouseDown={e => { if (e.target === e.currentTarget && state !== 'running') onClose(); }}>
         <div className="vx-c33-modal">
           <div className="vx-c33-head">
             <div>
               <div className="vx-c33-title">CONAPE</div>
-              <div className="vx-c33-sub">Una sola ejecución: consulta, aplica contactos editables y registra o actualiza según el formulario de CONAPE.</div>
+              <div className="vx-c33-sub">Ingreso automático: cédula, teléfono, correo y un solo envío en CONAPE.</div>
             </div>
             <button className="vx-c33-x" onClick={onClose} disabled={state === 'running'}>×</button>
           </div>
@@ -177,20 +171,7 @@
             {state === 'done' ? <div className="vx-c33-banner">{technical(result?.code, '') === 'UPDATED' ? 'CONAPE confirmó la actualización.' : 'CONAPE confirmó el reclutamiento.'}</div> : null}
             {info ? <div className="vx-c35-info">{info}</div> : null}
             {error ? <div className="vx-c33-banner err">{error}</div> : null}
-            {comparison ? <React.Fragment>
-              <div className="vx-c33-banner">Resultado de la ejecución. Nombre y apellidos son solo comparación: <b>nunca se modifican desde Campus</b>.</div>
-              <div className="vx-c33-grid">
-                <div className="vx-c33-cell h">Dato</div><div className="vx-c33-cell h">Campus</div><div className="vx-c33-cell h">CONAPE</div><div className="vx-c33-cell h">Acción final</div>
-                {rows.map(row => <React.Fragment key={row.key}>
-                  <div className="vx-c33-cell h">{row.label}</div>
-                  <div className="vx-c33-cell">{row.campus || '—'}</div>
-                  <div className="vx-c33-cell">{row.conape || '—'}<br/><span className={`vx-c33-tag ${row.state}`}>{row.state}</span></div>
-                  <div className="vx-c33-cell">{row.final || '—'}<div className="vx-c33-rule">{row.rule}</div></div>
-                </React.Fragment>)}
-              </div>
-              <div className="vx-c33-banner" style={{marginTop:14}}>Teléfono final: <b>{comparison.final?.telefono || 'pendiente'}</b> · Correo final: <b>{comparison.final?.correo || 'sin correo'}</b>.</div>
-            </React.Fragment> : null}
-            {state !== 'running' && timing.total != null ? <div className="vx-c35-timing">Tiempo total: {timing.total} ms · Campus: {timing.campus ?? '—'} · Formulario: {timing.form ?? '—'} · Lookup: {timing.lookup ?? '—'} · Contactos: {timing.fill ?? '—'} · Acción: {timing.create ?? '—'} · Confirmación: {timing.confirmation ?? '—'} · Método confirmación: {confirmationMethod || '—'}</div> : null}
+
           </div>
           <div className="vx-c33-foot">
             <button className="vx-c33-btn alt" onClick={onClose} disabled={state === 'running'}>{state === 'running' ? 'Procesando…' : 'Cerrar'}</button>

@@ -630,7 +630,7 @@ const ConapeSession = {
   },
 
   async freshProspectoFromHome() {
-    const p = await this.browserPage();
+    let p = await this.browserPage();
     await this.login(p);
     let sessionId = await readApexSession(p);
     if (!sessionId) throw new AppError('CONAPE_APEX_SESSION_MISSING', 'CONAPE no expuso una sesión válida.', 409, 'FORM');
@@ -649,7 +649,18 @@ const ConapeSession = {
     // cualquier contexto firmado por APEX antes de buscar Reclutar Prospectos.
     await p.goto(urlWithSession(CONAPE_FRIENDLY_HOME, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
     await waitForApexDynamicAction(p);
+    const modulePagesBefore = new Set(p.context().pages());
     const moduleNav = await clickProspectacionModuleLink(p);
+    // CONAPE/APEX puede abrir el módulo en otra pestaña; seguir la página
+    // REAL donde terminó la navegación, no el Home anterior.
+    await sleep(250);
+    const modulePopup = p.context().pages().find(page => !modulePagesBefore.has(page) && !page.isClosed());
+    if (modulePopup) {
+      p = modulePopup;
+      this.page = p;
+      p.setDefaultTimeout(15_000);
+      await p.waitForLoadState('domcontentloaded', { timeout:10_000 }).catch(() => {});
+    }
     sessionId = (await readApexSession(p)) || sessionId;
     console.log(JSON.stringify({
       event:'conape_module_navigation',
@@ -663,6 +674,7 @@ const ConapeSession = {
     }));
 
     let clicked = false;
+    const recruitPagesBefore = new Set(p.context().pages());
     try {
       p.__conapeLabelSearchTimeoutMs = 6_000;
       clicked = await clickVisibleByLabel(p, /(^| )RECLUTAR( |$)/i);
@@ -670,32 +682,50 @@ const ConapeSession = {
       delete p.__conapeLabelSearchTimeoutMs;
     }
     if (clicked) {
-      let until = Date.now() + 10_000;
-      while (Date.now() < until) {
-        if (await this.formReady(p)) return finish('HOME_CLICK_RECRUIT', true);
-        await sleep(200);
+      await sleep(250);
+      const recruitPopup = p.context().pages().find(page => !recruitPagesBefore.has(page) && !page.isClosed());
+      if (recruitPopup) {
+        p = recruitPopup;
+        this.page = p;
+        p.setDefaultTimeout(15_000);
+        await p.waitForLoadState('domcontentloaded', { timeout:10_000 }).catch(() => {});
       }
-      throw new AppError('CONAPE_FORM_NOT_READY', 'CONAPE no dejó listo el formulario de Prospecto después de Reclutar Prospectos.', 409, 'FORM');
+      const until = Date.now() + 10_000;
+      while (Date.now() < until) {
+        if (await this.formReady(p)) return finish(recruitPopup ? 'RECRUIT_POPUP' : 'HOME_CLICK_RECRUIT', true);
+        await sleep(250);
+      }
     }
 
-    const [homeDebug, homeState] = await Promise.all([readHomeNavDebug(p), this.authState(p)]);
+    // El clic del menú puede completarse sin montar el formulario (caso real
+    // CONAPE_FORM_NOT_READY). Es NAVEGACIÓN, nunca reintento de CREATE:
+    // abrir la URL canónica en la misma sesión y esperar sus campos reales.
     console.log(JSON.stringify({
-      event:'conape_home_nav_debug', version:VERSION,
-      ...homeDebug,
-      authenticated:homeState.authenticated === true,
-      route_ok:homeState.route === true,
-      recruit_click_found:false,
+      event:'conape_recruit_navigation_fallback', version:VERSION,
+      reason:clicked ? 'CLICK_WITHOUT_FORM' : 'BUTTON_NOT_FOUND',
+      popup_seen:p.context().pages().length > 1,
       pii:false,
     }));
-
-    // Fallback no bloqueante únicamente si el botón Reclutar Prospectos no aparece.
-    await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), { waitUntil:'domcontentloaded', timeout:30_000 });
-    const until = Date.now() + 10_000;
+    sessionId = (await readApexSession(p)) || sessionId;
+    await p.goto(urlWithSession(CONAPE_FRIENDLY_PROSPECTO, sessionId), {
+      waitUntil:'domcontentloaded', timeout:30_000,
+    });
+    await waitForApexDynamicAction(p);
+    const until = Date.now() + 12_000;
     while (Date.now() < until) {
-      if (await this.formReady(p)) return finish('DIRECT_URL', false);
-      await sleep(200);
+      if (await this.formReady(p)) return finish('DIRECT_URL_FALLBACK', clicked);
+      await sleep(250);
     }
-    throw new AppError('CONAPE_FORM_NOT_READY', 'CONAPE no dejó listo el formulario de Prospecto.', 409, 'FORM');
+    const homeState = await this.authState(p);
+    console.log(JSON.stringify({
+      event:'conape_recruit_navigation_failed', version:VERSION,
+      clicked, auth:homeState.authenticated === true,
+      password_visible:homeState.password === true,
+      frame_count:p.frames().length,
+      pii:false,
+    }));
+    throw new AppError('CONAPE_FORM_NOT_READY',
+      'CONAPE no dejó listo el formulario de Reclutar Prospectos.', 503, 'FORM');
   },
 };
 
