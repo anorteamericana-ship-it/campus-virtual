@@ -1213,16 +1213,131 @@ function TeacherAgendaLegendF96() {
   ];
   return <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>{items.map(([c,b,l])=><span key={l} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'5px 8px',borderRadius:999,background:b,color:c,fontSize:9.5,fontWeight:900}}><span style={{width:7,height:7,borderRadius:'50%',background:c}}/>{l}</span>)}</div>;
 }
-function TeacherAgendaMonthF82({ month, events, onSelect }) {
-  const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),cells=[];
-  for(let i=0;i<first;i++)cells.push(null);for(let d=1;d<=days;d++)cells.push(d);
+// PLAN52: planificación única de cronograma antes del visto bueno de Administración.
+function tvPlanISOF52(d) {
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+}
+function tvPlanFuturaF52(iso) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')) && String(iso) > tvPlanISOF52(new Date());
+}
+function tvPlanRailF52(e) {return tvIsIcanEventF96(e)?'ican':'curso';}
+function tvPlanKeyF52(e){return tvPlanRailF52(e)+'|'+Number(e.leccion);}
+function tvPlanSafeF52(e) {
+  return e && String(e.estado||'').toUpperCase()==='PROGRAMADA' && tvPlanFuturaF52(e.fecha) &&
+    Number(e.leccion)>=1 && Number(e.leccion)<=(tvPlanRailF52(e)==='ican'?16:32);
+}
+function tvPlanMinF52(s){const m=String(s||'').match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):null;}
+function tvPlanValidateF52(base,plan,feriados) {
+  if(!base.length || base.length!==plan.length)return {ok:false,error:'El calendario está incompleto.'};
+  const original=new Map(base.map(e=>[tvPlanKeyF52(e),e]));
+  const count={curso:new Set(),ican:new Set()};
+  for(const e of plan){
+    const k=tvPlanKeyF52(e),src=original.get(k),riel=tvPlanRailF52(e);
+    if(!src||count[riel].has(Number(e.leccion)))return {ok:false,error:'Número de lección duplicado o ajeno al grupo.'};
+    count[riel].add(Number(e.leccion));
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(e.fecha))||feriados.includes(e.fecha))
+      return {ok:false,error:'Fecha inválida o feriado: '+e.fecha};
+    if(e.fecha!==src.fecha && (!tvPlanSafeF52(src)||!tvPlanFuturaF52(e.fecha)))
+      return {ok:false,error:'No se puede mover la lección '+e.leccion+' porque está cerrada, calculada o en el pasado.'};
+  }
+  if(count.curso.size!==32||(count.ican.size!==0&&count.ican.size!==16))
+    return {ok:false,error:'La propuesta debe conservar 32 lecciones y, para INA, 16 sesiones I CAN.'};
+  const byRail={curso:[],ican:[]};
+  for(const e of plan)byRail[tvPlanRailF52(e)].push(e);
+  for(const rail of Object.keys(byRail)){
+    const seq=byRail[rail].sort((a,b)=>Number(a.leccion)-Number(b.leccion));
+    for(let i=1;i<seq.length;i++)if(seq[i].fecha<seq[i-1].fecha ||
+      (seq[i].fecha===seq[i-1].fecha&&tvPlanMinF52(seq[i].hora_inicio)<tvPlanMinF52(seq[i-1].hora_fin)))
+      return {ok:false,error:'Hay una inversión de orden o choque entre lecciones de '+rail+'.'};
+  }
+  for(let i=0;i<plan.length;i++)for(let j=i+1;j<plan.length;j++){
+    const a=plan[i],b=plan[j];if(a.fecha!==b.fecha)continue;
+    const sa=tvPlanMinF52(a.hora_inicio),ea=tvPlanMinF52(a.hora_fin),
+          sb=tvPlanMinF52(b.hora_inicio),eb=tvPlanMinF52(b.hora_fin);
+    if(sa===null||ea===null||sb===null||eb===null)return {ok:false,error:'Faltan horas para verificar conflictos.'};
+    if(sa<eb&&ea>sb)return {ok:false,error:'Choque entre sesiones el '+a.fecha+'.'};
+  }
+  return {ok:true,cambios:plan.filter(e=>e.fecha!==original.get(tvPlanKeyF52(e))?.fecha)};
+}
+function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDragStart, onDragEnd, onDropDay, onEmptyDay }) {
+  const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,
+    days=new Date(y,m+1,0).getDate(),cells=[];
+  for(let i=0;i<first;i++)cells.push(null);
+  for(let d=1;d<=days;d++)cells.push(d);
   const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  return <div className="card" style={{padding:0,overflow:'hidden'}}><div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}><strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>{['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}</div><div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>{cells.map((d,i)=>{if(!d)return <div key={i} style={{minHeight:78,background:'#F7F3EC',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,ev=events.filter(x=>String(x.fecha||'')===iso);return <div key={i} style={{minHeight:78,padding:4,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}><div style={{fontSize:9,color:'var(--ink-3)',fontWeight:800}}>{d}</div><div style={{display:'grid',gap:3,marginTop:3}}>{ev.map((e,j)=>{const tone=tvAgendaToneF96(e,e.meta);return <button key={`${e.cod_grupo||''}-${e.riel||''}-${e.leccion||''}-${j}`} onClick={()=>onSelect(e)} title={`${tvAgendaEventLabelF96(e,true)} · ${tvGrupoLabel(e.meta).full}`} style={{border:0,borderLeft:`3px solid ${tone.dark}`,background:tone.light,color:tone.dark,borderRadius:5,padding:'3px 4px',fontSize:8.5,fontWeight:900,textAlign:'left',cursor:'pointer'}}>{tvAgendaEventLabelF96(e)}<br/><span style={{fontSize:7.5}}>Lec {String(e.leccion).padStart(2,'0')} · {tvLessonHoraLabel(e,e.meta)}</span></button>;})}</div></div>;})}</div></div>;
+  return <div className="card" style={{padding:0,overflow:'hidden'}}>
+    <div style={{padding:'11px 13px',display:'flex',justifyContent:'space-between',borderBottom:'1px solid var(--line)'}}>
+      <strong>{names[m]}</strong><span style={{fontSize:11,color:'var(--ink-3)'}}>{y}</span>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',fontSize:9,fontWeight:900,textAlign:'center',padding:'7px 5px',borderBottom:'1px solid var(--line)'}}>
+      {['L','M','M','J','V','S','D'].map((x,i)=><span key={i}>{x}</span>)}
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(7,minmax(0,1fr))'}}>
+      {cells.map((d,i)=>{
+        if(!d)return <div key={i} style={{minHeight:70,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;
+        const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
+          ev=events.filter(x=>String(x.fecha||'')===iso),
+          canTarget=planMode&&tvPlanFuturaF52(iso);
+        return <div key={i} data-date={iso}
+          onDragOver={canTarget?e=>{e.preventDefault();e.dataTransfer.dropEffect='move';}:undefined}
+          onDrop={canTarget?e=>{e.preventDefault();onDropDay(iso);}:undefined}
+          onClick={canTarget&&!ev.length?()=>onEmptyDay(iso):undefined}
+          onKeyDown={canTarget&&!ev.length?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onEmptyDay(iso);}}:undefined}
+          role={canTarget&&!ev.length?'button':undefined}
+          tabIndex={canTarget&&!ev.length?0:undefined}
+          title={canTarget&&!ev.length?'Crear fecha adelantada: '+iso:undefined}
+          style={{minHeight:72,padding:'4px',background:'#F8F5EF',
+            borderRight:'1px solid #EAE1D5',borderBottom:'1px solid #EAE1D5',
+            cursor:canTarget&&!ev.length?'pointer':'default',boxSizing:'border-box'}}>
+          <div style={{fontSize:10,color:'#353A42',fontWeight:800}}>{d}</div>
+          <div style={{display:'grid',gap:3,marginTop:3}}>
+            {ev.map((e,j)=>{
+              const tone=tvAgendaToneF96(e,e.meta),draggable=planMode&&tvPlanSafeF52(e);
+              const text=tvIsIcanEventF96(e)?'I CAN '+String(e.leccion).padStart(2,'0'):
+                  e.progress_check?'PC '+String(e.leccion).padStart(2,'0'):'Lec '+String(e.leccion).padStart(2,'0');
+              return <button key={`${e.cod_grupo||''}-${e.riel||''}-${e.leccion||''}-${j}`}
+                type="button" onClick={()=>onSelect(e)} draggable={draggable}
+                onDragStart={draggable?x=>onDragStart(x,e):undefined}
+                onDragEnd={draggable?onDragEnd:undefined}
+                title={tvAgendaEventLabelF96(e,true)+' · '+tvGroupLabel(e.meta).full+
+                  (draggable?' · Arrastrar para proponer otra fecha':'')}
+                style={{border:0,borderLeft:`3px solid ${tone.dark}`,background:tone.light,color:tone.dark,
+                  borderRadius:4,padding:'3px 4px',fontSize:9,fontWeight:900,textAlign:'left',
+                  cursor:draggable?'grab':'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {text}
+              </button>;
+            })}
+          </div>
+          {canTarget&&!ev.length?<div style={{fontSize:9,fontWeight:800,color:'#597493',marginTop:7}}>＋ Adelantar</div>:null}
+        </div>;
+      })}
+    </div>
+  </div>;
 }
 function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false, onlyIcan=false }) {
   const {grupos,meta,codGrupo,cambiarGrupo,roster,asistenciaDetalle,comentariosDetalle,recargarPanel,loading,error}=useTeacherSession();
   const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null),[monthOffset,setMonthOffset]=React.useState(0);
   const groupKey=JSON.stringify((grupos||[]).map(g=>[tvGroupCode(g),tvNivelId(g),String(g?.programa||'')]));
+  const [planMode,setPlanMode]=React.useState(false);
+  const [planState,setPlanState]=React.useState('CARGANDO');
+  const [planError,setPlanError]=React.useState('');
+  const [planBase,setPlanBase]=React.useState([]);
+  const [planDates,setPlanDates]=React.useState({});
+  const [planMotivo,setPlanMotivo]=React.useState('');
+  const [planConfirm,setPlanConfirm]=React.useState(false);
+  const [planWorking,setPlanWorking]=React.useState(false);
+  const planDrag=React.useRef(null);
+  const feriadosPlan=['2026-12-01','2026-12-25','2027-01-01'];
+  React.useEffect(()=>{
+    setPlanMode(false);setPlanBase([]);setPlanDates({});setPlanConfirm(false);setPlanError('');
+    let live=true;
+    if(!codGrupo){setPlanState('SIN_PROPUESTA');return()=>{live=false;};}
+    setPlanState('CARGANDO');
+    postTeacher('getPlanCronogramaInicial',{cod_grupo:codGrupo,nivel:tvNivelId(meta)},30000)
+      .then(x=>{if(!live)return;if(x?.ok)setPlanState(x.estado||'SIN_PROPUESTA');else{setPlanState('ERROR');setPlanError('No se pudo verificar el estado de aprobación del grupo.');}})
+      .catch(()=>{if(live){setPlanState('ERROR');setPlanError('No se pudo conectar con las propuestas académicas.');}});
+    return()=>{live=false;};
+  },[codGrupo,groupKey]);
   React.useEffect(()=>{
     let live=true;
     const list=grupos||[];
@@ -1273,11 +1388,109 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
   const base=React.useMemo(()=>new Date(startBase.getFullYear(),startBase.getMonth()+monthOffset,1),[startBase,monthOffset]);
   const months=Array.from({length:monthCount},(_,i)=>new Date(base.getFullYear(),base.getMonth()+i,1));
   const goToday=()=>{const now=new Date();setMonthOffset((now.getFullYear()-startBase.getFullYear())*12+(now.getMonth()-startBase.getMonth()));};
+  const grupoPlan=(grupos||[]).find(g=>tvGroupCode(g)===codGrupo)||meta;
+  const nivelPlan=tvNivelId(grupoPlan);
+  const baseCalendario=React.useMemo(()=>events.filter(e=>String(e.cod_grupo||'')===String(codGrupo||'')),[events,codGrupo]);
+  const draftCalendario=React.useMemo(()=>events.map(e=>{
+    const k=tvPlanKeyF52(e);
+    return planMode&&String(e.cod_grupo||'')===String(codGrupo||'')&&Object.prototype.hasOwnProperty.call(planDates,k)
+      ? {...e,fecha:planDates[k]}:e;
+  }),[events,planMode,codGrupo,planDates]);
+  const draftGrupo=React.useMemo(()=>planBase.map(e=>({...e,fecha:planDates[tvPlanKeyF52(e)]||e.fecha})),[planBase,planDates]);
+  const planValidation=React.useMemo(()=>tvPlanValidateF52(planBase,draftGrupo,feriadosPlan),[planBase,draftGrupo]);
+  const planChanged=planBase.length?draftGrupo.filter(e=>{
+    const orig=planBase.find(b=>tvPlanKeyF52(b)===tvPlanKeyF52(e));return orig&&orig.fecha!==e.fecha;
+  }):[];
+  const comenzarPlan=()=>{
+    if(planState!=='SIN_PROPUESTA'&&planState!=='RECHAZADO'){setPlanError('La planificación inicial no está habilitada para este grupo.');return;}
+    const unique=new Map();
+    for(const e of baseCalendario){if(!unique.has(tvPlanKeyF52(e)))unique.set(tvPlanKeyF52(e),e);}
+    const rows=[...unique.values()].sort((a,b)=>tvPlanRailF52(a).localeCompare(tvPlanRailF52(b))||Number(a.leccion)-Number(b.leccion));
+    if(rows.filter(x=>tvPlanRailF52(x)==='curso').length!==32 ||
+      (tvUpper(grupoPlan?.programa)==='INA'&&rows.filter(x=>tvPlanRailF52(x)==='ican').length!==16)){
+      setPlanError('No están disponibles las 32 lecciones y las 16 sesiones I CAN del nivel. No es seguro planificar.');return;
+    }
+    setPlanBase(rows);setPlanDates({});setPlanMotivo('Planificación inicial coordinada con estudiantes.');
+    setPlanError('');setPlanMode(true);
+  };
+  const modificarPlan=(cambios)=>{
+    const next={...planDates,...cambios};
+    const test=tvPlanValidateF52(planBase,planBase.map(e=>({...e,fecha:next[tvPlanKeyF52(e)]||e.fecha})),feriadosPlan);
+    if(!test.ok){setPlanError(test.error);return false;}
+    setPlanError('');setPlanDates(next);return true;
+  };
+  const dragPlanStart=(ev,e)=>{
+    if(!planMode||String(e.cod_grupo||'')!==String(codGrupo)||!tvPlanSafeF52(e)){ev.preventDefault();return;}
+    planDrag.current=e;ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain','plan-academico');
+  };
+  const dropPlanDia=(fecha)=>{
+    const e=planDrag.current;planDrag.current=null;
+    if(!e||!tvPlanFuturaF52(fecha)||fecha===e.fecha)return;
+    modificarPlan({[tvPlanKeyF52(e)]:fecha});
+  };
+  const insertarPlanDia=(fecha)=>{
+    if(!planMode||!tvPlanFuturaF52(fecha))return;
+    const curso=draftGrupo.filter(e=>tvPlanRailF52(e)==='curso').sort((a,b)=>Number(a.leccion)-Number(b.leccion));
+    const pos=curso.findIndex(e=>String(e.fecha||'')>fecha);
+    if(pos<=0||curso.some(e=>e.fecha===fecha)){setPlanError('Elegí una fecha libre entre dos lecciones.');return;}
+    const tail=curso.slice(pos);
+    if(tail.some(e=>!tvPlanSafeF52(planBase.find(b=>tvPlanKeyF52(b)===tvPlanKeyF52(e))))){
+      setPlanError('La secuencia incluye lecciones ya impartidas o no editables.');return;
+    }
+    const changes={};
+    tail.forEach((e,i)=>{changes[tvPlanKeyF52(e)]=i===0?fecha:tail[i-1].fecha;});
+    modificarPlan(changes);
+  };
+  const enviarPlan=async()=>{
+    if(planWorking||!planValidation.ok||!planChanged.length||planMotivo.trim().length<8)return;
+    setPlanWorking(true);setPlanError('');
+    try{
+      const base=planBase.map(e=>({riel:tvPlanRailF52(e),leccion:Number(e.leccion),fecha:e.fecha}));
+      const plan=draftGrupo.map(e=>({riel:tvPlanRailF52(e),leccion:Number(e.leccion),fecha:e.fecha}));
+      const r=await postTeacher('enviarPlanCronogramaInicial',{
+        cod_grupo:codGrupo,nivel:nivelPlan,base,plan,motivo:planMotivo.trim()
+      },45000);
+      if(!r?.ok){setPlanError(teacherSessionSafeUserError(r?.error||r?.mensaje,
+        'No se pudo enviar el plan. Revisá el calendario y volvé a intentar.','plan_enviar'));return;}
+      setPlanState('PENDIENTE');setPlanConfirm(false);setPlanMode(false);setPlanBase([]);setPlanDates({});
+      setPlanError('Cronograma enviado a Administración. Quedó bloqueado hasta su revisión.');
+    }catch(_){setPlanError('La conexión falló al enviar el informe. Actualizá antes de volver a enviarlo para evitar duplicados.');}
+    finally{setPlanWorking(false);}
+  };
   const title=onlyIcan?<>Club <em>I CAN</em></>:<>Cronograma <em>Inglés Conversacional</em></>;
   const kicker=onlyIcan?'Programa INA · sesiones complementarias':'Calendario académico · vista docente';
   const sub=onlyIcan?'Sesiones I CAN reales de tus grupos asignados. Podés abrir cada fecha y operar la clase desde el mismo panel.':'Curso, Progress Check, exámenes y Club I CAN reunidos en una sola agenda.';
   return <div style={{width:'100%',minWidth:0}}><PageHeader kicker={kicker} title={title} sub={sub}/>
     <MisGruposSwitcher grupos={grupos||[]} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
+    {!onlyIcan&&<div style={{background:planMode?'#E8F3FF':'#F8FAFC',border:'1px solid #D7E2EC',padding:'10px 13px',borderRadius:10,margin:'5px 0 11px'}}>
+      <div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}>
+        <span style={{fontWeight:900,fontSize:12,color:'#153B63'}}>
+          {planMode?'Planificación inicial · edición de fechas':
+            planState==='APROBADO'?'Cronograma aprobado · planificación cerrada':
+            planState==='PENDIENTE'?'Cronograma enviado · pendiente de Administración':
+            planState==='CARGANDO'?'Verificando estado de planificación…':
+            planState==='RECHAZADO'?'Plan devuelto para corrección':
+            'Planificación inicial del grupo'}
+        </span>
+        {!planMode&&(planState==='SIN_PROPUESTA'||planState==='RECHAZADO')&&
+          <button type="button" onClick={comenzarPlan} style={{marginLeft:'auto',background:'#073B7A',color:'white',border:0,borderRadius:8,padding:'8px 12px',fontWeight:900,cursor:'pointer'}}>
+            Organizar cronograma
+          </button>}
+        {planMode&&<div style={{display:'flex',gap:6,marginLeft:'auto'}}>
+          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanDates({});setPlanError('');}}>Restablecer</button>
+          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanMode(false);setPlanError('');}}>Salir sin enviar</button>
+          <button type="button" className="btn btn-primary" disabled={planWorking||!planValidation.ok||!planChanged.length}
+            onClick={()=>setPlanConfirm(true)}>Enviar informe ({planChanged.length})</button>
+        </div>}
+      </div>
+      <div style={{fontSize:11,color:'#5C6F83',marginTop:5,lineHeight:1.45}}>
+        {planMode?'Arrastrá una lección futura a otra fecha; pulsá un día vacío para adelantar una clase. Podés revisar todos los movimientos antes de enviar el cronograma completo una sola vez.':
+        'El profesor prepara un solo plan por grupo. Administración verifica y aprueba; los cambios posteriores se tramitan como suspensión o reprogramación.'}
+      </div>
+      {planError&&<div role="alert" style={{fontSize:11,fontWeight:800,color:planState==='PENDIENTE'?'#215A34':'#A33D23',marginTop:7}}>{planError}</div>}
+      {planMode&&!planValidation.ok&&planChanged.length>0&&
+        <div role="alert" style={{fontSize:11,color:'#A33D23'}}>{planValidation.error}</div>}
+    </div>}
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',marginBottom:12,flexWrap:'wrap'}}><TeacherAgendaLegendF96/><div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>
       <button className="btn btn-ghost" type="button" onClick={()=>setMonthOffset(v=>v-1)} aria-label="Mes anterior">←</button>
       <button className={monthOffset===0?'btn btn-primary':'btn btn-ghost'} type="button" onClick={()=>setMonthOffset(0)}>Inicio del grupo</button>
@@ -1286,7 +1499,30 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       {[[1,'1 mes'],[2,'2 meses'],[periodMonthCount,'Cuatrimestre']].map(([n,l])=><button key={`${n}-${l}`} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
       <button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button>
     </div></div>
-    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={events} onSelect={e=>{if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode)return;if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    {planConfirm&&planMode&&<div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!planWorking)setPlanConfirm(false);}}
+      style={{position:'fixed',inset:0,zIndex:2400,background:'rgba(10,24,43,.60)',display:'grid',placeItems:'center',padding:12}}>
+      <div role="dialog" aria-modal="true" aria-label="Informe del cronograma" style={{width:'100%',maxWidth:580,maxHeight:'90vh',overflow:'auto',background:'white',padding:20,borderRadius:14}}>
+        <h3 style={{fontSize:19,margin:'0 0 10px'}}>Enviar cronograma a Administración</h3>
+        <p style={{fontSize:12,color:'#465365'}}>Grupo <b>{codGrupo}</b> · {nivelPlan} · {planChanged.length} fechas modificadas. Se preservan las 32 lecciones y 16 sesiones I CAN del programa INA, cuando corresponde.</p>
+        {!planValidation.ok?<div role="alert" style={{color:'#A33D23'}}>{planValidation.error}</div>:null}
+        <div style={{maxHeight:200,overflow:'auto',border:'1px solid #DAE3ED',borderRadius:7}}>
+          {planChanged.map(e=>{const orig=planBase.find(b=>tvPlanKeyF52(b)===tvPlanKeyF52(e));return <div key={tvPlanKeyF52(e)} style={{padding:'7px 10px',borderBottom:'1px solid #E5EAF1',fontSize:11}}>
+            <b>{tvPlanRailF52(e)==='ican'?'I CAN':'Lección'} {e.leccion}</b> · {orig?.fecha} → <b>{e.fecha}</b>
+          </div>;})}
+        </div>
+        <label htmlFor="plan-motivo" style={{display:'block',fontSize:12,fontWeight:900,margin:'12px 0 4px'}}>Observación para Administración</label>
+        <textarea id="plan-motivo" rows={3} maxLength={500} value={planMotivo} onChange={e=>setPlanMotivo(e.target.value)} style={{width:'100%',boxSizing:'border-box',padding:9,borderRadius:8,border:'1px solid #B9C8D8'}}/>
+        <div style={{fontSize:11,color:'#805000',marginTop:8}}>El envío no cambia el calendario vigente. Administración debe revisar las fechas y, para grupos INA, confirmar el trámite correspondiente en SIFA.</div>
+        {planError&&<div role="alert" style={{color:'#A33D23',marginTop:5,fontSize:11}}>{planError}</div>}
+        <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:12}}>
+          <button type="button" className="btn btn-ghost" disabled={planWorking} onClick={()=>setPlanConfirm(false)}>Seguir editando</button>
+          <button type="button" className="btn btn-primary" disabled={planWorking||!planValidation.ok||!planChanged.length||planMotivo.trim().length<8} onClick={enviarPlan}>
+            {planWorking?'Enviando…':'Enviar informe único'}
+          </button>
+        </div>
+      </div>
+    </div>}
     {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}</div>;
 }
 function ClubICANDocenteView(props) {
