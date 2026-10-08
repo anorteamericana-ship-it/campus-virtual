@@ -178,11 +178,13 @@ function VentasApp({ sesion }) {
   }, []);
 
   // Update optimista cuando el drawer cambia algo del prospecto.
-  const onChanged = useCallback(({ cedula, ...campos }) => {
+  const onChanged = useCallback(({ cedula, _conape_recruit_refresh, ...campos }) => {
     setDash(prev => {
       if (!prev) return prev;
       return { ...prev, prospectos: prev.prospectos.map(p => p.cedula === cedula ? { ...p, ...campos } : p) };
     });
+    // Luego de registrar en CONAPE, releer la lista del Campus en segundo plano.
+    if (_conape_recruit_refresh === true) setReloadTick(t => t + 1);
   }, []);
 
   const prospectos = dash ? dash.prospectos : null;

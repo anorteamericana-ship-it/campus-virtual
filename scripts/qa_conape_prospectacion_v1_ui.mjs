@@ -46,7 +46,7 @@ check(sessionUi.includes('Para actualizar datos use Actualizar CONAPE.'), 'Sessi
 const bridgeScript = 'src/conape_bridge_client_c3_6.js?v=V4.5.0-ROWS-ALL';
 const sessionScript = 'src/conape_session_ui_c3_7.js?v=C3.7.3-INDICATOR-ONLY';
 const panelScript = 'src/ventas_conape_prospectacion_v1.jsx?v=CONAPE-V2-HISTORY-20261007';
-const dashScript = 'src/ventas_dashboard.jsx?v=CONAPE-V2-REFRESH-20261004';
+const dashScript = 'src/ventas_dashboard.jsx?v=F99-ONECLICK-NAV1';
 check(html.includes(bridgeScript), 'ventas.html cache-busts Prospectacion bridge client');
 check(html.includes(sessionScript), 'ventas.html cache-busts status-only CONAPE session UI');
 check(html.includes(panelScript), 'ventas.html loads V1 panel with cache bust');
