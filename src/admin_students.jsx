@@ -1240,7 +1240,7 @@ function certVisualState({ estatus, certPago, certNum }) {
   };
 }
 
-function CertificadoEstadoBox({ state }) {
+function CertificadoEstadoBox({ state, compact = false }) {
   const tones = {
     ok:    { bg:'#DDF3E2', fg:'#176B2B', bd:'#9FD5AA' },
     blue:  { bg:'#E3F2FD', fg:'#1565C0', bd:'#B9DAF5' },
@@ -1248,12 +1248,13 @@ function CertificadoEstadoBox({ state }) {
     muted: { bg:'#ECE8E1', fg:'#6F665E', bd:'#D3CCC2' },
   };
   const t = tones[state.tone] || tones.muted;
-  return <div title={state.hint} style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 7px',borderRadius:8,background:t.bg,color:t.fg,border:`1px solid ${t.bd}`,maxWidth:148,minHeight:24}}><span style={{fontSize:9.5,fontWeight:900,whiteSpace:'nowrap'}}>{state.label}</span>{state.sub&&<span style={{fontSize:8.5,fontWeight:700,opacity:.78,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{state.sub}</span>}</div>;
+  const label = compact && state.key === 'listo' ? 'Listo' : state.label;
+  return <div title={[state.label,state.sub,state.hint].filter(Boolean).join(' · ')} style={{display:'inline-flex',alignItems:'center',gap:5,padding:compact?'4px 6px':'4px 7px',borderRadius:8,background:t.bg,color:t.fg,border:`1px solid ${t.bd}`,maxWidth:compact?104:148,minHeight:24}}><span style={{fontSize:9.5,fontWeight:900,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</span>{!compact&&state.sub&&<span style={{fontSize:8.5,fontWeight:700,opacity:.78,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{state.sub}</span>}</div>;
 }
 
 function CertificadoCell({ certPago, certNum, estatus, onCrear, onVer }) {
   const state = certVisualState({ estatus, certPago, certNum });
-  return <div style={{display:'flex',gap:4,alignItems:'center',whiteSpace:'nowrap'}}><CertificadoEstadoBox state={state}/>{state.canVer&&<button onClick={onVer} title="Abrir PDF" aria-label="Abrir PDF" style={{width:27,height:27,borderRadius:7,border:'1px solid #9FD5AA',background:'#DDF3E2',color:'#176B2B',fontSize:10,fontWeight:900,cursor:'pointer'}}>PDF</button>}{state.canCrear&&<button onClick={onCrear} title="Crear certificado" aria-label="Crear certificado" style={{width:27,height:27,borderRadius:7,border:'1px solid #7EB4E2',background:'#E3F2FD',color:'#1565C0',fontSize:14,fontWeight:900,cursor:'pointer'}}>＋</button>}</div>;
+  return <div style={{display:'flex',gap:4,alignItems:'center',whiteSpace:'nowrap'}}><CertificadoEstadoBox state={state} compact/>{state.canVer&&<button onClick={onVer} title="Abrir PDF" aria-label="Abrir PDF" style={{width:27,height:27,borderRadius:7,border:'1px solid #9FD5AA',background:'#DDF3E2',color:'#176B2B',fontSize:10,fontWeight:900,cursor:'pointer'}}>PDF</button>}{state.canCrear&&<button onClick={onCrear} title="Crear certificado" aria-label="Crear certificado" style={{width:27,height:27,borderRadius:7,border:'1px solid #7EB4E2',background:'#E3F2FD',color:'#1565C0',fontSize:14,fontWeight:900,cursor:'pointer'}}>＋</button>}</div>;
 }
 
 function moraEstudiante(e = {}) {
@@ -2062,7 +2063,7 @@ function rowAccent(estatus) {
   return 'transparent';
 }
 
-function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, rolUsuario, generarTituloFinal, tituloFinalBusy, filtroOperativo, ultimosDesembolsosConape }) {
+function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, sortDir, toggleSort, sortEstudiantes, onRefresh, onNavigate, onAbrirPanel, generarCertificadoFila, generarCertificadosNivel, regenerarCertificadosNivel, rolUsuario, generarTituloFinal, tituloFinalBusy, filtroOperativo, ultimosDesembolsosConape, correosPorCodigo = {} }) {
   const cfg = NIVEL_CONFIG[nivelKey];
   const [modalEstatus, setModalEstatus] = React.useState(null);
   const [modalCambio, setModalCambio] = React.useState(null);
@@ -2250,24 +2251,24 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
       {/* Tabla — rediseño operativo compacto para Calendario de Grupo */}
       {abierto && (
       <div style={{ overflowX: 'auto', border: `1px solid ${cfg.color}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background:'var(--surface,#fff)' }}>
-        <table style={{ width: '100%', minWidth: 1220, borderCollapse: 'separate', borderSpacing: 0, fontSize: 12 }}>
+        <table style={{ width: '100%', minWidth: 1200, tableLayout:'fixed', borderCollapse: 'separate', borderSpacing: 0, fontSize: 12 }}>
           <thead>
             <tr style={{ background: cfg.bg }}>
               {[
-                { label:'Código',      sort:'codigo', width:92 },
-                { label:'Estudiante',  sort:'nombre', width:310 },
-                { label:'Convenio',    sort:null,     width:90 },
+                { label:'Código',      sort:'codigo', width:70 },
+                { label:'Estudiante',  sort:'nombre', width:280 },
+                { label:'Convenio',    sort:null,     width:88 },
                 { label:'Estado',      sort:'estatus',width:130 },
-                { label:'Finanzas',    sort:'mora',   width:230 },
-                { label:'Certificado', sort:null,     width:160 },
-                { label:'Nota',        sort:'nota',   width:82 },
-                { label:'Acciones',    sort:null,     width:310 },
+                { label:'Finanzas',    sort:'mora',   width:238 },
+                { label:'Certificado', sort:null,     width:122 },
+                { label:'Nota',        sort:'nota',   width:63 },
+                { label:'Acciones',    sort:null,     width:230 },
               ].map(h => (
                 <th
                   key={h.label}
                   onClick={h.sort && toggleSort ? () => toggleSort(h.sort) : undefined}
                   style={{
-                    width:h.width, padding:'9px 10px', textAlign:'left', fontWeight:900, color:cfg.color,
+                    width:h.width, padding:'8px 7px', textAlign:'left', fontWeight:900, color:cfg.color,
                     whiteSpace:'nowrap', fontSize:10, letterSpacing:'0.10em', textTransform:'uppercase',
                     cursor: h.sort && toggleSort ? 'pointer' : 'default', userSelect: h.sort ? 'none' : 'auto',
                     borderBottom:'1px solid color-mix(in srgb, var(--line,#ddd) 80%, transparent)',
@@ -2282,6 +2283,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
             {estudiantesOrdenados.map((e, i) => {
               const codigo    = e.codigo || e.rec_m || '—';
               const cedula    = e.cedula || '—';
+              const correo    = String(e.email || e.correo || correosPorCodigo[String(codigo).trim()] || '').trim();
               const nombre    = e.display || e.nombre || '—';
               const edad      = edadEstudiante(e);
               const convenio  = e.convenio || '';
@@ -2347,16 +2349,27 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
               }
               return (
                 <tr key={codigo + '-' + i} style={{ background:rowBg(estatus,i), borderBottom:'1px solid #D8DDE2', borderLeft:`4px solid ${rowAccent(estatus)}` }}>
-                  <td style={{padding:'5px 7px',fontWeight:900,fontFamily:'var(--f-mono,monospace)',color:'var(--ink,#222)',verticalAlign:'middle'}}>{codigo}</td>
+                  <td style={{padding:'5px 6px',fontWeight:900,fontFamily:'Arial, Helvetica, sans-serif',fontVariantNumeric:'tabular-nums',fontSize:12.5,color:'var(--ink,#222)',verticalAlign:'middle',userSelect:'text'}}>{codigo}</td>
                   <td style={{padding:'5px 7px',verticalAlign:'middle'}}>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:7,alignItems:'center'}}>
+                    <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:5,alignItems:'center'}}>
                       <div style={{ minWidth:0 }}>
-                        <div style={{fontWeight:900,color:'var(--ink,#222)',lineHeight:1.15,fontSize:11.5}}>{nombre}</div>
+                        <div title={nombre} style={{fontWeight:900,color:'var(--ink,#222)',lineHeight:1.2,fontSize:11.7,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',letterSpacing:'-0.015em'}}>{nombre}</div>
                         {e.cintillo_registro && <div style={{display:'inline-flex',marginTop:5,padding:'3px 7px',borderRadius:999,background:'#EEF4FF',border:'1px solid #C9D9F1',color:'#244A7C',fontSize:9,fontWeight:900,letterSpacing:'.04em',textTransform:'uppercase'}}>{e.cintillo_registro}</div>}
-                        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginTop:2 }}>
-                          <span style={{color:'var(--ink-3,#777)',fontFamily:'var(--f-mono,monospace)',fontSize:9.5}}>{cedula}</span>
+                        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:2}}>
+                          <span style={{color:'var(--ink-3,#777)',fontFamily:'Arial, Helvetica, sans-serif',fontVariantNumeric:'tabular-nums',fontSize:10,userSelect:'text'}}>{cedula}</span>
                           {edad !== null && <PillMini label="Edad" value={`${edad}`} tone="muted" />}
                         </div>
+                        <div
+                          title={correo ? 'Doble clic para seleccionar el correo completo: ' + correo : 'Correo no registrado en la ficha del estudiante'}
+                          onDoubleClick={correo ? ev => {
+                            const selection = window.getSelection();
+                            const range = document.createRange();
+                            range.selectNodeContents(ev.currentTarget);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                          } : undefined}
+                          style={{fontSize:10,lineHeight:1.2,marginTop:2,color:correo?'#145B97':'var(--ink-3,#999)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',userSelect:'text',cursor:correo?'text':'default'}}
+                        >{correo || 'Sin correo'}</div>
                       </div>
                       <WhatsAppMini est={e} filtro={filtroOperativo} />
                     </div>
@@ -2713,6 +2726,30 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
     catch { return null; }
   }, []);
   const esAdmin = rolUsuario === 'admin' || rolUsuario === 'superadmin';
+
+  // Correo de DATOS: una lectura de la búsqueda existente, autorizada para administración.
+  // No altera la radiografía, el backend ni los registros de los estudiantes.
+  const [correosPorCodigo, setCorreosPorCodigo] = React.useState({});
+  React.useEffect(() => {
+    let vigente = true;
+    setCorreosPorCodigo({});
+    if (!grupoSel || !esAdmin) return () => { vigente = false; };
+    postAdminStudents('buscarEstudiantesRapido', { query: grupoSel, limit: 30 })
+      .then(resp => {
+        if (!vigente || !resp?.ok || !Array.isArray(resp.estudiantes)) return;
+        const correos = {};
+        resp.estudiantes.forEach(item => {
+          const codigo = String(item.codigo || item.rec_m || '').trim();
+          const grupo = String(item.grupo || '').trim();
+          const correo = String(item.email || item.correo || '').trim();
+          // Coincidencia exacta: el buscador permite coincidencias parciales.
+          if (grupo === grupoSel && codigo && correo) correos[codigo] = correo;
+        });
+        setCorreosPorCodigo(correos);
+      })
+      .catch(() => { if (vigente) setCorreosPorCodigo({}); });
+    return () => { vigente = false; };
+  }, [grupoSel, esAdmin, refreshKey]);
 
   // Sincronización CONAPE por grupo
   const [syncConape, setSyncConape] = React.useState({ loading: false });
@@ -3362,6 +3399,7 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
                   tituloFinalBusy={tituloFinalBusy}
                   filtroOperativo={filtroOperativo}
                   ultimosDesembolsosConape={ultimosDesembolsosConape}
+                  correosPorCodigo={correosPorCodigo}
                 />
               ))}
             </React.Fragment>
