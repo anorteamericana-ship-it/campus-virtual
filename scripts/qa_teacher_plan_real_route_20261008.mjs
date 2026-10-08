@@ -12,11 +12,21 @@ for(const [path,src] of [['teacher_views.jsx',tv],['panel_suspensiones.jsx',admi
   B.transform(src,{presets:['react'],plugins:['transform-block-scoping']});
 }
 assert(app.includes('cronograma_grupo: <LazyRoute title="Cronograma Inglés Conversacional" component="CronogramaDocenteSeguroF82"'));
-assert(app.includes('teacher_views.jsx?v=F99TEACHERPLAN20261008'));
-assert(bridge.includes('teacher_views.jsx?v=F99TEACHERPLAN20261008'));
-assert(page.includes('src/app.jsx?v=F99TEACHERPLAN20261008'));
-assert(page.includes('src/att77_bridge.js?v=F99TEACHERPLAN20261008'));
+assert(app.includes('teacher_views.jsx?v=F99TEACHERLABELFIX20261008'));
+assert(bridge.includes('teacher_views.jsx?v=F99TEACHERLABELFIX20261008'));
+assert(page.includes('src/app.jsx?v=F99TEACHERLABELFIX20261008'));
+assert(page.includes('src/att77_bridge.js?v=F99TEACHERLABELFIX20261008'));
 assert(tv.includes('Organizar cronograma'));
+// Regression: this undefined helper crashed the teacher's entire Calendar section in PROD.
+const monthStart=tv.indexOf('function TeacherAgendaMonthF82(');
+const monthEnd=tv.indexOf('function CronogramaDocenteSeguroF82(',monthStart);
+assert(monthStart>=0&&monthEnd>monthStart,'Teacher month component exists');
+const monthComponent=tv.slice(monthStart,monthEnd);
+for(const hit of monthComponent.matchAll(/\b(tv[A-Za-z0-9_]+)\s*\(/g)) {
+  const name=hit[1];
+  assert(new RegExp('function\\s+'+name+'\\s*\\(').test(tv),'Undefined calendar helper: '+name);
+}
+assert(!monthComponent.includes('tvGroupLabel'),'Removed undefined helper tvGroupLabel');
 assert(tv.includes('onEmptyDay={insertarPlanDia}'));
 assert(tv.includes('onDropDay={dropPlanDia}'));
 assert(tv.includes('enviarPlanCronogramaInicial'));
