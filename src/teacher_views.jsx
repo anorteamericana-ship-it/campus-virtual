@@ -1281,7 +1281,7 @@ function tvPlanAdvanceF52(draft, base, rail, fecha) {
   tail.forEach((e,i)=>{cambios[tvPlanKeyF52(e)]=i===0?fecha:tail[i-1].fecha;});
   return {ok:true,cambios,rail,numero:tail[0].leccion,fecha,ultimaLiberada:tail[tail.length-1].fecha,afectadas:tail.length};
 }
-function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, advanceRail=null, targetGroup='', onDragStart, onDragEnd, onDropDay, onEmptyDay }) {
+function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDragStart, onDragEnd, onDropDay, onEmptyDay }) {
   const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,
     days=new Date(y,m+1,0).getDate(),cells=[];
   for(let i=0;i<first;i++)cells.push(null);
@@ -1299,21 +1299,15 @@ function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, advanc
         if(!d)return <div key={i} style={{minHeight:70,background:'#F8F5EF',borderRight:'1px solid #FFF',borderBottom:'1px solid #FFF'}}/>;
         const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
           ev=events.filter(x=>String(x.fecha||'')===iso),
-          canTarget=planMode&&!!advanceRail&&tvPlanFuturaF52(iso),
-          addable=canTarget&&!ev.some(e=>String(e.cod_grupo||'')===String(targetGroup)&&tvPlanRailF52(e)===advanceRail),
-          targetColor=advanceRail==='ican'?'#70418F':'#9A6500',
-          targetBg=advanceRail==='ican'?'#F2E6FA':'#FFF0C6';
+          canTarget=planMode&&tvPlanFuturaF52(iso),
+          addable=canTarget&&ev.length===0;
         return <div key={i} data-date={iso}
           onDragOver={canTarget?e=>{e.preventDefault();e.dataTransfer.dropEffect='move';}:undefined}
           onDrop={canTarget?e=>{e.preventDefault();onDropDay(iso);}:undefined}
-          onClick={addable&&!ev.length?()=>onEmptyDay(iso):undefined}
-          onKeyDown={addable&&!ev.length?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onEmptyDay(iso);}}:undefined}
-          role={addable&&!ev.length?'button':undefined}
-          tabIndex={addable&&!ev.length?0:undefined}
-          title={addable&&!ev.length?'Adelantar '+(advanceRail==='ican'?'I CAN':'lección')+' al '+iso:undefined}
+
           style={{minHeight:72,padding:'4px',background:'#F8F5EF',
             borderRight:'1px solid #EAE1D5',borderBottom:'1px solid #EAE1D5',
-            cursor:addable&&!ev.length?'pointer':'default',boxSizing:'border-box'}}>
+            cursor:'default',boxSizing:'border-box'}}>
           <div style={{fontSize:10,color:'#353A42',fontWeight:800}}>{d}</div>
           <div style={{display:'grid',gap:3,marginTop:3}}>
             {ev.map((e,j)=>{
@@ -1333,14 +1327,24 @@ function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, advanc
               </button>;
             })}
           </div>
-          {addable&&(ev.length ? <button type="button" onClick={event=>{event.stopPropagation();onEmptyDay(iso);}}
-            style={{marginTop:4,width:'100%',fontSize:9,fontWeight:900,border:'1px dashed '+targetColor,borderRadius:4,
-              background:targetBg,color:targetColor,cursor:'pointer',padding:'3px 2px'}}
-            aria-label={'Adelantar '+(advanceRail==='ican'?'I CAN':'lección')+' al '+iso}>
-              ＋ {advanceRail==='ican'?'I CAN':'Lección'}
-            </button> : <div style={{fontSize:9,fontWeight:900,color:targetColor,background:targetBg,borderRadius:4,marginTop:7,padding:'3px 2px'}}>
-              ＋ {advanceRail==='ican'?'I CAN':'Lección'}
-            </div>)}
+          {addable&&<div style={{display:'grid',gap:3,marginTop:4}}>
+            <button type="button" onClick={()=>onEmptyDay(iso,'curso')}
+              aria-label={'Adelantar lección al '+iso}
+              title={'Adelantar la siguiente lección al '+iso}
+              style={{width:'100%',padding:'4px 2px',border:'1px dashed #CA8914',borderRadius:4,
+                background:'#FFF9ED',color:'#A26A05',fontWeight:900,fontSize:9,lineHeight:1.15,
+                cursor:'pointer',whiteSpace:'nowrap'}}>
+              + Lección
+            </button>
+            <button type="button" onClick={()=>onEmptyDay(iso,'ican')}
+              aria-label={'Adelantar I CAN al '+iso}
+              title={'Adelantar la siguiente sesión I CAN al '+iso}
+              style={{width:'100%',padding:'4px 2px',border:'1px dashed #885CB0',borderRadius:4,
+                background:'#FBF7FF',color:'#6C3E95',fontWeight:900,fontSize:9,lineHeight:1.15,
+                cursor:'pointer',whiteSpace:'nowrap'}}>
+              + I CAN
+            </button>
+          </div>}
         </div>;
       })}
     </div>
@@ -1351,7 +1355,6 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
   const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null),[monthOffset,setMonthOffset]=React.useState(0);
   const groupKey=JSON.stringify((grupos||[]).map(g=>[tvGroupCode(g),tvNivelId(g),String(g?.programa||'')]));
   const [planMode,setPlanMode]=React.useState(false);
-  const [advanceRail,setAdvanceRail]=React.useState(null);
   const [planFeedback,setPlanFeedback]=React.useState('');
   const [planState,setPlanState]=React.useState('CARGANDO');
   const [planError,setPlanError]=React.useState('');
@@ -1363,7 +1366,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
   const planDrag=React.useRef(null);
   const feriadosPlan=['2026-12-01','2026-12-25','2027-01-01'];
   React.useEffect(()=>{
-    setPlanMode(false);setAdvanceRail(null);setPlanFeedback('');setPlanBase([]);setPlanDates({});setPlanConfirm(false);setPlanError('');
+    setPlanMode(false);setPlanFeedback('');setPlanBase([]);setPlanDates({});setPlanConfirm(false);setPlanError('');
     let live=true;
     if(!codGrupo){setPlanState('SIN_PROPUESTA');return()=>{live=false;};}
     setPlanState('CARGANDO');
@@ -1445,7 +1448,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       setPlanError('No están disponibles las 32 lecciones y las 16 sesiones I CAN del nivel. No es seguro planificar.');return;
     }
     setPlanBase(rows);setPlanDates({});setPlanMotivo('Planificación inicial coordinada con estudiantes.');
-    setPlanError('');setPlanFeedback('');setAdvanceRail(null);setPlanMode(true);
+    setPlanError('');setPlanFeedback('');setPlanMode(true);
   };
   const modificarPlan=(cambios)=>{
     const next={...planDates,...cambios};
@@ -1462,14 +1465,15 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
     if(!e||!tvPlanFuturaF52(fecha)||fecha===e.fecha)return;
     modificarPlan({[tvPlanKeyF52(e)]:fecha});
   };
-  const insertarPlanDia=(fecha)=>{
+  const insertarPlanDia=(fecha,riel)=>{
     if(!planMode||!tvPlanFuturaF52(fecha))return;
-    const propuesta=tvPlanAdvanceF52(draftGrupo,planBase,advanceRail,fecha);
+    // Cada botón del día especifica su propio riel; no existe selección global.
+    const propuesta=tvPlanAdvanceF52(draftGrupo,planBase,riel,fecha);
     if(!propuesta.ok){setPlanError(propuesta.error);setPlanFeedback('');return;}
     if(modificarPlan(propuesta.cambios)){
-      const etiqueta=advanceRail==='ican'?'I CAN':'Lección';
+      const etiqueta=riel==='ican'?'I CAN':'Lección';
       setPlanFeedback(etiqueta+' '+String(propuesta.numero).padStart(2,'0')+' → '+fecha+
-        '. Se adelantaron '+propuesta.afectadas+' fechas de '+(advanceRail==='ican'?'I CAN':'lecciones')+
+        '. Se adelantaron '+propuesta.afectadas+' fechas de '+(riel==='ican'?'I CAN':'lecciones')+
         '; la otra secuencia permanece intacta.');
     }
   };
@@ -1484,7 +1488,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       },45000);
       if(!r?.ok){setPlanError(teacherSessionSafeUserError(r?.error||r?.mensaje,
         'No se pudo enviar el plan. Revisá el calendario y volvé a intentar.','plan_enviar'));return;}
-      setPlanState('PENDIENTE');setPlanConfirm(false);setPlanMode(false);setAdvanceRail(null);setPlanFeedback('');setPlanBase([]);setPlanDates({});
+      setPlanState('PENDIENTE');setPlanConfirm(false);setPlanMode(false);setPlanFeedback('');setPlanBase([]);setPlanDates({});
       setPlanError('Cronograma enviado a Administración. Quedó bloqueado hasta su revisión.');
     }catch(_){setPlanError('La conexión falló al enviar el informe. Actualizá antes de volver a enviarlo para evitar duplicados.');}
     finally{setPlanWorking(false);}
@@ -1510,36 +1514,14 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
           </button>}
         {planMode&&<div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           <button type="button" className="btn btn-ghost" onClick={()=>{setPlanDates({});setPlanError('');setPlanFeedback('');}}>Restablecer</button>
-          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanMode(false);setAdvanceRail(null);setPlanFeedback('');setPlanError('');}}>Salir sin enviar</button>
+          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanMode(false);setPlanFeedback('');setPlanError('');}}>Salir sin enviar</button>
           <button type="button" className="btn btn-primary" disabled={planWorking||!planValidation.ok||!planChanged.length}
             onClick={()=>setPlanConfirm(true)}>Enviar informe ({planChanged.length})</button>
         </div>}
       </div>
-      {planMode&&<div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:10,alignItems:'center'}}>
-        <button type="button" aria-pressed={advanceRail==='curso'}
-          onClick={()=>{setAdvanceRail('curso');setPlanError('');setPlanFeedback('');}}
-          style={{padding:'9px 13px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:900,
-            border:advanceRail==='curso'?'2px solid #A26700':'1px solid #D8A13F',
-            background:advanceRail==='curso'?'#F3B72A':'#FFF0C1',color:'#704500',
-            boxShadow:advanceRail==='curso'?'0 0 0 2px #FFE7A1':'none'}}>
-          ＋ Adelantar lección
-        </button>
-        <button type="button" aria-pressed={advanceRail==='ican'}
-          onClick={()=>{setAdvanceRail('ican');setPlanError('');setPlanFeedback('');}}
-          style={{padding:'9px 13px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:900,
-            border:advanceRail==='ican'?'2px solid #65418C':'1px solid #AF92D0',
-            background:advanceRail==='ican'?'#7952AB':'#EEDDFA',color:advanceRail==='ican'?'white':'#5D3685',
-            boxShadow:advanceRail==='ican'?'0 0 0 2px #E5D4F8':'none'}}>
-          ＋ Adelantar I CAN
-        </button>
-        <span style={{fontSize:11,color:'#4B6481',fontWeight:800}}>
-          {advanceRail==='curso'?'Elegí una fecha para adelantar la siguiente lección.':
-           advanceRail==='ican'?'Elegí una fecha para adelantar la siguiente sesión I CAN.':
-           'Elegí cuál de las dos secuencias querés adelantar.'}
-        </span>
-      </div>}
+
       <div style={{fontSize:11,color:'#5C6F83',marginTop:7,lineHeight:1.45}}>
-        {planMode?'Seleccioná uno de los botones y luego una fecha del calendario. También podés arrastrar sesiones futuras. Los cambios se incluyen en un solo informe para Administración.':
+        {planMode?'En cada fecha libre, usá + Lección (amarillo) o + I CAN (morado) para adelantar únicamente esa secuencia. También podés arrastrar sesiones futuras; todo se incluye en un informe para Administración.':
         'El profesor prepara un solo plan por grupo. Administración verifica y aprueba; los cambios posteriores se tramitan como suspensión o reprogramación.'}
       </div>
       {planFeedback&&planMode&&<div role="status" style={{fontSize:11,fontWeight:800,color:'#255D43',marginTop:7}}>{planFeedback}</div>}
@@ -1555,7 +1537,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       {[[1,'1 mes'],[2,'2 meses'],[periodMonthCount,'Cuatrimestre']].map(([n,l])=><button key={`${n}-${l}`} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
       <button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button>
     </div></div>
-    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} advanceRail={advanceRail} targetGroup={codGrupo} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode)return;if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode)return;if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
     {planConfirm&&planMode&&<div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!planWorking)setPlanConfirm(false);}}
       style={{position:'fixed',inset:0,zIndex:2400,background:'rgba(10,24,43,.60)',display:'grid',placeItems:'center',padding:12}}>
       <div role="dialog" aria-modal="true" aria-label="Informe del cronograma" style={{width:'100%',maxWidth:580,maxHeight:'90vh',overflow:'auto',background:'white',padding:20,borderRadius:14}}>
