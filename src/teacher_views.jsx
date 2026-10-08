@@ -1299,7 +1299,7 @@ function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDrag
                 type="button" onClick={()=>onSelect(e)} draggable={draggable}
                 onDragStart={draggable?x=>onDragStart(x,e):undefined}
                 onDragEnd={draggable?onDragEnd:undefined}
-                title={tvAgendaEventLabelF96(e,true)+' · '+tvGroupLabel(e.meta).full+
+                title={tvAgendaEventLabelF96(e,true)+' · '+String(e.cod_grupo||'')+
                   (draggable?' · Arrastrar para proponer otra fecha':'')}
                 style={{border:0,borderLeft:`3px solid ${tone.dark}`,background:tone.light,color:tone.dark,
                   borderRadius:4,padding:'3px 4px',fontSize:9,fontWeight:900,textAlign:'left',
