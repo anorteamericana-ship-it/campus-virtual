@@ -215,7 +215,9 @@ const FERIADOS_CR_NAMES = {
   '2026-08-02':'Día de la Virgen de los Ángeles',
   '2026-08-15':'Día de la Madre',
   '2026-09-15':'Día de la Independencia',
+  '2026-12-01':'Abolición del Ejército',
   '2026-12-25':'Navidad',
+  '2027-01-01':'Año Nuevo',
 };
 
 const MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -236,6 +238,56 @@ function diasEntre(iso) {
   const d = parseISO(iso); if (!d) return null;
   const h = new Date(); h.setHours(0,0,0,0);
   return Math.round((d - h) / 86400000);
+}
+
+// Reprogramación docente: una fecha calculada NO equivale a una fila editable.
+// El backend valida nuevamente existencia, orden, actividad y conflictos.
+function cgFechaEditable(iso) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) && diasEntre(iso) > 0;
+}
+function cgMananaLocalISO() {
+  const d = new Date(); d.setDate(d.getDate()+1);
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+}
+function cgLeccionArrastrable(lec) {
+  return !!lec && String(lec.estado || '').toUpperCase() === 'PROGRAMADA' &&
+    Number(lec.leccion) > 0 && cgFechaEditable(lec.fecha) &&
+    /^\d{1,2}:\d{2}$/.test(String(lec.hora_inicio || '')) &&
+    /^\d{1,2}:\d{2}$/.test(String(lec.hora_fin || ''));
+}
+function cgRielDeLeccion(lec) {
+  return String(lec?.tipo || '').toUpperCase() === 'ICAN' ? 'ican' : 'curso';
+}
+function cgPropuestaAdelanto(lecciones, grupo, nivel, fecha) {
+  const deCurso = (lecciones || []).filter(l =>
+    String(l.cod_grupo || '') === String(grupo) &&
+    normalizarNivelCG(l.nivel) === normalizarNivelCG(nivel) &&
+    cgRielDeLeccion(l) === 'curso' && Number(l.leccion) >= 1);
+  const porNumero = [...deCurso].sort((a,b) => Number(a.leccion)-Number(b.leccion));
+  if (!cgFechaEditable(fecha)) return { ok:false, motivo:'La fecha debe ser posterior a hoy.' };
+  if (FERIADOS_CR_NAMES[fecha]) return { ok:false, motivo:'La fecha elegida es feriado registrado: ' + FERIADOS_CR_NAMES[fecha] };
+  if (porNumero.length !== 32 || new Set(porNumero.map(l => Number(l.leccion))).size !== 32)
+    return { ok:false, motivo:'Es necesario un calendario completo de 32 lecciones para simular el adelanto.' };
+  if (porNumero.some((l,i) => Number(l.leccion) !== i+1))
+    return { ok:false, motivo:'La secuencia de lecciones no está completa.' };
+  if (porNumero.some(l => String(l.fecha) === fecha))
+    return { ok:false, motivo:'Ya existe una lección de este nivel en esa fecha.' };
+  const pos = porNumero.findIndex(l => String(l.fecha) > fecha);
+  if (pos < 0 || pos === 0) return { ok:false, motivo:'El adelanto debe insertarse entre dos lecciones existentes.' };
+  const anterior = porNumero[pos-1], cola = porNumero.slice(pos);
+  if (!cgLeccionArrastrable(cola[0]) || !cola.every(l => String(l.estado).toUpperCase() === 'PROGRAMADA'))
+    return { ok:false, motivo:'Hay lecciones ya impartidas, calculadas o bloqueadas; no se pueden desplazar.' };
+  if (cola.some(l => l.reprogramada))
+    return { ok:false, motivo:'Ya existen reprogramaciones aprobadas que deben respetarse.' };
+  const intervalos = cola.map(l => Number((l.hora_fin||'').slice(0,2))*60+Number((l.hora_fin||'').slice(3)) -
+                        Number((l.hora_inicio||'').slice(0,2))*60-Number((l.hora_inicio||'').slice(3)));
+  if (intervalos.some(x => x !== intervalos[0] || !Number.isFinite(x) || x <= 0))
+    return { ok:false, motivo:'La secuencia contiene horarios de distinta duración; debe revisarla Administración.' };
+  const cambios = cola.map((l,i) => ({
+    leccion:Number(l.leccion), original:l.fecha, nueva:i===0?fecha:cola[i-1].fecha
+  }));
+  return { ok:true, cambios, primera:cola[0].leccion, ultima:cola[cola.length-1].leccion,
+    fechaLiberada:cola[cola.length-1].fecha, grupo, nivel };
 }
 function idLeccion(nivel, num) {
   return 'L' + String((NIVEL_OFFSET[nivel] || 0) + num).padStart(3,'0');
@@ -710,6 +762,94 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
   const loadingVista = agendaDocenteMode ? loadingAgenda : loading;
   const errorVista = agendaDocenteMode ? errorAgenda : error;
 
+  // Editor del calendario: la operación MOVE usa la cola formal existente.
+  // INSERT es solo vista previa hasta disponer de un endpoint transaccional.
+  const [cambioCalendario, setCambioCalendario] = React.useState(null);
+  const [motivoCalendario, setMotivoCalendario] = React.useState('');
+  const [guardandoCalendario, setGuardandoCalendario] = React.useState(false);
+  const arrastradaRef = React.useRef(null);
+  const editorCalendario = (esTeacher || esAdmin) && !esTodosGrupos && vista === 'mes';
+  const grupoEditar = agendaDocenteMode ? agendaGrupoFiltro : codGrupo;
+  const leccionesEditor = agendaDocenteMode ? agendaLecciones : lecciones;
+
+  const abrirMover = (lec, fecha = '') => {
+    if (!editorCalendario || !cgLeccionArrastrable(lec)) {
+      showToast('Solo se pueden mover lecciones futuras PROGRAMADAS con hora registrada.', 'err');
+      return;
+    }
+    if (fecha && (!cgFechaEditable(fecha) || FERIADOS_CR_NAMES[fecha])) {
+      showToast('Elegí una fecha futura que no sea feriado.', 'err');
+      return;
+    }
+    if (fecha && String(fecha) === String(lec.fecha)) return;
+    setMotivoCalendario('');
+    setCambioCalendario({ tipo:'mover', lec, fecha });
+  };
+  const comenzarArrastre = (ev, lec) => {
+    if (!editorCalendario || !cgLeccionArrastrable(lec)) { ev.preventDefault(); return; }
+    arrastradaRef.current = lec;
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.dataTransfer.setData('text/plain','reprogramacion-academica');
+  };
+  const soltarEnDia = (ev, fecha) => {
+    ev.preventDefault();
+    const lec = arrastradaRef.current;
+    arrastradaRef.current = null;
+    if (lec) abrirMover(lec, fecha);
+  };
+  const abrirDiaLibre = fecha => {
+    if (!editorCalendario) return;
+    if (!grupoEditar || grupoEditar === TODOS_GRUPOS) {
+      showToast('Seleccioná primero una tarjeta de grupo docente para adelantar una lección.', 'err');
+      return;
+    }
+    const grupo = gruposReales.find(g => String(g.code||g.cod_grupo) === String(grupoEditar));
+    const niv = agendaDocenteMode ? normalizarNivelCG(grupo?.nivelId || grupo?.nivel) : nivel;
+    const propuesta = cgPropuestaAdelanto(leccionesEditor, grupoEditar, niv, fecha);
+    setCambioCalendario({ tipo:'adelanto', grupo:grupoEditar, nivel:niv, fecha, propuesta });
+  };
+  const confirmarMovimiento = async () => {
+    const lec = cambioCalendario?.lec;
+    const fecha = String(cambioCalendario?.fecha || '');
+    const motivo = motivoCalendario.trim();
+    if (!lec || guardandoCalendario) return;
+    if (!cgLeccionArrastrable(lec) || !cgFechaEditable(fecha) || FERIADOS_CR_NAMES[fecha]) {
+      showToast('La lección o el destino no son editables.', 'err'); return;
+    }
+    if (motivo.length < 8) { showToast('Indicá el motivo (mínimo 8 caracteres).', 'err'); return; }
+    if (fecha === lec.fecha) { showToast('Elegí una fecha diferente.', 'err'); return; }
+    const grupo = lec.cod_grupo || codGrupo;
+    const niv = normalizarNivelCG(lec.nivel || nivel);
+    const otras = leccionesEditor.filter(l =>
+      String(l.cod_grupo||grupo) === String(grupo) &&
+      normalizarNivelCG(l.nivel||niv) === niv &&
+      cgRielDeLeccion(l) === cgRielDeLeccion(lec) && Number(l.leccion)>0 &&
+      Number(l.leccion) !== Number(lec.leccion));
+    const previa = otras.filter(l => Number(l.leccion)<Number(lec.leccion))
+       .sort((a,b)=>Number(b.leccion)-Number(a.leccion))[0];
+    const siguiente = otras.filter(l => Number(l.leccion)>Number(lec.leccion))
+       .sort((a,b)=>Number(a.leccion)-Number(b.leccion))[0];
+    if ((previa && fecha <= String(previa.fecha)) || (siguiente && fecha >= String(siguiente.fecha)) ||
+        otras.some(l => l.fecha===fecha)) {
+      showToast('La fecha debe quedar entre la lección anterior y la siguiente, sin ocupar otra clase.', 'err');
+      return;
+    }
+    setGuardandoCalendario(true);
+    try {
+      const r = await postCronoGrupo('solicitarSuspension', {
+        tipo_solicitud:'REPROGRAMACION', cod_grupo:grupo, nivel:niv, leccion:Number(lec.leccion),
+        riel:cgRielDeLeccion(lec), fecha_destino:fecha,
+        hora_destino_inicio:lec.hora_inicio, hora_destino_fin:lec.hora_fin,
+        motivo
+      }, 45000);
+      if (!r?.ok) throw new Error(r?.mensaje || r?.error || 'No se pudo registrar la solicitud.');
+      setCambioCalendario(null);
+      showToast('Solicitud registrada. La fecha cambiará cuando Administración la apruebe.', 'ok');
+    } catch (e) {
+      showToast(cronoSafeUserError(e, 'No se pudo solicitar la reprogramación. Revisá la fecha y volvé a intentar.', 'mover_calendario'), 'err');
+    } finally { setGuardandoCalendario(false); }
+  };
+
   // Auto-seleccionar HOY o primera PROGRAMADA/CALCULADA al cargar
   React.useEffect(() => {
     if (!leccionesVista.length) return;
@@ -1061,6 +1201,13 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
         </div>
       </div>
 
+      {editorCalendario && (
+        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',margin:'8px 0 4px',padding:'8px 12px',background:'#EDF5FD',border:'1px solid #CFDFF0',borderRadius:9,color:'#204A76',fontSize:11,fontWeight:700}}>
+          <span>Arrastrá una lección futura a otro día para solicitar su movimiento. Tocá un día vacío para previsualizar un adelanto.</span>
+          {cgLeccionArrastrable(selLec)&&<button type="button" onClick={()=>abrirMover(selLec)} style={{marginLeft:'auto',padding:'5px 9px',background:'white',border:'1px solid #95B8D9',borderRadius:7,color:'#123A6E',fontWeight:900,cursor:'pointer'}}>Mover lección seleccionada</button>}
+          {esAdmin&&<button type="button" onClick={()=>onNavigate&&onNavigate('suspensiones')} style={{padding:'5px 9px',background:'white',border:'1px solid #95B8D9',borderRadius:7,color:'#123A6E',fontWeight:900,cursor:'pointer'}}>Aprobar solicitudes</button>}
+        </div>
+      )}
       {/* ── VISTA + PANEL DETALLE ──────────────────────────────────────── */}
       <div className="cg-layout-f984e" style={{
         // CALGRUPO_F73_20260618_DOS_ZONAS_SCROLL_INDEPENDIENTE
@@ -1105,7 +1252,10 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
                         selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
           ) : (
             <VistaMes meses={meses} mapaLecciones={mapaLecciones} selLec={selLec}
-                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} mesesVista={mesesVista} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
+                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} mesesVista={mesesVista} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }}
+                      editor={editorCalendario}
+                      onDragStartLec={comenzarArrastre} onDragEndLec={() => { arrastradaRef.current = null; }}
+                      onDropDia={soltarEnDia} onEmptyDia={abrirDiaLibre} />
           )}
         </div>
 
@@ -1140,6 +1290,15 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
         />
       </div>
       </React.Fragment>
+      )}
+
+      {cambioCalendario && (
+        <ModalCambioCalendarioCG
+          cambio={cambioCalendario} setCambio={setCambioCalendario}
+          motivo={motivoCalendario} setMotivo={setMotivoCalendario}
+          guardando={guardandoCalendario} onConfirmar={confirmarMovimiento}
+          onCerrar={()=>{if(!guardandoCalendario)setCambioCalendario(null);}}
+        />
       )}
 
       {modalCobertura && (
@@ -1222,6 +1381,83 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
           <span>{toast.msg}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Editor visual: solicitudes de movimiento y simulación de adelanto.
+// El adelanto no se escribe sin un endpoint con operación atómica/rollback.
+// ─────────────────────────────────────────────────────────────────────────
+function ModalCambioCalendarioCG({cambio,setCambio,motivo,setMotivo,guardando,onConfirmar,onCerrar}) {
+  const adelanto = cambio.tipo === 'adelanto';
+  const previa = cambio.propuesta;
+  const lec = cambio.lec || {};
+  return (
+    <div role="presentation" style={{position:'fixed',inset:0,background:'rgba(12,25,42,.64)',zIndex:2200,display:'grid',placeItems:'center',padding:15}} onMouseDown={ev=>{if(ev.target===ev.currentTarget&&!guardando)onCerrar();}}>
+      <div role="dialog" aria-modal="true" aria-label={adelanto?'Previsualización de adelanto':'Reprogramación de clase'}
+           style={{width:'100%',maxWidth:adelanto?570:450,maxHeight:'90vh',overflowY:'auto',background:'#fff',borderRadius:14,boxShadow:'0 18px 65px rgba(0,0,0,.24)',padding:'18px 20px',color:'#16314F'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:12}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',color:'#55718D'}}>Calendario académico</div>
+            <h3 style={{margin:'5px 0 8px',fontSize:20,color:'#102D50'}}>{adelanto?'Previsualizar adelanto de clase':'Mover lección existente'}</h3>
+          </div>
+          <button type="button" onClick={onCerrar} disabled={guardando} aria-label="Cerrar" style={{background:'#F4F6F8',border:'1px solid #DBE1E8',borderRadius:8,padding:'5px 9px',cursor:'pointer'}}>✕</button>
+        </div>
+        {adelanto ? (
+          <>
+            <div style={{fontSize:12,lineHeight:1.6,marginBottom:12}}>
+              <b>{cambio.grupo} · {cambio.nivel} · {fmtLargo(cambio.fecha)}</b>
+              <div>El objetivo es adelantar una clase y usar la última fecha del curso como espacio liberado, sin superar 32 lecciones.</div>
+            </div>
+            {!previa?.ok ? (
+              <div role="alert" style={{padding:12,border:'1px solid #E6B0A8',borderRadius:8,background:'#FFF1EF',fontSize:12}}>{previa?.motivo||'No se puede calcular el adelanto.'}</div>
+            ) : (
+              <>
+                <div style={{padding:'10px 12px',borderRadius:8,background:'#E8F3FF',fontSize:12,marginBottom:10}}>
+                  La lección <b>{previa.primera}</b> pasaría al <b>{fmtLargo(cambio.fecha)}</b>. Se reorganizarían <b>{previa.cambios.length}</b> fechas y quedaría libre <b>{fmtLargo(previa.fechaLiberada)}</b>.
+                </div>
+                <div style={{maxHeight:225,overflowY:'auto',border:'1px solid #DFE4EA',borderRadius:8}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                    <thead><tr style={{background:'#F1F5FA'}}><th style={{padding:7,textAlign:'left'}}>Lección</th><th style={{padding:7,textAlign:'left'}}>Fecha actual</th><th style={{padding:7,textAlign:'left'}}>Fecha propuesta</th></tr></thead>
+                    <tbody>{previa.cambios.map(item=>(
+                      <tr key={item.leccion} style={{borderTop:'1px solid #E4EAF1'}}>
+                        <td style={{padding:7,fontWeight:900}}>{item.leccion}</td><td style={{padding:7}}>{fmtLargo(item.original)}</td><td style={{padding:7,fontWeight:800,color:'#15589A'}}>{fmtLargo(item.nueva)}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <p style={{fontSize:11,lineHeight:1.5,color:'#8A4A00',background:'#FFF7E4',padding:10,borderRadius:8}}>
+              <b>Simulación solamente.</b> No se han cambiado fechas, evaluaciones ni asistencias. Aplicar este adelanto exige una operación transaccional de backend que verifique las 32 lecciones y sus registros académicos.
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{fontSize:12,lineHeight:1.7,marginBottom:10}}>
+              <b>{lec.cod_grupo} · {lec.nivel} · Lección {lec.leccion}</b>
+              <div>Fecha actual: <b>{fmtLargo(lec.fecha)}</b> · {lec.hora_inicio}–{lec.hora_fin}</div>
+            </div>
+            <label style={{fontSize:11,fontWeight:900,display:'block',marginBottom:5}} htmlFor="cg-nueva-fecha">Nueva fecha</label>
+            <input id="cg-nueva-fecha" type="date" min={cgMananaLocalISO()} value={cambio.fecha||''}
+                   onChange={ev=>setCambio(prev=>({...prev,fecha:ev.target.value}))} disabled={guardando}
+                   style={{width:'100%',boxSizing:'border-box',border:'1px solid #BCCAD7',borderRadius:8,padding:10,fontSize:13,marginBottom:10}} />
+            <label style={{fontSize:11,fontWeight:900,display:'block',marginBottom:5}} htmlFor="cg-motivo">Motivo del cambio</label>
+            <textarea id="cg-motivo" value={motivo} onChange={ev=>setMotivo(ev.target.value)} maxLength={450} rows={3} disabled={guardando}
+                      placeholder="Ej.: reposición por feriado o cambio de disponibilidad docente"
+                      style={{width:'100%',boxSizing:'border-box',border:'1px solid #BCCAD7',borderRadius:8,padding:10,resize:'vertical',fontFamily:'inherit',fontSize:12}} />
+            <p style={{fontSize:11,lineHeight:1.5,color:'#5A6575'}}>Se conservará el número de lección y las horas. La solicitud quedará <b>pendiente de aprobación administrativa</b>; no cambiará el calendario al enviarla.</p>
+          </>
+        )}
+        <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:12}}>
+          <button type="button" onClick={onCerrar} disabled={guardando} style={{border:'1px solid #BBC8D5',background:'white',borderRadius:8,padding:'9px 12px',cursor:'pointer'}}>Cerrar</button>
+          {!adelanto&&<button type="button" onClick={onConfirmar} disabled={guardando||!cambio.fecha||motivo.trim().length<8}
+            style={{border:0,background:'#073B7A',color:'white',borderRadius:8,padding:'9px 14px',fontWeight:900,cursor:guardando?'wait':'pointer',opacity:(guardando || !cambio.fecha || motivo.trim().length < 8) ? 0.5 : 1}}>
+            {guardando?'Enviando…':'Solicitar reprogramación'}
+          </button>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1686,7 +1922,7 @@ function MesesVistaControl({ valor, setValor, esAlumno = false, fullRangeMonths 
 }
 
 // ── VISTA: Mes / cuatrimestre docente ──────────────────────────────────────
-function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVista = 1, onClickLec }) {
+function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVista = 1, onClickLec, editor = false, onDragStartLec, onDragEndLec, onDropDia, onEmptyDia }) {
   // CALGRUPO_F68_20260618_CUATRIMESTRE_1_2_4_MESES
   // F72: el calendario vive dentro de su propio scroll; el detalle no debe empujarse fuera de pantalla.
   const visibles = (meses || []).slice(0, Math.max(1, Number(mesesVista) || 1));
@@ -1699,7 +1935,7 @@ function VistaMes({ meses, mapaLecciones, selLec, nivel, agenda = false, mesesVi
       }}>
         {visibles.map(mes => (
           <div key={`${mes.getFullYear()}-${mes.getMonth()}`} style={{ width:'100%', minWidth:0 }}>
-            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} agenda={agenda} compacto={agenda || Number(mesesVista) >= 2} onClickLec={onClickLec} />
+            <Mes mes={mes} mapaLecciones={mapaLecciones} selLec={selLec} nivel={nivel} agenda={agenda} compacto={agenda || Number(mesesVista) >= 2} onClickLec={onClickLec} editor={editor} onDragStartLec={onDragStartLec} onDragEndLec={onDragEndLec} onDropDia={onDropDia} onEmptyDia={onEmptyDia} />
           </div>
         ))}
       </div>
@@ -1893,7 +2129,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
 // ─────────────────────────────────────────────────────────────────────────
 // Mes (cuadrícula Lun-Dom)
 // ─────────────────────────────────────────────────────────────────────────
-function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = false, onClickLec }) {
+function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = false, onClickLec, editor = false, onDragStartLec, onDragEndLec, onDropDia, onEmptyDia }) {
   const year  = mes.getFullYear();
   const month = mes.getMonth();
   const primero = new Date(year, month, 1);
@@ -1928,16 +2164,18 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
         {celdas.map((c, i) => (
-          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} agenda={agenda} compacto={compacto} onClickLec={onClickLec} />
+          <CeldaDia key={i} celda={c} selLec={selLec} nivel={nivel} agenda={agenda} compacto={compacto} onClickLec={onClickLec} editor={editor} onDragStartLec={onDragStartLec} onDragEndLec={onDragEndLec} onDropDia={onDropDia} onEmptyDia={onEmptyDia} />
         ))}
       </div>
     </div>
   );
 }
 
-function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onClickLec }) {
+function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onClickLec, editor = false, onDragStartLec, onDragEndLec, onDropDia, onEmptyDia }) {
   const { diaNum, dentro, lecs } = celda;
   const minH = compacto ? 54 : (agenda ? 66 : 72);
+  const puedeEditarDia = editor && cgFechaEditable(celda.iso);
+  const dropProps = puedeEditarDia ? {onDragOver:ev=>{ev.preventDefault(); ev.dataTransfer.dropEffect='move';},onDrop:ev=>{ev.stopPropagation();onDropDia(ev,celda.iso);}} : {};
   if (!dentro) {
     return (
       <div style={{ minHeight:minH, borderRadius:6, padding:'6px 7px', opacity:0.38 }}>
@@ -1945,28 +2183,73 @@ function CeldaDia({ celda, selLec, nivel, agenda = false, compacto = false, onCl
       </div>
     );
   }
+  if (agenda && compacto) {
+    return (
+      <div {...dropProps}
+        role={puedeEditarDia && !lecs.length?'button':undefined}
+        tabIndex={puedeEditarDia && !lecs.length?0:undefined}
+        onClick={puedeEditarDia && !lecs.length?()=>onEmptyDia(celda.iso):undefined}
+        onKeyDown={puedeEditarDia && !lecs.length?ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();onEmptyDia(celda.iso);}}:undefined}
+        title={puedeEditarDia && !lecs.length?'Previsualizar clase adelantada en '+celda.iso:undefined}
+        style={{minHeight:68,borderRadius:6,padding:'5px 4px',background:'#FAF7F1',
+          border:'1px solid #E6DAC8',display:'flex',flexDirection:'column',gap:3,
+          cursor:puedeEditarDia && !lecs.length?'pointer':'default',boxSizing:'border-box'}}>
+        <span style={{fontSize:10,fontWeight:800,lineHeight:1.2,color:'#3B4148'}}>{diaNum}</span>
+        {lecs.map((lec,i)=>{
+          const n = normalizarNivelCG(lec.nivel||nivel);
+          const move = editor && cgLeccionArrastrable(lec);
+          const tone = lec.estado==='FERIADO'?'#B71C1C':lec.tipo==='ICAN'?'#7652A4':(NIVEL_COLOR_CG[n]||'#E5A823');
+          const text = lec.estado==='FERIADO' ? 'Feriado' :
+            lec.tipo==='ICAN' ? n+' I CAN '+String(lec.leccion).padStart(2,'0') :
+            lec.tipo==='PROGRESS_CHECK' ? n+' PC '+String(lec.leccion).padStart(2,'0') :
+            n+' L'+String(lec.leccion).padStart(2,'0');
+          const active = selLec && selLec.fecha===lec.fecha && selLec.leccion===lec.leccion &&
+            String(selLec.cod_grupo||'')===String(lec.cod_grupo||'');
+          return <button key={(lec.agenda_event_id||lec.evento_id||String(i))}
+            type="button" onClick={()=>onClickLec(lec)} draggable={move}
+            onDragStart={move?ev=>onDragStartLec(ev,lec):undefined}
+            onDragEnd={move?onDragEndLec:undefined}
+            title={text+' · '+(lec.hora_inicio||'')+'–'+(lec.hora_fin||'')+' · '+(lec.estado||'')+(move?' · Arrastrar para mover':'')}
+            aria-label={text+' '+(lec.estado||'')}
+            style={{width:'100%',minHeight:17,display:'block',padding:'2px 4px',textAlign:'left',
+              fontSize:9.5,fontWeight:900,lineHeight:1.25,letterSpacing:'.01em',
+              color:'#fff',background:tone,border:active?'1px solid #10283E':'1px solid transparent',
+              borderRadius:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+              boxShadow:active?'0 0 0 1px #10283E':'none',cursor:move?'grab':'pointer'}}>{text}</button>;
+        })}
+        {puedeEditarDia && !lecs.length && <span style={{fontSize:9,color:'#748599',fontWeight:800,marginTop:1}}>＋ Adelantar</span>}
+      </div>
+    );
+  }
   if (!lecs.length) {
     return (
-      <div style={{ minHeight:minH, borderRadius:6, padding:'6px 7px', background:'var(--surface-2)', border:'1px solid var(--line)' }}>
+      <div {...dropProps} role={puedeEditarDia?'button':undefined} tabIndex={puedeEditarDia?0:undefined}
+           onClick={puedeEditarDia?()=>onEmptyDia(celda.iso):undefined}
+           onKeyDown={puedeEditarDia?ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();onEmptyDia(celda.iso);}}:undefined}
+           title={puedeEditarDia?'Previsualizar adelanto en '+celda.iso:undefined}
+           style={{ minHeight:minH, borderRadius:6, padding:'6px 7px', background:'var(--surface-2)', border:'1px solid var(--line)', cursor:puedeEditarDia?'pointer':'default' }}>
         <div style={{ fontSize:11, color:'var(--ink-3)' }}>{diaNum}</div>
+        {puedeEditarDia&&<div style={{fontSize:9,color:'#637C9C',marginTop:4,fontWeight:800}}>＋ Adelantar</div>}
       </div>
     );
   }
   return (
-    <div style={{ minHeight:minH, display:'grid', gap:4, gridTemplateRows:`repeat(${Math.max(1, lecs.length)}, minmax(${compacto ? 24 : 30}px, auto))` }}>
+    <div {...dropProps} style={{ minHeight:minH, display:'grid', gap:4, gridTemplateRows:`repeat(${Math.max(1, lecs.length)}, minmax(${compacto ? 24 : 30}px, auto))` }}>
       {lecs.map((lec, i) => (
         <BloqueLeccion key={i} lec={lec} diaNum={i === 0 ? diaNum : null}
                        nivel={lec.nivel || nivel}
                        agenda={agenda}
                        compacto={compacto}
                        selected={selLec && selLec.fecha === lec.fecha && selLec.leccion === lec.leccion && (!lec.cod_grupo || !selLec.cod_grupo || lec.cod_grupo === selLec.cod_grupo)}
-                       onClick={() => onClickLec(lec)} />
+                       onClick={() => onClickLec(lec)}
+                       movible={editor && cgLeccionArrastrable(lec)}
+                       onDragStart={ev => onDragStartLec(ev,lec)} onDragEnd={onDragEndLec} />
       ))}
     </div>
   );
 }
 
-function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, compacto = false }) {
+function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, compacto = false, movible = false, onDragStart, onDragEnd }) {
   const pal = paletaCelda(lec.estado, lec.tipo, nivel);
   const evalLabel = etiquetaEvaluacionCG(lec.tipo, lec.leccion);
   const badgeText = lec.tipo === 'ICAN'
@@ -1976,12 +2259,16 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
   return (
     <div
       onClick={onClick}
+      draggable={movible}
+      onDragStart={movible?onDragStart:undefined}
+      onDragEnd={movible?onDragEnd:undefined}
+      title={movible?'Arrastrar para solicitar cambio de fecha':undefined}
       style={{
         background: pal.bg,
         border:`1px solid ${selected ? pal.accent : pal.bg}`,
         borderRadius:6,
         padding: compacto ? '4px 5px' : '6px 7px',
-        cursor:'pointer',
+        cursor:movible?'grab':'pointer',
         display:'flex', flexDirection:'column', gap:4,
         boxShadow: selected ? `0 0 0 2px ${pal.accent}` : 'none',
         minHeight:0,

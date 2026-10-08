@@ -81,8 +81,8 @@ const F96_LAZY = {
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F99SININA1','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F98.4Z6CS21A146CAL'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F99SININA1','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F98.4Z6CS21A146CAL','src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/calendario_grupo.jsx?v=F98.4Z6CM'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F99SININA1','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F99CALMOVE20261008'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F99SININA1','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F99CALMOVE20261008','src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/calendario_grupo.jsx?v=F98.4Z6CM'],
   docente_operativo: ['src/vista_docente.jsx?v=F99SININA1','src/teacher_views.jsx?v=F98.4Z6CS21A213','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
@@ -96,7 +96,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F98.4A','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F99SININA1','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F98.4Z6CS21A146CAL',
+    'src/vista_docente.jsx?v=F99SININA1','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F99CALMOVE20261008',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
