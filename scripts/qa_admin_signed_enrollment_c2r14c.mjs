@@ -19,7 +19,8 @@ check(admin.includes('data-admin-signed-enrollment="true"'), 'Admin Documents ta
 check(admin.includes('Las versiones anteriores se conservan'), 'Admin UI explains version preservation');
 check(admin.includes("fn: tipo === 'CERTIFICADO' ? 'generarDocumentoVentas' : 'generarDocumento'"), 'Admin enrollment uses the same canonical renderer as Sales while preserving other admin documents');
 check(!admin.includes("fn:'generarDocumentoAdminFirmado'"), 'No duplicate enrollment generator was introduced');
-check(app.includes('src/admin_students.jsx?v=F98.4Z6CS21A214'), 'Admin lazy bundle is cache-busted');
+const adminRefs = app.match(/src\/admin_students\.jsx(?:\?v=[^'\"]+)?/g) || [];
+check(adminRefs.length > 0 && adminRefs.every(ref => /\?v=[A-Za-z0-9_.-]+$/.test(ref)), 'Admin lazy bundle is cache-busted');
 
 if (fail) process.exit(1);
 console.log('C2-R14C ADMIN SIGNED ENROLLMENT QA PASS');
