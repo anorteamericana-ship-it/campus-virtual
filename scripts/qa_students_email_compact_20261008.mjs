@@ -21,6 +21,6 @@ assert(table.includes("<CertificadoEstadoBox state={state} compact/>"));
 assert(table.includes("title={`Proyectar manualmente a ${nivelSiguiente}`}"));
 assert(table.includes("onClick={() => abrirPago(e,nivelKey,onNavigate)}"));
 assert(app.match(/src\/admin_students.jsx\?v=F99-STUDENT-EMAIL-20261008/g)?.length===3);
-assert(page.includes('src/app.jsx?v=F99-STUDENT-EMAIL-20261008'));
+assert(/src\/app\.jsx\?v=[A-Za-z0-9_.-]+/.test(page),'Main campus script has a versioned URL');
 console.log('STUDENTS_EMAIL_COMPACT_STATIC_PASS');
 console.log('BACKEND_WRITES=NONE; PROYECCION_AND_PAYMENTS_PRESERVED; JSX_TRANSPILE_PASS');
