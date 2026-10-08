@@ -36,6 +36,79 @@ function psuSafeUserError(raw, fallback, context = '') {
   return msg;
 }
 
+async function postPlanAdminF52(fn, payload={}) {
+  const token=typeof window.getSessionToken==='function'?window.getSessionToken():'';
+  const r=await fetch(window.APPS_SCRIPT_URL+'?fn='+encodeURIComponent(fn),{
+    method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({fn,token,...payload})
+  });
+  const t=await r.text();
+  if(!r.ok)throw Error('No se pudo contactar con el servidor académico.');
+  try{return JSON.parse(t);}catch(_){throw Error('Respuesta no válida al consultar cronogramas.');}
+}
+function PlanesInicialesAdminF52() {
+  const [lista,setLista]=React.useState([]),[loading,setLoading]=React.useState(true),
+        [err,setErr]=React.useState(''),[review,setReview]=React.useState(null),
+        [inaOk,setInaOk]=React.useState(false),[nota,setNota]=React.useState(''),
+        [busy,setBusy]=React.useState(false);
+  const load=React.useCallback(()=>{
+    setLoading(true);setErr('');
+    postPlanAdminF52('listarPlanesCronogramaInicial',{estado:'PENDIENTE'})
+      .then(r=>{if(!r?.ok)throw Error(r?.error||'No se pudieron leer los informes.');setLista(r.propuestas||[]);})
+      .catch(()=>setErr('No se pudo cargar la bandeja de cronogramas.')).finally(()=>setLoading(false));
+  },[]);
+  React.useEffect(()=>{load();},[load]);
+  const resolver=async(accion)=>{
+    if(!review||busy)return;
+    if(accion==='aprobar'&&review.programa==='INA'&&!inaOk){setErr('Confirmá la revisión del trámite SIFA/INA.');return;}
+    if(accion==='rechazar'&&nota.trim().length<8){setErr('Escribí el motivo del rechazo.');return;}
+    setBusy(true);setErr('');
+    try{
+      const r=await postPlanAdminF52('resolverPlanCronogramaInicial',{id:review.id,accion,
+        confirmacion_ina:review.programa==='INA'?inaOk:false,nota:nota.trim()});
+      if(!r?.ok)throw Error(r?.error||'No se pudo resolver la propuesta.');
+      setReview(null);setNota('');setInaOk(false);load();
+    }catch(e){setErr(psuSafeUserError(e?.message||e,'No se pudo aplicar la resolución. Revisá los registros antes de repetir.','plan_inicial'));}
+    finally{setBusy(false);}
+  };
+  return <div style={{border:'1px solid #C6D5E7',background:'#F3F7FC',padding:15,borderRadius:12,marginBottom:18}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+      <div><strong style={{color:'#063A78',fontSize:14}}>Cronogramas iniciales de docentes</strong>
+        <div style={{fontSize:11,color:'#556C86'}}>Una propuesta por grupo; aplicar y aprobar bloquea la planificación inicial.</div></div>
+      <button className="btn btn-ghost" type="button" onClick={load} disabled={loading}>{loading?'Cargando…':'Actualizar informes'}</button>
+    </div>
+    {err&&<div role="alert" style={{fontSize:11,color:'#A13030',marginTop:8}}>{err}</div>}
+    {!loading&&!lista.length&&<p style={{fontSize:12,color:'#5F7085',marginBottom:0}}>No hay cronogramas iniciales pendientes.</p>}
+    {lista.map(p=><div key={p.id} style={{background:'#FFF',marginTop:9,padding:10,borderRadius:9,border:'1px solid #D3DEE9',display:'flex',gap:9,justifyContent:'space-between',alignItems:'center',flexWrap:'wrap'}}>
+      <div><b>{p.grupo} · {p.nivel}</b><div style={{fontSize:11,color:'#52677C'}}>Docente: {p.docente} · {p.cambios?.length||0} movimientos · {p.programa}</div></div>
+      <button className="btn btn-primary" onClick={()=>{setReview(p);setNota('');setInaOk(false);setErr('');}}>Revisar propuesta</button>
+    </div>)}
+    {review&&<div role="presentation" style={{position:'fixed',inset:0,background:'rgba(11,27,49,.64)',zIndex:2300,display:'grid',placeItems:'center',padding:12}}>
+      <div role="dialog" aria-modal="true" aria-label="Revisión de propuesta docente" style={{width:'100%',maxWidth:610,maxHeight:'91vh',overflow:'auto',background:'white',borderRadius:12,padding:18}}>
+        <h3 style={{margin:'0 0 8px',fontSize:19}}>Revisión · {review.grupo} · {review.nivel}</h3>
+        <p style={{fontSize:12}}><b>{review.docente}</b> — {review.motivo}</p>
+        <div style={{maxHeight:275,overflow:'auto',border:'1px solid #DCE5EE',borderRadius:8}}>
+          {(review.cambios||[]).map(c=><div key={c.riel+'|'+c.leccion} style={{padding:'7px 10px',fontSize:11,borderBottom:'1px solid #E5EBF2'}}>
+            <b>{c.riel==='ican'?'I CAN':'Lección'} {c.leccion}</b> · {c.de} → <b>{c.a}</b> · {c.hora_inicio}–{c.hora_fin}
+          </div>)}
+        </div>
+        {review.programa==='INA'&&<label style={{display:'flex',gap:8,alignItems:'start',fontSize:12,marginTop:12,fontWeight:800}}>
+          <input type="checkbox" checked={inaOk} onChange={e=>setInaOk(e.target.checked)}/>
+          Confirmo que Administración verificó el procedimiento aplicable ante SIFA/INA. Aprobar en el Campus NO modifica SIFA.
+        </label>}
+        <label style={{display:'block',margin:'10px 0 4px',fontSize:11,fontWeight:900}}>Nota de revisión o rechazo</label>
+        <textarea rows={3} value={nota} onChange={e=>setNota(e.target.value)} style={{width:'100%',boxSizing:'border-box',borderRadius:7,padding:8,border:'1px solid #BAC8D8'}}/>
+        {err&&<div role="alert" style={{color:'#B23131',fontSize:11}}>{err}</div>}
+        <div style={{display:'flex',justifyContent:'flex-end',gap:7,flexWrap:'wrap',marginTop:12}}>
+          <button className="btn btn-ghost" onClick={()=>{if(!busy)setReview(null);}} disabled={busy}>Cerrar</button>
+          <button className="btn btn-ghost" onClick={()=>resolver('rechazar')} disabled={busy||nota.trim().length<8}>Devolver al docente</button>
+          <button className="btn btn-primary" onClick={()=>resolver('aprobar')} disabled={busy||(review.programa==='INA'&&!inaOk)}>{busy?'Procesando…':'Aplicar y dar visto bueno'}</button>
+        </div>
+      </div>
+    </div>}
+  </div>;
+}
+
 function PanelSuspensiones({ embedded = false } = {}) {
   const adminNombre = React.useMemo(() => {
     try {
@@ -166,6 +239,8 @@ function PanelSuspensiones({ embedded = false } = {}) {
           </button>
         </div>
       </div>
+
+      <PlanesInicialesAdminF52 />
 
       {/* Resumen */}
       <div style={{
