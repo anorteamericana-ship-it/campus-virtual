@@ -1255,7 +1255,9 @@ function tvPlanValidateF52(base,plan,feriados) {
     const sa=tvPlanMinF52(a.hora_inicio),ea=tvPlanMinF52(a.hora_fin),
           sb=tvPlanMinF52(b.hora_inicio),eb=tvPlanMinF52(b.hora_fin);
     if(sa===null||ea===null||sb===null||eb===null)return {ok:false,error:'Faltan horas para verificar conflictos.'};
-    if(sa<eb&&ea>sb)return {ok:false,error:'Choque entre sesiones el '+a.fecha+'.'};
+    return {ok:false,error:'Solo se permite una actividad por día: '+a.fecha+' ('+
+      (tvPlanRailF52(a)==='ican'?'I CAN':'Lección')+' '+a.leccion+' y '+
+      (tvPlanRailF52(b)==='ican'?'I CAN':'Lección')+' '+b.leccion+').'};
   }
   return {ok:true,cambios:plan.filter(e=>e.fecha!==original.get(tvPlanKeyF52(e))?.fecha)};
 }
@@ -1280,6 +1282,49 @@ function tvPlanAdvanceF52(draft, base, rail, fecha) {
   const cambios={};
   tail.forEach((e,i)=>{cambios[tvPlanKeyF52(e)]=i===0?fecha:tail[i-1].fecha;});
   return {ok:true,cambios,rail,numero:tail[0].leccion,fecha,ultimaLiberada:tail[tail.length-1].fecha,afectadas:tail.length};
+}
+// Planificación previa: suspender UNA fecha sin eliminar el registro académico.
+// Mantiene los IDs/32 lecciones/16 I CAN; desplaza la secuencia y libera la fecha.
+function tvPlanSuspenderF52(draft, base, target, feriados=[]) {
+  if(!target)return {ok:false,error:'Seleccioná la sesión que querés suspender.'};
+  const riel=tvPlanRailF52(target),key=tvPlanKeyF52(target),
+    original=base.find(e=>tvPlanKeyF52(e)===key),
+    list=draft.filter(e=>tvPlanRailF52(e)===riel).sort((a,b)=>Number(a.leccion)-Number(b.leccion));
+  const expected=riel==='ican'?16:32,idx=list.findIndex(e=>tvPlanKeyF52(e)===key);
+  if(!original||!tvPlanSafeF52(original)||!tvPlanFuturaF52(target.fecha))
+    return {ok:false,error:'Esta actividad ya no se puede suspender desde la planificación inicial.'};
+  if(list.length!==expected||idx<0||new Set(list.map(e=>Number(e.leccion))).size!==expected)
+    return {ok:false,error:'La secuencia académica no está completa.'};
+  const tail=list.slice(idx);
+  if(tail.some(e=>!tvPlanSafeF52(base.find(b=>tvPlanKeyF52(b)===tvPlanKeyF52(e)))))
+    return {ok:false,error:'Hay sesiones posteriores ya impartidas o bloqueadas; no se pueden desplazar.'};
+  const maxDates=tail.map(e=>e.fecha).sort(),lastDate=maxDates[maxDates.length-1];
+  // Deducir días semanales ordinarios del riel, descartando fechas adicionales puntuales.
+  const frecuencia=Array(7).fill(0);
+  base.filter(e=>tvPlanRailF52(e)===riel).forEach(e=>{
+    const dt=new Date(String(e.fecha)+'T12:00:00Z');
+    if(!Number.isNaN(dt.getTime()))frecuencia[dt.getUTCDay()]++;
+  });
+  const maxCount=Math.max(...frecuencia),threshold=Math.max(2,Math.ceil(maxCount*.45));
+  const dias=new Set(frecuencia.map((n,i)=>n>=threshold?i:-1).filter(n=>n>=0));
+  if(!dias.size)return {ok:false,error:'No se puede determinar el horario semanal de esta secuencia.'};
+  const ocupadas=new Set(draft.map(e=>e.fecha));
+  const bloqueadas=new Set(feriados);
+  let nuevoFinal='';
+  for(let d=1;d<=120;d++){
+    const dt=new Date(lastDate+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()+d);
+    const iso=dt.toISOString().slice(0,10);
+    if(dias.has(dt.getUTCDay())&&!ocupadas.has(iso)&&!bloqueadas.has(iso)){nuevoFinal=iso;break;}
+  }
+  if(!nuevoFinal)return {ok:false,error:'No se encontró una fecha de reposición válida para la última sesión.'};
+  const cambios={};
+  for(let i=0;i<tail.length;i++)cambios[tvPlanKeyF52(tail[i])]=
+    i===tail.length-1?nuevoFinal:tail[i+1].fecha;
+  const proposed=draft.map(e=>({...e,fecha:cambios[tvPlanKeyF52(e)]||e.fecha}));
+  const val=tvPlanValidateF52(base,proposed,feriados);
+  if(!val.ok)return val;
+  return {ok:true,cambios,riel,leccion:target.leccion,fechaLiberada:target.fecha,
+    nuevoFinal,afectadas:tail.length};
 }
 function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDragStart, onDragEnd, onDropDay, onEmptyDay }) {
   const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,
@@ -1362,11 +1407,12 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
   const [planDates,setPlanDates]=React.useState({});
   const [planMotivo,setPlanMotivo]=React.useState('');
   const [planConfirm,setPlanConfirm]=React.useState(false);
+  const [suspenderTarget,setSuspenderTarget]=React.useState(null);
   const [planWorking,setPlanWorking]=React.useState(false);
   const planDrag=React.useRef(null);
   const feriadosPlan=['2026-12-01','2026-12-25','2027-01-01'];
   React.useEffect(()=>{
-    setPlanMode(false);setPlanFeedback('');setPlanBase([]);setPlanDates({});setPlanConfirm(false);setPlanError('');
+    setPlanMode(false);setSuspenderTarget(null);setPlanFeedback('');setPlanBase([]);setPlanDates({});setPlanConfirm(false);setPlanError('');
     let live=true;
     if(!codGrupo){setPlanState('SIN_PROPUESTA');return()=>{live=false;};}
     setPlanState('CARGANDO');
@@ -1414,13 +1460,14 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
   const periodMonthCount=React.useMemo(()=>{
     const selectedEvents=events.filter(e=>String(e.cod_grupo||'')===String(codGrupo||''));
     const source=selectedEvents.length?selectedEvents:events;
-    const dates=source.map(e=>String(e.fecha||'').slice(0,10)).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));
+    const dates=source.map(e=>String(planMode&&String(e.cod_grupo||'')===String(codGrupo||'')?
+      (planDates[tvPlanKeyF52(e)]||e.fecha):e.fecha).slice(0,10)).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));
     if(!dates.length)return 4;
     dates.sort();
     const first=new Date(`${dates[0]}T12:00:00`),last=new Date(`${dates[dates.length-1]}T12:00:00`);
     if(Number.isNaN(first.getTime())||Number.isNaN(last.getTime()))return 4;
     return Math.max(4,(last.getFullYear()-first.getFullYear())*12+(last.getMonth()-first.getMonth())+1);
-  },[events,codGrupo]);
+  },[events,codGrupo,planMode,planDates]);
   React.useEffect(()=>{if(monthCount>2&&monthCount!==periodMonthCount)setMonthCount(periodMonthCount);},[periodMonthCount]);
   const base=React.useMemo(()=>new Date(startBase.getFullYear(),startBase.getMonth()+monthOffset,1),[startBase,monthOffset]);
   const months=Array.from({length:monthCount},(_,i)=>new Date(base.getFullYear(),base.getMonth()+i,1));
@@ -1435,6 +1482,9 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
   }),[events,planMode,codGrupo,planDates]);
   const draftGrupo=React.useMemo(()=>planBase.map(e=>({...e,fecha:planDates[tvPlanKeyF52(e)]||e.fecha})),[planBase,planDates]);
   const planValidation=React.useMemo(()=>tvPlanValidateF52(planBase,draftGrupo,feriadosPlan),[planBase,draftGrupo]);
+  const suspensionPreview=React.useMemo(()=>suspenderTarget?
+    tvPlanSuspenderF52(draftGrupo,planBase,suspenderTarget,feriadosPlan):null,
+    [suspenderTarget,draftGrupo,planBase]);
   const planChanged=planBase.length?draftGrupo.filter(e=>{
     const orig=planBase.find(b=>tvPlanKeyF52(b)===tvPlanKeyF52(e));return orig&&orig.fecha!==e.fecha;
   }):[];
@@ -1448,7 +1498,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       setPlanError('No están disponibles las 32 lecciones y las 16 sesiones I CAN del nivel. No es seguro planificar.');return;
     }
     setPlanBase(rows);setPlanDates({});setPlanMotivo('Planificación inicial coordinada con estudiantes.');
-    setPlanError('');setPlanFeedback('');setPlanMode(true);
+    setPlanError('');setPlanFeedback('');setSuspenderTarget(null);setPlanMode(true);
   };
   const modificarPlan=(cambios)=>{
     const next={...planDates,...cambios};
@@ -1477,6 +1527,29 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
         '; la otra secuencia permanece intacta.');
     }
   };
+  const abrirSuspensionPlan=(e)=>{
+    if(!planMode||String(e.cod_grupo||'')!==String(codGrupo||''))return;
+    const orig=planBase.find(x=>tvPlanKeyF52(x)===tvPlanKeyF52(e));
+    if(!tvPlanSafeF52(orig)||!tvPlanFuturaF52(e.fecha)){
+      setPlanError('Esta sesión ya fue impartida o no puede modificarse por planificación inicial.');
+      return;
+    }
+    setPlanError('');setSuspenderTarget(e);
+  };
+  const confirmarSuspensionPlan=()=>{
+    if(!planMode||!suspenderTarget)return;
+    const resultado=tvPlanSuspenderF52(draftGrupo,planBase,suspenderTarget,feriadosPlan);
+    if(!resultado.ok){setPlanError(resultado.error);return;}
+    if(!modificarPlan(resultado.cambios))return;
+    const nombre=resultado.riel==='ican'?'I CAN':'Lección';
+    const note='Suspensión planificada: '+nombre+' '+resultado.leccion+
+      ' del '+resultado.fechaLiberada+'; reposición y secuencia hasta '+resultado.nuevoFinal+'.';
+    setPlanMotivo(prev=>(prev+' '+note).trim().slice(0,500));
+    setPlanFeedback(nombre+' '+resultado.leccion+': fecha '+resultado.fechaLiberada+
+      ' liberada. Se recalcularon '+resultado.afectadas+' sesiones; última fecha propuesta: '+
+      resultado.nuevoFinal+'. Revisar continuidad del nivel siguiente y registro INA.');
+    setSuspenderTarget(null);
+  };
   const enviarPlan=async()=>{
     if(planWorking||!planValidation.ok||!planChanged.length||planMotivo.trim().length<8)return;
     setPlanWorking(true);setPlanError('');
@@ -1488,7 +1561,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       },45000);
       if(!r?.ok){setPlanError(teacherSessionSafeUserError(r?.error||r?.mensaje,
         'No se pudo enviar el plan. Revisá el calendario y volvé a intentar.','plan_enviar'));return;}
-      setPlanState('PENDIENTE');setPlanConfirm(false);setPlanMode(false);setPlanFeedback('');setPlanBase([]);setPlanDates({});
+      setPlanState('PENDIENTE');setPlanConfirm(false);setPlanMode(false);setSuspenderTarget(null);setPlanFeedback('');setPlanBase([]);setPlanDates({});
       setPlanError('Cronograma enviado a Administración. Quedó bloqueado hasta su revisión.');
     }catch(_){setPlanError('La conexión falló al enviar el informe. Actualizá antes de volver a enviarlo para evitar duplicados.');}
     finally{setPlanWorking(false);}
@@ -1513,15 +1586,15 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
             Organizar cronograma
           </button>}
         {planMode&&<div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanDates({});setPlanError('');setPlanFeedback('');}}>Restablecer</button>
-          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanMode(false);setPlanFeedback('');setPlanError('');}}>Salir sin enviar</button>
+          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanDates({});setSuspenderTarget(null);setPlanError('');setPlanFeedback('');}}>Restablecer</button>
+          <button type="button" className="btn btn-ghost" onClick={()=>{setPlanMode(false);setSuspenderTarget(null);setPlanFeedback('');setPlanError('');}}>Salir sin enviar</button>
           <button type="button" className="btn btn-primary" disabled={planWorking||!planValidation.ok||!planChanged.length}
             onClick={()=>setPlanConfirm(true)}>Enviar informe ({planChanged.length})</button>
         </div>}
       </div>
 
       <div style={{fontSize:11,color:'#5C6F83',marginTop:7,lineHeight:1.45}}>
-        {planMode?'En cada fecha libre, usá + Lección (amarillo) o + I CAN (morado) para adelantar únicamente esa secuencia. También podés arrastrar sesiones futuras; todo se incluye en un informe para Administración.':
+        {planMode?'Tocá una lección o I CAN existente para suspender su fecha y recalcular. En los días libres usá + Lección o + I CAN. Solo una actividad por día; los cambios se envían juntos a Administración.':
         'El profesor prepara un solo plan por grupo. Administración verifica y aprueba; los cambios posteriores se tramitan como suspensión o reprogramación.'}
       </div>
       {planFeedback&&planMode&&<div role="status" style={{fontSize:11,fontWeight:800,color:'#255D43',marginTop:7}}>{planFeedback}</div>}
@@ -1537,7 +1610,41 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       {[[1,'1 mes'],[2,'2 meses'],[periodMonthCount,'Cuatrimestre']].map(([n,l])=><button key={`${n}-${l}`} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
       <button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button>
     </div></div>
-    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode)return;if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode){abrirSuspensionPlan(e);return;}if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    {suspenderTarget&&planMode&&<div role="presentation"
+      onMouseDown={e=>{if(e.target===e.currentTarget)setSuspenderTarget(null);}}
+      style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(8,25,50,.63)',display:'grid',placeItems:'center',padding:12}}>
+      <div role="dialog" aria-modal="true" aria-label="Suspender fecha del cronograma"
+        style={{width:'100%',maxWidth:510,background:'white',borderRadius:14,padding:19,
+          boxShadow:'0 12px 42px rgba(0,0,0,.23)'}}>
+        <h3 style={{margin:'0 0 10px',fontSize:19,color:'#153B63'}}>Suspender esta fecha</h3>
+        <p style={{fontSize:13,lineHeight:1.5,marginBottom:10}}>
+          <b>{tvPlanRailF52(suspenderTarget)==='ican'?'I CAN':'Lección'} {suspenderTarget.leccion}</b>
+          {' · '+suspenderTarget.fecha}
+        </p>
+        <p style={{fontSize:12,lineHeight:1.55,color:'#4A5C70'}}>
+          Se libera este día del cronograma provisional, se recorren las sesiones siguientes
+          y se busca una nueva fecha para la última, sin eliminar ninguna lección ni I CAN.
+        </p>
+        {suspensionPreview?.ok?<div style={{background:'#EFF7F1',border:'1px solid #B7D7C3',
+          padding:11,borderRadius:8,fontSize:12,color:'#275D3A'}}>
+          <b>Fecha libre:</b> {suspensionPreview.fechaLiberada}
+          {' · '+suspensionPreview.afectadas+' fechas recalculadas'}
+          <div><b>Última sesión propuesta:</b> {suspensionPreview.nuevoFinal}</div>
+        </div>:<div role="alert" style={{background:'#FFF1EB',padding:10,borderRadius:8,
+          fontSize:12,color:'#A33D23'}}>{suspensionPreview?.error||'No se pudo calcular la reposición.'}</div>}
+        <p style={{fontSize:11,color:'#8A540F',lineHeight:1.5,margin:'10px 0'}}>
+          Esto no suspende oficialmente la clase ni modifica SIFA. Administración debe
+          aprobar la propuesta y verificar cualquier efecto en la fecha final o el próximo nivel.
+        </p>
+        {planError&&<div role="alert" style={{fontSize:11,color:'#A33D23'}}>{planError}</div>}
+        <div style={{display:'flex',gap:8,justifyContent:'flex-end',flexWrap:'wrap'}}>
+          <button type="button" className="btn btn-ghost" onClick={()=>{setSuspenderTarget(null);setPlanError('');}}>Cancelar</button>
+          <button type="button" className="btn btn-primary" disabled={!suspensionPreview?.ok}
+            onClick={confirmarSuspensionPlan}>Suspender fecha y recalcular</button>
+        </div>
+      </div>
+    </div>}
     {planConfirm&&planMode&&<div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!planWorking)setPlanConfirm(false);}}
       style={{position:'fixed',inset:0,zIndex:2400,background:'rgba(10,24,43,.60)',display:'grid',placeItems:'center',padding:12}}>
       <div role="dialog" aria-modal="true" aria-label="Informe del cronograma" style={{width:'100%',maxWidth:580,maxHeight:'90vh',overflow:'auto',background:'white',padding:20,borderRadius:14}}>
