@@ -1263,13 +1263,13 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
   const nextLesson=React.useMemo(()=>pickNextLesson(lessons),[lessons,pickNextLesson]);
   const nextKey=nextLesson?`${tvLessonKeyF97(nextLesson)}|${String(nextLesson.fecha||'')}`:'';
   const isRailNext=React.useCallback((lesson)=>{
-    const target=tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson;
+    const target=viewMode==='total'?nextLesson:(tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson);
     return !!target&&target.__tvNextState!=='pending_close'&&tvLessonKeyF97(lesson)===tvLessonKeyF97(target)&&String(lesson.fecha||'')===String(target.fecha||'')&&tvUpper(lesson.estado)!=='CERRADA';
-  },[nextCourseLesson,nextIcanLesson]);
+  },[nextCourseLesson,nextIcanLesson,nextLesson,viewMode]);
   const isRailPendingClose=React.useCallback((lesson)=>{
-    const target=tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson;
+    const target=viewMode==='total'?nextLesson:(tvIsIcanEventF96(lesson)?nextIcanLesson:nextCourseLesson);
     return !!target&&target.__tvNextState==='pending_close'&&tvLessonKeyF97(lesson)===tvLessonKeyF97(target)&&String(lesson.fecha||'')===String(target.fecha||'')&&tvUpper(lesson.estado)!=='CERRADA';
-  },[nextCourseLesson,nextIcanLesson]);
+  },[nextCourseLesson,nextIcanLesson,nextLesson,viewMode]);
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
   const calendarRef=React.useRef(null), topScrollRef=React.useRef(null), positionedRef=React.useRef('');
   const COL_W=94, LEFT_W=384, RIGHT_W=154, HEADER_H=104, ROW_H=112;
@@ -1309,7 +1309,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
         <div style={{minWidth:240,flex:'1 1 320px'}}>
           <div className="card-title">Estudiantes · asistencia y notas</div>
-          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN mezclados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
+          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN, ordenados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap',flex:'1 1 420px'}}>
           <div role="tablist" aria-label="Filtrar asistencia" style={{display:'inline-flex',gap:5,padding:4,border:'1px solid var(--line)',borderRadius:12,background:'#F7F9FC',flexWrap:'wrap'}}>
@@ -1354,18 +1354,15 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
                     <div title={att?.pct==null?'Todavía no hay asistencia oficial cerrada para calcular el porcentaje. El borrador no cambia esto hasta cerrar la clase.':'Porcentaje basado en asistencia oficial'} style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
                     <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:5,fontSize:10,color:'#405776'}}>
                       <span>Edad: <b>{Number.isInteger(contacto.edad)?contacto.edad+' años':'—'}</b></span>
-                      <span>Tel: <b>{contacto.telefono||'Sin dato'}</b></span>
-                      {contacto.telefono&&<button type="button" aria-label={'Copiar teléfono de '+r.name}
-                        onClick={e=>{e.stopPropagation();tvCopyContactF103(contacto.telefono);}}
-                        style={{border:'none',background:'transparent',cursor:'pointer',color:'#155C9F',fontSize:10,fontWeight:850,padding:0}}>Copiar</button>}
+                      <span>Tel: <b title={contacto.telefono?'Doble clic para seleccionar el teléfono':'Teléfono no registrado'}
+                        onDoubleClick={contacto.telefono?tvSelectContactTextF104:undefined}
+                        style={{userSelect:'text',cursor:contacto.telefono?'text':'default',display:'inline-block'}}>{contacto.telefono||'Sin dato'}</b></span>
                     </div>
                     <div style={{display:'flex',gap:6,alignItems:'center',marginTop:4,fontSize:10,minWidth:0}}>
-                      <span style={{color:'#48617E',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={contacto.correo||'Correo no registrado'}>
-                        {contacto.correo||'Sin correo'}
-                      </span>
-                      {contacto.correo&&<button type="button" aria-label={'Copiar correo de '+r.name}
-                        onClick={e=>{e.stopPropagation();tvCopyContactF103(contacto.correo);}}
-                        style={{border:0,background:'transparent',cursor:'pointer',color:'#155C9F',fontWeight:850,fontSize:10,padding:0,flexShrink:0}}>Copiar</button>}
+                      <span style={{color:'#48617E',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                        userSelect:'text',cursor:contacto.correo?'text':'default',display:'inline-block'}}
+                        title={contacto.correo?'Doble clic para seleccionar el correo completo':'Correo no registrado'}
+                        onDoubleClick={contacto.correo?tvSelectContactTextF104:undefined}>{contacto.correo||'Sin correo'}</span>
                     </div>
                   </div>
                 </div>
@@ -1387,7 +1384,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
                 <div style={{fontSize:10.5,fontWeight:900,color:isIcan?'#57217F':isPC?'#8A5500':undefined}}>{isIcan?`I CAN ${String(l.leccion).padStart(2,'0')}`:isPC?'Progress Check':tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>
                 {!isIcan&&(tvEvalLabelF86(l.tipo,l.leccion)||isPC)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}
                 <div style={{fontSize:8.5,color:isNext?(isIcan?'#57217F':'#003B7A'):'var(--ink-3)',marginTop:2,fontWeight:isNext?850:500}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
-                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PRÓXIMA LECCIÓN</div>:isPendingClose?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:'#A45D00',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PENDIENTE DE CIERRE</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
+                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>{isIcan?'PRÓXIMA SESIÓN I CAN':'PRÓXIMA LECCIÓN'}</div>:isPendingClose?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:'#A45D00',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PENDIENTE DE CIERRE</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
                 {isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}
               </th>;
             })}</tr></thead>
@@ -1439,10 +1436,16 @@ function stickyStudentCellF79(head){ return { position:'sticky', left:0, zIndex:
 function stickyNoteCellF79(head){ return { position:'sticky', right:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)', borderLeft:'1px solid var(--line)' }; }
 function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'6px 7px', fontSize:9.5, fontWeight:850, cursor:'pointer' }; }
 
-function tvCopyContactF103(value){
-  const text=String(value||'').trim();if(!text)return;
-  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).catch(()=>window.prompt('Copiá este dato:',text));
-  else window.prompt('Copiá este dato:',text);
+function tvSelectContactTextF104(event){
+  // Doble clic: selecciona solo el teléfono/correo, no el renglón ni sus etiquetas.
+  event.stopPropagation();
+  const textNode=event.currentTarget;
+  const selection=window.getSelection?.();
+  if(!selection||!textNode)return;
+  const range=document.createRange();
+  range.selectNodeContents(textNode);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
