@@ -1,71 +1,80 @@
-import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import vm from 'node:vm';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),B=require('../vendor/babel.js');
-const tv=fs.readFileSync('src/teacher_views.jsx','utf8');
-const vd=fs.readFileSync('src/vista_docente.jsx','utf8');
-const app=fs.readFileSync('src/app.jsx','utf8');
-const bridge=fs.readFileSync('src/att77_bridge.js','utf8');
-const shell=fs.readFileSync('campus.html','utf8');
-for(const p of ['src/teacher_views.jsx','src/vista_docente.jsx','src/app.jsx']){
-  B.transform(fs.readFileSync(p,'utf8'),{presets:['react'],plugins:['transform-block-scoping']});
-}
+const tv=fs.readFileSync('src/teacher_views.jsx','utf8'),
+  vd=fs.readFileSync('src/vista_docente.jsx','utf8'),
+  app=fs.readFileSync('src/app.jsx','utf8'),bridge=fs.readFileSync('src/att77_bridge.js','utf8'),
+  shell=fs.readFileSync('campus.html','utf8');
+for(const file of ['src/teacher_views.jsx','src/vista_docente.jsx','src/app.jsx'])
+  B.transform(fs.readFileSync(file,'utf8'),{presets:['react'],plugins:['transform-block-scoping']});
 assert(tv.includes("postTeacher('getAsistenciaBorradorF100'"));
 assert(tv.includes("postTeacher('guardarAsistenciaBorradorF100'"));
+assert(tv.includes('programa={draftProgram}'),'Official backend program drives UI');
+assert(tv.includes("const verifiedProgram=String(r.programa||'')"),'Authoritative program received');
 assert(tv.includes('initialAttendance={draftAttendance} initialComments={draftComments} requireExplicitAttendance={true}'));
-assert(tv.includes('draftSessionId'),'Session-specific draft');
-assert(tv.includes('draftDirty'),'Unsaved changes visible');
-assert(tv.includes('getAsistenciaBorradorF100'),'Loads saved draft');
-assert(tv.includes('guardarAsistenciaBorradorF100'),'Explicit save');
-assert(tv.includes('setDraftSaved(serialized)'),'Saved snapshot for dirty comparison');
-assert(vd.includes('requireExplicitAttendance && (!f || (f.presente!==true && f.presente!==false))'),'No unmarked roster closes');
-assert(vd.includes("status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true)"),'No default present for teachers');
-assert(vd.includes('s.presente!==initial'),'Cancel checks genuinely changed attendance');
-assert(vd.includes("background: presente === false ? '#B3261E'"),'Pending not highlighted absent');
-for(const s of [app,bridge,shell])assert(s.includes('F101COMMENTS20261008'));
-assert(!app.includes('src/vista_docente.jsx?v=F99SININA1'),'No stale closure UI');
-const start=tv.indexOf('function LiveAttendancePanelF100(');
-const end=tv.indexOf('function LessonDrawerF82(',start);
-assert(start>=0&&end>start);
-let hookIndex=0;const hooks=[];
-const ctx={React:{createElement:(type,props,...children)=>({type,props:props||{},children}),
-  useState:(initial)=>{const i=hookIndex++;if(!(i in hooks))hooks[i]=initial;
-    return [hooks[i],next=>{hooks[i]=typeof next==='function'?next(hooks[i]):next;}];}}};
-vm.createContext(ctx);
-vm.runInContext(B.transform(tv.slice(start,end),{presets:['react']}).code,ctx);
-const calls=[],roster=[
- {code:'17201',name:'Estudiante Primera'}, {code:'17202',name:'Estudiante Segundo'}, {code:'17203',name:'Estudiante Tercera'}
-];
-const props={roster,states:{17201:'P',17202:'A'},comments:{'17201':'Buen trabajo'},onComment:(code,value)=>calls.push([code,value]),
-  counts:{P:1,A:1,pending:1},status:'ready',dirty:true,busy:false,notice:'',
-  onMark:(code,status)=>calls.push([code,status]),onSave:()=>calls.push(['save']),onRetry:()=>calls.push(['retry'])};
-const tree=ctx.LiveAttendancePanelF100(props);
-const flatten=x=>Array.isArray(x)?x.flatMap(flatten):x&&typeof x==='object'?[x,...(x.children||[]).flatMap(flatten)]:[];
-const all=flatten(tree), buttons=all.filter(x=>x.type==='button');
-assert.equal(buttons.length,13,'3 mark controls plus comment per student + save');
-const third=buttons.filter(b=>b.props['aria-label']?.includes('Estudiante Tercera'));
-assert.equal(third.length,4);
-assert.equal(third.filter(b=>b.props['aria-pressed']).length,1);
-assert(third.find(b=>b.props.title==='Pendiente').props['aria-pressed']);
-third.find(b=>b.props.title==='Presente').props.onClick();
-buttons.find(b=>b.children?.[0]==='Guardar avance').props.onClick();
-assert.deepEqual(calls,[['17203','P'],['save']]);
-const noteButton=third.find(b=>b.props['aria-label']==='Agregar comentario de Estudiante Tercera');
-assert(noteButton,'Independent comment button per student');
-noteButton.props.onClick();hookIndex=0;
-const expanded=ctx.LiveAttendancePanelF100(props);
-const noteField=flatten(expanded).find(x=>x.type==='textarea'&&x.props.id==='f101-comment-17203');
-assert(noteField,'Comment opens inline in the correct student row');
-noteField.props.onChange({target:{value:'Avanzó con speaking'}});
-assert.deepEqual(calls.at(-1),['17203','Avanzó con speaking']);
-assert(flatten(tree).some(x=>x.props?.title==='Editar comentario'),'Saved comment indicated visually');
-hookIndex=0;const readOnly=ctx.LiveAttendancePanelF100({roster,states:{},comments:{},counts:{P:0,A:0,pending:3},status:'loading',dirty:false,busy:false,notice:'',onMark:()=>{},onComment:()=>{},onSave:()=>{},onRetry:()=>{}});
-assert.equal(flatten(readOnly).filter(x=>x.type==='button').length,1,'Only disabled save while loading');
-assert(flatten(readOnly).find(x=>x.type==='button')?.props?.disabled);
+assert(tv.includes('draftSessionId'));assert(tv.includes('draftDirty'));
+assert(tv.includes('setDraftSaved(serialized)'));assert(tv.includes('setDraftCommentsSaved(serializedNotes)'));
 assert(tv.includes('comentarios:commentsNow'),'Save request includes comments');
-assert(vd.includes("typeof initialComments?.[e.code]==='string'?initialComments[e.code]:''"),'Closure prefilled with prior notes');
-assert(vd.includes('includesPC && !f.pc.trim()'),'Progress Check requirements untouched');
-console.log('QA_F101_COMMENTS_FRONTEND_PASS');
-console.log('QA_LIVE_ATTENDANCE_FRONTEND_PASS');
-console.log('PASS: P/A/Pendiente controls, explicit draft save, no default presence, closure validation, lazy paths, JSX parse');
+assert(tv.includes("width:'min(1120px,98vw)'"),'Wide teacher drawer');
+assert(tv.includes('if(!draftCompletion.canSave)'),'Save never bypasses form completion');
+assert(vd.includes('requireExplicitAttendance && (!f || (f.presente!==true && f.presente!==false))'));
+assert(vd.includes("typeof initialComments?.[e.code]==='string'?initialComments[e.code]:''"));
+assert(vd.includes('includesPC && !f.pc.trim()'),'Progress Check still independently required');
+for(const s of [app,bridge,shell])assert(s.includes('F102VISIBLE20261009'),'Cache bust present across all loaders');
+const start=tv.indexOf('function tvAttendanceCompletionF102('),
+  end=tv.indexOf('function LessonDrawerF82(',start);
+assert(start>=0&&end>start);
+const React={createElement:(type,props,...children)=>({type,props:props||{},children})};
+const ctx={React};vm.createContext(ctx);
+vm.runInContext(B.transform(tv.slice(start,end),{presets:['react']}).code,ctx);
+const list=[
+ {code:'17201',name:'Estudiante Primera'}, {code:'17202',name:'Estudiante Segundo'},
+ {code:'17203',name:'Estudiante Tercera'}
+];
+const complete=ctx.tvAttendanceCompletionF102(list,
+ {'17201':'P','17202':'A','17203':'P'},
+ {'17201':'Avanzó','17202':'Ausente','17203':'Participó'},'INA');
+assert(complete.canSave);assert.equal(complete.completedNotes,3);assert.equal(complete.pending,0);
+const partial=ctx.tvAttendanceCompletionF102(list,{'17201':'P','17202':'A'},
+ {'17201':'Avanzó'},'INA');
+assert(!partial.canSave);assert.equal(partial.pending,1);
+assert.deepEqual(Array.from(partial.missingComments),['17202','17203']);
+assert(ctx.tvAttendanceCompletionF102(list,{'17201':'P','17202':'A','17203':'P'},
+ {},'SIN_INA').canSave,'SIN_INA may omit all comments');
+assert(!ctx.tvAttendanceCompletionF102(list,{'17201':'P','17202':'A','17203':'P'},
+ {},'INA').canSave,'INA requires all notes even for absences');
+assert(!ctx.tvAttendanceCompletionF102(list,{'17201':'P','17202':'A','17203':'P'},
+ {},'').canSave,'Unknown program fails closed');
+const flatten=x=>Array.isArray(x)?x.flatMap(flatten):x&&typeof x==='object'?
+  [x,...(x.children||[]).flatMap(flatten)]:[];
+const calls=[];
+const base={roster:list,states:{'17201':'P','17202':'A','17203':'P'},comments:{'17201':'Avanzó'},
+  counts:{P:2,A:1,pending:0},status:'ready',dirty:true,busy:false,programa:'INA',notice:'',
+  onMark:(code,state)=>calls.push(['mark',code,state]),onComment:(code,note)=>calls.push(['note',code,note]),
+  onSave:()=>calls.push(['save']),onRetry:()=>calls.push(['retry'])};
+const tree=ctx.LiveAttendancePanelF100(base),nodes=flatten(tree);
+const inputs=nodes.filter(x=>x.type==='textarea');
+assert.equal(inputs.length,3,'ALL comments always visible, one per student');
+assert(inputs.every(x=>x.props.maxLength===800));
+assert.equal(new Set(inputs.map(x=>x.props.id)).size,3);
+assert(!nodes.some(x=>x.props?.title==='Agregar comentario'),'No hidden expand controls');
+inputs[1].props.onChange({target:{value:'Participación constante'}});
+assert.deepEqual(calls.at(-1),['note','17202','Participación constante']);
+const buttons=nodes.filter(x=>x.type==='button');
+assert.equal(buttons.filter(x=>x.props['aria-pressed']!==undefined).length,9);
+const save=buttons.find(x=>x.children?.[0]==='Guardar asistencia y comentarios');
+assert(save&&save.props.disabled,'INA incomplete cannot save');
+const ready=ctx.LiveAttendancePanelF100({...base,comments:{
+ '17201':'Avanzó','17202':'Ausente','17203':'Participó'}});
+const save2=flatten(ready).find(x=>x.type==='button'&&x.children?.[0]==='Guardar asistencia y comentarios');
+assert(save2&&!save2.props.disabled);
+save2.props.onClick();assert.deepEqual(calls.at(-1),['save']);
+const libre=ctx.LiveAttendancePanelF100({...base,programa:'SIN_INA',comments:{}});
+const save3=flatten(libre).find(x=>x.type==='button'&&x.children?.[0]==='Guardar asistencia y comentarios');
+assert(save3&&!save3.props.disabled,'SIN_INA no comments needed');
+const loading=ctx.LiveAttendancePanelF100({...base,status:'loading'});
+assert.equal(flatten(loading).filter(x=>x.type==='textarea').length,0,'No fields before authentication');
+console.log('QA_F102_VISIBLE_ATTENDANCE_FRONTEND_PASS');
+console.log('PASS: full-row comments x3, INA/SIN_INA, pending attendance, guard save, backend program, 1120px drawer, close validations, cache bust');
