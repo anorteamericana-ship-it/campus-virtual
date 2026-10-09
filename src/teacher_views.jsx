@@ -753,10 +753,73 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
     {state.loading?'Verificando material…':url?'Ver material PDF':'Material no disponible'}
   </button>;
 }
+// F100 — Lista rápida durante una sesión ABIERTA. Guardar avance ≠ cerrar clase.
+function LiveAttendancePanelF100({roster,states,counts,status,dirty,busy,notice,onMark,onSave,onRetry}){
+  const ready=status==='ready',total=(roster||[]).length;
+  return <section aria-label="Asistencia durante la clase" style={{marginBottom:16}}>
+    <div style={{border:'1px solid #BED0E3',borderRadius:12,overflow:'hidden',background:'#FFF'}}>
+      <div style={{padding:'12px 13px',background:'#EDF5FE',borderBottom:'1px solid #CFDFEF'}}>
+        <div style={{fontSize:13,fontWeight:900,color:'#103E76'}}>Pasar asistencia · sesión en curso</div>
+        <div style={{fontSize:11,color:'#46617C',marginTop:3}}>
+          Marcá conforme ingresan. Guardar avance no cierra la clase ni registra notas oficiales.
+        </div>
+        <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:9}}>
+          {[[counts.P,'Presentes','#166534'],[counts.A,'Ausentes','#A12828'],[counts.pending,'Pendientes','#715A36']].map(([n,label,color])=>
+            <span key={label} style={{padding:'4px 8px',borderRadius:7,background:'#FFF',
+              border:'1px solid #D4DEE8',color,fontWeight:850,fontSize:11}}>{n} {label}</span>)}
+        </div>
+      </div>
+      {status==='loading'?<div style={{padding:15,fontSize:12,color:'#61718A'}}>Recuperando marcas de esta sesión…</div>:null}
+      {status==='error'?<div style={{padding:13,background:'#FFF3EE',color:'#932E25',fontSize:12}}>
+        No se pudo abrir el borrador de asistencia.
+        <button type="button" className="btn btn-ghost" onClick={onRetry} style={{marginLeft:8}}>Reintentar</button>
+      </div>:null}
+      {ready?<div style={{maxHeight:440,overflowY:'auto',padding:'6px 8px'}}>
+        {(roster||[]).map((s,i)=>{
+          const v=states[s.code]||'?';
+          return <div key={s.code} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+            gap:8,padding:'9px 5px',borderBottom:i===total-1?'none':'1px solid #E7EDF4'}}>
+            <div style={{minWidth:0,flex:'1 1 150px'}}>
+              <div style={{fontSize:12,fontWeight:750,lineHeight:1.3,overflowWrap:'anywhere'}}>{s.name}</div>
+              <div style={{fontSize:10,color:'#6E7E91',marginTop:2}}>Código {s.code}</div>
+            </div>
+            <div style={{display:'flex',gap:3,flexShrink:0}}>
+              {[['P','P','#166534','#E5F4E8','Presente'],['A','A','#AB3024','#FCEAE7','Ausente'],['?','—','#705A37','#F3EEE5','Pendiente']].map(([key,label,color,bg,tip])=>
+                <button key={key} type="button" disabled={busy} aria-pressed={v===key}
+                  aria-label={tip+' · '+s.name} title={tip}
+                  onClick={()=>onMark(s.code,key)}
+                  style={{width:36,height:36,borderRadius:7,cursor:busy?'wait':'pointer',fontWeight:900,
+                    border:v===key?'2px solid '+color:'1px solid #D6DCE3',
+                    background:v===key?bg:'#FFF',color:v===key?color:'#64748B',fontSize:12}}>{label}</button>)}
+            </div>
+          </div>;
+        })}
+      </div>:null}
+      <div style={{padding:'10px 12px',borderTop:'1px solid #DCE6F1',display:'flex',
+        gap:8,flexWrap:'wrap',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{fontSize:11,color:dirty?'#9C5C10':'#48705D',fontWeight:750}}>
+          {ready?(busy?'Guardando avance…':dirty?'Hay cambios sin guardar':'Borrador actualizado'):'Solo lectura hasta verificar la sesión'}
+        </div>
+        <button type="button" className="btn btn-primary" onClick={onSave}
+          disabled={!ready||!dirty||busy||!total} style={{fontSize:12,padding:'8px 12px'}}>
+          {busy?'Guardando…':'Guardar avance'}
+        </button>
+      </div>
+      {notice&&<div role="status" style={{padding:'0 12px 10px',color:'#4C6178',fontSize:11,lineHeight:1.5}}>{notice}</div>}
+    </div>
+  </section>;
+}
 function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [sessionCheck,setSessionCheck]=React.useState('loading');
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
+  const [draftAttendance,setDraftAttendance]=React.useState({});
+  const [draftSaved,setDraftSaved]=React.useState('{}');
+  const [draftRevision,setDraftRevision]=React.useState(0);
+  const [draftReload,setDraftReload]=React.useState(0);
+  const [draftLoad,setDraftLoad]=React.useState('idle');
+  const [draftSaving,setDraftSaving]=React.useState(false);
+  const [draftNotice,setDraftNotice]=React.useState('');
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
   const rielLeccion=tvIsIcanEventF96(lesson)?'ican':'curso';
   const railPermissions=meta?.permisos_riel||{};
@@ -774,6 +837,10 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const sameGlobal=globalOpen&&globalCode===String(code)&&globalNivel===tvUpper(nivel)&&globalLec===Number(lesson?.leccion||0)&&globalRiel===rielLeccion;
   const otherGlobal=globalOpen&&!sameGlobal;
   const abierta=estadoSesion==='ABIERTA'||sameGlobal, sesionCerrada=estadoSesion==='CERRADA';
+  const draftSessionId=String(sesion?.SESION_ID||(sameGlobal?activeSession?.SESION_ID:'')||'');
+  const draftDirty=JSON.stringify(draftAttendance)!==draftSaved;
+  const draftCount={P:0,A:0,pending:0};
+  (roster||[]).forEach(s=>{const v=draftAttendance[s.code];if(v==='P')draftCount.P++;else if(v==='A')draftCount.A++;else draftCount.pending++;});
   const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
   const oralListoParaCerrar=esOral && oralTotal>0 && Number(oralSummary?.cerradas||0)>=oralTotal;
   const oralContext={grupo:code,nivel,leccion:Number(lesson?.leccion||0),fecha:String(lesson?.fecha||'').slice(0,10)};
@@ -794,9 +861,64 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     }).finally(()=>setLoading(false));
   },[lesson?.leccion,lesson?.fecha,lesson?.tipo,code,nivel,esOral,rielLeccion]);
   React.useEffect(()=>{load();},[load]);
-  React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')onClose();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose]);
+  React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')cerrarPanel();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose,draftDirty,abierta,sesionCerrada]);
   React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
 
+  // F100: marcas provisionales asociadas a la sesión abierta real. No son asistencia oficial.
+  React.useEffect(()=>{
+    let alive=true;
+    if(!abierta||sesionCerrada||!canOperateRail||!draftSessionId||sessionCheck!=='ok'){
+      setDraftLoad('idle');return ()=>{alive=false;};
+    }
+    setDraftLoad('loading');setDraftNotice('');setDraftAttendance({});setDraftSaved('{}');setDraftRevision(0);
+    postTeacher('getAsistenciaBorradorF100',{
+      cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,sesion_id:draftSessionId
+    },30000).then(r=>{
+      if(!alive)return;
+      if(!r?.ok)throw Error(r?.error||'No se pudo consultar el borrador de asistencia.');
+      const vals={};
+      Object.entries(r.estados||{}).forEach(([k,v])=>{if(v==='P'||v==='A')vals[k]=v;});
+      setDraftAttendance(vals);setDraftSaved(JSON.stringify(vals));
+      setDraftRevision(Number(r.revision)||0);setDraftLoad('ready');
+    }).catch(e=>{
+      if(!alive)return;
+      setDraftLoad('error');
+      setDraftNotice(teacherSessionSafeUserError(e?.message,'No se pudo cargar la lista provisional. Reintentá la consulta.','live_attendance_get'));
+    });
+    return ()=>{alive=false;};
+  },[draftSessionId,abierta,sesionCerrada,canOperateRail,sessionCheck,code,nivel,lesson?.leccion,rielLeccion,draftReload]);
+  const marcarAsistencia=(studentCode,value)=>{
+    if(draftLoad!=='ready'||draftSaving)return;
+    setDraftAttendance(prev=>{
+      const next={...prev};
+      if(value==='?')delete next[studentCode];else next[studentCode]=value;
+      return next;
+    });
+    setDraftNotice('');
+  };
+  const guardarBorrador=async()=>{
+    if(draftLoad!=='ready'||draftSaving||!draftDirty)return;
+    const savedNow={...draftAttendance},serialized=JSON.stringify(savedNow);
+    setDraftSaving(true);setDraftNotice('');
+    try{
+      const r=await postTeacher('guardarAsistenciaBorradorF100',{
+        cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,
+        sesion_id:draftSessionId,revision:draftRevision,estados:savedNow
+      },45000);
+      if(!r?.ok)throw Error(r?.error||'No se pudo guardar el avance.');
+      setDraftRevision(Number(r.revision)||draftRevision+1);
+      setDraftSaved(serialized);
+      setDraftNotice('Avance guardado como borrador. La clase sigue abierta.');
+    }catch(e){
+      setDraftNotice(teacherSessionSafeUserError(e?.message,
+        'No se pudo guardar la lista. Revisá la conexión antes de cerrar el panel.','live_attendance_save'));
+    }finally{setDraftSaving(false);}
+  };
+  const cerrarPanel=()=>{
+    if((abierta&&!sesionCerrada)&&draftDirty&&
+      !window.confirm('Hay cambios de asistencia sin guardar. ¿Salir y descartarlos?'))return;
+    onClose();
+  };
   const iniciar=async()=>{
     if(!activeSessionReady||activeSessionError){alert('No se pudo verificar la sesión docente global. Reintentá antes de iniciar otra clase.');return;}
     if(otherGlobal){alert(`Ya existe una sesión activa en la lección ${String(globalLec).padStart(2,'0')}. Cerrala antes de iniciar otra clase.`);return;}
@@ -825,11 +947,11 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>CERRAR CLASE</button>;
   };
   return <>
-    <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)cerrarPanel();}}>
       <aside data-teacher-level={nivel} data-teacher-lesson={lesson?.leccion} data-teacher-rail={rielLeccion} style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
           <div><div style={{...vdLabelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvAgendaEventLabelF96(lesson,true)}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
-          <button type="button" onClick={onClose} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
+          <button type="button" onClick={cerrarPanel} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
         <div style={{padding:20,overflowY:'auto',flex:1}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginBottom:16}}>
@@ -850,13 +972,20 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
               {detalle?.speaking&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Speaking</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.speaking}</div></div>}
               {detalle?.grammar&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Grammar</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.grammar}</div></div>}
             </div>
-            <div style={{...vdLabelStyle,marginBottom:8}}>Asistencia registrada</div>
-            <div style={{display:'grid',gap:7}}>{(roster||[]).map(s=>{const d=detByStudent[s.code],c=d?comByStudent[s.code]:'';return <div key={s.code} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,padding:'9px 11px',border:'1px solid var(--line)',borderRadius:9}}><div><strong style={{fontSize:12}}>{s.name}</strong>{c&&<div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>💬 {c}</div>}</div><span style={{fontSize:10,fontWeight:900,color:!d?'var(--ink-3)':d.presente===false?'#B3261E':'#166534'}}>{!d?'Pendiente':d.presente===false?'Ausente':'Presente'}</span></div>;})}</div>
+            {canOperateRail&&abierta&&!sesionCerrada&&sessionCheck==='ok'&&activeSessionReady&&!activeSessionError&&!otherGlobal?
+              <LiveAttendancePanelF100 roster={roster||[]} states={draftAttendance} counts={draftCount}
+                status={draftLoad} dirty={draftDirty} busy={draftSaving} notice={draftNotice}
+                onMark={marcarAsistencia} onSave={guardarBorrador}
+                onRetry={()=>{if(draftDirty&&!window.confirm('Se perderán los cambios sin guardar. ¿Volver a consultar?'))return;setDraftReload(x=>x+1);}}/>:
+              <>
+                <div style={{...vdLabelStyle,marginBottom:8}}>Asistencia registrada</div>
+                <div style={{display:'grid',gap:7}}>{(roster||[]).map(s=>{const d=detByStudent[s.code],c=d?comByStudent[s.code]:'';return <div key={s.code} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,padding:'9px 11px',border:'1px solid var(--line)',borderRadius:9}}><div><strong style={{fontSize:12}}>{s.name}</strong>{c&&<div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>💬 {c}</div>}</div><span style={{fontSize:10,fontWeight:900,color:!d?'var(--ink-3)':d.presente===false?'#B3261E':'#166534'}}>{!d?'Pendiente':d.presente===false?'Ausente':'Presente'}</span></div>;})}</div>
+              </>}
           </>}
         </div>
       </aside>
     </div>
-    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:rielLeccion==='ican'?(meta?.hora_i_ican||meta?.hora_inicio_ican||lesson.hora_inicio||''):(lesson.hora_inicio||''),hora_fin:rielLeccion==='ican'?(meta?.hora_f_ican||meta?.hora_fin_ican||lesson.hora_fin||''):(lesson.hora_fin||''),tipo:lesson.tipo,riel:rielLeccion,programa:meta?.programa||'',progress_check:lesson?.progress_check===true,horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
+    {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion initialAttendance={draftAttendance} requireExplicitAttendance={true} lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:rielLeccion==='ican'?(meta?.hora_i_ican||meta?.hora_inicio_ican||lesson.hora_inicio||''):(lesson.hora_inicio||''),hora_fin:rielLeccion==='ican'?(meta?.hora_f_ican||meta?.hora_fin_ican||lesson.hora_fin||''):(lesson.hora_fin||''),tipo:lesson.tipo,riel:rielLeccion,programa:meta?.programa||'',progress_check:lesson?.progress_check===true,horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
     {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:rielLeccion}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;
 }
