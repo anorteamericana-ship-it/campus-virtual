@@ -755,79 +755,129 @@ function TeacherMaterialButtonF82({ lesson, nivel }) {
 }
 // F100 — Lista rápida durante una sesión ABIERTA. Guardar avance ≠ cerrar clase.
 // F101: comentario individual en línea, parte del mismo borrador de asistencia.
-function LiveAttendancePanelF100({roster,states,comments,counts,status,dirty,busy,notice,onMark,onComment,onSave,onRetry}){
-  const [expanded,setExpanded]=React.useState({});
-  const ready=status==='ready',total=(roster||[]).length;
-  return <section aria-label="Asistencia durante la clase" style={{marginBottom:16}}>
-    <div style={{border:'1px solid #BED0E3',borderRadius:12,overflow:'hidden',background:'#FFF'}}>
-      <div style={{padding:'12px 13px',background:'#EDF5FE',borderBottom:'1px solid #CFDFEF'}}>
-        <div style={{fontSize:13,fontWeight:900,color:'#103E76'}}>Pasar asistencia · sesión en curso</div>
-        <div style={{fontSize:11,color:'#46617C',marginTop:3}}>
-          Marcá conforme ingresan. Agregá comentarios individuales. Guardar avance no cierra la clase ni registra notas oficiales.
+// F102: una única pantalla de lista; comentario siempre visible por estudiante.
+// La clasificación INA procede de getAsistenciaBorradorF100 (programa oficial).
+function tvAttendanceCompletionF102(roster,states,comments,programa){
+  const pg=String(programa||'').trim().toUpperCase().replace(/\s+/g,'_');
+  const known=!!pg,ina=pg==='INA'||pg==='CON_INA';
+  const missingAttendance=[],missingComments=[];
+  let present=0,absent=0,completedNotes=0;
+  (roster||[]).forEach(s=>{
+    const code=String(s.code||''),v=states?.[code],note=String(comments?.[code]||'').trim();
+    if(v==='P')present++;else if(v==='A')absent++;else missingAttendance.push(code);
+    if(note)completedNotes++;else if(ina)missingComments.push(code);
+  });
+  return {known,ina,present,absent,pending:missingAttendance.length,
+    completedNotes,missingAttendance,missingComments,
+    canSave:known&&!!(roster||[]).length&&missingAttendance.length===0&&missingComments.length===0};
+}
+function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,dirty,busy,notice,onMark,onComment,onSave,onRetry}){
+  const ready=status==='ready',total=(roster||[]).length,
+    summary=tvAttendanceCompletionF102(roster,states,comments,programa);
+  const firstMissing=summary.missingAttendance[0]||summary.missingComments[0];
+  const jumpPending=()=>{
+    if(!firstMissing)return;
+    const target=document.getElementById('f102-row-'+firstMissing);
+    target?.scrollIntoView({behavior:'smooth',block:'center'});
+    target?.querySelector('textarea,button')?.focus({preventScroll:true});
+  };
+  return <section aria-label="Asistencia y comentarios durante la clase" className="f102-attendance" style={{marginBottom:10}}>
+    <style>{`
+      .f102-attendance .f102-row{display:grid;grid-template-columns:minmax(190px,.83fr) 128px minmax(320px,1.5fr);gap:16px;align-items:center;padding:13px 16px;border-bottom:1px solid #E3EBF3;}
+      .f102-attendance .f102-row:last-child{border-bottom:0}
+      .f102-attendance .f102-note{min-width:0}
+      .f102-attendance .f102-textarea{display:block;box-sizing:border-box;width:100%;min-height:82px;padding:12px 13px;font-family:inherit;font-size:13px;font-weight:500;line-height:1.45;border:1.5px solid #C7D4E3;border-radius:9px;background:#FFF;resize:vertical;outline-offset:2px}
+      .f102-attendance .f102-textarea:focus{border-color:#19549B;box-shadow:0 0 0 2px #DCEAFF}
+      .f102-attendance .f102-row:focus-within{background:#F4F9FF}
+      @media(max-width:890px){.f102-attendance .f102-row{grid-template-columns:minmax(125px,1fr) 125px;gap:10px;padding:12px}.f102-attendance .f102-note{grid-column:1/-1}}
+      @media(max-width:560px){.f102-attendance .f102-row{grid-template-columns:minmax(0,1fr) 120px;gap:8px}.f102-attendance .f102-textarea{min-height:72px}}
+    `}</style>
+    <div style={{border:'1px solid #C6D7EA',borderRadius:12,overflow:'clip',background:'#FFF'}}>
+      <div style={{padding:'15px 17px',background:'#EAF3FE',borderBottom:'1px solid #D0DEED'}}>
+        <div style={{fontWeight:900,fontSize:16,color:'#0F3972'}}>Asistencia y comentarios · clase abierta</div>
+        <div style={{fontSize:12,color:'#4B627E',lineHeight:1.5,marginTop:5}}>
+          Todos los estudiantes y sus comentarios están a la vista. Este guardado no cierra la lección.
         </div>
-        <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:9}}>
-          {[[counts.P,'Presentes','#166534'],[counts.A,'Ausentes','#A12828'],[counts.pending,'Pendientes','#715A36']].map(([n,label,color])=>
-            <span key={label} style={{padding:'4px 8px',borderRadius:7,background:'#FFF',
-              border:'1px solid #D4DEE8',color,fontWeight:850,fontSize:11}}>{n} {label}</span>)}
+        <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:10}}>
+          {[[summary.present+' presentes','#166534'],[summary.absent+' ausentes','#B3261E'],[summary.pending+' sin marcar','#8B590E'],
+            [summary.completedNotes+'/'+total+' comentarios','#245C83']].map(([label,color])=>
+            <span key={label} style={{padding:'6px 10px',fontSize:12,fontWeight:850,borderRadius:8,
+              border:'1px solid #CCD9E7',background:'#FFF',color}}>{label}</span>)}
+          {ready&&<span style={{padding:'6px 10px',fontSize:12,fontWeight:900,borderRadius:8,
+            background:summary.ina?'#FFF7E8':'#EBF8EF',color:summary.ina?'#87590B':'#176638'}}>
+            {summary.ina?'INA · comentario obligatorio':'Sin INA · comentario opcional'}
+          </span>}
         </div>
+        {ready&&!summary.canSave&&<div role="alert" style={{marginTop:11,display:'flex',gap:10,alignItems:'center',
+          justifyContent:'space-between',flexWrap:'wrap',border:'1px solid #F0D5A7',borderRadius:8,
+          padding:'9px 11px',background:'#FFFAEE',fontSize:12,fontWeight:700,color:'#88520B'}}>
+          <span>{summary.pending?'Faltan '+summary.pending+' asistencias. ':''}
+            {summary.ina&&summary.missingComments.length?'Faltan '+summary.missingComments.length+' comentarios INA. ':''}
+            Completá los campos señalados para guardar.</span>
+          <button type="button" onClick={jumpPending} style={{background:'#FFF',border:'1px solid #D8B978',
+            color:'#724606',padding:'7px 11px',borderRadius:7,cursor:'pointer',fontWeight:850}}>Ir al primer pendiente</button>
+        </div>}
       </div>
-      {status==='loading'?<div style={{padding:15,fontSize:12,color:'#61718A'}}>Recuperando asistencias y comentarios…</div>:null}
-      {status==='error'?<div style={{padding:13,background:'#FFF3EE',color:'#932E25',fontSize:12}}>
-        No se pudo abrir el borrador de asistencia y comentarios.
-        <button type="button" className="btn btn-ghost" onClick={onRetry} style={{marginLeft:8}}>Reintentar</button>
-      </div>:null}
-      {ready?<div style={{maxHeight:440,overflowY:'auto',padding:'6px 8px'}}>
+      {status==='loading'&&<div style={{padding:16,fontSize:12,color:'#64748B'}}>Consultando la lista y el programa oficial…</div>}
+      {status==='error'&&<div style={{padding:14,background:'#FFF0EE',color:'#912922',fontSize:12}}>
+        No se pudo verificar el programa o recuperar el borrador.
+        <button type="button" onClick={onRetry} style={{marginLeft:9}}>Reintentar</button>
+      </div>}
+      {ready&&<div className="f102-list" aria-label="Listado completo de estudiantes">
         {(roster||[]).map((s,i)=>{
-          const v=states[s.code]||'?',comentario=String(comments?.[s.code]||''),
-            isExpanded=!!expanded[s.code];
-          return <div key={s.code} style={{padding:'9px 5px',borderBottom:i===total-1?'none':'1px solid #E7EDF4'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
-              <div style={{minWidth:0,flex:'1 1 130px'}}>
-                <div style={{fontSize:12,fontWeight:750,lineHeight:1.3,overflowWrap:'anywhere'}}>{s.name}</div>
-                <div style={{fontSize:10,color:'#6E7E91',marginTop:2}}>Código {s.code}{comentario?' · Con comentario':''}</div>
-              </div>
-              <div style={{display:'flex',gap:3,flexShrink:0}}>
-                {[['P','P','#166534','#E5F4E8','Presente'],['A','A','#AB3024','#FCEAE7','Ausente'],['?','—','#705A37','#F3EEE5','Pendiente']].map(([key,label,color,bg,tip])=>
-                  <button key={key} type="button" disabled={busy} aria-pressed={v===key}
-                    aria-label={tip+' · '+s.name} title={tip} onClick={()=>onMark(s.code,key)}
-                    style={{width:34,height:36,borderRadius:7,cursor:busy?'wait':'pointer',fontWeight:900,
-                      border:v===key?'2px solid '+color:'1px solid #D6DCE3',
-                      background:v===key?bg:'#FFF',color:v===key?color:'#64748B',fontSize:12}}>{label}</button>)}
-                <button type="button" disabled={busy} aria-expanded={isExpanded}
-                  aria-label={(isExpanded?'Cerrar comentario de ':'Agregar comentario de ')+s.name}
-                  title={comentario?'Editar comentario':'Agregar comentario'}
-                  onClick={()=>setExpanded(prev=>({...prev,[s.code]:!prev[s.code]}))}
-                  style={{width:36,height:36,border:'1px solid '+(comentario?'#6096C5':'#D6DCE3'),
-                    borderRadius:7,background:comentario?'#EAF4FE':'#FFF',color:comentario?'#164D82':'#65748A',
-                    cursor:busy?'wait':'pointer',fontSize:15,fontWeight:900}}>💬</button>
-              </div>
+          const code=String(s.code||''),mark=states?.[code]||'?',
+            note=String(comments?.[code]||''),hasNote=!!note.trim(),
+            missingMark=mark!=='P'&&mark!=='A',missingNote=summary.ina&&!hasNote;
+          return <div id={'f102-row-'+code} className="f102-row" key={code}
+            style={{background:(missingMark||missingNote)?'#FFFCF5':i%2?'#F9FBFE':'#FFF'}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:850,color:'#1B3453',lineHeight:1.35,overflowWrap:'anywhere'}}>{s.name}</div>
+              <div style={{fontSize:11,color:'#6B7C91',marginTop:4}}>Código {code}</div>
             </div>
-            {isExpanded&&<div style={{padding:'9px 0 2px'}}>
-              <label htmlFor={'f101-comment-'+s.code}
-                style={{fontSize:11,fontWeight:850,color:'#4B627B',display:'block',marginBottom:5}}>
-                Comentario individual · borrador
+            <div role="group" aria-label={'Asistencia de '+s.name} style={{display:'flex',alignItems:'center',gap:4}}>
+              {[['P','#18733B','#E5F5E9','Presente'],['A','#B52C25','#FCEBE8','Ausente'],['?','#8A6524','#FFF4DF','Pendiente']].map(([v,color,bg,title])=>
+                <button type="button" key={v} disabled={busy} title={title} aria-label={title+' · '+s.name}
+                  aria-pressed={mark===v} onClick={()=>onMark(code,v)}
+                  style={{height:37,minWidth:37,border:'1.5px solid '+(mark===v?color:'#D4DEE9'),
+                    borderRadius:8,fontSize:12,fontWeight:900,color:mark===v?color:'#6C7B8E',
+                    background:mark===v?bg:'#FFF',cursor:busy?'wait':'pointer'}}>
+                  {v==='?'?'—':v}</button>)}
+              {missingMark&&<span title="Sin marcar" style={{color:'#9B6111',fontWeight:900,fontSize:16}}>!</span>}
+            </div>
+            <div className="f102-note">
+              <label htmlFor={'f102-comment-'+code} style={{display:'flex',justifyContent:'space-between',
+                flexWrap:'wrap',gap:4,alignItems:'center',fontSize:11,fontWeight:850,marginBottom:5,
+                color:missingNote?'#9E431D':hasNote?'#17613A':'#64748B'}}>
+                <span>{summary.ina?'Comentario obligatorio':'Comentario (opcional)'}</span>
+                <span>{hasNote?'✓ Listo':missingNote?'● Falta comentario':'Sin comentario'} · {note.length}/800</span>
               </label>
-              <textarea id={'f101-comment-'+s.code} rows={2} maxLength={800}
-                disabled={busy} value={comentario} onChange={e=>onComment(s.code,e.target.value)}
-                placeholder="Observación o retroalimentación para el cierre…"
-                style={{boxSizing:'border-box',width:'100%',padding:'9px 10px',border:'1px solid #BDCDDF',
-                  borderRadius:8,fontFamily:'inherit',fontSize:12,resize:'vertical'}}/>
-              <div style={{textAlign:'right',fontSize:10,color:'#77869A'}}>{comentario.length}/800</div>
-            </div>}
+              <textarea className="f102-textarea" id={'f102-comment-'+code} rows={2} maxLength={800}
+                aria-invalid={missingNote} disabled={busy} value={note}
+                placeholder={summary.ina?'Escribí aquí la retroalimentación obligatoria de este estudiante…':'Observación individual (opcional)…'}
+                onChange={e=>onComment(code,e.target.value)}
+                style={{borderColor:missingNote?'#DA9A72':hasNote?'#8EBCA2':'#C7D4E3'}}/>
+            </div>
           </div>;
         })}
-      </div>:null}
-      <div style={{padding:'10px 12px',borderTop:'1px solid #DCE6F1',display:'flex',
-        gap:8,flexWrap:'wrap',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{fontSize:11,color:dirty?'#9C5C10':'#48705D',fontWeight:750}}>
-          {ready?(busy?'Guardando avance…':dirty?'Hay cambios sin guardar':'Borrador actualizado'):'Solo lectura hasta verificar la sesión'}
+      </div>}
+      <div style={{padding:'13px 17px',position:'sticky',bottom:0,zIndex:2,
+        background:'#F8FBFF',borderTop:'1px solid #D6E3F0',display:'flex',justifyContent:'space-between',
+        gap:12,alignItems:'center',flexWrap:'wrap'}}>
+        <div>
+          <div style={{fontSize:12,fontWeight:900,color:dirty?'#975A0B':'#236044'}}>
+            {ready?(busy?'Guardando…':dirty?'Cambios sin guardar':'Borrador guardado'):'Esperando validación'}
+          </div>
+          <div style={{fontSize:11,color:'#5C708A',marginTop:2}}>
+            {summary.canSave?'Lista completa para guardar':summary.ina?'INA: no se permite guardar con comentarios pendientes':'Marcá la asistencia de todos para guardar'}
+          </div>
         </div>
         <button type="button" className="btn btn-primary" onClick={onSave}
-          disabled={!ready||!dirty||busy||!total} style={{fontSize:12,padding:'8px 12px'}}>
-          {busy?'Guardando…':'Guardar avance'}
+          disabled={!ready||!summary.canSave||!dirty||busy}
+          style={{padding:'12px 21px',fontSize:13,fontWeight:900}}>
+          {busy?'Guardando…':'Guardar asistencia y comentarios'}
         </button>
       </div>
-      {notice&&<div role="status" style={{padding:'0 12px 10px',color:'#4C6178',fontSize:11,lineHeight:1.5}}>{notice}</div>}
+      {notice&&<div role="status" style={{padding:'8px 15px 12px',fontSize:12,color:'#4C6178'}}>{notice}</div>}
     </div>
   </section>;
 }
@@ -844,6 +894,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const [draftLoad,setDraftLoad]=React.useState('idle');
   const [draftSaving,setDraftSaving]=React.useState(false);
   const [draftNotice,setDraftNotice]=React.useState('');
+  const [draftProgram,setDraftProgram]=React.useState('');
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
   const rielLeccion=tvIsIcanEventF96(lesson)?'ican':'curso';
   const railPermissions=meta?.permisos_riel||{};
@@ -863,8 +914,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const abierta=estadoSesion==='ABIERTA'||sameGlobal, sesionCerrada=estadoSesion==='CERRADA';
   const draftSessionId=String(sesion?.SESION_ID||(sameGlobal?activeSession?.SESION_ID:'')||'');
   const draftDirty=JSON.stringify(draftAttendance)!==draftSaved||JSON.stringify(draftComments)!==draftCommentsSaved;
-  const draftCount={P:0,A:0,pending:0};
-  (roster||[]).forEach(s=>{const v=draftAttendance[s.code];if(v==='P')draftCount.P++;else if(v==='A')draftCount.A++;else draftCount.pending++;});
+  const draftCompletion=tvAttendanceCompletionF102(roster,draftAttendance,draftComments,draftProgram);
+  const draftCount={P:draftCompletion.present,A:draftCompletion.absent,pending:draftCompletion.pending};
   const oralTotal=Number(oralSummary?.total||(roster||[]).length||0);
   const oralListoParaCerrar=esOral && oralTotal>0 && Number(oralSummary?.cerradas||0)>=oralTotal;
   const oralContext={grupo:code,nivel,leccion:Number(lesson?.leccion||0),fecha:String(lesson?.fecha||'').slice(0,10)};
@@ -894,7 +945,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     if(!abierta||sesionCerrada||!canOperateRail||!draftSessionId||sessionCheck!=='ok'){
       setDraftLoad('idle');return ()=>{alive=false;};
     }
-    setDraftLoad('loading');setDraftNotice('');setDraftAttendance({});setDraftSaved('{}');setDraftComments({});setDraftCommentsSaved('{}');setDraftRevision(0);
+    setDraftLoad('loading');setDraftNotice('');setDraftAttendance({});setDraftSaved('{}');setDraftComments({});setDraftCommentsSaved('{}');setDraftProgram('');setDraftRevision(0);
     postTeacher('getAsistenciaBorradorF100',{
       cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,sesion_id:draftSessionId
     },30000).then(r=>{
@@ -907,6 +958,9 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       });
       setDraftAttendance(vals);setDraftSaved(JSON.stringify(vals));
       setDraftComments(notes);setDraftCommentsSaved(JSON.stringify(notes));
+      const verifiedProgram=String(r.programa||'').trim().toUpperCase().replace(/\s+/g,'_');
+      if(!verifiedProgram)throw Error('No se pudo verificar el programa oficial del grupo.');
+      setDraftProgram(verifiedProgram);
       setDraftRevision(Number(r.revision)||0);setDraftLoad('ready');
     }).catch(e=>{
       if(!alive)return;
@@ -931,6 +985,10 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   };
   const guardarBorrador=async()=>{
     if(draftLoad!=='ready'||draftSaving||!draftDirty)return;
+    if(!draftCompletion.canSave){
+      setDraftNotice('Lista incompleta: marcá todas las asistencias y, si el grupo es INA, escribí todos los comentarios.');
+      return;
+    }
     const savedNow={...draftAttendance},serialized=JSON.stringify(savedNow);
     const commentsNow={...draftComments},serializedNotes=JSON.stringify(commentsNow);
     setDraftSaving(true);setDraftNotice('');
@@ -966,7 +1024,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   };
   const abrirExamen=()=>{ if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
   const abrirCierre=()=>{
-    if(draftLoad!=='ready'){alert('Primero verificá la asistencia de esta sesión.');return;}
+    if(draftLoad!=='ready'||!draftCompletion.canSave){alert('Completá la asistencia y los comentarios INA antes de cerrar esta clase.');return;}
     if(draftSaving||draftDirty){alert('Guardá los cambios de asistencia y comentarios antes de cerrar la clase.');return;}
     setAttendanceOpen(true);
   };
@@ -986,12 +1044,12 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   };
   return <>
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)cerrarPanel();}}>
-      <aside data-teacher-level={nivel} data-teacher-lesson={lesson?.leccion} data-teacher-rail={rielLeccion} style={{width:'min(520px,96vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
+      <aside data-teacher-level={nivel} data-teacher-lesson={lesson?.leccion} data-teacher-rail={rielLeccion} style={{width:'min(1120px,98vw)',height:'100%',background:'#FFF',boxShadow:'-20px 0 55px rgba(0,0,0,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'18px 20px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12}}>
           <div><div style={{...vdLabelStyle,marginBottom:4}}>Detalle de clase</div><div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:700}}>{tvAgendaEventLabelF96(lesson,true)}</div><div style={{fontSize:12,color:'var(--ink-2)',fontWeight:700,marginTop:5}}>{tvGrupoLabel(meta).full}</div><div style={{fontSize:12,color:'var(--ink-3)',marginTop:3}}>Lección {String(lesson?.leccion||'').padStart(2,'0')} · {tvDateLabelF82(lesson?.fecha)}{lesson?.turno?` · ${lesson.turno}`:''} · {tvLessonHoraLabel(lesson, meta)}</div></div>
           <button type="button" onClick={cerrarPanel} style={{border:0,background:'transparent',fontSize:28,cursor:'pointer',color:'var(--ink-3)'}}>×</button>
         </div>
-        <div style={{padding:20,overflowY:'auto',flex:1}}>
+        <div style={{padding:'16px 20px 22px',overflowY:'auto',flex:1}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginBottom:16}}>
             {workflow()}
             {!loading&&sessionCheck==='ok'&&<>
@@ -1011,7 +1069,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
               {detalle?.grammar&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Grammar</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.grammar}</div></div>}
             </div>
             {canOperateRail&&abierta&&!sesionCerrada&&sessionCheck==='ok'&&activeSessionReady&&!activeSessionError&&!otherGlobal?
-              <LiveAttendancePanelF100 roster={roster||[]} states={draftAttendance} comments={draftComments} counts={draftCount}
+              <LiveAttendancePanelF100 roster={roster||[]} states={draftAttendance} comments={draftComments} programa={draftProgram} counts={draftCount}
                 status={draftLoad} dirty={draftDirty} busy={draftSaving} notice={draftNotice}
                 onMark={marcarAsistencia} onComment={editarComentario} onSave={guardarBorrador}
                 onRetry={()=>{if(draftDirty&&!window.confirm('Se perderán los cambios sin guardar. ¿Volver a consultar?'))return;setDraftReload(x=>x+1);}}/>:

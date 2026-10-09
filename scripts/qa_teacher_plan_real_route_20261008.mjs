@@ -12,10 +12,10 @@ for(const [path,src] of [['teacher_views.jsx',tv],['panel_suspensiones.jsx',admi
   B.transform(src,{presets:['react'],plugins:['transform-block-scoping']});
 }
 assert(app.includes('cronograma_grupo: <LazyRoute title="Cronograma Inglés Conversacional" component="CronogramaDocenteSeguroF82"'));
-assert(app.includes('teacher_views.jsx?v=F101COMMENTS20261008'));
-assert(bridge.includes('teacher_views.jsx?v=F101COMMENTS20261008'));
-assert(page.includes('src/app.jsx?v=F101COMMENTS20261008'));
-assert(page.includes('src/att77_bridge.js?v=F101COMMENTS20261008'));
+assert(app.includes('teacher_views.jsx?v=F102VISIBLE20261009'));
+assert(bridge.includes('teacher_views.jsx?v=F102VISIBLE20261009'));
+assert(page.includes('src/app.jsx?v=F102VISIBLE20261009'));
+assert(page.includes('src/att77_bridge.js?v=F102VISIBLE20261009'));
 assert(tv.includes('Organizar cronograma'));
 assert(!tv.includes("onClick={comenzarPlan} style={{marginLeft:'auto'"),'Organizar must not be pushed beyond the right edge on narrow screens');
 assert(!tv.includes("gap:6,marginLeft:'auto'"),'Actions must wrap on narrow screens');
