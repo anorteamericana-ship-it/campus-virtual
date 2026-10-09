@@ -987,7 +987,7 @@ function ModalCompletarProgressCheck({ pendiente, docenteNombre, onClose, onSucc
 }
 
 
-function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase', initialAttendance={}, requireExplicitAttendance=false }) {
+function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase', initialAttendance={}, initialComments={}, requireExplicitAttendance=false }) {
   // ── B1: el panel admin reusa este modal para cerrar lecciones de otro
   // docente.  docente_real = dueño de la lección; registrado_por = admin
   // logueado.  Si no se pasa registradoPor, asumimos que el dueño se
@@ -1037,7 +1037,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
       list.forEach(e => {
         const known=Object.prototype.hasOwnProperty.call(initialAttendance||{},e.code);
         const status=known?String(initialAttendance[e.code]||'').toUpperCase():'';
-        initial[e.code]={presente:status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true),retro:'',pc:''};
+        initial[e.code]={presente:status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true),retro:typeof initialComments?.[e.code]==='string'?initialComments[e.code]:'',pc:''};
       });
       setFormData(initial);
       setLoading(false);
@@ -1054,7 +1054,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
     return Object.entries(formData).some(([code,s]) => {
       const raw=String(initialAttendance?.[code]||'').toUpperCase();
       const initial=raw==='P'?true:raw==='A'?false:(requireExplicitAttendance?null:true);
-      return (s.retro && s.retro.trim()) ||
+      return (String(s.retro||'')!==String(initialComments?.[code]||'')) ||
         (s.pc && s.pc.trim()) || s.presente!==initial;
     });
   }, [formData, notaDocente, initialAttendance, requireExplicitAttendance]);
