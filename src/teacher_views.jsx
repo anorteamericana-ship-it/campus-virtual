@@ -1318,7 +1318,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
     <div className="card teacher-roster-fixed" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
         <div style={{minWidth:240,flex:'1 1 320px'}}>
-          <div className="card-title">Estudiantes · asistencia y notas</div>
+          <div className="card-title">Cronograma del grupo</div>
           <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN, ordenados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap',flex:'1 1 420px'}}>

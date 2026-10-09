@@ -90,6 +90,7 @@ assert(!tv.includes('mezclados por fecha y hora'),'No mixed wording');
 assert(tv.includes('const isNextTile=active&&!!nextEvent'),'Weekly upcoming badge uses single event');
 assert(tv.includes('lecciones={lecciones}'),'Weekly calendar uses group real lessons');
 assert(tv.includes('Date.UTC(dateParts[0],dateParts[1]-1,dateParts[2])'),'Weekday calculation timezone stable');
+assert(tv.includes('Cronograma del grupo'),'Roster header names actual surface');
 console.log('QA_F104_NEXT_SELECT_CONTACT_FRONTEND_PASS');
 console.log('QA_F103_AUTOSAVE_CONTACT_FRONTEND_PASS');
 console.log('QA_F102_VISIBLE_ATTENDANCE_FRONTEND_PASS');
