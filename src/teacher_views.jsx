@@ -544,8 +544,17 @@ function tvGroupHasIcanF82(g) {
   const configured = !!(g?.dias_ican && (g?.hora_i_ican || g?.hora_inicio_ican) && (g?.hora_f_ican || g?.hora_fin_ican));
   return g?.puede_ican === true || tvUpper(g?.programa)==='INA' || configured;
 }
-function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
+function MisGruposSwitcher({ grupos, activo, onSelect, activeSession, lecciones=[] }) {
   const lista = Array.isArray(grupos) ? grupos : [];
+  // F104: un solo proximo evento cronologico para el grupo seleccionado, sin
+  // considerar curso e I CAN como colas independientes.
+  const nextEvent=React.useMemo(()=>(lecciones||[])
+    .filter(l=>tvUpper(l.tipo)!=='FERIADO'&&tvUpper(l.estado)!=='CERRADA'
+      &&String(l.fecha||'')>=tvTodayIsoCostaRicaF98())
+    .slice().sort(tvLessonSortF97)[0]||null,[lecciones]);
+  const dateParts=String(nextEvent?.fecha||'').split('-').map(Number);
+  const nextWeekDay=nextEvent&&dateParts.length===3&&dateParts.every(Number.isFinite)
+    ? new Date(Date.UTC(dateParts[0],dateParts[1]-1,dateParts[2])).getUTCDay():null;
   return (
     <div className="card" style={{ marginBottom:18, padding:0, background:'#FBF7EF', width:'100%', maxWidth:'100%', minWidth:0, overflow:'hidden' }}>
       <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
@@ -566,6 +575,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
                     const code=tvGroupCode(g), active=String(code)===String(activo), n=tvNivelId(g), pal=nivelPal(n), lab=tvGrupoLabel(g), isIcan=riel==='ican';
                     const activeRiel=String(activeSession?.RIEL||activeSession?.riel||'curso').trim().toLowerCase()==='ican'?'ican':'curso';
                     const sessionHere=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA'&&String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'')===String(code)&&activeRiel===riel;
+                    const isNextTile=active&&!!nextEvent&&day.key===nextWeekDay&&tvLessonRielF97(nextEvent)===riel;
                     const dark=isIcan?'#57217F':pal.dark, light=isIcan?'#EADCF5':pal.light;
                     const daysLabel=isIcan?'Club I CAN':lab.dias;
                     const hourLabel=isIcan?tvIcanHoraLabelF82(g):lab.hora;
@@ -581,7 +591,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession }) {
                       <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                         <span style={{ fontSize:9.5, fontWeight:900, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{lab.ciclo}</span>
                         <span style={{ fontSize:8, fontWeight:900, color:dark, background:light, borderRadius:999, padding:'1px 5px' }}>{isIcan?'I CAN':n}</span>
-                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>SESIÓN ACTIVA</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>SELECCIONADO</span>}
+                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>SESIÓN ACTIVA</span> : isNextTile ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#16834A', borderRadius:999, padding:'2px 5px' }}>PRÓXIMA</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>SELECCIONADO</span>}
                       </div>
                     </button>;
                   })}
@@ -1479,7 +1489,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
     <div className="card" style={{padding:'15px 18px',margin:'-6px 0 14px',background:'#FFF',borderRadius:14,border:'1px solid rgba(15,23,42,.07)',boxShadow:'0 10px 24px rgba(12,27,53,.05)'}}>
       <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elegí el grupo que querés visualizar.</div>
     </div>
-    <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession}/>
+    <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession} lecciones={lecciones}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
     {loading?<LoadingState title="Cargando grupo…" subtitle="Preparando estudiantes, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
