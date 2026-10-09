@@ -1351,7 +1351,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
                   <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontWeight:750,lineHeight:1.2,fontSize:12,whiteSpace:'normal'}}>{r.name}</div>
-                    <div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia oficial registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
+                    <div title={att?.pct==null?'Todavía no hay asistencia oficial cerrada para calcular el porcentaje. El borrador no cambia esto hasta cerrar la clase.':'Porcentaje basado en asistencia oficial'} style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
                     <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:5,fontSize:10,color:'#405776'}}>
                       <span>Edad: <b>{Number.isInteger(contacto.edad)?contacto.edad+' años':'—'}</b></span>
                       <span>Tel: <b>{contacto.telefono||'Sin dato'}</b></span>
