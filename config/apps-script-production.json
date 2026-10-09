@@ -2,25 +2,24 @@
   "environment": "production",
   "scriptId": "1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2",
   "deploymentId": "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ",
-  "deployedVersion": 436,
-  "lastVerifiedAt": "2026-10-04T14:51:15-06:00",
-  "lastVerifiedBy": "clasp-readback-authenticated-conape-v1-baseline-import-pages-public-source-security-smoke",
+  "deployedVersion": 460,
+  "lastVerifiedAt": "2026-10-09T14:05:45-06:00",
+  "lastVerifiedBy": "clasp-immutable-460-readback-32of32-sha256-zero-diff-node-syntax-http200-noauth-denied-pages-success-public-assets",
   "lastChange": {
-    "summary": "CONAPE Prospectación V1 · PROD @436 · CSV + estado actual + eventos persistentes + semáforo 7/14 + panel Ventas",
-    "sourceBackendPr": 8,
+    "summary": "F103 docente: autoguardado parcial por sesion + contactos de alumnos autorizados en Mis grupos",
+    "sourceBackendPr": 23,
     "backendReleasePrs": [
-      7,
-      8
+      23
     ],
-    "backendMain": "4c5549150cf1fb2cb26cc49db077b2744cf0e6f1",
-    "previousKnownGoodVersion": 434,
+    "backendMain": "ef817145059be892590e5cb755c40e3ef4242500",
+    "previousKnownGoodVersion": 459,
     "runtimeVerified": true,
-    "functionalVerified": true,
-    "functionalVerificationNote": "Deployment estable @436; readback 28/28, 26 JS, 0 drift, SHA agregado 1c5c14878ac692d511ee8e6b02da25bcb2759f0bb1ba26285bb7da75276d585f. Superadmin previsualizó e importó el CSV real de 59 filas como baseline; estado persistente=59 y eventos persistentes=0. El panel filtrado por ASESOR_REF mostró el scope real. Falta observar un movimiento CONAPE real posterior al baseline para declarar probado en vivo su envejecimiento 7/14."
+    "functionalVerified": false,
+    "functionalVerificationNote": "F103 @460 verificado en deployment estable; version inmutable 32/32 identica al candidato, 30 JavaScript con sintaxis PASS, HTTP GET 200. POST anónimo a getDocenteContactosF103 devuelve sesion_invalida. QA local de asistencia parcial/contactos PASS. Falta prueba autenticada docente con lectura del grupo real y escritura controlada en entorno aislado; NO FULL_E2E."
   },
-  "frontendCodeMainAtVerification": "b0d208730ebe7bd6b87826e458204ad1a6d04315",
+  "frontendCodeMainAtVerification": "f1dee806471e2dafcb3163d6ce8310f09f559b99",
   "frontendHotfixPr": 401,
-  "latestFrontendMainPr": 405,
+  "latestFrontendMainPr": 483,
   "notes": [
     "Script ID y Deployment ID no son secretos; no guardar tokens ni credenciales aquí.",
     "La fuente de verdad de runtime es el Deployment ID estable apuntando a una versión numérica; HEAD remoto no equivale por sí solo a producción.",
@@ -29,9 +28,11 @@
     "CONAPE Prospectación V1: baseline real 59 filas / 0 eventos persistentes; el próximo cambio real de CONAPE será la primera evidencia E2E de creación y envejecimiento de un movimiento.",
     "C2-R10 tuvo una excepción procedimental: clasp push normal devolvió Skipping push y se usó --force desde la carpeta temporal aislada del candidato aprobado; el readback posterior dio 0 drift. No tratar esto como precedente ni cambiar la regla general de no usar --force.",
     "Tras cambios de manifiesto/scopes, si SpreadsheetApp.openById devuelve falta de permiso incluso al volver de versión, revisar autorización OAuth del usuario desplegador antes de culpar al código.",
-    "El redirect HTTP 302 de script.google.com a script.googleusercontent.com es normal en Web Apps de Apps Script."
+    "El redirect HTTP 302 de script.google.com a script.googleusercontent.com es normal en Web Apps de Apps Script.",
+    "F103 @460 reemplaza @459 en deployment estable tras readback version inmutable 32/32 y 0 diferencias; @459 conservado como rollback inmediato.",
+    "F103 GitHub Pages commit f1dee806 / PR #483 con frontend publicado; las pruebas reales de asistencia no se ejecutaron sobre alumnos productivos."
   ],
-  "frontendLastVerifiedAt": "2026-10-04T14:51:15-06:00",
+  "frontendLastVerifiedAt": "2026-10-09T14:05:45-06:00",
   "frontendReleasePrs": [
     392,
     395,
@@ -39,14 +40,15 @@
     398,
     400,
     401,
-    405
+    405,
+    483
   ],
-  "frontendFunctionalVerified": true,
-  "frontendFunctionalVerificationNote": "PR #405 y Pages SUCCESS. El dominio público carga el panel CPV1; sesión superadmin verificó previsualización e importación baseline. El estado filtrado por asesor se carga desde backend @436.",
+  "frontendFunctionalVerified": false,
+  "frontendFunctionalVerificationNote": "PR #483 fusionado en main, Pages success (commit f1dee806). Sitio publico entrega app.jsx con cache-bust F103AUTOSAVECONTACT20261009 y teacher_views.jsx con getDocenteContactosF103. No hubo prueba autenticada de navegador ni guardado oficial con estudiante real.",
   "fullE2EVerified": false,
-  "fullE2EVerificationNote": "NO declarar FULL_E2E global. Para CONAPE V1 falta observar un movimiento externo real posterior al baseline y su persistencia/envejecimiento 7/14 en PROD; además permanecen pendientes E2E globales históricos no relacionados.",
+  "fullE2EVerificationNote": "F103: pendiente prueba docente autenticada del grupo real, reabrir borrador y cierre en ambiente controlado; error intermitente requiere observacion en navegador. Siguen pendientes E2E globales/CONAPE de cortes previos.",
   "ciMaintenancePr": 402,
-  "frontendFeaturePr": 405,
+  "frontendFeaturePr": 483,
   "conapeProspectacionV1": {
     "version": "CONAPE_PROSPECTACION_V1_20261004",
     "backendVersion": 436,
