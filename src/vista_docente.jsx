@@ -987,7 +987,7 @@ function ModalCompletarProgressCheck({ pendiente, docenteNombre, onClose, onSucc
 }
 
 
-function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase' }) {
+function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase', initialAttendance={}, requireExplicitAttendance=false }) {
   // ── B1: el panel admin reusa este modal para cerrar lecciones de otro
   // docente.  docente_real = dueño de la lección; registrado_por = admin
   // logueado.  Si no se pasa registradoPor, asumimos que el dueño se
@@ -1034,7 +1034,11 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
       const efectivo=(declarado==='INA'||declarado==='CON_INA')?'INA':(declarado||'SIN_INA');
       setPrograma(efectivo);
       const initial = {};
-      list.forEach(e => { initial[e.code] = { presente: true, retro: '', pc: '' }; });
+      list.forEach(e => {
+        const known=Object.prototype.hasOwnProperty.call(initialAttendance||{},e.code);
+        const status=known?String(initialAttendance[e.code]||'').toUpperCase():'';
+        initial[e.code]={presente:status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true),retro:'',pc:''};
+      });
       setFormData(initial);
       setLoading(false);
     });
@@ -1047,12 +1051,13 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
   // ¿Hay cambios? — para confirmar al cancelar
   const dirty = React.useMemo(() => {
     if (notaDocente.trim()) return true;
-    return Object.values(formData).some(s =>
-      (s.retro && s.retro.trim()) ||
-      (s.pc && s.pc.trim()) ||
-      s.presente === false
-    );
-  }, [formData, notaDocente]);
+    return Object.entries(formData).some(([code,s]) => {
+      const raw=String(initialAttendance?.[code]||'').toUpperCase();
+      const initial=raw==='P'?true:raw==='A'?false:(requireExplicitAttendance?null:true);
+      return (s.retro && s.retro.trim()) ||
+        (s.pc && s.pc.trim()) || s.presente!==initial;
+    });
+  }, [formData, notaDocente, initialAttendance, requireExplicitAttendance]);
 
   const updateStudent = (code, field, value) => {
     setFormData(prev => ({ ...prev, [code]: { ...prev[code], [field]: value } }));
@@ -1065,6 +1070,10 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
     const errs = {};
     for (const s of (students || [])) {
       const f = formData[s.code];
+      if (requireExplicitAttendance && (!f || (f.presente!==true && f.presente!==false))) {
+        errs[s.code] = 'Marcá Presente o Ausente antes de cerrar esta clase.';
+        continue;
+      }
       if (!f) continue;
       if (esINA && !f.retro.trim()) {
         errs[s.code] = !f.presente
@@ -1231,7 +1240,7 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
                   ref={el => { cardRefs.current[s.code] = el; }}
                   estudiante={s}
                   index={idx + 1}
-                  data={formData[s.code] || { presente: true, retro: '', pc: '' }}
+                  data={formData[s.code] || { presente: requireExplicitAttendance?null:true, retro: '', pc: '' }}
                   programa={programa}
                   esINA={esINA}
                   riel={riel}
@@ -1473,7 +1482,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
   // Comentario individual obligatorio solo cuando GRUPOS.PROGRAMA es INA.
   const esIcan = String(riel||'').toLowerCase()==='ican';
   const retroObligatoria = !!esINA;
-  const retroPlaceholder = !presente
+  const retroPlaceholder = presente === false
     ? (esIcan
         ? 'Indicá qué se trabajó en I CAN y cómo puede recuperar la participación.'
         : 'Podés avisar qué se vio, tareas y cómo ponerse al día.')
@@ -1563,8 +1572,8 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
               padding: '10px 14px', minHeight: 44,
               border: 'none', borderLeft: '1px solid var(--line)',
               cursor: 'pointer',
-              background: !presente ? '#B3261E' : 'transparent',
-              color: !presente ? 'white' : 'var(--ink-2)',
+              background: presente === false ? '#B3261E' : 'transparent',
+              color: presente === false ? 'white' : 'var(--ink-2)',
               fontFamily: 'var(--f-sans)',
               fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
               transition: 'background .12s',
@@ -1581,7 +1590,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
           marginBottom: 4,
         }}>
           <label style={vdLabelStyle}>
-            {!presente ? 'Mensaje para el ausente' : (esIcan ? 'Retroalimentación I CAN' : 'Retroalimentación')}
+            {presente === false ? 'Mensaje para el ausente' : (esIcan ? 'Retroalimentación I CAN' : 'Retroalimentación')}
           </label>
           <span style={{
             fontSize: 10, fontWeight: 600,
@@ -1618,7 +1627,7 @@ const EstudianteCard = React.forwardRef(function EstudianteCard(
           <textarea
             value={data.pc}
             onChange={e => onChange(estudiante.code, 'pc', e.target.value)}
-            placeholder={!presente ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}
+            placeholder={presente === false ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}
             rows={2}
             style={textareaStyle(hasError)}
           />

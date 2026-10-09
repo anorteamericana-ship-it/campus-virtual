@@ -11,7 +11,7 @@ const OLD_INITIAL="      .catch(e => { if (!cancel) setError(e.message || 'Error
 const NEW_INITIAL=`      .catch(e => {\n        if (cancel) return;\n        setError(vistaDocenteSafeUserError(e && e.message, 'No pudimos cargar tus pendientes. Intentá nuevamente.', 'carga_docente'));\n      })`;
 function sha(text){const b=Buffer.from(text,'utf8');return crypto.createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');}
 function must(ok,msg){if(!ok)throw new Error(msg);}
-const src=fs.readFileSync(FILE,'utf8');
+const src=fs.readFileSync(FILE,'utf8').replace(/\r\n/g,'\n');
 const app=fs.readFileSync('src/app.jsx','utf8');
 
 must(src.includes(HELPER),'Falta helper AN.');
@@ -74,7 +74,24 @@ const F99_REVERSALS = [
         : 'Retroalimentación individual de la clase (obligatorio).');`
   ]
 ];
+// F100: reverse exactly nine authorized attendance-flow edits BEFORE the F99 INA source audit.
+const F100_REVERSALS = [
+  ["      if (requireExplicitAttendance && (!f || (f.presente!==true && f.presente!==false))) {\n        errs[s.code] = 'Marcá Presente o Ausente antes de cerrar esta clase.';\n        continue;\n      }\n", ""],
+  ["function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase', initialAttendance={}, requireExplicitAttendance=false }) {", "function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSuccess, onSolicitudEnviada, submitFn, submitLabel='Guardar asistencia y cerrar clase' }) {"],
+  ["      list.forEach(e => {\n        const known=Object.prototype.hasOwnProperty.call(initialAttendance||{},e.code);\n        const status=known?String(initialAttendance[e.code]||'').toUpperCase():'';\n        initial[e.code]={presente:status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true),retro:'',pc:''};\n      });", "      list.forEach(e => { initial[e.code] = { presente: true, retro: '', pc: '' }; });"],
+  ["    return Object.entries(formData).some(([code,s]) => {\n      const raw=String(initialAttendance?.[code]||'').toUpperCase();\n      const initial=raw==='P'?true:raw==='A'?false:(requireExplicitAttendance?null:true);\n      return (s.retro && s.retro.trim()) ||\n        (s.pc && s.pc.trim()) || s.presente!==initial;\n    });\n  }, [formData, notaDocente, initialAttendance, requireExplicitAttendance]);", "    return Object.values(formData).some(s =>\n      (s.retro && s.retro.trim()) ||\n      (s.pc && s.pc.trim()) ||\n      s.presente === false\n    );\n  }, [formData, notaDocente]);"],
+  ["                  data={formData[s.code] || { presente: requireExplicitAttendance?null:true, retro: '', pc: '' }}", "                  data={formData[s.code] || { presente: true, retro: '', pc: '' }}"],
+  ["  const retroPlaceholder = presente === false", "  const retroPlaceholder = !presente"],
+  ["              background: presente === false ? '#B3261E' : 'transparent',\n              color: presente === false ? 'white' : 'var(--ink-2)',", "              background: !presente ? '#B3261E' : 'transparent',\n              color: !presente ? 'white' : 'var(--ink-2)',"],
+  ["            {presente === false ? 'Mensaje para el ausente' : (esIcan ? 'Retroalimentación I CAN' : 'Retroalimentación')}", "            {!presente ? 'Mensaje para el ausente' : (esIcan ? 'Retroalimentación I CAN' : 'Retroalimentación')}"],
+  ["            placeholder={presente === false ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}", "            placeholder={!presente ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}"]
+];
 let preF99=src;
+F100_REVERSALS.forEach(function(pair,i){
+  const occurrences=preF99.split(pair[0]).length-1;
+  must(occurrences===1,'F100: cambio '+(i+1)+' ausente, ambiguo o modificado ('+occurrences+')');
+  preF99=preF99.replace(pair[0],pair[1]);
+});
 F99_REVERSALS.forEach(function(pair,i){
   const matches=preF99.split(pair[0]).length-1;
   must(matches===1,'F99: cambio '+(i+1)+' ausente, ambiguo o modificado ('+matches+')');
