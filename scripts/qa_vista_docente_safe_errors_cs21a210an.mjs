@@ -74,6 +74,15 @@ const F99_REVERSALS = [
         : 'Retroalimentación individual de la clase (obligatorio).');`
   ]
 ];
+// F101: deshacer las tres modificaciones de comentarios antes de auditar F100 y F99.
+const F101_REVERSALS=[
+  ["initialAttendance={}, initialComments={}, requireExplicitAttendance=false",
+   "initialAttendance={}, requireExplicitAttendance=false"],
+  ["initial[e.code]={presente:status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true),retro:typeof initialComments?.[e.code]==='string'?initialComments[e.code]:'',pc:''};",
+   "initial[e.code]={presente:status==='P'?true:status==='A'?false:(requireExplicitAttendance?null:true),retro:'',pc:''};"],
+  ["      return (String(s.retro||'')!==String(initialComments?.[code]||'')) ||",
+   "      return (s.retro && s.retro.trim()) ||"]
+];
 // F100: reverse exactly nine authorized attendance-flow edits BEFORE the F99 INA source audit.
 const F100_REVERSALS = [
   ["      if (requireExplicitAttendance && (!f || (f.presente!==true && f.presente!==false))) {\n        errs[s.code] = 'Marcá Presente o Ausente antes de cerrar esta clase.';\n        continue;\n      }\n", ""],
@@ -87,6 +96,11 @@ const F100_REVERSALS = [
   ["            placeholder={presente === false ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}", "            placeholder={!presente ? `No aplicó el Progress Check (${pcUnidades}) por ausencia. Indicá seguimiento o recuperación.` : `Observación individual de Progress Check para las unidades ${pcUnidades}.`}"]
 ];
 let preF99=src;
+F101_REVERSALS.forEach(function(pair,i){
+  const occurrences=preF99.split(pair[0]).length-1;
+  must(occurrences===1,'F101: cambio '+(i+1)+' ausente o ambiguo ('+occurrences+')');
+  preF99=preF99.replace(pair[0],pair[1]);
+});
 F100_REVERSALS.forEach(function(pair,i){
   const occurrences=preF99.split(pair[0]).length-1;
   must(occurrences===1,'F100: cambio '+(i+1)+' ausente, ambiguo o modificado ('+occurrences+')');
