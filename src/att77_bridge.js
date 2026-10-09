@@ -11,8 +11,8 @@ function att77SafeUserError(raw,fallback,context){
  return msg;
 }
 const DEPS=[
- 'src/vista_docente.jsx?v=F103AUTOSAVECONTACT20261009',
- 'src/teacher_views.jsx?v=F103AUTOSAVECONTACT20261009',
+ 'src/vista_docente.jsx?v=F104NEXTROSTER20261009',
+ 'src/teacher_views.jsx?v=F104NEXTROSTER20261009',
  'src/cronograma_todos.jsx?v=F98.4Z6CM',
  'src/cronograma_grupo.jsx?v=F99CALMOVE20261008'
 ];

@@ -22,7 +22,7 @@ assert(tv.includes("if(draftLoad!=='ready'||!draftCompletion.canSave)"),'Cierre 
 assert(vd.includes('requireExplicitAttendance && (!f || (f.presente!==true && f.presente!==false))'));
 assert(vd.includes("typeof initialComments?.[e.code]==='string'?initialComments[e.code]:''"));
 assert(vd.includes('includesPC && !f.pc.trim()'),'Progress Check still independently required');
-for(const s of [app,bridge,shell])assert(s.includes('F103AUTOSAVECONTACT20261009'),'Cache bust present across all loaders');
+for(const s of [app,bridge,shell])assert(s.includes('F104NEXTROSTER20261009'),'Cache bust present across all loaders');
 const start=tv.indexOf('function tvAttendanceCompletionF102('),
   end=tv.indexOf('function LessonDrawerF82(',start);
 assert(start>=0&&end>start);
@@ -79,7 +79,19 @@ assert.equal(flatten(loading).filter(x=>x.type==='textarea').length,0,'No fields
 assert(tv.includes('setTimeout(()=>{void guardarBorrador();},900)'), 'Autosave with debounce');
 assert(tv.includes("window.addEventListener('beforeunload',warn)"),'Warn before closing with unsynced changes');
 assert(tv.includes('postTeacher(\'getDocenteContactosF103\''),'Contacts retrieved for Mis grupos');
-assert(tv.includes('Copiar teléfono de ')&&tv.includes('Copiar correo de '),'Quick-copy contacts');
+assert(tv.includes('function tvSelectContactTextF104('),'Selective double-click helper');
+assert(tv.includes('onDoubleClick={contacto.telefono?tvSelectContactTextF104:undefined}'),'Phone specific text selection');
+assert(tv.includes('onDoubleClick={contacto.correo?tvSelectContactTextF104:undefined}'),'Email specific text selection');
+assert(!tv.includes('tvCopyContactF103('),'No legacy copy function');
+assert(!tv.includes('}>Copiar</button>'),'No inline copy buttons');
+assert(tv.includes("viewMode==='total'?nextLesson"),'Only one next event across both rails in total view');
+assert(tv.includes('Vista TOTAL: lecciones e I CAN, ordenados por fecha y hora.'),'Schedule subtitle explains ordering');
+assert(!tv.includes('mezclados por fecha y hora'),'No mixed wording');
+assert(tv.includes('const isNextTile=active&&!!nextEvent'),'Weekly upcoming badge uses single event');
+assert(tv.includes('lecciones={lecciones}'),'Weekly calendar uses group real lessons');
+assert(tv.includes('Date.UTC(dateParts[0],dateParts[1]-1,dateParts[2])'),'Weekday calculation timezone stable');
+assert(tv.includes('Cronograma del grupo'),'Roster header names actual surface');
+console.log('QA_F104_NEXT_SELECT_CONTACT_FRONTEND_PASS');
 console.log('QA_F103_AUTOSAVE_CONTACT_FRONTEND_PASS');
 console.log('QA_F102_VISIBLE_ATTENDANCE_FRONTEND_PASS');
 console.log('PASS: full-row comments x3, INA/SIN_INA, pending attendance, guard save, backend program, 1120px drawer, close validations, cache bust');
