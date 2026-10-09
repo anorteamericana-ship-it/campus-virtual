@@ -771,7 +771,7 @@ function tvAttendanceCompletionF102(roster,states,comments,programa){
     completedNotes,missingAttendance,missingComments,
     canSave:known&&!!(roster||[]).length&&missingAttendance.length===0&&missingComments.length===0};
 }
-function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,dirty,busy,notice,onMark,onComment,onSave,onRetry}){
+function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,dirty,busy,notice,saveError,onMark,onComment,onFinalize,onRetry,onSaveNow,canFinalize=true}){
   const ready=status==='ready',total=(roster||[]).length,
     summary=tvAttendanceCompletionF102(roster,states,comments,programa);
   const firstMissing=summary.missingAttendance[0]||summary.missingComments[0];
@@ -796,7 +796,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
       <div style={{padding:'15px 17px',background:'#EAF3FE',borderBottom:'1px solid #D0DEED'}}>
         <div style={{fontWeight:900,fontSize:16,color:'#0F3972'}}>Asistencia y comentarios · clase abierta</div>
         <div style={{fontSize:12,color:'#4B627E',lineHeight:1.5,marginTop:5}}>
-          Todos los estudiantes y sus comentarios están a la vista. Este guardado no cierra la lección.
+          Los cambios se guardan automáticamente como borrador. Para registrar la asistencia oficial, usá «Guardar y cerrar clase».
         </div>
         <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:10}}>
           {[[summary.present+' presentes','#166534'],[summary.absent+' ausentes','#B3261E'],[summary.pending+' sin marcar','#8B590E'],
@@ -813,7 +813,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
           padding:'9px 11px',background:'#FFFAEE',fontSize:12,fontWeight:700,color:'#88520B'}}>
           <span>{summary.pending?'Faltan '+summary.pending+' asistencias. ':''}
             {summary.ina&&summary.missingComments.length?'Faltan '+summary.missingComments.length+' comentarios INA. ':''}
-            Completá los campos señalados para guardar.</span>
+            Completá los campos señalados para cerrar la clase.</span>
           <button type="button" onClick={jumpPending} style={{background:'#FFF',border:'1px solid #D8B978',
             color:'#724606',padding:'7px 11px',borderRadius:7,cursor:'pointer',fontWeight:850}}>Ir al primer pendiente</button>
         </div>}
@@ -836,7 +836,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
             </div>
             <div role="group" aria-label={'Asistencia de '+s.name} style={{display:'flex',alignItems:'center',gap:4}}>
               {[['P','#18733B','#E5F5E9','Presente'],['A','#B52C25','#FCEBE8','Ausente'],['?','#8A6524','#FFF4DF','Pendiente']].map(([v,color,bg,title])=>
-                <button type="button" key={v} disabled={busy} title={title} aria-label={title+' · '+s.name}
+                <button type="button" key={v} title={title} aria-label={title+' · '+s.name}
                   aria-pressed={mark===v} onClick={()=>onMark(code,v)}
                   style={{height:37,minWidth:37,border:'1.5px solid '+(mark===v?color:'#D4DEE9'),
                     borderRadius:8,fontSize:12,fontWeight:900,color:mark===v?color:'#6C7B8E',
@@ -852,7 +852,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
                 <span>{hasNote?'✓ Listo':missingNote?'● Falta comentario':'Sin comentario'} · {note.length}/800</span>
               </label>
               <textarea className="f102-textarea" id={'f102-comment-'+code} rows={2} maxLength={800}
-                aria-invalid={missingNote} disabled={busy} value={note}
+                aria-invalid={missingNote} value={note}
                 placeholder={summary.ina?'Escribí aquí la retroalimentación obligatoria de este estudiante…':'Observación individual (opcional)…'}
                 onChange={e=>onComment(code,e.target.value)}
                 style={{borderColor:missingNote?'#DA9A72':hasNote?'#8EBCA2':'#C7D4E3'}}/>
@@ -865,16 +865,17 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
         gap:12,alignItems:'center',flexWrap:'wrap'}}>
         <div>
           <div style={{fontSize:12,fontWeight:900,color:dirty?'#975A0B':'#236044'}}>
-            {ready?(busy?'Guardando…':dirty?'Cambios sin guardar':'Borrador guardado'):'Esperando validación'}
+            {ready?(saveError?'Error al sincronizar':busy?'Sincronizando…':dirty?'Guardando cambios…':'✓ Todos los cambios guardados'):'Esperando validación'}
           </div>
           <div style={{fontSize:11,color:'#5C708A',marginTop:2}}>
-            {summary.canSave?'Lista completa para guardar':summary.ina?'INA: no se permite guardar con comentarios pendientes':'Marcá la asistencia de todos para guardar'}
+            {saveError?'Reintentá guardar; no salgas hasta que se confirme.':summary.canSave?'Lista completa: podés cerrar la clase':summary.ina?'Podés avanzar; el comentario INA se exige al cierre':'Podés ir completando la asistencia'}
           </div>
         </div>
-        <button type="button" className="btn btn-primary" onClick={onSave}
-          disabled={!ready||!summary.canSave||!dirty||busy}
+        {saveError&&<button type="button" className="btn btn-ghost" onClick={onSaveNow} disabled={busy}>Reintentar guardado</button>}
+        <button type="button" className="btn btn-primary" onClick={onFinalize}
+          disabled={!ready||!summary.canSave||dirty||busy||saveError||!canFinalize}
           style={{padding:'12px 21px',fontSize:13,fontWeight:900}}>
-          {busy?'Guardando…':'Guardar asistencia y comentarios'}
+          Guardar y cerrar clase
         </button>
       </div>
       {notice&&<div role="status" style={{padding:'8px 15px 12px',fontSize:12,color:'#4C6178'}}>{notice}</div>}
@@ -894,6 +895,10 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const [draftLoad,setDraftLoad]=React.useState('idle');
   const [draftSaving,setDraftSaving]=React.useState(false);
   const [draftNotice,setDraftNotice]=React.useState('');
+  const [draftSaveError,setDraftSaveError]=React.useState(false);
+  const draftSavingRef=React.useRef(false);
+  const draftLoadedSessionRef=React.useRef('');
+  const draftLoadedReloadRef=React.useRef(-1);
   const [draftProgram,setDraftProgram]=React.useState('');
   const nivel=tvNivelId(meta), code=tvGroupCode(meta), today=tvLocalIsoF88();
   const rielLeccion=tvIsIcanEventF96(lesson)?'ican':'curso';
@@ -931,21 +936,26 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       const a=rs[0].status==='fulfilled'?rs[0].value:null, b=rs[1].status==='fulfilled'?rs[1].value:null, c=rs[2].status==='fulfilled'?rs[2].value:null;
       setDetalle(a?.ok?a.leccion:null);
       if(b?.ok){ setSesion(b.sesion||null); setSessionCheck('ok'); }
-      else { setSesion(null); setSessionCheck('error'); }
+      else { setSessionCheck('error'); }
       setOralSummary(c?.ok?c:null);
     }).finally(()=>setLoading(false));
   },[lesson?.leccion,lesson?.fecha,lesson?.tipo,code,nivel,esOral,rielLeccion]);
   React.useEffect(()=>{load();},[load]);
-  React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')cerrarPanel();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose,draftDirty,abierta,sesionCerrada]);
+  React.useEffect(()=>{ const k=e=>{if(e.key==='Escape')cerrarPanel();}; window.addEventListener('keydown',k); return()=>window.removeEventListener('keydown',k); },[onClose,draftDirty,abierta,sesionCerrada,draftAttendance,draftComments,draftRevision,draftLoad,draftSaving]);
   React.useEffect(()=>{ const h=()=>load(); window.addEventListener('an:oral-updated',h); return()=>window.removeEventListener('an:oral-updated',h); },[load]);
 
   // F100: marcas provisionales asociadas a la sesión abierta real. No son asistencia oficial.
   React.useEffect(()=>{
     let alive=true;
-    if(!abierta||sesionCerrada||!canOperateRail||!draftSessionId||sessionCheck!=='ok'){
-      setDraftLoad('idle');return ()=>{alive=false;};
+    const identity=[code,nivel,lesson?.leccion,rielLeccion,draftSessionId].join('|');
+    if(identity===draftLoadedSessionRef.current && draftLoad==='ready' && draftReload===draftLoadedReloadRef.current){
+      return ()=>{alive=false;};
     }
-    setDraftLoad('loading');setDraftNotice('');setDraftAttendance({});setDraftSaved('{}');setDraftComments({});setDraftCommentsSaved('{}');setDraftProgram('');setDraftRevision(0);
+    if(!abierta||sesionCerrada||!canOperateRail||!draftSessionId||sessionCheck!=='ok'){
+      if(draftLoad!=='ready')setDraftLoad('idle');
+      return ()=>{alive=false;};
+    }
+    setDraftLoad('loading');setDraftNotice('');setDraftSaveError(false);setDraftAttendance({});setDraftSaved('{}');setDraftComments({});setDraftCommentsSaved('{}');setDraftProgram('');setDraftRevision(0);
     postTeacher('getAsistenciaBorradorF100',{
       cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,sesion_id:draftSessionId
     },30000).then(r=>{
@@ -961,6 +971,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       const verifiedProgram=String(r.programa||'').trim().toUpperCase().replace(/\s+/g,'_');
       if(!verifiedProgram)throw Error('No se pudo verificar el programa oficial del grupo.');
       setDraftProgram(verifiedProgram);
+      draftLoadedSessionRef.current=identity;draftLoadedReloadRef.current=draftReload;
       setDraftRevision(Number(r.revision)||0);setDraftLoad('ready');
     }).catch(e=>{
       if(!alive)return;
@@ -970,7 +981,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     return ()=>{alive=false;};
   },[draftSessionId,abierta,sesionCerrada,canOperateRail,sessionCheck,code,nivel,lesson?.leccion,rielLeccion,draftReload]);
   const marcarAsistencia=(studentCode,value)=>{
-    if(draftLoad!=='ready'||draftSaving)return;
+    if(draftLoad!=='ready')return;
+    setDraftSaveError(false);
     setDraftAttendance(prev=>{
       const next={...prev};
       if(value==='?')delete next[studentCode];else next[studentCode]=value;
@@ -979,36 +991,49 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     setDraftNotice('');
   };
   const editarComentario=(studentCode,value)=>{
-    if(draftLoad!=='ready'||draftSaving)return;
+    if(draftLoad!=='ready')return;
+    setDraftSaveError(false);
     setDraftComments(prev=>{const next={...prev};if(!value)delete next[studentCode];else next[studentCode]=value.slice(0,800);return next;});
     setDraftNotice('');
   };
   const guardarBorrador=async()=>{
-    if(draftLoad!=='ready'||draftSaving||!draftDirty)return;
-    if(!draftCompletion.canSave){
-      setDraftNotice('Lista incompleta: marcá todas las asistencias y, si el grupo es INA, escribí todos los comentarios.');
-      return;
-    }
+    if(draftLoad!=='ready'||draftSavingRef.current)return false;
+    if(!draftDirty)return true;
     const savedNow={...draftAttendance},serialized=JSON.stringify(savedNow);
     const commentsNow={...draftComments},serializedNotes=JSON.stringify(commentsNow);
-    setDraftSaving(true);setDraftNotice('');
+    draftSavingRef.current=true;setDraftSaving(true);setDraftNotice('');setDraftSaveError(false);
     try{
       const r=await postTeacher('guardarAsistenciaBorradorF100',{
         cod_grupo:code,nivel,leccion:lesson.leccion,riel:rielLeccion,
-        sesion_id:draftSessionId,revision:draftRevision,estados:savedNow,comentarios:commentsNow
+        sesion_id:draftSessionId,revision:draftRevision,estados:savedNow,comentarios:commentsNow,modo:'BORRADOR'
       },45000);
       if(!r?.ok)throw Error(r?.error||'No se pudo guardar el avance.');
       setDraftRevision(Number(r.revision)||draftRevision+1);
       setDraftSaved(serialized);setDraftCommentsSaved(serializedNotes);
-      setDraftNotice('Avance guardado como borrador. La clase sigue abierta.');
+      setDraftNotice('✓ Avance sincronizado automáticamente.');
+      return true;
     }catch(e){
+      setDraftSaveError(true);
       setDraftNotice(teacherSessionSafeUserError(e?.message,
-        'No se pudo guardar la lista. Revisá la conexión antes de cerrar el panel.','live_attendance_save'));
-    }finally{setDraftSaving(false);}
+        'Sin conexión: tus cambios siguen visibles, pero no se pudieron sincronizar.','live_attendance_save'));
+      return false;
+    }finally{draftSavingRef.current=false;setDraftSaving(false);}
   };
-  const cerrarPanel=()=>{
-    if((abierta&&!sesionCerrada)&&draftDirty&&
-      !window.confirm('Hay cambios de asistencia sin guardar. ¿Salir y descartarlos?'))return;
+  // F103: autoguardado del borrador parcial, sin exigir el cierre INA.
+  React.useEffect(()=>{
+    if(!abierta||sesionCerrada||draftLoad!=='ready'||!draftDirty||draftSaving||draftSaveError)return;
+    const timer=setTimeout(()=>{void guardarBorrador();},900);
+    return()=>clearTimeout(timer);
+  },[draftAttendance,draftComments,draftSaved,draftCommentsSaved,draftSaving,draftSaveError,
+      draftLoad,draftSessionId,abierta,sesionCerrada]);
+  React.useEffect(()=>{
+    const warn=e=>{if(!draftDirty&&!draftSaving)return;e.preventDefault();e.returnValue='';};
+    window.addEventListener('beforeunload',warn);
+    return()=>window.removeEventListener('beforeunload',warn);
+  },[draftDirty,draftSaving]);
+  const cerrarPanel=async()=>{
+    if(draftSavingRef.current){alert('Esperá a que termine de sincronizar la asistencia.');return;}
+    if(draftDirty){const ok=await guardarBorrador();if(!ok)return;}
     onClose();
   };
   const iniciar=async()=>{
@@ -1023,9 +1048,15 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     }catch(e){alert(teacherSessionSafeUserError(e?.message||String(e),'No se pudo iniciar la clase. Intentá de nuevo.','iniciar_clase_drawer'));}finally{setBusy('');}
   };
   const abrirExamen=()=>{ if(onNavigate) onNavigate('examenes',{oral:oralContext}); };
-  const abrirCierre=()=>{
-    if(draftLoad!=='ready'||!draftCompletion.canSave){alert('Completá la asistencia y los comentarios INA antes de cerrar esta clase.');return;}
-    if(draftSaving||draftDirty){alert('Guardá los cambios de asistencia y comentarios antes de cerrar la clase.');return;}
+  const abrirCierre=async()=>{
+    if(draftLoad!=='ready'||!draftCompletion.canSave){
+      alert('Completá la asistencia y los comentarios INA antes de cerrar esta clase.');return;
+    }
+    if(!activeSessionReady||activeSessionError){
+      alert('No se pudo verificar la sesión docente global. Reintentá cuando se recupere la conexión.');return;
+    }
+    if(draftSavingRef.current){alert('Esperá a que se terminen de guardar los cambios.');return;}
+    if(draftDirty){const ok=await guardarBorrador();if(!ok)return;}
     setAttendanceOpen(true);
   };
   const lessonKey=tvLessonKeyF97(lesson);
@@ -1040,7 +1071,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     if(otherGlobal) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',color:'#8B1F1F',fontSize:12,fontWeight:800,lineHeight:1.5}}>TENÉS OTRA SESIÓN ACTIVA · Lección {String(globalLec).padStart(2,'0')}. Debés cerrarla antes de iniciar esta clase.</div>;
     if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
     const bloqueadoPorOral=esOral&&!oralListoParaCerrar;
-    return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>CERRAR CLASE</button>;
+    return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>GUARDAR Y CERRAR CLASE</button>;
   };
   return <>
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)cerrarPanel();}}>
@@ -1068,10 +1099,10 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
               {detalle?.speaking&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Speaking</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.speaking}</div></div>}
               {detalle?.grammar&&<div style={{marginTop:10}}><div style={vdLabelStyle}>Grammar</div><div style={{fontSize:12.5,lineHeight:1.5,marginTop:3}}>{detalle.grammar}</div></div>}
             </div>
-            {canOperateRail&&abierta&&!sesionCerrada&&sessionCheck==='ok'&&activeSessionReady&&!activeSessionError&&!otherGlobal?
-              <LiveAttendancePanelF100 roster={roster||[]} states={draftAttendance} comments={draftComments} programa={draftProgram} counts={draftCount}
+            {canOperateRail&&abierta&&!sesionCerrada&&(sessionCheck==='ok'||draftLoad==='ready')&&!otherGlobal?
+              <LiveAttendancePanelF100 roster={roster||[]} states={draftAttendance} comments={draftComments} programa={draftProgram} counts={draftCount} saveError={draftSaveError} canFinalize={activeSessionReady&&!activeSessionError}
                 status={draftLoad} dirty={draftDirty} busy={draftSaving} notice={draftNotice}
-                onMark={marcarAsistencia} onComment={editarComentario} onSave={guardarBorrador}
+                onMark={marcarAsistencia} onComment={editarComentario} onFinalize={abrirCierre} onSaveNow={guardarBorrador}
                 onRetry={()=>{if(draftDirty&&!window.confirm('Se perderán los cambios sin guardar. ¿Volver a consultar?'))return;setDraftReload(x=>x+1);}}/>:
               <>
                 <div style={{...vdLabelStyle,marginBottom:8}}>Asistencia registrada</div>
@@ -1175,7 +1206,7 @@ function tvTodayIsoCostaRicaF98() {
   }
 }
 
-function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, programa, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
+function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, programa, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const todayIso=tvTodayIsoCostaRicaF98();
   const allLessons=React.useMemo(()=>(lecciones||[])
     .filter(l=>tvUpper(l.tipo)!=='FERIADO')
@@ -1241,7 +1272,7 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
   },[nextCourseLesson,nextIcanLesson]);
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
   const calendarRef=React.useRef(null), topScrollRef=React.useRef(null), positionedRef=React.useRef('');
-  const COL_W=94, LEFT_W=286, RIGHT_W=154, HEADER_H=104, ROW_H=68;
+  const COL_W=94, LEFT_W=384, RIGHT_W=154, HEADER_H=104, ROW_H=112;
 
   React.useEffect(()=>{
     const box=calendarRef.current;
@@ -1314,13 +1345,28 @@ function RosterAcademicoF79({ roster, lecciones, asistenciaDetalle, asistenciaGr
               <input id={`teacher-student-search-${groupCode||'grupo'}`} type="search" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder="Nombre, apellido, cédula o código" aria-label="Buscar estudiante por nombre, apellido, cédula o código" style={{width:'100%',height:34,border:'1.5px solid #B7C3D4',borderRadius:8,padding:'0 10px',fontFamily:'inherit',fontSize:10.5,fontWeight:650,color:'var(--ink)',background:'#FFF',outline:'none'}} />
               <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:4,fontWeight:750}}>{filteredRoster.length} de {(roster||[]).length} estudiantes</div>
             </th></tr></thead>
-            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const att=asistenciaGrupo?.[r.code];return <tr key={r.code||i}>
+            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],contacto=contactos[r.code]||{};return <tr key={r.code||i}>
               <td title={r.cedula?`Cédula ${r.cedula}`:''} style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W}}>
                 <div style={{display:'flex',gap:9,alignItems:'center'}}>
                   <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontWeight:750,lineHeight:1.2,fontSize:12,whiteSpace:'normal'}}>{r.name}</div>
-                    <div style={{fontSize:9.5,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
+                    <div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia oficial registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
+                    <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:5,fontSize:10,color:'#405776'}}>
+                      <span>Edad: <b>{Number.isInteger(contacto.edad)?contacto.edad+' años':'—'}</b></span>
+                      <span>Tel: <b>{contacto.telefono||'Sin dato'}</b></span>
+                      {contacto.telefono&&<button type="button" aria-label={'Copiar teléfono de '+r.name}
+                        onClick={e=>{e.stopPropagation();tvCopyContactF103(contacto.telefono);}}
+                        style={{border:'none',background:'transparent',cursor:'pointer',color:'#155C9F',fontSize:10,fontWeight:850,padding:0}}>Copiar</button>}
+                    </div>
+                    <div style={{display:'flex',gap:6,alignItems:'center',marginTop:4,fontSize:10,minWidth:0}}>
+                      <span style={{color:'#48617E',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={contacto.correo||'Correo no registrado'}>
+                        {contacto.correo||'Sin correo'}
+                      </span>
+                      {contacto.correo&&<button type="button" aria-label={'Copiar correo de '+r.name}
+                        onClick={e=>{e.stopPropagation();tvCopyContactF103(contacto.correo);}}
+                        style={{border:0,background:'transparent',cursor:'pointer',color:'#155C9F',fontWeight:850,fontSize:10,padding:0,flexShrink:0}}>Copiar</button>}
+                    </div>
                   </div>
                 </div>
               </td>
@@ -1393,9 +1439,24 @@ function stickyStudentCellF79(head){ return { position:'sticky', left:0, zIndex:
 function stickyNoteCellF79(head){ return { position:'sticky', right:0, zIndex:head?8:5, background:head?'var(--surface-2)':'#FFF', boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)', borderLeft:'1px solid var(--line)' }; }
 function miniAttendBtn(active, present){ return { border:'1px solid '+(active?(present?'#166534':'#B3261E'):'var(--line)'), background:active?(present?'#E8F5E9':'#FDECEA'):'#FFF', color:active?(present?'#166534':'#B3261E'):'var(--ink-2)', borderRadius:7, padding:'6px 7px', fontSize:9.5, fontWeight:850, cursor:'pointer' }; }
 
+function tvCopyContactF103(value){
+  const text=String(value||'').trim();if(!text)return;
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).catch(()=>window.prompt('Copiá este dato:',text));
+  else window.prompt('Copiá este dato:',text);
+}
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
   const lista=grupos||[];
+  const [contactos,setContactos]=React.useState({});
+  React.useEffect(()=>{
+    let active=true;
+    setContactos({});
+    if(!codGrupo||!nivel)return()=>{active=false;};
+    postTeacher('getDocenteContactosF103',{cod_grupo:codGrupo,nivel},30000)
+      .then(r=>{if(active&&r?.ok)setContactos(r.contactos||{});})
+      .catch(()=>{if(active)setContactos({});});
+    return()=>{active=false;};
+  },[codGrupo,nivel]);
   const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
   if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos activos asignados en este momento.'} onRetry={recargarPanel}/></div>;
@@ -1424,7 +1485,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
         <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
         <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
       </div>
-      <RosterAcademicoF79 roster={roster} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} programa={programa} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
+      <RosterAcademicoF79 roster={roster} contactos={contactos} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} programa={programa} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     </>}
   </div>;
 }
