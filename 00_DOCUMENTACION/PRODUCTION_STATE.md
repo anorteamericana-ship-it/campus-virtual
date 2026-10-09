@@ -1,6 +1,19 @@
 # CAMPUS VIRTUAL · Estado de producción
 
-Última verificación operativa: **2026-10-04 14:51 -06:00**.
+Última verificación operativa de F103: **2026-10-09 14:05 -06:00**. Las secciones históricas del corte CONAPE V1 @436 permanecen como evidencia de esa fecha.
+
+## Estado actual · F103 docente (2026-10-09)
+
+- **Backend PROD:** deployment estable `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` en **@460**, misma URL. Rollback disponible **@459**; snapshot inmutable de @459 guardado fuera del repositorio.
+- **Integridad:** `clasp pull --versionNumber 460` generó 32 archivos; comparación SHA-256 con candidato F103: **32/32 idénticos, 0 diferencias**. 30 JavaScript pasaron `node --check`; manifiesto JSON válido.
+- **Alcance backend:** `guardarAsistenciaBorradorF100` acepta `modo=BORRADOR` para avances parciales mientras la sesión permanece abierta; control de revisión/lock y autorización docente. `getDocenteContactosF103` solo devuelve edad, teléfono y correo de alumnos pertenecientes al grupo autorizado; no entrega fecha de nacimiento.
+- **Pruebas backend:** QA local F103 (autoguardado, conflictos de revisión, contactos, permisos) PASS; deployment @460 confirmado en `clasp deployments`, HTTP público 200 y POST anónimo de contactos devuelve `{ok:false,error:sesion_invalida}`.
+- **Frontend PROD:** PR **#483** fusionado en main, commit `f1dee806471e2dafcb3163d6ce8310f09f559b99`; Pages **SUCCESS**. Dominio público sirve `src/app.jsx` con cache-bust F103 y `src/teacher_views.jsx` con llamada `getDocenteContactosF103`. Mis grupos muestra edad/teléfono/correo, y el panel usa autoguardado parcial con 900 ms de debounce.
+- **Evidencia pendiente:** prueba autenticada del docente con grupo real y confirmación de recuperación de borrador al reabrir; ensayo de cierre solo con datos de prueba autorizados; observar error intermitente en navegador. No declarar `FULL_E2E` ni diagnóstico causal del fallo intermitente.
+
+### Nota sobre el historial
+
+El bloque siguiente documenta el **corte histórico @436 de CONAPE Prospectación V1 (2026-10-04)** y no debe confundirse con la versión productiva vigente @460.
 
 ## Apps Script PROD
 
