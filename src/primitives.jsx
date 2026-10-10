@@ -187,14 +187,34 @@ function studentProfileCacheGet(codigo) {
 function studentProfileCachePut(codigo, data) {
   try { if (data && data.ok) sessionStorage.setItem(studentProfileCacheKey(codigo), JSON.stringify({ ts: Date.now(), data })); } catch (_) {}
 }
+// F105: la caché de 90 s solo evitaba requests al montar un componente.
+// Un alumno podía permanecer horas en la misma SPA viendo saldos viejos tras
+// una corrección externa. Revalidar al volver a la pestaña/navegar y, mientras
+// esté visible, de forma espaciada; nunca alterar recibos ni datos académicos.
+const STUDENT_PROFILE_AUTO_CHECK_MS = 5 * 60 * 1000;
+const STUDENT_PROFILE_REFRESH_MIN_GAP_MS = 90 * 1000;
+function studentProfileShouldRefresh(codigo, busy, lastAttempt, now = Date.now()) {
+  if (!codigo || busy) return false;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false;
+  if (now - (Number(lastAttempt) || 0) < STUDENT_PROFILE_REFRESH_MIN_GAP_MS) return false;
+  return !studentProfileCacheGet(codigo);
+}
 function useEstudiante(codigo) {
-  const [data, setData]       = React.useState(() => codigo ? studentProfileCacheGet(codigo) : null);
+  const [data, setData] = React.useState(() => codigo ? studentProfileCacheGet(codigo) : null);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError]     = React.useState('');
-  const [tick, setTick]       = React.useState(0);
+  const [error, setError] = React.useState('');
+  const [tick, setTick] = React.useState(0);
+  const pendingRef = React.useRef(false);
+  const lastAttemptRef = React.useRef(0);
 
   React.useEffect(() => {
-    if (!codigo) { setData(null); return; }
+    if (!codigo) {
+      pendingRef.current = false;
+      setData(null);
+      setLoading(false);
+      setError('');
+      return;
+    }
     let cancelled = false;
     const cached = tick === 0 ? studentProfileCacheGet(codigo) : null;
     if (cached) {
@@ -203,6 +223,8 @@ function useEstudiante(codigo) {
       setError('');
       return () => { cancelled = true; };
     }
+    pendingRef.current = true;
+    lastAttemptRef.current = Date.now();
     setLoading(true);
     setError('');
     postPrimitives('getEstudiante', { codigo })
@@ -217,11 +239,44 @@ function useEstudiante(codigo) {
         setData(d);
       })
       .catch(() => { if (!cancelled) setError('Error de conexión'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) {
+          pendingRef.current = false;
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; pendingRef.current = false; };
   }, [codigo, tick]);
 
-  return { data, loading, error, reload: () => { try { sessionStorage.removeItem(studentProfileCacheKey(codigo)); } catch (_) {} setTick(t => t + 1); } };
+  React.useEffect(() => {
+    if (!codigo || typeof window === 'undefined') return;
+    const refreshIfStale = () => {
+      const now = Date.now();
+      if (!studentProfileShouldRefresh(codigo, pendingRef.current, lastAttemptRef.current, now)) return;
+      lastAttemptRef.current = now;
+      pendingRef.current = true;
+      setTick(t => t + 1);
+    };
+    const onVisibility = () => { if (document.visibilityState === 'visible') refreshIfStale(); };
+    window.addEventListener('focus', refreshIfStale);
+    window.addEventListener('hashchange', refreshIfStale);
+    window.addEventListener('online', refreshIfStale);
+    document.addEventListener('visibilitychange', onVisibility);
+    const interval = window.setInterval(refreshIfStale, STUDENT_PROFILE_AUTO_CHECK_MS);
+    return () => {
+      window.removeEventListener('focus', refreshIfStale);
+      window.removeEventListener('hashchange', refreshIfStale);
+      window.removeEventListener('online', refreshIfStale);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearInterval(interval);
+    };
+  }, [codigo]);
+
+  return { data, loading, error, reload: () => {
+    try { sessionStorage.removeItem(studentProfileCacheKey(codigo)); } catch (_) {}
+    lastAttemptRef.current = Date.now();
+    setTick(t => t + 1);
+  } };
 }
 
 // ── LoadingState — primitiva única para estados de carga ─────────────────
