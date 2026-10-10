@@ -2106,7 +2106,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
             {stats.cerradas + stats.hoy}
           </span>
           <span style={{ fontSize:14, color:'var(--ink-3)', marginLeft:6 }}>
-            de 32 lecciones dadas
+            {nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas'}
           </span>
         </div>
         <div style={{ fontSize:12, color:'var(--ink-2)' }}>
