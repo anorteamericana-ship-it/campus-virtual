@@ -15,7 +15,12 @@ const ina=context.build(grades,[],'B1','INA');
 assert.equal(ina.length,8,'INA needs 8 components');
 assert.equal(ina.reduce((x,r)=>x+r.max,0),100,'INA total 100');
 assert.equal(ina.find(x=>x.key==='ESCRITO_1').max,5,'Written lesson 18 = 5');
-assert.equal(ina.find(x=>x.key==='ESCRITO_1').pct,80,'Written 4/5 = 80%');
+assert.equal(ina.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,true,'Historic 4/15 cannot be shown as 4/5 automatically');
+assert.equal(ina.find(x=>x.key==='ESCRITO_1').max_origen,15,'Preserve source denominator');
+assert.equal(ina.find(x=>x.key==='ESCRITO_1').pct,null,'Do not fabricate a percentage');
+const reconciled=context.build([{...grades[0],max:5,programa:'INA'}],[],'B1','INA');
+assert.equal(reconciled.find(x=>x.key==='ESCRITO_1').pct,80,'Official 4/5 = 80% only when source confirms /5');
+assert.equal(reconciled.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,false);
 assert.equal(ina.find(x=>x.key==='ESCRITO_2').max,5,'Written lesson 32 = 5');
 assert.equal(ina.filter(x=>x.key.startsWith('ORAL')).length,4,'4 orals');
 assert.equal(ina.find(x=>x.key==='SOCIAL').max,10,'Social = 10');
@@ -27,6 +32,15 @@ const free=context.build(grades,[],'B1','SIN_INA');
 assert.equal(free.length,7,'Non INA must not invent I CAN');
 assert.equal(free.reduce((x,r)=>x+r.max,0),100,'Non-INA existing rubric 100');
 assert.equal(free.find(x=>x.key==='ESCRITO_1').max,15,'Non-INA written unchanged');
+assert.equal(free.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,false,'Do not flag SIN_INA 4/15');
+for (const score of [0,4,12]) {
+  const historic=context.build([{...grades[0],nota:score,max:15}],[],'B1','INA').find(x=>x.key==='ESCRITO_1');
+  assert.equal(historic.nota,score);
+  assert.equal(historic.conciliacion_pendiente,true);
+  assert.equal(historic.pct,null);
+}
+const withoutSource=context.build([{...grades[0],max:null}],[],'B1','INA');
+assert.equal(withoutSource.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,true,'Missing denominator requires evidence');
 const rawIcan={nivel:'B1',tipo_oficial:'ICAN',programa:'INA',nota:2.5,max:20,pct_asistencia:75,registrada:true,registradas:3,requeridas:16,estado:'EN_CURSO'};
 const partial=context.build([...grades,rawIcan],[],'B1','INA').find(x=>x.key==='ICAN');
 assert.equal(partial.nota,2.5);
@@ -36,7 +50,7 @@ assert.equal(context.hasPoints([partial],false),true,'I CAN partial score must r
 assert.equal(context.hasPoints([],false),false,'Empty grades must not pretend to be zero');
 assert.equal(context.hasPoints([{registrada:false,estado:'VENCIDA_0'}],false),true,'Official expired zero must remain visible');
 assert.equal(context.hasPoints([],true),true,'Closed level must retain official summary');
-assert(source.includes("row.key==='ICAN'&&row.faltante?null:gradeLetter(pct)"),'Ongoing I CAN must not receive a failing letter grade');
+assert(source.includes("(row.key==='ICAN'&&row.faltante)") && source.includes("gradeLetter(pct)"),'Ongoing I CAN must not receive a failing letter grade');
 const finished=context.build([...grades,{...rawIcan,registradas:16,nota:20}],[],'B1','INA').find(x=>x.key==='ICAN');
 assert.equal(finished.faltante,false,'16 of 16 completed');
 const app=fs.readFileSync(new URL('../src/app.jsx',import.meta.url),'utf8');
@@ -47,3 +61,4 @@ new vm.Script(Babel.transform(source,{presets:['react'],plugins:['transform-bloc
 console.log('QA_F109A_INA_15_15_5_15_15_5_10_20_PASS');
 console.log('QA_F109A_NO_FAKE_ICAN_AND_SIN_INA_REGRESSION_PASS');
 console.log('QA_F109A_FRONTEND_JSX_PASS');
+console.log('QA_F111_HISTORICAL_WRITTEN_PROVENANCE_FAIL_CLOSED_PASS');
