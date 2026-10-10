@@ -18,8 +18,12 @@ assert.equal(ina.find(x=>x.key==='ESCRITO_1').max,5,'Written lesson 18 = 5');
 assert.equal(ina.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,true,'Historic 4/15 cannot be shown as 4/5 automatically');
 assert.equal(ina.find(x=>x.key==='ESCRITO_1').max_origen,15,'Preserve source denominator');
 assert.equal(ina.find(x=>x.key==='ESCRITO_1').pct,null,'Do not fabricate a percentage');
-const reconciled=context.build([{...grades[0],max:5,programa:'INA'}],[],'B1','INA');
-assert.equal(reconciled.find(x=>x.key==='ESCRITO_1').pct,80,'Official 4/5 = 80% only when source confirms /5');
+const ambiguousMax5=context.build([{...grades[0],max:5,programa:'INA'}],[],'B1','INA');
+assert.equal(ambiguousMax5.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,true,
+  'Even canonical max 5 is not evidence of original provenance');
+const reconciled=context.build([{...grades[0],max:5,programa:'INA',
+  procedencia_verificada:true,conciliacion_pendiente:false,max_origen:5}],[],'B1','INA');
+assert.equal(reconciled.find(x=>x.key==='ESCRITO_1').pct,80,'Only an explicitly verified 4/5 is 80%');
 assert.equal(reconciled.find(x=>x.key==='ESCRITO_1').conciliacion_pendiente,false);
 assert.equal(ina.find(x=>x.key==='ESCRITO_2').max,5,'Written lesson 32 = 5');
 assert.equal(ina.filter(x=>x.key.startsWith('ORAL')).length,4,'4 orals');

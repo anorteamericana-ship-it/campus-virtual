@@ -324,11 +324,18 @@ function _smSchemaForLevelF109_(evaluaciones,nivel,grupoPrograma) {
 function _smWrittenProvenanceF111_(found, def, programa) {
   if (!found || programa !== 'INA' || !['ESCRITO_1','ESCRITO_2'].includes(def.key) ||
       !_smEvalRegistrada_(found)) return {pendiente:false};
-  const maxOrigen = found.max == null || found.max === '' ? null : Number(found.max);
+  // El máximo canónico /5 NO es una prueba de que los puntos históricos
+  // procedan de /5. La evidencia verificada debe provenir del backend.
+  const maxOrigen = found.max_origen == null || found.max_origen === ''
+    ? (found.max == null || found.max === '' ? null : Number(found.max))
+    : Number(found.max_origen);
+  const validada = found.procedencia_verificada === true &&
+    found.conciliacion_pendiente === false && maxOrigen === 5;
   return {
-    pendiente: maxOrigen !== 5,
+    pendiente: !validada,
     max_origen: maxOrigen,
-    motivo: maxOrigen !== 5 ? 'PONDERACION_ESCRITA_HISTORICA_SIN_CONCILIAR' : ''
+    motivo: validada ? '' : (found.motivo_conciliacion ||
+      'PONDERACION_ESCRITA_HISTORICA_SIN_CONCILIAR')
   };
 }
 function _smNivelEval_(e) {
