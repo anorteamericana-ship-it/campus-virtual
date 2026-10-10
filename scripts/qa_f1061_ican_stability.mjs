@@ -9,5 +9,6 @@ assert(src.includes("const nivelAcceso = nivel === 'ICAN' ?"),'Student access us
 assert(src.includes("nivelBloqueado = !nivelDesbloqueado(nivel === 'ICAN' ?"),'Level access still checked');
 assert(src.includes("const nivelDetalle = nivel === 'ICAN' ?"),'I CAN detail uses actual level');
 assert(src.includes("nivel:nivelDetalle, leccion: selLec.leccion, riel"),'Detail receives correct backend parameters');
-assert(app.includes('cronograma_grupo.jsx?v=F1061ICANSTABLE20261009'),'New runtime script version');
+assert(app.includes('cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009'),'New runtime script version');
+assert(src.includes("nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas'"),'ICAN progress is measured against 16 sessions, course against 32');
 console.log('QA_F1061_ICAN_PERSISTENCE_AND_ACCESS_PASS');
