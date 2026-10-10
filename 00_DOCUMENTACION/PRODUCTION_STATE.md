@@ -1,6 +1,15 @@
 # CAMPUS VIRTUAL · Estado de producción
 
-Última verificación operativa de F103: **2026-10-09 14:05 -06:00**. Las secciones históricas del corte CONAPE V1 @436 permanecen como evidencia de esa fecha.
+Última verificación operativa de frontend F105: **2026-10-09 ~21:10 -06:00**. Las secciones históricas del corte CONAPE V1 @436 permanecen como evidencia de esa fecha.
+
+## Estado actual · F105 perfil estudiantil y saldo visual (2026-10-09)
+
+- **Backend:** Apps Script deployment estable sigue en **@460**, sin cambios de código ni escrituras financieras.
+- **Frontend:** PR **#486** fusionado, commit **9ab6621135497bdac204115dcb09ff40060bdae2**, GitHub Pages **SUCCESS**. En el dominio público campus.html referencia primitives.jsx con cache-bust F105STUDENTPROFILE20261009 y el JS incorpora studentProfileShouldRefresh.
+- **Síntoma E2 autenticado:** sesión abierta por más de dos horas retenía en memoria React la ficha antigua; presentaba matrícula pendiente pese a recibo confirmado y grupo correcto en las hojas.
+- **Prueba discriminante:** al invalidar solo la copia client-side y volver a consultar el backend @460, pendientes.matricula pasó de ₡10.000 a ₡0 y la tarjeta de seis a cinco rubros. Ningún movimiento bancario se modificó.
+- **Prevención F105:** revalidar en focus, visibilitychange, hashchange, online y revisión cada cinco minutos cuando la página está visible; excluir consultas concurrentes y reintentos frecuentes. Prueba sintética scripts/qa_f105_profile_freshness.mjs **PASS**.
+- **Pendiente separado:** revisar la exigibilidad de las cuatro cuotas y el certificado futuro. No confundir saldo contractual con mora. F105 no cambia contratos financieros. No declarar FULL_E2E.
 
 ## Estado actual · F103 docente (2026-10-09)
 
