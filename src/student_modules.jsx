@@ -298,12 +298,27 @@ function LeccionLocked() {
 const EVAL_SCHEMA_SM = [
   { key:'ORAL_1', tipo:'oral', titulo:'1.er Examen Oral', leccion:9, max:15, orden:1 },
   { key:'ORAL_2', tipo:'oral', titulo:'2.º Examen Oral', leccion:17, max:15, orden:2 },
-  { key:'ESCRITO_1', tipo:'esc', titulo:'1.er Examen Escrito', leccion:18, max:15, orden:3 },
+  { key:'ESCRITO_1', tipo:'esc', titulo:'1.er Examen Escrito', leccion:18, max:15, orden:3 }, // SIN_INA; INA utiliza 5 según PROGRAMA del grupo
   { key:'ORAL_3', tipo:'oral', titulo:'3.er Examen Oral', leccion:25, max:15, orden:4 },
   { key:'ORAL_4', tipo:'oral', titulo:'4.º Examen Oral', leccion:31, max:15, orden:5 },
   { key:'ESCRITO_2', tipo:'esc', titulo:'2.º Examen Escrito', leccion:32, max:15, orden:6 },
   { key:'SOCIAL', tipo:'prog', titulo:'Participación / Social Skill', leccion:'', max:10, orden:7 },
 ];
+// F109-A: el grupo define la ponderación; ESTATUS no contiene PROGRAMA.
+const ICAN_EVAL_SM = {key:'ICAN',tipo:'prog',titulo:'Club I CAN · Participación',leccion:'1–16',max:20,orden:8};
+function _smProgramForLevelF109_(evaluaciones,nivel,grupoPrograma) {
+  const p=String(grupoPrograma||'').trim().toUpperCase().replace(/[\s-]+/g,'_');
+  if(['INA','CON_INA','CONINA'].includes(p)) return 'INA';
+  if(['SIN_INA','LIBRE'].includes(p)) return 'SIN_INA';
+  const rows=(Array.isArray(evaluaciones)?evaluaciones:[]).filter(e=>_smNivelEval_(e)===nivel);
+  if(rows.some(e=>String(e.tipo_oficial||'').toUpperCase()==='ICAN'))return 'INA';
+  const raw=String(rows.find(e=>e.programa)?.programa||'').toUpperCase();
+  return raw==='INA'?'INA':raw==='SIN_INA'?'SIN_INA':'NO_DEFINIDO';
+}
+function _smSchemaForLevelF109_(evaluaciones,nivel,grupoPrograma) {
+  const ina=_smProgramForLevelF109_(evaluaciones,nivel,grupoPrograma)==='INA';
+  return EVAL_SCHEMA_SM.map(def=>ina&&['ESCRITO_1','ESCRITO_2'].includes(def.key)?{...def,max:5}:def).concat(ina?[ICAN_EVAL_SM]:[]);
+}
 function _smNivelEval_(e) {
   const raw = String(e?.nivel || e?.NIVEL || e?.nivel_actual || '').trim().toUpperCase();
   if (['B1','B2','I1','I2'].includes(raw)) return raw;
@@ -316,7 +331,7 @@ function _smNivelEval_(e) {
 }
 function _smOfficialType_(e) {
   const direct = String(e?.tipo_oficial || '').trim().toUpperCase();
-  if (EVAL_SCHEMA_SM.some(d => d.key === direct)) return direct;
+  if (EVAL_SCHEMA_SM.some(d => d.key === direct) || direct === 'ICAN') return direct;
   const tipo = String(e?.tipo || '').trim().toUpperCase().replace(/\s+/g,'_');
   if (EVAL_SCHEMA_SM.some(d => d.key === tipo)) return tipo;
   const txt = String(e?.titulo || e?.tipo || '').toLowerCase();
@@ -326,12 +341,13 @@ function _smOfficialType_(e) {
   if (txt.includes('4.º examen oral') || txt.includes('4.o examen oral') || txt.includes('oral_4')) return 'ORAL_4';
   if (txt.includes('1.er examen escrito') || txt.includes('escrito_1')) return 'ESCRITO_1';
   if (txt.includes('2.º examen escrito') || txt.includes('2.o examen escrito') || txt.includes('escrito_2')) return 'ESCRITO_2';
+  if (txt.includes('i can') || txt.includes('ican')) return 'ICAN';
   if (txt.includes('social') || txt.includes('particip')) return 'SOCIAL';
   return '';
 }
 function _smEvalKind_(e) {
   const key = _smOfficialType_(e);
-  const def = EVAL_SCHEMA_SM.find(d => d.key === key);
+  const def = EVAL_SCHEMA_SM.find(d => d.key === key) || (key === 'ICAN' ? ICAN_EVAL_SM : null);
   return def?.tipo || 'other';
 }
 function _smFechaLarga_(iso) {
@@ -391,7 +407,7 @@ function _smRepoTieneNotaOficial_(repo, evaluaciones) {
 function _smStatusLabel_(row) {
   const s = String(row?.estado || '').toUpperCase();
   const map = {
-    REGISTRADA:'Registrada', SIN_NOTA:'Sin nota', PROGRAMADA:'Programada',
+    REGISTRADA:'Registrada', EN_CURSO:'Participación en curso', SIN_NOTA:'Sin nota', PROGRAMADA:'Programada',
     PENDIENTE_JUSTIFICACION:'Pendiente de solicitud', SOLICITUD_EN_PROCESO:'Solicitud en proceso', PENDIENTE_PAGO:'Pendiente de pago',
     JUSTIFICADA_GRATUITA:'Autorizada', PAGADA_AUTORIZADA:'Autorizada', AUTORIZADA:'Autorizada',
     PENDIENTE_COORDINAR_FECHA:'Pendiente de coordinar', FECHA_TENTATIVA_REGISTRADA:'Fecha tentativa',
@@ -403,27 +419,29 @@ function _smStatusTone_(row) {
   const s = String(row?.estado || '').toUpperCase();
   if (s === 'VENCIDA_0') return { bg:'#FDECEA', color:'#991B1B' };
   if (s === 'SIN_NOTA') return { bg:'#EEF2F7', color:'#40516A' };
+  if (s === 'EN_CURSO') return { bg:'#E7F1FA', color:'#0C4F86' };
   if (row?.registrada || s === 'REGISTRADA' || s === 'APLICADA') return { bg:'#E7F4EA', color:'#176B36' };
   if (['PROGRAMADA','JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','AUTORIZADA','PENDIENTE_COORDINAR_FECHA','FECHA_TENTATIVA_REGISTRADA'].includes(s)) return { bg:'#E7F1FA', color:'#0C4F86' };
   return { bg:'#FFF4D6', color:'#805500' };
 }
 function _smEvalDateText_(row) {
+  if (row?.key === 'ICAN') return row?.registradas == null ? 'Sin reporte de asistencia I CAN' : String(row.registradas)+'/16 sesiones registradas';
   if (row?.fecha_programada) return `Tentativa: ${_smFechaLarga_(row.fecha_programada)}`;
   const s = String(row?.estado || '').toUpperCase();
   const base = row?.fecha_clase || row?.fecha || row?.fecha_original || '';
-  if (!base) return row?.key === 'SOCIAL' ? 'Cierre del nivel' : '—';
+  if (!base) return row?.key === 'ICAN' ? (row?.registradas!=null ? String(row.registradas)+'/16 sesiones registradas' : 'Sin reporte de asistencia I CAN') : row?.key === 'SOCIAL' ? 'Cierre del nivel' : '—';
   if (!row?.registrada && s === 'PROGRAMADA') return `Programada: ${_smFechaLarga_(base)}`;
   if (row?.es_reposicion || row?.reposicion_id) return `Clase original: ${_smFechaLarga_(row?.fecha_original || base)}`;
   return _smFechaLarga_(base);
 }
-function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
+function _smCanonicalRows_(evaluaciones, reposRows, nivel, grupoPrograma) {
   const raw = (Array.isArray(evaluaciones) ? evaluaciones : []).filter(e => _smNivelEval_(e) === nivel);
   const repos = (Array.isArray(reposRows) ? reposRows : []).filter(r =>
     String(r.NIVEL || '').toUpperCase() === nivel &&
     !['CANCELADA','APLICADA','VENCIDA_0'].includes(String(r.ESTADO || '').toUpperCase()) &&
     !_smRepoTieneNotaOficial_(r, evaluaciones)
   );
-  return EVAL_SCHEMA_SM.map(def => {
+  return _smSchemaForLevelF109_(evaluaciones,nivel,grupoPrograma).map(def => {
     const found = raw.find(e => _smOfficialType_(e) === def.key) || null;
     const registered = _smEvalRegistrada_(found);
     const rep = registered ? null : (repos.find(r => Number(r.LECCION || 0) === Number(def.leccion || -1)) || null);
@@ -439,7 +457,8 @@ function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
       const part = k => tz.find(p=>p.type===k)?.value||'';
       const today = part('year')+'-'+part('month')+'-'+part('day');
       const nivelEnCurso = String(found?.nivel_estatus || '').toUpperCase() === 'CA';
-      if (def.key === 'SOCIAL') estado = nivelEnCurso ? 'PROGRAMADA' : 'SIN_NOTA';
+      if (def.key === 'ICAN') estado = 'SIN_NOTA';
+      else if (def.key === 'SOCIAL') estado = nivelEnCurso ? 'PROGRAMADA' : 'SIN_NOTA';
       else estado = f && f >= today ? 'PROGRAMADA' : 'SIN_NOTA';
     }
     return {
@@ -448,9 +467,10 @@ function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
       key:def.key, tipo_normalizado:def.tipo, titulo:(rep ? `${def.titulo} · reposición` : def.titulo),
       leccion:def.leccion, orden:def.orden, nivel,
       nota:registered ? Number(found?.nota || 0) : 0,
-      max:Number(found?.max || def.max),
-      pct:registered ? Number(found?.pct ?? ((Number(found?.nota || 0) / Number(found?.max || def.max))*100)) : 0,
-      registrada:registered, faltante:!registered, estado,
+      // Para INA el máximo del escrito es 5 aunque @460 haya indicado 15.
+      max:def.max,
+      pct:registered ? Math.round((Number(found?.nota||0)/def.max)*10000)/100 : 0,
+      registrada:registered, faltante:!registered || (def.key==='ICAN' && Number(found?.registradas||0)<16), estado,
       es_reposicion:!!rep,
       reposicion_id:rep?.REPOSICION_ID || '',
       fecha_clase:fechaBase,
@@ -463,10 +483,10 @@ function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
 
 
 // F108 — Estado académico verificable: cero oficial ≠ evaluación no calificada.
-function _smGradeSummaryF108_(nivel,niveles,evaluaciones,reposRows) {
+function _smGradeSummaryF108_(nivel,niveles,evaluaciones,reposRows,grupoPrograma) {
   const estado=String(estatusDe(niveles,nivel)||'').toUpperCase();
   const closed=['APR','REP','CNV'].includes(estado);
-  const rows=_smCanonicalRows_(evaluaciones,reposRows,nivel);
+  const rows=_smCanonicalRows_(evaluaciones,reposRows,nivel,grupoPrograma);
   const registered=rows.filter(row=>row.registrada);
   const sum=Math.round(registered.reduce((v,row)=>v+Number(row.nota||0),0)*100)/100;
   const notaFinal=notaDeNivelSM(niveles,nivel);
@@ -537,13 +557,17 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
   React.useEffect(() => { if (nivelActivo) setSelectedLevel(nivelActivo); }, [nivelActivo]);
 
   const selected = selectedLevel || nivelActivo || 'B1';
-  const rowsByLevel = _smCanonicalRows_(evaluaciones, reposRows, selected);
+  const grupoPrograma=String(data?.grupo?.PROGRAMA||data?.grupo?.programa||'').trim();
+  const inaActual=_smProgramForLevelF109_(evaluaciones,selected,grupoPrograma)==='INA';
+  const rowsByLevel = _smCanonicalRows_(evaluaciones, reposRows, selected,grupoPrograma);
+  const sinDetalleIcan=inaActual&&Array.isArray(evaluaciones)&&!evaluaciones.some(e=>_smNivelEval_(e)===selected&&_smOfficialType_(e)==='ICAN');
   const visibleRows = rowsByLevel.filter(e => filter === 'all' || e.tipo_normalizado === filter);
-  const completedLevel = rowsByLevel.filter(e => e.registrada);
+  const completedLevel = rowsByLevel.filter(e => e.registrada && !e.faltante);
   const totalPuntos = Math.round(rowsByLevel.reduce((a,e)=>a+Number(e.nota||0),0)*100)/100;
+  const pesosInvalidos=rowsByLevel.filter(e=>e.registrada&&(Number(e.nota)<0||Number(e.nota)>e.max));
   const totalMax = rowsByLevel.reduce((a,e)=>a+Number(e.max||0),0) || 100;
   const avgLevel = completedLevel.length ? (completedLevel.reduce((a,e)=>a+Number(e.pct||0),0)/completedLevel.length).toFixed(1) : null;
-  const gradeSummary=_smGradeSummaryF108_(selected,niveles,evaluaciones,reposRows);
+  const gradeSummary=_smGradeSummaryF108_(selected,niveles,evaluaciones,reposRows,grupoPrograma);
   const hasOfficialGrades=completedLevel.length>0 || gradeSummary.closed;
   const totalPuntosLabel=hasOfficialGrades ? String(gradeSummary.closed&&notaDeNivelSM(niveles,selected)!=null?notaDeNivelSM(niveles,selected):totalPuntos) : '—';
   const notaNivel = notaDeNivelSM(niveles, selected);
@@ -558,6 +582,8 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
   const gradeColor = (g) => g?.startsWith('A')?'var(--ok)':g?.startsWith('B')?'var(--an-navy)':g?.startsWith('C')?'var(--warn)':'var(--danger)';
 
   return <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+    {pesosInvalidos.length>0 && <div role="alert" style={{padding:'12px 16px',border:'1px solid #C94545',background:'#FFF1F1',color:'#8E2424',borderRadius:12,fontSize:12}}>Se detectó un puntaje que excede su ponderación. El dato recibido se conserva sin alterarlo; solicitá revisión académica.</div>}
+    {sinDetalleIcan && <div role="status" style={{padding:'12px 16px',border:'1px solid #E5A823',background:'#FFF7E8',color:'#805500',borderRadius:12,fontSize:12,lineHeight:1.5}}>El servicio académico todavía no entregó el detalle oficial de Club I CAN (20%). Se muestra el componente sin puntaje; no se ha asignado una calificación.</div>}
     {pendingAlert && (() => { const tone=_smReposTone_(pendingAlert.ESTADO); return <section style={{border:`1px solid ${tone.border}`,background:tone.bg,borderRadius:20,padding:18,boxShadow:'var(--sh-1)'}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
         <div><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.14em',textTransform:'uppercase',color:tone.kicker}}>Aviso académico importante</div>
@@ -571,13 +597,13 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
 
     <section className="card" style={{padding:18}}>
       <div className="card-title" style={{marginBottom:14}}>Resumen por nivel</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{['B1','B2','I1','I2'].map(n=>{const est=estatusDe(niveles,n)||(n===nivelActivo?'CA':'PE'),resumen=_smGradeSummaryF108_(n,niveles,evaluaciones,reposRows),active=n===selected,color=NIVEL_COLOR_SM[n]||'var(--an-navy)';return <button key={n} type="button" onClick={()=>setSelectedLevel(n)} style={{border:`2px solid ${active?color:'var(--line)'}`,background:active?`color-mix(in srgb, ${color} 8%, white)`:'#fff',borderRadius:18,padding:16,textAlign:'left',cursor:'pointer',fontFamily:'inherit'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{fontSize:10.5,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--ink-3)'}}>{NIVEL_NOMBRE_SM[n]}</span>{active&&<span style={{fontSize:10,fontWeight:900,color}}>{n===nivelActivo?'ACTUAL':'VISTA'}</span>}</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,lineHeight:1,color,marginTop:8}}>{n}</div><div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>{resumen.label}</div><div style={{marginTop:8}}><Chip tone={_smChipToneByStatus_(est)} dot>{ESTATUS_LABEL_SM[est]||est||'Pendiente'}</Chip></div></button>})}</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{['B1','B2','I1','I2'].map(n=>{const est=estatusDe(niveles,n)||(n===nivelActivo?'CA':'PE'),resumen=_smGradeSummaryF108_(n,niveles,evaluaciones,reposRows,grupoPrograma),active=n===selected,color=NIVEL_COLOR_SM[n]||'var(--an-navy)';return <button key={n} type="button" onClick={()=>setSelectedLevel(n)} style={{border:`2px solid ${active?color:'var(--line)'}`,background:active?`color-mix(in srgb, ${color} 8%, white)`:'#fff',borderRadius:18,padding:16,textAlign:'left',cursor:'pointer',fontFamily:'inherit'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{fontSize:10.5,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--ink-3)'}}>{NIVEL_NOMBRE_SM[n]}</span>{active&&<span style={{fontSize:10,fontWeight:900,color}}>{n===nivelActivo?'ACTUAL':'VISTA'}</span>}</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,lineHeight:1,color,marginTop:8}}>{n}</div><div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>{resumen.label}</div><div style={{marginTop:8}}><Chip tone={_smChipToneByStatus_(est)} dot>{ESTATUS_LABEL_SM[est]||est||'Pendiente'}</Chip></div></button>})}</div>
     </section>
 
-    <div className="grid-4"><Stat label="Nivel consultado" num={selected} sub={NIVEL_NOMBRE_SM[selected]} pct={0} color={NIVEL_COLOR_SM[selected]}/><Stat label="Puntos registrados" num={totalPuntosLabel} suffix={hasOfficialGrades?'/100':''} sub={hasOfficialGrades?(estatusNivel==='CA'?'Acumulado provisional':'Nota oficial del nivel'):'Sin calificaciones registradas'} subTone={estatusNivel==='APR'?'ok':''} pct={hasOfficialGrades?totalPuntos:0} color="var(--an-granate)"/><Stat label="Evaluaciones registradas" num={`${completedLevel.length}/7`} sub={`${7-completedLevel.length} pendientes o programadas`} pct={(completedLevel.length/7)*100} color="var(--an-navy)"/><Stat label="Promedio de evaluaciones" num={avgLevel||'—'} suffix={avgLevel?'%':''} sub={completedLevel.length?`${completedLevel.length} calificadas`:'Sin datos aún'} pct={Number(avgLevel||0)} color="var(--an-gold)"/></div>
+    <div className="grid-4"><Stat label="Nivel consultado" num={selected} sub={NIVEL_NOMBRE_SM[selected]} pct={0} color={NIVEL_COLOR_SM[selected]}/><Stat label="Puntos registrados" num={totalPuntosLabel} suffix={hasOfficialGrades?'/100':''} sub={hasOfficialGrades?(estatusNivel==='CA'?'Acumulado provisional':'Nota oficial del nivel'):'Sin calificaciones registradas'} subTone={estatusNivel==='APR'?'ok':''} pct={hasOfficialGrades?totalPuntos:0} color="var(--an-granate)"/><Stat label="Evaluaciones registradas" num={`${completedLevel.length}/${rowsByLevel.length}`} sub={`${rowsByLevel.length-completedLevel.length} pendientes o en curso`} pct={rowsByLevel.length?(completedLevel.length/rowsByLevel.length)*100:0} color="var(--an-navy)"/><Stat label="Promedio de evaluaciones" num={avgLevel||'—'} suffix={avgLevel?'%':''} sub={completedLevel.length?`${completedLevel.length} calificadas`:'Sin datos aún'} pct={Number(avgLevel||0)} color="var(--an-gold)"/></div>
 
     <section className="card" style={{padding:0,overflow:'hidden'}}>
-      <div style={{padding:'16px 18px 12px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div className="card-title">Detalle de evaluaciones</div><div className="tabs" style={{margin:0}}>{[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check']].map(([k,l])=><button key={k} className={`tab ${filter===k?'active':''}`} onClick={()=>setFilter(k)}>{l}</button>)}</div></div>
+      <div style={{padding:'16px 18px 12px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div className="card-title">Detalle de evaluaciones</div><div className="tabs" style={{margin:0}}>{[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Participación']].map(([k,l])=><button key={k} className={`tab ${filter===k?'active':''}`} onClick={()=>setFilter(k)}>{l}</button>)}</div></div>
       <div style={{overflowX:'auto'}}><table className="table-soft" style={{minWidth:940}}><thead><tr><th style={{width:72}}>Lec.</th><th>Evaluación</th><th style={{width:190}}>Fecha</th><th style={{width:160}}>Estado</th><th style={{textAlign:'right',width:120}}>Puntaje</th><th style={{textAlign:'right',width:80}}>%</th><th style={{textAlign:'center',width:80}}>Nota</th></tr></thead><tbody>
         {evaluaciones===null?<tr><td colSpan={7} style={{padding:24,textAlign:'center'}}>Cargando…</td></tr>:visibleRows.map(row=>{const pct=Number(row.pct||0),grade=gradeLetter(pct),tone=_smStatusTone_(row),scoreView=_smRowScoreF108_(row);const statusUpper=String(row.estado||'').toUpperCase(),rowBg=(statusUpper==='SIN_NOTA'||statusUpper==='VENCIDA_0')?'color-mix(in srgb, var(--danger) 3%, white)':statusUpper==='PROGRAMADA'?'#F8FAFE':'#fff';return <tr key={row.key} style={{background:rowBg}}><td style={{fontFamily:'var(--f-mono)',color:'var(--ink-3)'}}>{row.leccion?`L${String(row.leccion).padStart(2,'0')}`:'—'}</td><td><div style={{fontWeight:750}}>{row.titulo}</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{NIVEL_NOMBRE_SM[selected]}{row.es_reposicion?' · Reposición':''}</div></td><td style={{fontSize:12,color:'var(--ink-2)'}}>{_smEvalDateText_(row)}</td><td><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:tone.bg,color:tone.color,fontSize:10,fontWeight:900}}>{_smStatusLabel_(row)}</span></td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontWeight:750}}>{scoreView.score}</td><td style={{textAlign:'right',fontWeight:750}}>{scoreView.percent}</td><td style={{textAlign:'center'}}><span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minWidth:38,height:38,borderRadius:10,background:row.registrada?`color-mix(in srgb, ${gradeColor(grade)} 14%, white)`:statusUpper==='VENCIDA_0'?'#FDECEA':'#EEF2F7',color:row.registrada?gradeColor(grade):statusUpper==='VENCIDA_0'?'#991B1B':'#40516A',fontWeight:800}}>{row.registrada?grade:scoreView.badge}</span></td></tr>})}
       </tbody><tfoot><tr style={{background:'#F7F3EC',borderTop:'2px solid var(--an-navy)'}}><td colSpan={4} style={{fontWeight:900,color:'var(--an-navy)',textAlign:'right'}}>SUMA TOTAL DEL NIVEL</td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontSize:16,fontWeight:900,color:'var(--an-navy)'}}>{hasOfficialGrades?`${totalPuntos}/${totalMax}`:'—'}</td><td style={{textAlign:'right',fontWeight:900,color:'var(--an-navy)'}}>{hasOfficialGrades?`${Math.round((totalPuntos/totalMax)*100)}%`:'—'}</td><td style={{textAlign:'center',fontWeight:900,color:estatusNivel==='APR'?'var(--ok)':estatusNivel==='REP'?'var(--danger)':'var(--ink-3)'}}>{_smFooterStatusF108_(estatusNivel)}</td></tr></tfoot></table></div>
