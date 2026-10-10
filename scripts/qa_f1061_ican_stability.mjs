@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const src=fs.readFileSync(new URL('../src/cronograma_grupo.jsx',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../src/app.jsx',import.meta.url),'utf8');
+const entry=fs.readFileSync(new URL('../campus.html',import.meta.url),'utf8');
 assert(src.includes("nivelRealIcan, riel:'ican'"),'ICAN reads operational 16 sessions');
 assert(src.includes("if (sel?.nivel && nivel !== 'ICAN') setNivel(sel.nivel)"),'Autoselection never reverts I CAN tab');
 assert.equal(src.split("if (l?.nivel && nivel !== 'ICAN') setNivel(l.nivel)").length-1,4,'Event interactions retain active I CAN rail');
@@ -11,4 +12,7 @@ assert(src.includes("const nivelDetalle = nivel === 'ICAN' ?"),'I CAN detail use
 assert(src.includes("nivel:nivelDetalle, leccion: selLec.leccion, riel"),'Detail receives correct backend parameters');
 assert(app.includes('cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009'),'New runtime script version');
 assert(src.includes("nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas'"),'ICAN progress is measured against 16 sessions, course against 32');
+assert(entry.includes('src/app.jsx?v=F1063STUDENTENTRY20261009'),'Entry invalidates old app.jsx mapping to calendar');
+assert(entry.includes('src/student_menu_academic_cs21a120.jsx?v=F1063STUDENTENTRY20261009'),'Entry invalidates old academic summary loader');
+assert(!entry.includes('src/app.jsx?v=F104NEXTROSTER20261009'),'No legacy F104 app cache reference');
 console.log('QA_F1061_ICAN_PERSISTENCE_AND_ACCESS_PASS');
