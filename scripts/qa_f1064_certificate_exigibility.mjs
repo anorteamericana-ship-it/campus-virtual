@@ -24,8 +24,8 @@ assert.equal(calc('B1',null,true),true,'Unknown academic status defers to financ
 assert.equal(calc('B1',null,false),false,'Unknown academic status without flag is not due');
 assert(m.includes('Certificado futuro · aún no exigible'),'Detailed label does not disclose future status');
 assert(d.includes('(futuro; aún no exigible)'),'Dashboard label does not disclose future status');
-assert(html.includes('src/app.jsx?v=F1064CERTIFICATE20261010'),'HTML entry does not force fresh app');
+assert(html.includes('src/app.jsx?v=F107PAYMENTSRESPONSIVE20261010'),'HTML entry does not force fresh app');
 assert(app.includes('student_dashboard.jsx?v=F1064CERTIFICATE20261010'),'Dashboard script not refreshed');
-assert(app.includes('student_modules.jsx?v=F1064CERTIFICATE20261010'),'Details script not refreshed');
+assert(app.includes('student_modules.jsx?v=F107PAYMENTSRESPONSIVE20261010'),'Details script not refreshed');
 assert(m.includes('background:')&&m.includes('lineHeight:1.55'),'Readable notice missing');
 console.log('QA_F1064_ACADEMIC_CERTIFICATE_EXIGIBILITY_PASS');

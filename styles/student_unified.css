@@ -432,3 +432,80 @@
   }
   .student-page table { display: block; overflow-x: auto; }
 }
+
+
+/* F107 pagos responsive: the legal balance, amounts and receipt history remain visible.
+   Student-only: no effect on admin, teacher or other program routes. */
+.student-payments-responsive,
+.student-payments-responsive > *,
+.student-payments-responsive .card,
+.student-payments-responsive section,
+.student-payments-responsive article {
+  min-width: 0;
+  max-width: 100%;
+}
+.student-payments-responsive .student-payment-finance-notice {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+.student-payments-responsive .student-payment-concept-list {
+  container-type: inline-size;
+}
+.student-payments-responsive .student-payment-concept-description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.student-payments-responsive .student-payment-concept-value {
+  min-width: 0;
+  text-align: right;
+}
+.student-payments-responsive .student-payment-history-heading > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.student-payments-responsive .student-payment-history-card {
+  width: 100%;
+}
+.student-payments-responsive .student-payment-history-row > * {
+  min-width: 0;
+}
+@container (max-width: 610px) {
+  .student-payments-responsive .student-payment-concept {
+    grid-template-columns: 10px minmax(0, 1fr) !important;
+    gap: 6px 12px !important;
+    padding: 14px 16px !important;
+  }
+  .student-payments-responsive .student-payment-concept-value {
+    grid-column: 2;
+    justify-self: start;
+    align-items: flex-start !important;
+    text-align: left;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 7px 12px !important;
+  }
+}
+@media (max-width: 620px) {
+  .student-payments-responsive .student-payment-hero {
+    padding: 18px 16px !important;
+  }
+  .student-payments-responsive .student-payment-hero > div {
+    gap: 12px !important;
+  }
+  .student-payments-responsive .student-payment-hero > div > div:first-child {
+    width: 47px !important;
+    height: 47px !important;
+  }
+  .student-payments-responsive .student-payment-finance-notice {
+    padding: 12px !important;
+    font-size: 12px !important;
+  }
+  .student-payments-responsive .student-payment-history-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 4px !important;
+  }
+  .student-payments-responsive .student-payment-history-row > strong {
+    justify-self: start;
+  }
+}

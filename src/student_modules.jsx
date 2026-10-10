@@ -624,7 +624,7 @@ function MensajesView() {
 function PagosView() {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   return (
-    <div>
+    <div className="student-page-payments student-payments-responsive">
       <PageHeader
         title={<>Pagos y <em>estado de cuenta</em></>}
       />
@@ -677,13 +677,13 @@ function PagosContenido({ data }) {
   return (
     <>
       {/* HERO */}
-      <div className="card" style={{
+      <div className="card student-payment-hero" style={{
         padding:'22px 28px', marginBottom:16,
         background: alDia
           ? 'linear-gradient(135deg, #FBF8F2 0%, #FFFFFF 50%, color-mix(in srgb, var(--ok) 8%, white) 100%)'
           : 'linear-gradient(135deg, #FBF8F2 0%, #FFFFFF 50%, color-mix(in srgb, var(--an-gold) 10%, white) 100%)',
       }}>
-        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:24, alignItems:'center' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'auto minmax(0,1fr)', gap:24, alignItems:'center' }}>
           <div style={{
             width:60, height:60, borderRadius:'50%',
             background: alDia ? 'var(--ok)' : 'var(--an-gold)',
@@ -700,7 +700,7 @@ function PagosContenido({ data }) {
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontWeight:500,
-              fontSize:38, lineHeight:1.05, letterSpacing:'-0.035em',
+              fontSize:'clamp(25px, 3.2vw, 38px)', lineHeight:1.12, letterSpacing:'-0.035em', overflowWrap:'break-word',
               color: alDia ? 'var(--ok)' : 'var(--an-granate-ink)',
               marginTop:3,
             }}>
@@ -713,10 +713,10 @@ function PagosContenido({ data }) {
         </div>
       </div>
 
-      <p style={{fontSize:12.5,color:'var(--ink-2)',background:'var(--surface,#fff)',border:'1px solid var(--line)',borderRadius:12,padding:'12px 16px',margin:'-4px 0 16px',lineHeight:1.55}}>Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.</p>
+      <p className="student-payment-finance-notice" style={{fontSize:12.5,color:'var(--ink-2)',background:'var(--surface,#fff)',border:'1px solid var(--line)',borderRadius:12,padding:'12px 16px',margin:'-4px 0 16px',lineHeight:1.55}}>Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.</p>
 
       {/* Desglose contractual F106 */}
-      <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:16 }}>
+      <div className="card student-payment-contract" style={{ padding:0, overflow:'hidden', marginBottom:16 }}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)' }}>
           <div className="card-title">Saldo contractual por cubrir</div>
         </div>
@@ -727,12 +727,13 @@ function PagosContenido({ data }) {
             ✓ No tenés conceptos pendientes en este momento.
           </div>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column' }}>
+          <div className="student-payment-concept-list" style={{ display:'flex', flexDirection:'column' }}>
             {matPend && (
               <FilaConcepto
                 label="Matrícula"
                 sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
                 monto={fmt(pendientes.matricula)}
+                estado="Por cubrir"
                 fecha={pendientes.matricula_vence || ''}
                 color={nivelColor}
                 accent="warn"
@@ -743,6 +744,7 @@ function PagosContenido({ data }) {
                 label={`${cuotasPend} cuota${cuotasPend>1?'s':''} del plan`}
                 sub={nivelActivo ? `Mensualidades de ${NIVEL_NOMBRE_SM[nivelActivo]} · vencimientos por verificar` : 'Mensualidades · vencimientos por verificar'}
                 monto={fmt(cuotaMens != null ? cuotaMens * cuotasPend : null)}
+                estado="Por cubrir"
                 fecha={pendientes.cuota_vence || ''}
                 color={nivelColor}
                 accent="warn"
@@ -753,6 +755,7 @@ function PagosContenido({ data }) {
                 label={certExigible ? 'Certificado del nivel' : 'Certificado futuro · aún no exigible'}
                 sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
                 monto={fmt(pendientes.certificado)}
+                estado={certExigible ? 'Por cubrir' : 'Futuro'}
                 fecha=""
                 color={nivelColor}
                 accent="neutral"
@@ -773,7 +776,7 @@ function PagosContenido({ data }) {
             Sin pagos registrados aún.
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(330px,1fr))', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,300px),1fr))', gap:16 }}>
             {bloquesPagos.map(bloque => <PagoModuloCardSM key={bloque.nivel} bloque={bloque} fmt={fmt} />)}
           </div>
         )}
@@ -811,10 +814,10 @@ function PagoModuloCardSM({ bloque, fmt }) {
   const titulo = conocido ? (NIVEL_NOMBRE_SM[nivel] || nivel) : 'Otros movimientos';
   const libro = conocido ? (NIVEL_LIBRO_SM[nivel] || '') : 'Movimientos sin módulo verificable';
   return (
-    <article className="card" style={{ padding:0, overflow:'hidden', borderTop:`4px solid ${color}` }}>
+    <article className="card student-payment-history-card" style={{ padding:0, overflow:'hidden', minWidth:0, maxWidth:'100%', borderTop:`4px solid ${color}` }}>
       <div style={{ padding:'17px 19px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg,#fff,#FBF8F2)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
-          <div>
+        <div className="student-payment-history-heading" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+          <div style={{minWidth:0}}>
             <h3 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'0 0 3px', color:'var(--an-navy-ink)' }}>{titulo}</h3>
             <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{libro}</div>
           </div>
@@ -851,9 +854,9 @@ function PagoComprobanteSM({ grupo, fmt }) {
       </div>
       <div>
         {movimientos.map((mov, i) => (
-          <div key={mov.id} style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) auto', gap:12, alignItems:'center', padding:'10px 11px', borderBottom:i < movimientos.length - 1 ? '1px solid var(--line)' : 'none' }}>
+          <div key={mov.id} className="student-payment-history-row" style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) auto', gap:12, alignItems:'center', padding:'10px 11px', borderBottom:i < movimientos.length - 1 ? '1px solid var(--line)' : 'none' }}>
             <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:12.5, fontWeight:750, color:'var(--ink)' }}>{mov.concepto}</div>
+              <div style={{ fontSize:12.5, fontWeight:750, color:'var(--ink)', overflowWrap:'anywhere' }}>{mov.concepto}</div>
               <div style={{ marginTop:2, fontSize:10.5, color:'var(--ink-3)' }}>{mov.fecha || 'Fecha no registrada'}</div>
             </div>
             <strong style={{ fontFamily:'var(--f-mono)', fontSize:12.5, color:'var(--ink)', whiteSpace:'nowrap' }}>{fmt(mov.monto)}</strong>
@@ -864,30 +867,28 @@ function PagoComprobanteSM({ grupo, fmt }) {
   );
 }
 
-function FilaConcepto({ label, sub, monto, fecha, color, accent }) {
+function FilaConcepto({ label, sub, monto, fecha, color, accent, estado = 'Por cubrir' }) {
   const accentColor = accent === 'warn' ? 'var(--warn)' : 'var(--ink-3)';
   return (
-    <div style={{
-      display:'grid', gridTemplateColumns:'auto 1fr auto auto', gap:14, alignItems:'center',
-      padding:'14px 20px', borderBottom:'1px solid var(--line)',
+    <div className="student-payment-concept" style={{
+      display:'grid', gridTemplateColumns:'10px minmax(0,1fr) auto', gap:14, alignItems:'center',
+      padding:'14px 20px', borderBottom:'1px solid var(--line)', minWidth:0, maxWidth:'100%',
     }}>
       <span style={{
         width:10, height:10, borderRadius:'50%',
         background: color, border:`2px solid ${color}`,
         boxShadow:`0 0 0 3px color-mix(in srgb, ${color} 20%, transparent)`,
       }} />
-      <div>
+      <div className="student-payment-concept-description" style={{minWidth:0,overflowWrap:'anywhere'}}>
         <div style={{ fontWeight:600, fontSize:14 }}>{label}</div>
         <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
           {sub}{fecha ? ` · vence ${fecha}` : ''}
         </div>
       </div>
-      <div style={{ fontFamily:'var(--f-mono)', fontSize:14, fontWeight:700, color:'var(--ink)' }}>
-        {monto}
+      <div className="student-payment-concept-value" style={{display:'flex',flexDirection:'column',gap:2,alignItems:'flex-end',minWidth:0}}>
+        <strong style={{ fontFamily:'var(--f-mono)', fontSize:14, fontWeight:700, color:'var(--ink)', whiteSpace:'nowrap' }}>{monto}</strong>
+        <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.06em', color: accentColor, textTransform:'uppercase' }}>{estado}</span>
       </div>
-      <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.08em', color: accentColor, textTransform:'uppercase' }}>
-        Pendiente
-      </span>
     </div>
   );
 }
