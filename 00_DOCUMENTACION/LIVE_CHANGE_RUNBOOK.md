@@ -211,3 +211,12 @@ Cuando aparezca un fallo nuevo que requiera más de una sesión para diagnostica
 4. actualizar el Issue/PR canónico si cambia el estado del módulo.
 
 La meta es que la siguiente IA no “redescubra” Script IDs, deployments, comandos ni fallos que ya pagamos una vez.
+
+## Incidente reutilizable · F105: perfil estudiantil obsoleto en SPA (2026-10-09)
+
+- **Síntoma:** Mi Perfil/Pagos muestra saldo antiguo tras una corrección administrativa, aunque las hojas y el movimiento bancario sean correctos.
+- **Causa comprobada:** la caché sessionStorage vencía a los 90 segundos, pero el componente React no revalidaba su estado ya montado mientras el alumno dejara la SPA abierta.
+- **Prueba que distinguió el problema:** la ficha local tenía más de dos horas y el grupo histórico del pago; tras invalidar únicamente esa ficha del navegador y obtener datos nuevos del backend, pendientes.matricula cambió de ₡10.000 a ₡0. No se creó ni alteró ningún pago.
+- **Corrección F105:** src/primitives.jsx revalida perfil en foco, visibilidad, navegación, conexión recuperada y cada cinco minutos con pestaña activa, con control de consultas simultáneas y mínimo 90 s entre intentos.
+- **Procedimiento seguro:** primero contrastar OTROS PAGOS, PAGOS_CAMPUS, operación confirmada y el valor servido de pendientes; nunca generar un pago para arreglar una presentación antigua.
+- **QA:** ejecutar node scripts/qa_f105_profile_freshness.mjs, validar GitHub Pages y carga del script con cache-bust F105STUDENTPROFILE20261009. Las deudas no exigibles y el certificado futuro requieren prueba aparte.
