@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const src=fs.readFileSync(new URL('../src/cronograma_grupo.jsx',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../src/app.jsx',import.meta.url),'utf8');
+assert(src.includes("nivelRealIcan, riel:'ican'"),'ICAN reads operational 16 sessions');
+assert(src.includes("if (sel?.nivel && nivel !== 'ICAN') setNivel(sel.nivel)"),'Autoselection never reverts I CAN tab');
+assert.equal(src.split("if (l?.nivel && nivel !== 'ICAN') setNivel(l.nivel)").length-1,4,'Event interactions retain active I CAN rail');
+assert(src.includes("const nivelAcceso = nivel === 'ICAN' ?"),'Student access uses real academic level, not artificial ICAN');
+assert(src.includes("nivelBloqueado = !nivelDesbloqueado(nivel === 'ICAN' ?"),'Level access still checked');
+assert(src.includes("const nivelDetalle = nivel === 'ICAN' ?"),'I CAN detail uses actual level');
+assert(src.includes("nivel:nivelDetalle, leccion: selLec.leccion, riel"),'Detail receives correct backend parameters');
+assert(app.includes('cronograma_grupo.jsx?v=F1061ICANSTABLE20261009'),'New runtime script version');
+console.log('QA_F1061_ICAN_PERSISTENCE_AND_ACCESS_PASS');

@@ -19,7 +19,7 @@ assert(calendar.includes("nivel:nivelRealIcan, riel:'ican'"),'Student ICAN reads
 assert(calendar.includes("if (programaIcan === 'SIN_INA')"),'SIN_INA program explicitly excluded');
 assert(calendar.includes("if (esStudent)"),'Change scoped to student; teacher/admin untouched');
 assert(calendar.includes('seq !== loadSeqRef.current'),'Async group-switching responses ignored');
-assert(app.includes('cronograma_grupo.jsx?v=F106FINANCEICAN20261009'),'Student calendar cache-bust');
+assert(app.includes('cronograma_grupo.jsx?v=F1061ICANSTABLE20261009'),'Student calendar cache-bust');
 
 const a=sum.indexOf('  function normalize('),b=sum.indexOf('  function matrix(',a);
 assert(a>=0&&b>a);
