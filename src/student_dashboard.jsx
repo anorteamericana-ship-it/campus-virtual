@@ -827,7 +827,7 @@ function StudentDashboard({ toast, onNavigate }) {
       <DashSection title="Tu expediente" />
       <div className="grid-mods" style={{ marginBottom:20 }}>
         <ModInfoCurso nivelReal={nivelSeleccionado} codGrupo={codGrupoSeleccionado} grupo={grupo} programa={programa} onNavigate={go} />
-        <ModEstadoCuenta pendientes={pendientes} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
+        <ModEstadoCuenta pendientes={pendientes} niveles={niveles} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
         <ModCertificados niveles={niveles} onNavigate={go} />
         <ModRetro retroData={retroData} onNavigate={go} />
         {esINA && <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />}
@@ -1987,7 +1987,7 @@ function ModMensajes({ onNavigate }) {
   );
 }
 
-function ModEstadoCuenta({ pendientes, esConape, conapeEstado, onNavigate }) {
+function ModEstadoCuenta({ pendientes, niveles = {}, esConape, conapeEstado, onNavigate }) {
   const matPend  = (pendientes?.matricula   || 0) > 0;
   const certPend = (pendientes?.certificado || 0) > 0;
   const cuotaMonto = pendientes?.cuotas_pendiente || 0;
@@ -1995,7 +1995,11 @@ function ModEstadoCuenta({ pendientes, esConape, conapeEstado, onNavigate }) {
   const cuotasPend = cuotaMens > 0 ? Math.round(cuotaMonto / cuotaMens) : (cuotaMonto > 0 ? 1 : 0);
   const total = (matPend ? 1 : 0) + cuotasPend + (certPend ? 1 : 0);
   const saldoVerificado = ['matricula','cuotas_pendiente','certificado'].every(k => pendientes && Number.isFinite(Number(pendientes[k])) && pendientes[k] != null);
-  const certExigible = pendientes?.por_nivel?.[pendientes?.nivel_activo]?.certificado_exigible === true;
+  const certNivel = String(pendientes?.nivel_activo || '');
+  const certEstado = String(niveles?.[certNivel]?.estatus || niveles?.[certNivel]?.ESTATUS || '').trim().toUpperCase();
+  const certExigible = certEstado
+    ? (certEstado === 'APR' || (certNivel === 'I2' && certEstado === 'CA'))
+    : pendientes?.por_nivel?.[certNivel]?.certificado_exigible === true;
   const alDia = saldoVerificado && total === 0;
   const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (

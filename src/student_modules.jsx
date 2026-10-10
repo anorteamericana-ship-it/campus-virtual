@@ -660,7 +660,13 @@ function PagosContenido({ data }) {
   const totalPendientes = (matPend ? 1 : 0) + cuotasPend + (certPend ? 1 : 0);
 
   const saldoVerificado = ['matricula','cuotas_pendiente','certificado'].every(k => pendientes[k] != null && Number.isFinite(Number(pendientes[k])));
-  const certExigible = pendientes?.por_nivel?.[nivelActivo]?.certificado_exigible === true;
+  // F106.4: el estado académico oficial prevalece cuando el flag financiero llega desalineado.
+  // B1/B2/I1 durante CA: certificado contractual futuro, exigible solamente al aprobar.
+  // I2 conserva la excepción administrativa de exigibilidad durante CA.
+  const certEstado = String(niveles?.[nivelActivo]?.estatus || niveles?.[nivelActivo]?.ESTATUS || '').trim().toUpperCase();
+  const certExigible = certEstado
+    ? (certEstado === 'APR' || (nivelActivo === 'I2' && certEstado === 'CA'))
+    : pendientes?.por_nivel?.[nivelActivo]?.certificado_exigible === true;
   const alDia = saldoVerificado && totalPendientes === 0;
 
   const fmt = (n) => n != null ? '₡' + Number(n).toLocaleString('es-CR') : '—';
@@ -707,7 +713,7 @@ function PagosContenido({ data }) {
         </div>
       </div>
 
-      <p style={{fontSize:12,color:'var(--ink-3)',margin:'-7px 2px 16px'}}>Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.</p>
+      <p style={{fontSize:12.5,color:'var(--ink-2)',background:'var(--surface,#fff)',border:'1px solid var(--line)',borderRadius:12,padding:'12px 16px',margin:'-4px 0 16px',lineHeight:1.55}}>Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.</p>
 
       {/* Desglose contractual F106 */}
       <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:16 }}>
