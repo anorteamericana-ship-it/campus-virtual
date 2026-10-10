@@ -14,7 +14,7 @@ for(const fragment of ['student-payment-concept-list','student-payment-concept-v
 }
 assert(read('styles/student_unified.css').includes('F107 pagos responsive'));
 assert(read('campus.html').includes('F107PAYMENTSRESPONSIVE20261010'));
-assert(read('src/app.jsx').includes('student_modules.jsx?v=F108GRADES20261010'));
+assert(read('src/app.jsx').includes('student_modules.jsx?v=F109AINAGRADES20261010'));
 const fixture={
  pendientes:{matricula:0,cuotas_pendiente:172000,cuota_mensual:43000,certificado:15000,
    nivel_activo:'B1',por_nivel:{B1:{certificado_exigible:true}}},
