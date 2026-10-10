@@ -659,7 +659,9 @@ function PagosContenido({ data }) {
   const cuotasPend = cuotaMens > 0 ? Math.round(cuotaMonto / cuotaMens) : (cuotaMonto > 0 ? 1 : 0);
   const totalPendientes = (matPend ? 1 : 0) + cuotasPend + (certPend ? 1 : 0);
 
-  const alDia = totalPendientes === 0;
+  const saldoVerificado = ['matricula','cuotas_pendiente','certificado'].every(k => pendientes[k] != null && Number.isFinite(Number(pendientes[k])));
+  const certExigible = pendientes?.por_nivel?.[nivelActivo]?.certificado_exigible === true;
+  const alDia = saldoVerificado && totalPendientes === 0;
 
   const fmt = (n) => n != null ? '₡' + Number(n).toLocaleString('es-CR') : '—';
 
@@ -696,7 +698,7 @@ function PagosContenido({ data }) {
               color: alDia ? 'var(--ok)' : 'var(--an-granate-ink)',
               marginTop:3,
             }}>
-              {alDia ? 'Al día ✓' : (totalPendientes === 1 ? '1 concepto por cubrir' : `${totalPendientes} conceptos por cubrir`)}
+              {!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo contractual ✓' : (totalPendientes === 1 ? '1 concepto del plan por cubrir' : `${totalPendientes} conceptos del plan por cubrir`)}
             </div>
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:4 }}>
               {nivelActivo ? <>Cursando <strong style={{ color:'var(--ink)' }}>{NIVEL_NOMBRE_SM[nivelActivo]}</strong></> : 'Sin nivel activo'}
@@ -705,12 +707,16 @@ function PagosContenido({ data }) {
         </div>
       </div>
 
-      {/* Desglose de pendientes */}
+      <p style={{fontSize:12,color:'var(--ink-3)',margin:'-7px 2px 16px'}}>Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.</p>
+
+      {/* Desglose contractual F106 */}
       <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:16 }}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)' }}>
-          <div className="card-title">Por cubrir</div>
+          <div className="card-title">Saldo contractual por cubrir</div>
         </div>
-        {totalPendientes === 0 ? (
+        {!saldoVerificado ? (
+          <div style={{ padding:'25px 20px',color:'var(--warn)' }}>No se pudo verificar el saldo. Actualizá tu expediente para consultar los conceptos.</div>
+        ) : totalPendientes === 0 ? (
           <div style={{ padding:'32px 20px', textAlign:'center', color:'var(--ok)' }}>
             ✓ No tenés conceptos pendientes en este momento.
           </div>
@@ -728,8 +734,8 @@ function PagosContenido({ data }) {
             )}
             {cuotasPend > 0 && (
               <FilaConcepto
-                label={`${cuotasPend} cuota${cuotasPend>1?'s':''} mensual${cuotasPend>1?'es':''}`}
-                sub={nivelActivo ? `Mensualidades de ${NIVEL_NOMBRE_SM[nivelActivo]}` : 'Mensualidades'}
+                label={`${cuotasPend} cuota${cuotasPend>1?'s':''} del plan`}
+                sub={nivelActivo ? `Mensualidades de ${NIVEL_NOMBRE_SM[nivelActivo]} · vencimientos por verificar` : 'Mensualidades · vencimientos por verificar'}
                 monto={fmt(cuotaMens != null ? cuotaMens * cuotasPend : null)}
                 fecha={pendientes.cuota_vence || ''}
                 color={nivelColor}
@@ -738,7 +744,7 @@ function PagosContenido({ data }) {
             )}
             {certPend && (
               <FilaConcepto
-                label="Certificado del nivel"
+                label={certExigible ? 'Certificado del nivel' : 'Certificado futuro · aún no exigible'}
                 sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
                 monto={fmt(pendientes.certificado)}
                 fecha=""

@@ -15,7 +15,9 @@
     const match=r=>{const n=C.level(r);if(n)return n===level;const g=C.group(r);return g&&group?C.up(g)===C.up(group):level===active;};
     const allAtt=attendance.filter(match),course=C.latest(allAtt.filter(r=>C.up(r?.riel)!=='ICAN'&&C.up(r?.tipo_leccion)!=='ICAN'),r=>'L'+C.lesson(r)),ican=C.latest(allAtt.filter(r=>C.up(r?.riel)==='ICAN'||C.up(r?.tipo_leccion)==='ICAN'),r=>'I'+C.lesson(r));
     const levelRetro=retro.filter(match),pcRows=C.latest(levelRetro.filter(r=>C.up(r?.tipo)==='PROGRESS_CHECK'),r=>'P'+C.lesson(r)),pcMap=new Map(pcRows.map(r=>[C.lesson(r),r]));
-    const program=C.up(val(levelEvals.find(r=>r?.programa),'programa')||portal?.programa||grupoObj.PROGRAMA||session?.programa).replace(/[\s-]+/g,'_');
+    const levelProgram=val(niveles?.[level],'PROGRAMA','programa');
+    // GRUPOS es fuente institucional; la sesión INA no debe quedar anulada por el fallback SIN_INA del portal.
+    const program=C.up(grupoObj.PROGRAMA||grupoObj.programa||levelProgram||session?.programa||session?.PROGRAMA||portal?.programa||val(levelEvals.find(r=>r?.programa),'programa')).replace(/[\s-]+/g,'_');
     const isINA=['INA','CON_INA','CONINA'].includes(program)||levelEvals.some(r=>C.type(r)==='ICAN')||ican.length>0;
     const defs=C.DEFS.filter(d=>d[0]!=='ICAN'||isINA).map(d=>{const[key,title,lesson,kind]=d,row=levelEvals.find(r=>C.type(r)===key),max=key==='ICAN'?20:key==='SOCIAL'?10:(isINA&&kind==='written'?5:15),registered=C.registered(row),rawMax=C.num(row?.max??row?.peso_maximo,max)||max,raw=C.num(row?.nota??row?.puntos,0)||0,p=registered?Math.max(0,Math.min(100,C.num(row?.pct,null)??(raw/rawMax*100))):0;return{key,title,lesson,max,registered,pct:p,points:registered?Math.round((rawMax===max?raw:p*max/100)*100)/100:0};});
     const totalMax=defs.reduce((s,x)=>s+x.max,0)||100,total=Math.round(defs.reduce((s,x)=>s+x.points,0)*100)/100,official=C.final(niveles,level),grade=official??total;
