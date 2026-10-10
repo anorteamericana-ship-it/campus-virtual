@@ -66,11 +66,11 @@ function LazyRoute({ title, component, files, ...props }) {
   return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
 }
 const F96_LAZY = {
-  student_dashboard: ['src/student_dashboard.jsx?v=F98.4Z6CS21A216'],
+  student_dashboard: ['src/student_dashboard.jsx?v=F106FINANCEICAN20261009'],
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F98.4Z6CS21A147'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F106FINANCEICAN20261009'],
   syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
   teacher_views: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/teacher_views.jsx?v=F104NEXTROSTER20261009','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL'],
   english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20H'],
@@ -81,8 +81,8 @@ const F96_LAZY = {
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F99CALMOVE20261008'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F99CALMOVE20261008','src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/calendario_grupo.jsx?v=F98.4Z6CM'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F106FINANCEICAN20261009'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F106FINANCEICAN20261009','src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/calendario_grupo.jsx?v=F98.4Z6CM'],
   docente_operativo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/teacher_views.jsx?v=F104NEXTROSTER20261009','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
@@ -96,15 +96,15 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F99CALMOVE20261008',
+    'src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F106FINANCEICAN20261009',
     'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F98.4Z6CS21A147','src/student_experience.jsx?v=F98.4N'
+    'src/student_modules.jsx?v=F106FINANCEICAN20261009','src/student_experience.jsx?v=F98.4N'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4Z6G','src/student_modules.jsx?v=F98.4Z6CS21A147','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F98.4Z6G','src/student_modules.jsx?v=F106FINANCEICAN20261009','src/student_experience.jsx?v=F98.4N'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.

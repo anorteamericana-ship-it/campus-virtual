@@ -609,10 +609,34 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     setSelLec(null); setDetalle(null);
 
     if (nivel === 'ICAN') {
-      // I CAN: usamos las lecciones que ya vinieron embebidas en el grupo del
-      // backend (filtradas por tipo). Sin mock; si el backend no las trajo,
-      // queda vacío (estado válido para un grupo sin sesiones I CAN).
       const grupoMeta = gruposReales.find(g => g.code === codGrupo);
+      if (esStudent) {
+        // F106: sesiones oficiales en CALENDARIO_LECCIONES, no en el grupo embebido.
+        const programaIcan = String(grupoMeta?.programa || usr?.programa || '').trim().toUpperCase();
+        if (programaIcan === 'SIN_INA') {
+          setLecciones([]);
+          setLoading(false);
+          return;
+        }
+        const nivelRealIcan = normalizarNivelCG(grupoMeta?.nivelId || nivelActivoStudent || 'B1');
+        return postCronoGrupo('getFechasGrupo', { cod_grupo:codGrupo, nivel:nivelRealIcan, riel:'ican' })
+          .then(d => {
+            if (seq !== loadSeqRef.current) return;
+            if (d?.ok && Array.isArray(d.lecciones)) {
+              setLecciones(d.lecciones.filter(l => String(l.tipo || '').toUpperCase() === 'ICAN'));
+            } else {
+              setLecciones([]);
+              setError('No pudimos cargar las sesiones I CAN. Intentá de nuevo.');
+            }
+          })
+          .catch(() => {
+            if (seq !== loadSeqRef.current) return;
+            setLecciones([]);
+            setError('No pudimos cargar las sesiones I CAN. Intentá de nuevo.');
+          })
+          .finally(() => { if (seq === loadSeqRef.current) setLoading(false); });
+      }
+      // Docente/admin mantienen el contrato anterior en su agenda.
       if (grupoMeta?.programa === 'INA' && Array.isArray(grupoMeta.lecciones)) {
         setLecciones(grupoMeta.lecciones.filter(l => l.tipo === 'ICAN'));
       } else {

@@ -1994,18 +1994,23 @@ function ModEstadoCuenta({ pendientes, esConape, conapeEstado, onNavigate }) {
   const cuotaMens  = pendientes?.cuota_mensual    || 0;
   const cuotasPend = cuotaMens > 0 ? Math.round(cuotaMonto / cuotaMens) : (cuotaMonto > 0 ? 1 : 0);
   const total = (matPend ? 1 : 0) + cuotasPend + (certPend ? 1 : 0);
-  const alDia = total === 0;
+  const saldoVerificado = ['matricula','cuotas_pendiente','certificado'].every(k => pendientes && Number.isFinite(Number(pendientes[k])) && pendientes[k] != null);
+  const certExigible = pendientes?.por_nivel?.[pendientes?.nivel_activo]?.certificado_exigible === true;
+  const alDia = saldoVerificado && total === 0;
   const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (
-    <ModTile icon="payments" emoji="💳" title="Pagos y estado de cuenta" status={alDia ? 'ok' : 'pending'}
-             statusLabel={alDia ? 'Al día' : `${total} pendiente${total>1?'s':''}`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
-      {alDia ? (
-        <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ No tenés conceptos pendientes.</div>
+    <ModTile icon="payments" emoji="💳" title="Pagos y estado de cuenta" status={alDia ? 'ok' : !saldoVerificado ? 'empty' : 'pending'}
+             statusLabel={!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo' : `${total} por cubrir`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
+      {!saldoVerificado ? (
+        <div style={{ color:'var(--ink-3)' }}>No se pudo verificar el saldo contractual. Intentá actualizar el perfil.</div>
+      ) : alDia ? (
+        <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ Sin saldo contractual pendiente.</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
           {matPend && <div>Matrícula — {fmt(pendientes.matricula)}</div>}
-          {cuotasPend > 0 && <div>{cuotasPend} cuota{cuotasPend>1?'s':''} — {fmt(cuotaMonto)}</div>}
-          {certPend && <div>Certificado — {fmt(pendientes.certificado)}</div>}
+          {cuotasPend > 0 && <div>{cuotasPend} cuota{cuotasPend>1?'s':''} del plan — {fmt(cuotaMonto)} (vencimientos por verificar)</div>}
+          {certPend && <div>Certificado — {fmt(pendientes.certificado)}{!certExigible?' (futuro; aún no exigible)':''}</div>}
+          <div style={{marginTop:5,fontSize:11,color:'var(--ink-3)'}}>Saldo contractual por cubrir; no equivale necesariamente a morosidad.</div>
         </div>
       )}
     </ModTile>
