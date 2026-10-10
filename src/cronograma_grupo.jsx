@@ -570,7 +570,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     ? nivelActivoStudent
     : niveles[0];
   const [nivel, setNivel] = React.useState(nivelInicial);
-  const nivelBloqueado = !nivelDesbloqueado(nivel);
+  const nivelBloqueado = !nivelDesbloqueado(nivel === 'ICAN' ? (nivelActivoStudent || meta?.nivelId || 'B1') : nivel);
 
   React.useEffect(() => {
     if (!niveles.includes(nivel)) setNivel(niveles[0]);
@@ -746,7 +746,8 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
   // consulta (codigoAcceso vacío → hook no hace fetch). El hook está siempre
   // cargado (campus.html lo importa antes que este archivo).
   const codigoAcceso = esStudent ? (usr?.codigo || usr?.cedula || '') : '';
-  const accessState = window.useStudentAccess(codigoAcceso, nivel);
+  const nivelAcceso = nivel === 'ICAN' ? (nivelActivoStudent || meta?.nivelId || 'B1') : nivel;
+  const accessState = window.useStudentAccess(codigoAcceso, nivelAcceso);
   const acc    = accessState.access;
   const accDet = !!(acc && acc.determinado);
   // Solo bloqueamos en duro cuando el dato es DETERMINADO (no sobre-bloquear).
@@ -885,7 +886,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
              || leccionesVista.find(l => l.estado === 'CALCULADA')
              || leccionesVista[0];
     if (sel?.cod_grupo) setCodGrupo(sel.cod_grupo);
-    if (sel?.nivel) setNivel(sel.nivel);
+    if (sel?.nivel && nivel !== 'ICAN') setNivel(sel.nivel);
     setSelLec(sel);
   }, [leccionesVista]);
 
@@ -899,15 +900,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     setCargandoDet(true);
     // CALGRUPO_F53_20260617_CRONOGRAMA_DETALLE_ROUTER_FIX
     const riel = selLec.tipo === 'ICAN' ? 'ican' : 'curso';
-    const id = riel === 'curso' ? idLeccion(nivel, selLec.leccion) : '';
-    postCronoGrupo('getLeccionDetalle', { id_leccion: id, nivel, leccion: selLec.leccion, riel })
+    const nivelDetalle = nivel === 'ICAN' ? normalizarNivelCG(selLec.nivel || nivelActivoStudent || meta?.nivelId || 'B1') : nivel;
+    const id = riel === 'curso' ? idLeccion(nivelDetalle, selLec.leccion) : '';
+    postCronoGrupo('getLeccionDetalle', { id_leccion: id, nivel:nivelDetalle, leccion: selLec.leccion, riel })
       .then(d => {
         if (d?.ok && d.leccion) setDetalle(d.leccion);
         else setDetalle(null);
       })
       .catch(() => setDetalle(null))
       .finally(() => setCargandoDet(false));
-  }, [selLec, nivel, nivelBloqueado]);
+  }, [selLec, nivel, nivelBloqueado, nivelActivoStudent, meta?.nivelId]);
 
   React.useEffect(() => { cargarDetalle(); }, [cargarDetalle]);
 
@@ -1267,16 +1269,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
             </div>
           ) : vista === 'proxima' ? (
             <VistaProxima lecciones={leccionesVista} mapaLecciones={mapaLecciones} stats={stats}
-                          nivel={nivelSeleccionado} meta={metaSeleccionada} codGrupo={codGrupoSeleccionado} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
+                          nivel={nivelSeleccionado} meta={metaSeleccionada} codGrupo={codGrupoSeleccionado} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel && nivel !== 'ICAN') setNivel(l.nivel); setSelLec(l); }} />
           ) : vista === 'semana' ? (
             <VistaSemana lecciones={leccionesVista} mapaLecciones={mapaLecciones} nivel={nivelSeleccionado}
-                         selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
+                         selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel && nivel !== 'ICAN') setNivel(l.nivel); setSelLec(l); }} />
           ) : vista === 'lista' ? (
             <VistaLista lecciones={leccionesVista} mapaLecciones={mapaLecciones} nivel={nivelSeleccionado}
-                        selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }} />
+                        selLec={selLec} onSelect={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel && nivel !== 'ICAN') setNivel(l.nivel); setSelLec(l); }} />
           ) : (
             <VistaMes meses={meses} mapaLecciones={mapaLecciones} selLec={selLec}
-                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} mesesVista={mesesVista} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel) setNivel(l.nivel); setSelLec(l); }}
+                      nivel={nivelSeleccionado} agenda={agendaDocenteMode} mesesVista={mesesVista} onClickLec={l => { if (l?.cod_grupo) setCodGrupo(l.cod_grupo); if (l?.nivel && nivel !== 'ICAN') setNivel(l.nivel); setSelLec(l); }}
                       editor={editorCalendario}
                       onDragStartLec={comenzarArrastre} onDragEndLec={() => { arrastradaRef.current = null; }}
                       onDropDia={soltarEnDia} onEmptyDia={abrirDiaLibre} />
