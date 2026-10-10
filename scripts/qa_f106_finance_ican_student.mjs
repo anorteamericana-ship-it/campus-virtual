@@ -13,7 +13,7 @@ assert(dash.includes('Saldo contractual por cubrir; no equivale necesariamente a
 assert(pay.includes('No implican por sí solos cuotas vencidas ni morosidad'),'Detail distinguishes contractual vs overdue');
 assert(dash.includes('certificado_exigible')&&pay.includes('certificado_exigible'),'Exigibility from backend');
 assert(app.includes('student_dashboard.jsx?v=F1064CERTIFICATE20261010'),'Dashboard asset versioned');
-assert(app.includes('student_modules.jsx?v=F107PAYMENTSRESPONSIVE20261010'),'Payments asset versioned');
+assert(app.includes('student_modules.jsx?v=F108GRADES20261010'),'Payments asset versioned');
 assert(menu.includes('student_academic_summary_dom_cs21a113.js?v=F106FINANCEICAN20261009'),'Summary asset versioned');
 assert(calendar.includes("nivel:nivelRealIcan, riel:'ican'"),'Student ICAN reads actual level through read-only backend API');
 assert(calendar.includes("if (programaIcan === 'SIN_INA')"),'SIN_INA program explicitly excluded');
