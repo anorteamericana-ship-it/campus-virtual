@@ -184,6 +184,11 @@ try {
  assert.equal(await page.getByRole('progressbar',{name:'Avance del nivel'}).getAttribute('aria-valuenow'),'72');
  checks++;
  await checkAxe('student');
+ const studentTouch=await page.locator('.campus-d-camera-icon').boundingBox();
+ assert(studentTouch && studentTouch.width>=44 && studentTouch.height>=44,'student camera must have 44x44 hit target');
+ const [studentPicker]=await Promise.all([page.waitForEvent('filechooser'),page.getByRole('button',{name:'Subir foto'}).click()]);
+ assert(studentPicker,'student camera button opens file chooser');
+ checks+=2;
  await page.getByRole('button',{name:'ACTUALIZAR DATOS'}).click();
  assert(await page.locator('[aria-label="Datos personales"]').isVisible());
  assert(!(await page.locator('#panel-actualizar-datos').textContent()).includes('0001111234'),'student default view never leaks full cedula');
@@ -253,6 +258,13 @@ try {
   }
  }
  await checkAxe('teacher');
+ await page.getByRole('button',{name:'Mostrar'}).click();
+ assert((await page.locator('.tp76-info-strip').textContent()).includes('0001111234'),'teacher can explicitly show cedula');
+ await page.getByRole('button',{name:'Ocultar'}).click();
+ assert(!(await page.locator('.tp76-info-strip').textContent()).includes('0001111234'),'teacher hides cedula again');
+ const [teacherPicker]=await Promise.all([page.waitForEvent('filechooser'),page.getByRole('button',{name:'Cambiar foto'}).click()]);
+ assert(teacherPicker,'teacher camera button opens file chooser');
+ checks+=3;
  fs.writeFileSync(path.join(review,'UI1_AXE.json'),JSON.stringify(axeResults,null,2));
  const contrastTable=[['Azul oscuro','#001E47'],['Azul medio','#0B4A8B'],['Rojo','#9A2032']].map(([label,bg])=>({label,bg,fg:'#FFFFFF',ratio:Math.round(assertContrast('#FFFFFF',bg)*100)/100}));
  fs.writeFileSync(path.join(review,'UI1_CONTRAST.md'),'# F111 UI-1: contraste sobre gradiente\n\n| Fondo | Texto | Contraste | Requisito |\n|---|---|---|---|\n'+contrastTable.map(x=>`| ${x.label} (${x.bg}) | ${x.fg} | ${x.ratio}:1 | 4.5:1 |`).join('\n')+'\n');
