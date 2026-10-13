@@ -1248,6 +1248,12 @@ function CampusGate() {
         if (cancel) return;
 
         const esFallaTemporal = !!(r && r.network_error);
+        if (r && r.ok === false && r.error === 'sesion_expirada') {
+          // La expiracion explícita no es un fallo de red: no montar Campus.
+          setSesionState(ses);
+          setEstado('expirada');
+          return;
+        }
         if (!r || (!r.ok && !esFallaTemporal)) {
           try {
             if (typeof window.cerrarSesionServidor === 'function') {
@@ -1284,6 +1290,17 @@ function CampusGate() {
 
   if (estado === 'check') return <CampusValidando lento={lento} />;
   if (estado === 'denegado') return <NoAutorizadoCampus rol={sesion ? sesion.rol : ''} />;
+  if (estado === 'expirada') return (
+    <main style={{ minHeight:'100vh',display:'grid',placeItems:'center',padding:24 }}>
+      <section role="alert" style={{ maxWidth:440,textAlign:'center' }}>
+        <h1>Tu sesión expiró</h1>
+        <p>Ingresá nuevamente para continuar en el Campus.</p>
+        <button type="button" className="btn btn-primary" onClick={campusIrALogin}>
+          Ir al inicio de sesión
+        </button>
+      </section>
+    </main>
+  );
   return <CampusRootErrorBoundary><App /></CampusRootErrorBoundary>;
 }
 
