@@ -15,7 +15,14 @@ const check = (name, ok, detail='') => {
 check('guard source compiles as JavaScript', (() => {
   try { new vm.Script(src, { filename:path }); return true; } catch (e) { console.error(e); return false; }
 })());
-check('guard has no person-specific legacy demo helpers', !/_demoKeylor|DEMO_OLDE|Demo2026|profe2026/i.test(src));
+check('guard has no person-specific legacy demo helpers', !/_demoKeylor|DEMO_OLDE/i.test(src));
+
+const knownCompromisedKeys = String(process.env.F111_KNOWN_LEGACY_DEMO_SECRETS || '')
+  .split(',').map(x => x.trim()).filter(Boolean);
+if (knownCompromisedKeys.length) {
+  check('known compromised demo secrets absent',
+    knownCompromisedKeys.every(secret => !src.includes(secret)));
+}
 check('guard requires generic identity adapter', src.includes("typeof _sec004DemoIdentityAdapter_ !== 'function'"));
 check('guard supports generic simulated-write adapter', src.includes("typeof _sec004DemoSimulatedWriteAdapter_ === 'function'"));
 check('missing adapter is fail-closed', src.includes("error: 'sec004_policy_unbound'"));
