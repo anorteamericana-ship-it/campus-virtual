@@ -1,0 +1,158 @@
+/* F111 UI-1 · Identidad real, sin parches de DOM. */
+.academy-mark{display:block;overflow:visible;max-width:100%;max-height:100%}
+.academy-mark__left{fill:#7A1E2C}
+.academy-mark__right{fill:#DA291C}
+.academy-mark__curve{fill:none;stroke:#DA291C;stroke-dasharray:400;stroke-dashoffset:0;animation:academy-curve-draw .9s ease-out 1 both}
+.academy-mark--watermark .academy-mark__left,.academy-mark--watermark .academy-mark__right{fill:#fff;opacity:.08}
+.academy-mark--watermark .academy-mark__curve{stroke:#fff;opacity:.29}
+@keyframes academy-curve-draw{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.academy-mark__curve{animation:none;stroke-dashoffset:0}}
+#panel-actualizar-datos .campus-d-welcome-card{
+  position:relative;isolation:isolate;overflow:hidden;min-height:190px;border:0;border-radius:19px;
+  background:linear-gradient(120deg,#001E47 0%,#0B4A8B 57%,#9A2032 100%);
+  box-shadow:0 15px 32px rgba(0,30,71,.16);color:#fff
+}
+#panel-actualizar-datos .campus-d-welcome-card .campus-d-welcome-kicker{color:#fff;opacity:.93}
+#panel-actualizar-datos .campus-d-welcome-card .campus-d-welcome-name{color:#fff;font-size:clamp(21px,2.4vw,32px);text-shadow:0 2px 3px rgba(0,0,0,.2)}
+#panel-actualizar-datos .campus-d-welcome-card .campus-d-chip{color:#fff;background:rgba(0,22,52,.62);border:1px solid rgba(255,255,255,.55);border-radius:999px;font-size:11px}
+#panel-actualizar-datos .campus-d-welcome-copy{position:relative;z-index:2}
+#panel-actualizar-datos .campus-d-welcome-card .campus-d-a-accent{
+  position:absolute;z-index:0;right:-22px;bottom:-11px;top:auto;transform:none;
+  width:auto;height:85%;opacity:1;pointer-events:none;filter:none
+}
+#panel-actualizar-datos .campus-d-progress-ring{position:relative;z-index:2;filter:drop-shadow(0 2px 8px rgba(0,0,0,.18))}
+#panel-actualizar-datos .campus-d-progress-pct{color:#fff}
+#panel-actualizar-datos .campus-d-progress-pct sup,#panel-actualizar-datos .campus-d-progress-sub{color:#fff}
+#panel-actualizar-datos .campus-d-profile-card{display:flex;flex-direction:column;gap:12px;border-radius:19px}
+#panel-actualizar-datos .campus-d-photo-button{position:relative;display:block;width:160px;height:160px;min-width:160px;
+  border-radius:50%;border:4px solid #fff;overflow:visible;box-shadow:0 10px 24px rgba(0,30,71,.18);aspect-ratio:1}
+#panel-actualizar-datos .campus-d-photo-button img{width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center;overflow:hidden}
+#panel-actualizar-datos .campus-d-camera-icon,.tp76-page .tp76-camera{
+  width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+  position:absolute;right:0;bottom:0;border-radius:50%;border:3px solid #fff;
+  background:#001E47;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.24)}
+#panel-actualizar-datos .campus-d-photo-button:focus-visible,.tp76-page .tp76-camera:focus-visible{
+  outline:3px solid #DA291C;outline-offset:4px
+}
+#panel-actualizar-datos .campus-d-photo-hint,.tp76-page .tp76-photo-hint{font-size:12px;line-height:1.4;font-weight:800;color:#001E47;display:block;text-align:center}
+#panel-actualizar-datos .campus-d-contact-strip{border-radius:15px}
+#panel-actualizar-datos .campus-d-actions{display:flex;visibility:visible;opacity:1}
+#panel-actualizar-datos .campus-d-actions > *{display:inline-flex!important;visibility:visible!important}
+#panel-actualizar-datos .campus-d-id-toggle{margin-left:9px;border:0;background:transparent;color:#003C7A;
+  font-size:11px;font-weight:800;cursor:pointer;text-decoration:underline}
+#panel-actualizar-datos .campus-d-id-toggle:focus-visible{outline:2px solid #DA291C;outline-offset:2px}
+.tp76-page .tp76-cover-mark{position:absolute;right:12px;bottom:-11px;width:auto;height:85%;font-size:0;
+  pointer-events:none;z-index:1;line-height:0}
+.tp76-page .tp76-photo-wrap{height:190px;width:160px}
+.tp76-page .tp76-photo{width:160px;height:160px;border:4px solid #fff}
+.tp76-page .tp76-photo img{object-fit:cover;object-position:center}
+.tp76-page .tp76-camera{right:-2px;bottom:38px;cursor:pointer}
+.tp76-page .tp76-photo-hint{margin-top:7px}
+.tp76-page .tp76-cover-brand{z-index:2}
+.an-spinner{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:50%;vertical-align:middle;animation:an-spin .75s linear infinite}
+@keyframes an-spin{to{transform:rotate(360deg)}}
+.an-crop-backdrop{position:fixed;inset:0;z-index:99999;background:rgba(1,14,31,.85);display:flex;
+  align-items:center;justify-content:center;padding:14px}
+.an-crop-dialog{max-width:390px;width:100%;padding:20px;border-radius:20px;background:#fff;
+  color:#001E47;box-shadow:0 20px 60px rgba(0,0,0,.32);display:flex;flex-direction:column;gap:11px}
+.an-crop-dialog h2{margin:0;font-size:20px;color:#001E47}
+.an-crop-dialog p{margin:0;font-size:13px;color:#293F5C;line-height:1.5}
+.an-crop-dialog canvas{display:block;width:100%;max-width:320px;aspect-ratio:1;margin:auto;background:#fff;
+  border-radius:12px;border:2px solid #001E47;touch-action:none;cursor:grab}
+.an-crop-dialog canvas:focus-visible{outline:3px solid #DA291C;outline-offset:3px}
+.an-crop-dialog input[type=range]{width:100%;accent-color:#7A1E2C}
+.an-crop-actions{display:flex;gap:10px;justify-content:flex-end}
+.an-crop-actions button{border:1px solid #001E47;border-radius:9px;padding:11px 17px;cursor:pointer;background:#fff;color:#001E47;font-weight:800}
+.an-crop-actions button:last-child{background:#001E47;color:#fff}
+.an-crop-actions button:focus-visible{outline:3px solid #DA291C;outline-offset:2px}
+.an-crop-actions button:disabled{opacity:.55}
+.an-crop-error{color:#A30A12!important}
+@media(max-width:620px){
+  #panel-actualizar-datos .campus-d-welcome-card{min-height:172px;gap:10px;padding:20px}
+  #panel-actualizar-datos .campus-d-welcome-card .campus-d-a-accent{height:60%;right:-18px;bottom:-8px}
+  #panel-actualizar-datos .campus-d-welcome-copy{max-width:100%}
+  #panel-actualizar-datos .campus-d-welcome-card .campus-d-welcome-name{font-size:20px}
+  #panel-actualizar-datos .campus-d-welcome-card .campus-d-chip{font-size:10px}
+  #panel-actualizar-datos .campus-d-contact-strip{grid-template-columns:1fr}
+  #panel-actualizar-datos .campus-d-contact-item{border-right:0;border-bottom:1px solid #e9e4dc}
+  #panel-actualizar-datos .campus-d-actions{display:grid;grid-template-columns:1fr;gap:8px;padding:8px 0}
+  #panel-actualizar-datos .campus-d-actions .btn{width:100%;display:flex!important;justify-content:center;min-height:44px}
+  .tp76-page .tp76-cover-mark{height:60%;right:-12px}
+}
+@media(prefers-reduced-motion:reduce){.an-spinner{animation:none}}
+
+/* F111 UI-1 · misma portada reutilizable: estudiante y docente. */
+.academy-id-header{
+  position:relative;isolation:isolate;overflow:hidden;border-radius:19px;
+  background:linear-gradient(118deg,#001E47 0%,#0B4A8B 57%,#9A2032 100%);
+  color:#fff;min-width:0;min-height:225px;padding:20px 27px 22px;
+  box-shadow:0 15px 32px rgba(0,30,71,.16);
+}
+.academy-id-brand{position:relative;z-index:2;font-size:11px;font-weight:900;letter-spacing:.11em;line-height:1.4;color:#fff}
+.academy-id-brand-mobile{display:none}
+.academy-id-main{display:grid;grid-template-columns:160px minmax(0,1fr);align-items:center;gap:23px;position:relative;z-index:2;margin-top:16px}
+.academy-id-mark{position:absolute;bottom:8px;right:13px;height:84%;width:auto;pointer-events:none;z-index:0}
+.academy-mark--watermark .academy-mark__left,
+.academy-mark--watermark .academy-mark__right{opacity:.11}
+.academy-mark--watermark .academy-mark__curve{opacity:.30}
+#panel-actualizar-datos .campus-d-intro{display:block;min-width:0}
+#panel-actualizar-datos .academy-id-header{width:100%}
+#panel-actualizar-datos .academy-id-header .campus-d-profile-card{border:0;box-shadow:none;background:transparent;padding:0;min-width:0;display:flex;flex-direction:column;gap:7px;align-items:center}
+#panel-actualizar-datos .academy-id-header .campus-d-photo-button{width:134px;height:134px;min-width:134px;border:4px solid #fff}
+#panel-actualizar-datos .academy-id-header .campus-d-photo-hint{color:#fff;margin-top:2px}
+#panel-actualizar-datos .academy-id-header .campus-d-welcome-copy{min-width:0;width:100%}
+#panel-actualizar-datos .academy-id-header .campus-d-welcome-name{font-size:clamp(21px,2.3vw,31px);color:#fff;line-height:1.12;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.2)}
+#panel-actualizar-datos .academy-id-header .campus-d-welcome-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+#panel-actualizar-datos .academy-id-header .campus-d-chip{max-width:100%;overflow-wrap:anywhere;line-height:1.3}
+#panel-actualizar-datos .academy-id-header .campus-d-photo-button,
+.tp76-page .academy-id-header .tp76-camera{cursor:pointer}
+#panel-actualizar-datos .academy-id-header .campus-d-camera-icon,
+.tp76-page .academy-id-header .tp76-camera{width:44px;height:44px;min-width:44px;min-height:44px;right:-7px;bottom:-4px;z-index:4}
+.academy-id-progress{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap}
+.academy-id-progress-label{font-size:12px;line-height:1.4;font-weight:900;color:#fff}
+#panel-actualizar-datos .academy-id-progress .campus-d-progress-ring{width:84px;height:84px;min-width:84px}
+#panel-actualizar-datos .academy-id-progress .campus-d-progress-ring svg{width:84px;height:84px}
+#panel-actualizar-datos .academy-id-progress .campus-d-progress-pct{font-size:21px;color:#fff}
+#panel-actualizar-datos .academy-id-progress .campus-d-progress-sub{color:#fff}
+.tp76-page .tp76-hero-card .academy-id-header{border-radius:20px 20px 0 0}
+.tp76-page .academy-id-header .tp76-photo-wrap{width:142px;height:auto;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tp76-page .academy-id-header .tp76-photo{width:134px;height:134px;border:4px solid #fff}
+.tp76-page .academy-id-header .tp76-photo-hint{color:#fff;font-size:12px;margin:8px 0 0}
+.tp76-page .academy-id-header .tp76-name-block{padding:0;min-width:0;text-align:left}
+.tp76-page .academy-id-header .tp76-name-block h2{color:#fff;font-size:clamp(23px,2.3vw,32px);line-height:1.13;overflow-wrap:anywhere}
+.tp76-page .academy-id-header .tp76-name-block p{color:#fff;font-size:12px;font-weight:650}
+.academy-id-info-value{display:flex;align-items:center;gap:8px;min-width:0}
+.academy-id-info-value strong{flex:1;min-width:0}
+.academy-id-toggle{min-height:44px;min-width:44px;border:0;background:transparent;color:#003C7A;font:inherit;font-size:12px;font-weight:900;cursor:pointer;text-decoration:underline}
+.academy-id-toggle:focus-visible{outline:3px solid #DA291C;outline-offset:2px}
+@media(max-width:620px){
+  .academy-id-header{min-height:235px;padding:16px 18px 20px;border-radius:18px}
+  .academy-id-brand-full{display:none}
+  .academy-id-brand-mobile{display:inline}
+  .academy-id-main{grid-template-columns:84px minmax(0,1fr);gap:15px;align-items:start;margin-top:15px}
+  .academy-id-mark{height:75%;right:8px;bottom:9px}
+  #panel-actualizar-datos .academy-id-header .campus-d-photo-button{width:80px;height:80px;min-width:80px;border-width:3px}
+  #panel-actualizar-datos .academy-id-header .campus-d-profile-card{gap:9px}
+  #panel-actualizar-datos .academy-id-header .campus-d-photo-hint{font-size:10px}
+  #panel-actualizar-datos .academy-id-header .campus-d-welcome-name{font-size:19px}
+  #panel-actualizar-datos .academy-id-header .campus-d-chip{font-size:10px}
+  #panel-actualizar-datos .academy-id-progress{gap:7px;margin-top:10px}
+  #panel-actualizar-datos .academy-id-progress .campus-d-progress-ring{width:70px;height:70px;min-width:70px}
+  #panel-actualizar-datos .academy-id-progress .campus-d-progress-ring svg{width:70px;height:70px}
+  #panel-actualizar-datos .academy-id-progress .campus-d-progress-pct{font-size:17px}
+  .tp76-page .academy-id-header .tp76-photo-wrap{width:84px}
+  .tp76-page .academy-id-header .tp76-photo{width:80px;height:80px;border-width:3px}
+  .tp76-page .academy-id-header .tp76-photo span{font-size:26px}
+  .tp76-page .academy-id-header .tp76-name-block h2{font-size:20px}
+  .tp76-page .academy-id-header .tp76-name-block p{font-size:11px}
+  .tp76-page .academy-id-header .tp76-photo-hint{font-size:10px}
+  .tp76-page .academy-id-header .tp76-camera{right:-10px;bottom:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ .academy-mark__curve{animation:none!important;stroke-dashoffset:0!important}
+}
+
+/* Orden explícito en móvil: foto a la izquierda, nombre al lado. */
+#panel-actualizar-datos .academy-id-main > .campus-d-profile-card{grid-column:1;grid-row:1;align-self:start}
+#panel-actualizar-datos .academy-id-main > .campus-d-welcome-copy{grid-column:2;grid-row:1;align-self:center}

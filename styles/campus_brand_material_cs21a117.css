@@ -1,29 +1,5 @@
 /* F98.4-Z6-CS21A119 · A institucional + material obligatorio + programa compartido. */
 
-/* La marca de agua de ambas tarjetas usa solo la A institucional. */
-#panel-actualizar-datos.st116-entry-card::after {
-  content: "A" !important;
-  right: 52px;
-  top: 18px;
-  font-size: 238px;
-  line-height: .78;
-}
-
-.tp76-cover-mark {
-  color: rgba(255,255,255,.09) !important;
-  font-size: 0 !important;
-}
-
-.tp76-cover-mark::after {
-  content: "A";
-  display: block;
-  color: rgba(255,255,255,.09);
-  font-family: var(--f-serif, Georgia, serif);
-  font-size: 190px;
-  font-weight: 700;
-  line-height: 1;
-}
-
 /* Bloque de material obligatorio dentro de Mi Perfil docente. */
 .tp117-required {
   margin-top: 18px;

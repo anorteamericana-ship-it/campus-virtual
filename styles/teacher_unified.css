@@ -191,7 +191,7 @@
 .teacher-page > .page-header::after,
 .teacher-page [data-screen-label] > .page-header::after,
 .teacher-page section > .page-header::after {
-  content: "A";
+  content: none;
   position: absolute;
   right: 24px;
   top: 50%;

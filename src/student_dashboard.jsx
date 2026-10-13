@@ -570,7 +570,8 @@ function ExecutiveProgressRingD({ pct, cerradas, total }) {
   const circumference = 2 * Math.PI * r;
   const dash = circumference * (1 - safePct / 100);
   return (
-    <div className="campus-d-progress-ring" aria-label={`${safePct}% del módulo completado`}>
+    <div className="campus-d-progress-ring" role="progressbar" aria-label="Avance del nivel"
+      aria-valuemin={0} aria-valuemax={100} aria-valuenow={safePct}>
       <svg width="108" height="108" viewBox="0 0 108 108" aria-hidden="true">
         <circle cx="54" cy="54" r={r} fill="none" stroke="#EDEAE3" strokeWidth="8" />
         <circle cx="54" cy="54" r={r} fill="none" stroke="#002F6C" strokeWidth="8" strokeLinecap="round"
@@ -1011,6 +1012,8 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
   const [mensaje, setMensaje] = React.useState(null);
   const [mensajeFoto, setMensajeFoto] = React.useState(null);
   const [subiendoFoto, setSubiendoFoto] = React.useState(false);
+  const [cropFile, setCropFile] = React.useState(null);
+  const [cedulaVisible, setCedulaVisible] = React.useState(false);
   const [contactosVista, setContactosVista] = React.useState(contactosIniciales);
   const [fotoUrl, setFotoUrl] = React.useState(fotoInicial);
   const fotoInputRef = React.useRef(null);
@@ -1022,16 +1025,28 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
   React.useEffect(() => { setContactosVista(contactosIniciales); }, [contactosIniciales]);
   React.useEffect(() => { setFotoUrl(fotoInicial); }, [fotoInicial]);
 
+  const rawStatus = String(est.ESTATUS || est.estatus || est.ESTADO || est.estado ||
+    est.niveles?.[nivelReal]?.estatus || grupo?.ESTATUS || '').trim().toUpperCase();
+  const estadoReal = ['CA','ACTIVO'].includes(rawStatus) ? 'Activo'
+    : ['RI','RJ','RET','RETIRADO'].includes(rawStatus) ? 'Retirado'
+    : rawStatus === 'APR' ? 'Aprobado'
+    : rawStatus === 'REP' ? 'Reprobado'
+    : ['PE','PENDIENTE'].includes(rawStatus) ? 'Pendiente' : 'Estado pendiente';
+  const programaReal = String(programa || est.PROGRAMA || est.programa || '').trim();
+  const nivelVisible = nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Nivel pendiente';
+  const codigoVisible = String(codigo || est.REC_M || est.rec_m || est.CODIGO || est.codigo || '').trim();
+  const ultimosCedula = String(cedula || '').replace(/\D/g,'').slice(-4);
+  const cedulaSegura = ultimosCedula ? '•••-•••-'+ultimosCedula : 'Pendiente';
   const grupoLabel = codGrupo || 'Pendiente';
   const initials = (nombreCompleto || 'EE').split(/\s+/).filter(Boolean).slice(0,2).map(w => (w[0]||'')).join('').toUpperCase() || 'EE';
 
   const programaRows = [
-    ['Código', codigo || est.REC_M || est.CODIGO || 'Pendiente'],
+    ['Código', codigoVisible || 'Pendiente'],
     ['Grupo', grupoLabel],
     ['Horario', programaFicha.horario, programaFicha.horasSemanales],
     ['Nivel', nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Pendiente'],
     ['Teacher', docente || 'Pendiente'],
-    ['Programa', programaFicha.modalidad, programaFicha.programaNombre],
+    ['Programa', programaReal || 'Programa pendiente', programaFicha.modalidad],
   ];
 
   const resetEdicion = () => {
@@ -1073,51 +1088,42 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
     }
   };
 
-  const fileToPayload = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result || '');
-      const base64 = result.indexOf(',') >= 0 ? result.split(',').pop() : result;
-      resolve({ base64, mime:file.type || 'image/jpeg', nombre:file.name || 'foto_perfil.jpg' });
-    };
-    reader.onerror = () => reject(new Error('No se pudo leer la imagen seleccionada.'));
-    reader.readAsDataURL(file);
-  });
-
-  const handleFotoSeleccionada = async (e) => {
-    const file = e.target?.files && e.target.files[0];
+  const handleFotoSeleccionada = (e) => {
+    const file = e.target?.files?.[0];
     if (!file) return;
     e.target.value = '';
-    if (!String(file.type || '').startsWith('image/')) {
-      setMensajeFoto({ tipo:'err', texto:'Seleccioná una imagen JPG o PNG.' });
+    if (!/^image\/(jpeg|png|webp)$/.test(String(file.type || ''))) {
+      setMensajeFoto({ tipo:'err', texto:'Seleccioná una foto JPG, PNG o WebP.' });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       setMensajeFoto({ tipo:'err', texto:'La imagen supera el máximo permitido de 5 MB.' });
       return;
     }
+    setMensajeFoto(null);
+    setCropFile(file);
+  };
+  const handleFotoRecortada = async (payload) => {
+    setCropFile(null);
     setSubiendoFoto(true);
     setMensajeFoto(null);
     try {
-      const payload = await fileToPayload(file);
       const res = await postStudentDash('uploadFotoPerfilEstudiante', {
         codigo,
-        archivo_base64: payload.base64,
-        archivo_mime: payload.mime,
-        archivo_nombre: payload.nombre,
+        archivo_base64:payload.base64,
+        archivo_mime:'image/jpeg',
+        archivo_nombre:'foto_perfil_640.jpg',
       });
       if (res?.ok) {
         setFotoUrl(res.foto_url || fotoUrl || '');
-        setMensajeFoto({ tipo:'ok', texto: res?.mensaje || 'Fotografía actualizada correctamente.' });
-        if (onReload) setTimeout(() => onReload(), 350);
+        setMensajeFoto({ tipo:'ok', texto:res?.mensaje || 'Fotografía actualizada correctamente.' });
+        if (onReload) setTimeout(() => onReload(),350);
       } else {
-        setMensajeFoto({ tipo:'err', texto: res?.mensaje || res?.error || 'No se pudo actualizar la fotografía.' });
+        setMensajeFoto({ tipo:'err', texto:res?.mensaje || res?.error || 'No se pudo actualizar la fotografía.' });
       }
     } catch (err) {
-      setMensajeFoto({ tipo:'err', texto: err?.message || 'No se pudo actualizar la fotografía.' });
-    } finally {
-      setSubiendoFoto(false);
-    }
+      setMensajeFoto({ tipo:'err', texto:err?.message || 'No se pudo actualizar la fotografía.' });
+    } finally {setSubiendoFoto(false);}
   };
 
   const infoRowStyle = { display:'flex', justifyContent:'space-between', gap:12, fontSize:12.5, padding:'8px 0', borderBottom:'1px solid var(--line)' };
@@ -1142,31 +1148,44 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
   return (
     <section id="panel-actualizar-datos" className="campus-d-student-section" aria-label="Ficha del estudiante">
       <div className="campus-d-intro">
-        <aside className="campus-d-profile-card">
-          <input ref={fotoInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFotoSeleccionada} />
-          <button
-            type="button"
-            className="campus-d-photo-button"
-            onClick={() => !subiendoFoto && fotoInputRef.current && fotoInputRef.current.click()}
-            aria-label={fotoUrl ? 'Cambiar fotografía del estudiante' : 'Adjuntar fotografía del estudiante'}
-          >
-            <img
-              className={fotoUrl ? '' : 'is-placeholder'}
-              src={fotoUrl || 'assets/foto_placeholder.svg'}
-              alt={fotoUrl ? 'Fotografía del estudiante' : 'Silueta para adjuntar fotografía'}
-            />
-            <span className="campus-d-photo-overlay">{subiendoFoto ? 'Subiendo…' : (fotoUrl ? 'Cambiar foto' : 'Subir foto')}</span>
-          </button>
-        </aside>
-
-        <div className="campus-d-welcome-card">
-          <ExecutiveProgressRingD pct={progresoPct} cerradas={cerradas} total={totalLecciones} />
-          <div className="campus-d-welcome-copy">
-            <div className="campus-d-welcome-kicker">Bienvenido</div>
-            <div className="campus-d-welcome-name">{nombreCompleto || 'Estudiante'}</div>
-          </div>
-          <img className="campus-d-a-accent" src="assets/logo_a_transparent.png" alt="" aria-hidden="true" />
-        </div>
+        {window.AcademyIdentityHeader && React.createElement(window.AcademyIdentityHeader,{
+          kind:'student',
+          photo:(
+            <aside className="campus-d-profile-card">
+              <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                hidden onChange={handleFotoSeleccionada} />
+              <button type="button" className="campus-d-photo-button" title={fotoUrl ? 'Cambiar foto' : 'Subir foto'}
+                aria-label={fotoUrl ? 'Cambiar foto' : 'Subir foto'} disabled={subiendoFoto}
+                onClick={() => fotoInputRef.current?.click()}>
+                <img className={fotoUrl ? '' : 'is-placeholder'}
+                  src={fotoUrl || 'assets/foto_placeholder.svg'}
+                  alt={fotoUrl ? 'Fotografía del estudiante' : 'Sin fotografía'} />
+                <span className="campus-d-camera-icon" aria-hidden="true">
+                  {window.AcademyCameraIcon && React.createElement(window.AcademyCameraIcon)}
+                </span>
+              </button>
+              <span className="campus-d-photo-hint" role="status">
+                {subiendoFoto ? 'Subiendo…' : fotoUrl ? 'Cambiar foto' : 'Subir foto'}
+              </span>
+            </aside>
+          ),
+          details:(
+            <div className="campus-d-welcome-copy">
+              <div className="campus-d-welcome-name">{nombreCompleto || 'Estudiante'}</div>
+              <div className="campus-d-welcome-chips" aria-label="Estado de matrícula">
+                <span className="campus-d-chip primary">{estadoReal}</span>
+                <span className="campus-d-chip">{codigoVisible ? 'Código '+codigoVisible : 'Código pendiente'}</span>
+                <span className="campus-d-chip">{nivelVisible}</span>
+                <span className="campus-d-chip">{programaReal || 'Programa pendiente'}</span>
+              </div>
+              {progresoPct !== null && progresoPct !== undefined && Number.isFinite(Number(progresoPct)) &&
+                <div className="academy-id-progress">
+                  <span className="academy-id-progress-label">Avance del nivel</span>
+                  <ExecutiveProgressRingD pct={progresoPct} cerradas={cerradas} total={totalLecciones} />
+                </div>}
+            </div>
+          )
+        })}
       </div>
 
       {mensajeFoto && (
@@ -1175,6 +1194,9 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
         </div>
       )}
 
+      {cropFile && window.AcademyPhotoCrop && React.createElement(window.AcademyPhotoCrop,{
+        file:cropFile,onAccept:handleFotoRecortada,onCancel:()=>setCropFile(null)
+      })}
       <div className="campus-d-contact-strip">
         <div className="campus-d-contact-item">
           <div className="campus-d-contact-label">Correo</div>
@@ -1186,7 +1208,11 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
         </div>
         <div className="campus-d-contact-item">
           <div className="campus-d-contact-label">Cédula</div>
-          <div className="campus-d-contact-value">{cedula || 'Pendiente'}</div>
+          <div className="campus-d-contact-value">
+            <span>{cedulaVisible ? (cedula || 'Pendiente') : cedulaSegura}</span>
+            <button type="button" className="campus-d-id-toggle" aria-pressed={cedulaVisible}
+              onClick={()=>setCedulaVisible(v=>!v)}>{cedulaVisible ? 'Ocultar' : 'Mostrar'}</button>
+          </div>
         </div>
         <div className="campus-d-actions">
           <button type="button" className="btn btn-primary" onClick={() => { setTab(tab === 'personal' ? null : 'personal'); setEditando(false); setMensaje(null); }}>
@@ -1224,7 +1250,7 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
             </div>
             <div className="campus-d-panel-item">
               <div style={labelStyle}>Cédula</div>
-              <div style={valueStyle}>{cedula || 'Pendiente'}</div>
+              <div style={valueStyle}>{cedulaVisible ? (cedula || 'Pendiente') : cedulaSegura}</div>
             </div>
             <div className="campus-d-panel-item">
               <div style={labelStyle}>Correo electrónico actual</div>
