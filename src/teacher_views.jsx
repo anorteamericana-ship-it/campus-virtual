@@ -17,8 +17,9 @@ const SCRIPT_URL_TV = window.APPS_SCRIPT_URL;
 function teacherSessionSafeUserError(raw, fallback, context = '') {
   const msg = String(raw == null ? '' : raw).trim();
   if (!msg) return fallback;
+  if (msg === 'sesion_expirada') return 'Tu sesión expiró. Ingresá nuevamente.';
   const technicalCode = /^[a-z0-9.-]+(?:_[a-z0-9.-]+)+$/i.test(msg);
-  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|apollo\.|getDocente|getAsistencia|getFechas|getEstudiantes|sec00|policy_unbound/i.test(msg);
+  const technicalText = /apps?\s*script|backend|endpoint|stack|exception|trace|typeerror|referenceerror|syntaxerror|rangeerror|networkerror|network_error|failed to fetch|network request failed|<html|\bjson\b|\btoken\b|unauthorized|forbidden|internal server|http\s*\d{3}|status\s*\d{3}|respuesta inv[aá]lida|apollo\.|getDocente|getAsistencia|getFechas|getEstudiantes|sec00|policy_unbound/i.test(msg);
   if (technicalCode || technicalText) {
     console.warn('[TeacherSession] Detalle técnico oculto al docente.', { context, error: msg });
     return fallback;
