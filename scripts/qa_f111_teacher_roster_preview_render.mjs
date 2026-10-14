@@ -28,6 +28,7 @@ function render({view='readable',present=true,comment='Great attitude! Every les
   const ctx={
     React,
     tvTodayIsoCostaRicaF98:()=> '2026-10-14',
+    tvSearchNormalizeF98:value=>String(value||'').normalize('NFD').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim(),
     tvUpper:v=>String(v||'').trim().toUpperCase(),
     tvGroupCode:()=> 'B1-KJ18-C3-0826',
     tvIsIcanEventF96:()=>false,
