@@ -238,8 +238,7 @@
         applyData(data);
         setNotice(data.mensaje || 'Fotografía actualizada.');
       } catch(error) {
-        setNotice(tp76SafeUserError(error?.message || String(error),
-          'No se pudo actualizar la fotografía.','subir_foto'));
+        setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo actualizar la fotografía.', 'subir_foto'));
       } finally { setBusy(''); }
     };
 
