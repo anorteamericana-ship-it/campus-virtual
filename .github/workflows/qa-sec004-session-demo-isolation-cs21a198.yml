@@ -24,4 +24,4 @@ jobs:
       - name: Regress SEC004 outer guard
         run: node scripts/qa_sec004_demo_outer_guard_cs21a163.mjs
       - name: Diff hygiene against stacked base
-        run: git diff --check origin/fix/lazy-loader-safe-user-errors-cs21a197...HEAD -- ':!00_DOCUMENTACION/**'
+        run: git diff --check origin/${{ github.base_ref }}...HEAD -- ':!00_DOCUMENTACION/**'

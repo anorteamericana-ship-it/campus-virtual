@@ -2,6 +2,12 @@
 
 Objetivo: que una corrección ordinaria no obligue a redescubrir arquitectura, deployment, versión, comandos, permisos ni procedimiento de rollback.
 
+## F111 · puerta de integridad @460 → @461
+
+Referencia de código @460: tag anotado `campus_backend/prod-460` en `956bf9ae84c9df7f6378de2e56a373a9dc69d964`. Desde #36, `main` contiene archivos que **aún no están desplegados** y NO es una fotografía de PROD. Antes de cualquier preparación @461, confirmar el tag, su SHA y sus 32 archivos `prod/`. Comparar el contenido por `git show prod-460:prod/<archivo>` y `git show main:prod/<archivo>`, contra el export de PROD, con normalización LF; solo se permiten cambios en la allowlist del release. La puerta de PowerShell vive en el handoff `review/deploy_gate_461.ps1` y no realiza `clasp push` ni deploy.
+
+**F111 · síntoma → causa → prueba → reparación → prevención:** El registro @460 identificaba incorrectamente `backendMain=ef817145…` como 32/32 idéntico a PROD → el 9-oct se comparó PROD contra una carpeta candidata local, no contra la rama main → R0 #49 demostró 7 diferencias; Claude cotejó 32 hashes con export independiente → se fusionó R0 y se fijó el tag anotado `prod-460` en `956bf9ae84c9df7f6378de2e56a373a9dc69d964` → cada puerta compara contenido de `git show prod-460:prod/<archivo>` con PROD y con `git show main:prod/<archivo>`, admitiendo en main únicamente la allowlist del release.
+
 ## 0. Antes de tocar código
 
 1. Leer `AGENTS.md`.
