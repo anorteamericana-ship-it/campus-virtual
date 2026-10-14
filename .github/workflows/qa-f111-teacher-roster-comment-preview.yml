@@ -26,6 +26,7 @@ jobs:
       - name: Visual source contract F111
         run: |
           node scripts/qa_f111_teacher_roster_comment_preview.mjs
+          node scripts/qa_f111_teacher_roster_preview_render.mjs
           node scripts/qa_teacher_live_attendance_f100.mjs
       - name: Review diff and hygiene
         run: |
