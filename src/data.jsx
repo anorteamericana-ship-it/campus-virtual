@@ -866,9 +866,24 @@ async function validarSesionServidor() {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ fn: 'validarSesion', token }),
     });
-    return await res.json();
-  } catch (e) {
-    return { ok: false, error: 'Error de conexión: ' + e.message };
+    let data = null;
+    try { data = await res.json(); }
+    catch (_) {
+      // HTML / no JSON suelen indicar caida temporal del servicio o proxy.
+      return { ok:false, network_error:true, error:'respuesta_no_json' };
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { ok:false, network_error:true, error:'respuesta_no_json' };
+    }
+    // Solo una expiracion EXPLICITA del servidor autoriza invalidar la sesion.
+    if (data.error === 'sesion_expirada') return { ...data, ok:false, error:'sesion_expirada' };
+    if (!res.ok) {
+      return { ok:false, network_error:true, error:'validacion_no_disponible' };
+    }
+    return data;
+  } catch (_) {
+    // No convertir un corte de red / AbortError en sesion invalida.
+    return { ok:false, network_error:true, error:'validacion_no_disponible' };
   }
 }
 
