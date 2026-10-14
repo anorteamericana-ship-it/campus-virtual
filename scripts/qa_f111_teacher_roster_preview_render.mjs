@@ -38,6 +38,7 @@ function render({view='readable',present=true,comment='Great attitude! Every les
     tvLessonRielF97:()=> 'curso',
     tvEvalLabelF86:()=> '',
     tvSelectContactTextF104:()=>{},
+    NotaDetalleDrawerF79:()=>null,
     window:{},sessionStorage:{getItem:()=>null,setItem:()=>{}},
     requestAnimationFrame:()=>{},
     console
