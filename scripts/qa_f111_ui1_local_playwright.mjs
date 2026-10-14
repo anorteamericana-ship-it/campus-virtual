@@ -80,7 +80,7 @@ function assertContrast(fg,bg){
 }
 const serverHost='127.0.0.1';
 try {
- const page=await browser.newPage({viewport:{width:1440,height:900}});
+ const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
  await page.route('**/*',route=>{
   let host='';
   try{host=new URL(route.request().url()).hostname;}catch(_){}
@@ -122,13 +122,20 @@ try {
  const imgBase64=await page.evaluate(()=>{
   const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;
   const ctx=canvas.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,1280,720);
-  ctx.fillStyle='#C3A48A';ctx.fillRect(0,120,1280,480);
-  ctx.fillStyle='#214D83';ctx.fillRect(400,160,480,390);
+  // Contenido visual no uniforme entre bandas negras horizontales 16:9.
+  ctx.fillStyle='#CEDEE8';ctx.fillRect(0,120,1280,480);
+  ctx.fillStyle='#416A89';ctx.fillRect(200,150,880,430);
+  ctx.fillStyle='#FFE3B8';ctx.beginPath();ctx.arc(640,342,164,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#59352B';ctx.beginPath();ctx.ellipse(640,225,169,80,0,Math.PI,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#201D1C';for(const x of [582,704]){ctx.beginPath();ctx.arc(x,324,12,0,Math.PI*2);ctx.fill();}
+  ctx.strokeStyle='#8C4433';ctx.lineWidth=11;ctx.beginPath();ctx.arc(640,392,66,0,Math.PI);ctx.stroke();
+  ctx.strokeStyle='#85C9E0';ctx.lineWidth=7;
+  for(let x=210;x<1080;x+=95){ctx.beginPath();ctx.moveTo(x,150);ctx.lineTo(x+45,560);ctx.stroke();}
   return canvas.toDataURL('image/png').split(',')[1];
  });
  await input.setInputFiles({name:'synthetic_letterbox.png',mimeType:'image/png',buffer:Buffer.from(imgBase64,'base64')});
  await page.getByRole('dialog',{name:'Recortar fotografía'}).waitFor();
- await page.locator('#an-crop-zoom').fill('1.6');
+ await page.locator('#an-crop-zoom').fill('2');
  await page.locator('.an-crop-dialog canvas').focus();
  await page.keyboard.press('ArrowLeft');
  await page.getByRole('button',{name:'Aceptar recorte'}).click();
@@ -136,13 +143,29 @@ try {
  const dimension=await page.evaluate(async()=>{
   const payload=window.__lastUploaded;
   const bitmap=await createImageBitmap(await (await fetch('data:image/jpeg;base64,'+payload.archivo_base64)).blob());
-  const result=[bitmap.width,bitmap.height,payload.archivo_mime];bitmap.close();return result;
+  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=640;
+  const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0);
+  function blackFraction(y){
+    const row=ctx.getImageData(0,y,640,1).data;
+    let black=0;
+    for(let i=0;i<row.length;i+=4){if(row[i]<25&&row[i+1]<25&&row[i+2]<25)black++;}
+    return black/640;
+  }
+  const result=[bitmap.width,bitmap.height,payload.archivo_mime,blackFraction(0),blackFraction(639)];
+  bitmap.close();return result;
  });
- assert.deepEqual(dimension,[640,640,'image/jpeg'],'crop must produce 640 x 640 JPEG');checks++;
+ assert.deepEqual(dimension.slice(0,3),[640,640,'image/jpeg'],'crop must produce 640 x 640 JPEG');
+ assert(dimension[3]<.02 && dimension[4]<.02,'top/bottom rows must not have black letterbox bands: '+JSON.stringify(dimension));
+ checks+=2;
  croppedPhoto=Buffer.from(await page.evaluate(()=>window.__lastUploaded.archivo_base64),'base64');
  fs.writeFileSync(path.join(review,'qa_cropped_640.jpg'),croppedPhoto);
+ fs.writeFileSync(path.join(review,'UI1_CROP_R1.json'),JSON.stringify({width:dimension[0],height:dimension[1],mime:dimension[2],topBlackFraction:dimension[3],bottomBlackFraction:dimension[4],zoom:2,source:'synthetic 1280x720 with black bands'},null,2));
 
  const widths=[1440,768,375];
+ assert.equal(await page.locator('.academy-id-mark .academy-a__swoosh').count(),1,'one real swoosh path per card');
+ const anim=await page.locator('.academy-id-mark .academy-a__swoosh').evaluate(el=>getComputedStyle(el).animationName);
+ assert.equal(anim,'none','reduced-motion disables swoosh animation');
+ checks+=2;
  const axePath=process.env.F111_AXE_SOURCE;
  if(!axePath||!fs.existsSync(axePath))throw Error('F111_AXE_SOURCE required for UI-1');
  const axeCode=fs.readFileSync(axePath,'utf8');
@@ -165,7 +188,13 @@ try {
    await page.locator('#panel-actualizar-datos').waitFor();
    const actions=page.locator('.campus-d-actions');
    assert(await actions.isVisible(),'actions visible');
-   if(width===375)assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'student 375px must not overflow');
+   if(width===375){
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'student 375px must not overflow');
+    const mark=await page.locator('.academy-id-mark').boundingBox();
+    assert(mark && mark.height<=121,'student watermark <=120px at 375px');
+    const level=await page.locator('.academy-id-header .campus-d-welcome-chips').evaluate(el=>getComputedStyle(el).zIndex);
+    assert(Number(level)>0,'student chips above watermark in stacking order');
+   }
    const btn=page.getByRole('button',{name:'ACTUALIZAR DATOS'});
    assert(await btn.isVisible(),'edit button visible');
    await page.locator('#panel-actualizar-datos').screenshot({
@@ -236,8 +265,10 @@ try {
     const oldFetch=window.fetch;
     window.fetch=async(input,opts)=>{
       if(String(input).includes('/api')){
-        return {ok:true,status:200,text:async()=>JSON.stringify({ok:true,docente:{nombre:'Docente QA',cedula:'0001111234',activo:true,
-          titular:'Docente ficticio',especialidad:'Inglés',experiencia:''},
+        const docente={nombre:'Docente QA',cedula:'0001111234',activo:true,
+          titular:'Docente ficticio',especialidad:'Inglés',experiencia:''};
+        if(window.__teacherMissingActive)delete docente.activo;
+        return {ok:true,status:200,text:async()=>JSON.stringify({ok:true,docente,
           foto:{disponible:photo,url:'/qa/cropped-photo.jpg'},documentos:{}})};
       }
       return oldFetch(input,opts);
@@ -250,6 +281,14 @@ try {
    if(width===375)assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'teacher 375px must not overflow');
    const cam=await page.locator('.tp76-camera').boundingBox();
    assert(cam && cam.width>=44 && cam.height>=44,'teacher camera hit-area >=44x44');
+   if(width===1440){
+     const hint=await page.locator('.tp76-photo-hint').boundingBox();
+     assert(hint && cam.y+cam.height<=hint.y+1,'teacher camera cannot overlap photo hint');
+   }
+   if(width===375){
+     const mark=await page.locator('.academy-id-mark').boundingBox();
+     assert(mark && mark.height<=121,'teacher watermark <=120px at 375px');
+   }
    assert(!(await page.locator('.tp76-info-strip').textContent()).includes('0001111234'),'teacher cedula masked by default');
    await page.locator('.tp76-hero-card').screenshot({
     path:path.join(review,'teacher_'+width+'_'+(photo?'photo':'no_photo')+'.png')
@@ -258,13 +297,18 @@ try {
   }
  }
  await checkAxe('teacher');
+ const [teacherPicker]=await Promise.all([page.waitForEvent('filechooser'),page.getByRole('button',{name:'Cambiar foto'}).click()]);
+ assert(teacherPicker,'teacher camera button opens file chooser');
+ checks++;
+ await page.evaluate(()=>{window.__teacherMissingActive=true;window.__renderTeacher(false)});
+ await page.waitForTimeout(250);
+ assert.equal(await page.locator('.tp76-active').count(),0,'no status badge when teacher.activo missing');
+ checks++;
  await page.getByRole('button',{name:'Mostrar'}).click();
  assert((await page.locator('.tp76-info-strip').textContent()).includes('0001111234'),'teacher can explicitly show cedula');
  await page.getByRole('button',{name:'Ocultar'}).click();
  assert(!(await page.locator('.tp76-info-strip').textContent()).includes('0001111234'),'teacher hides cedula again');
- const [teacherPicker]=await Promise.all([page.waitForEvent('filechooser'),page.getByRole('button',{name:'Cambiar foto'}).click()]);
- assert(teacherPicker,'teacher camera button opens file chooser');
- checks+=3;
+ checks+=2;
  fs.writeFileSync(path.join(review,'UI1_AXE.json'),JSON.stringify(axeResults,null,2));
  const contrastTable=[['Azul oscuro','#001E47'],['Azul medio','#0B4A8B'],['Rojo','#9A2032']].map(([label,bg])=>({label,bg,fg:'#FFFFFF',ratio:Math.round(assertContrast('#FFFFFF',bg)*100)/100}));
  fs.writeFileSync(path.join(review,'UI1_CONTRAST.md'),'# F111 UI-1: contraste sobre gradiente\n\n| Fondo | Texto | Contraste | Requisito |\n|---|---|---|---|\n'+contrastTable.map(x=>`| ${x.label} (${x.bg}) | ${x.fg} | ${x.ratio}:1 | 4.5:1 |`).join('\n')+'\n');

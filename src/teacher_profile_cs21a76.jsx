@@ -338,9 +338,11 @@
             ),
             details:(
               <div className="tp76-name-block">
-                <div className="tp76-active">
-                  <span /> {teacher.activo === false ? 'Docente inactivo' : 'Docente activo'}
-                </div>
+                {teacher.activo !== null && teacher.activo !== undefined && (
+                  <div className="tp76-active">
+                    <span /> {teacher.activo === false ? 'Docente inactivo' : 'Docente activo'}
+                  </div>
+                )}
                 <h2>{name}</h2>
                 <p>{teacher.titular || 'Docente de Inglés Conversacional'}</p>
               </div>
