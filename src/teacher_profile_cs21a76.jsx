@@ -110,11 +110,14 @@
     };
   }
 
-  function InfoItem({ label, value }) {
+  function InfoItem({ label, value, action }) {
     return (
       <div className="tp76-info-item">
         <span>{label}</span>
-        <strong title={value || ''}>{value || 'No registrado'}</strong>
+        <div className="academy-id-info-value">
+          <strong title={value || ''}>{value || 'No registrado'}</strong>
+          {action}
+        </div>
       </div>
     );
   }
@@ -160,6 +163,8 @@
     const current = session();
     const [state, setState] = React.useState({ loading: true, error: '', data: null });
     const [busy, setBusy] = React.useState('');
+    const [cropFile, setCropFile] = React.useState(null);
+    const [showId, setShowId] = React.useState(false);
     const [notice, setNotice] = React.useState('');
     const [editing, setEditing] = React.useState(false);
     const [form, setForm] = React.useState({
@@ -209,25 +214,32 @@
       }
     };
 
-    const uploadPhoto = async event => {
+    const uploadPhoto = event => {
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
+      if (!/^image\/(jpeg|png|webp)$/.test(String(file.type || ''))) {
+        setNotice('Seleccioná una foto JPG, PNG o WebP.'); return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setNotice('La foto supera el máximo de 5 MB.'); return;
+      }
+      setCropFile(file);
+    };
+    const uploadCroppedPhoto = async prepared => {
+      setCropFile(null);
       setBusy('photo');
       setNotice('');
       try {
-        const prepared = await preparePhoto(file);
         const data = await post('uploadFotoPerfilDocenteCS21A76', {
-          archivo_base64: prepared.dataUrl,
-          archivo_mime: prepared.mime,
-        }, 120000);
+          archivo_base64:prepared.dataUrl,
+          archivo_mime:'image/jpeg',
+        },120000);
         applyData(data);
         setNotice(data.mensaje || 'Fotografía actualizada.');
-      } catch (error) {
+      } catch(error) {
         setNotice(tp76SafeUserError(error?.message || String(error), 'No se pudo actualizar la fotografía.', 'subir_foto'));
-      } finally {
-        setBusy('');
-      }
+      } finally { setBusy(''); }
     };
 
     const uploadDocument = async (event, type) => {
@@ -287,6 +299,9 @@
     return (
       <div className="tp76-page" data-screen-label={`Docente · Mi Perfil · ${VERSION}`}>
         <style>{styles}</style>
+        {cropFile && window.AcademyPhotoCrop && React.createElement(window.AcademyPhotoCrop,{
+          file:cropFile,onAccept:uploadCroppedPhoto,onCancel:()=>setCropFile(null)
+        })}
 
         <header className="tp76-heading">
           <div>
@@ -298,50 +313,48 @@
         </header>
 
         <section className="tp76-hero-card">
-          <div className="tp76-cover">
-            <div className="tp76-cover-brand">
-              <span>ACADEMIA NORTEAMERICANA</span>
-              <strong>Campus Virtual</strong>
-            </div>
-            <div className="tp76-cover-mark">AN</div>
-          </div>
-
-          <div className="tp76-identity">
-            <div className="tp76-photo-wrap">
-              <div className="tp76-photo">
-                {photo
-                  ? <img src={photo} alt={`Fotografía de ${name}`} />
-                  : <span>{initials(name)}</span>}
+          {window.AcademyIdentityHeader && React.createElement(window.AcademyIdentityHeader,{
+            kind:'teacher',
+            photo:(
+              <div className="tp76-photo-wrap">
+                <div className="tp76-photo">
+                  {photo
+                    ? <img src={photo} alt={`Fotografía de ${name}`} />
+                    : <span>{initials(name)}</span>}
+                </div>
+                <button type="button" className="tp76-camera" disabled={busy === 'photo'}
+                  onClick={() => photoRef.current?.click()}
+                  title={photo ? 'Cambiar foto' : 'Subir foto'}
+                  aria-label={photo ? 'Cambiar foto' : 'Subir foto'}>
+                  {busy === 'photo' ? <span className="an-spinner" aria-hidden="true" />
+                    : window.AcademyCameraIcon && React.createElement(window.AcademyCameraIcon)}
+                </button>
+                <span className="tp76-photo-hint" role="status">
+                  {busy === 'photo' ? 'Subiendo…' : photo ? 'Cambiar foto' : 'Subir foto'}
+                </span>
+                <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={uploadPhoto} />
               </div>
-              <button
-                type="button"
-                className="tp76-camera"
-                disabled={busy === 'photo'}
-                onClick={() => photoRef.current?.click()}
-                title="Cambiar fotografía"
-              >
-                {busy === 'photo' ? '…' : '✦'}
-              </button>
-              <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={uploadPhoto} />
-            </div>
-
-            <div className="tp76-name-block">
-              <div className="tp76-active">
-                <span /> {teacher.activo === false ? 'Docente inactivo' : 'Docente activo'}
+            ),
+            details:(
+              <div className="tp76-name-block">
+                {teacher.activo !== null && teacher.activo !== undefined && (
+                  <div className="tp76-active">
+                    <span /> {teacher.activo === false ? 'Docente inactivo' : 'Docente activo'}
+                  </div>
+                )}
+                <h2>{name}</h2>
+                <p>{teacher.titular || 'Docente de Inglés Conversacional'}</p>
               </div>
-              <h2>{name}</h2>
-              <p>{teacher.titular || 'Docente de Inglés Conversacional'}</p>
-            </div>
-
-            <button type="button" className="btn tp76-photo-button" disabled={busy === 'photo'} onClick={() => photoRef.current?.click()}>
-              {photo ? 'Cambiar foto' : 'Cargar foto'}
-            </button>
-          </div>
+            )
+          })}
 
           <div className="tp76-info-strip">
             <InfoItem label="Correo" value={teacher.correo} />
             <InfoItem label="Teléfono" value={teacher.telefono} />
-            <InfoItem label="Cédula" value={teacher.cedula} />
+            <InfoItem label="Cédula"
+              value={showId ? teacher.cedula : window.AcademyMaskCedula?.(teacher.cedula)}
+              action={teacher.cedula && <button type="button" className="academy-id-toggle"
+                aria-pressed={showId} onClick={()=>setShowId(v=>!v)}>{showId ? 'Ocultar' : 'Mostrar'}</button>} />
             <InfoItem label="Usuario" value={teacher.usuario || current.usuario} />
           </div>
         </section>
@@ -436,10 +449,10 @@
   const styles = `
     .tp76-page{width:100%;max-width:1440px;margin:0 auto;padding:4px 2px 32px;box-sizing:border-box}
     .tp76-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:0 0 18px}
-    .tp76-kicker{font-size:11px;font-weight:950;letter-spacing:.18em;color:var(--an-red,#DA291C)}
+    .tp76-kicker{font-size:11px;font-weight:950;letter-spacing:.18em;color:#8A1827}
     .tp76-heading h1{font-family:var(--f-serif,Georgia,serif);font-size:42px;font-weight:500;line-height:1;margin:7px 0 6px;color:var(--an-navy-ink,#001E47)}
     .tp76-heading h1 em{font-weight:400}
-    .tp76-heading p{margin:0;color:var(--ink-3,#6f6a63);font-size:13px}
+    .tp76-heading p{margin:0;color:#344054;font-size:13px}
     .tp76-version{padding:7px 11px;border-radius:999px;background:#EEF3FA;color:#173D70;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
     .tp76-hero-card{overflow:hidden;border:1px solid var(--line,#e4ddd3);border-radius:22px;background:#fff;box-shadow:0 18px 48px rgba(0,30,71,.10)}
     .tp76-cover{height:190px;position:relative;overflow:hidden;background:radial-gradient(circle at 77% 20%,rgba(255,255,255,.18) 0 8%,transparent 9%),radial-gradient(circle at 15% 80%,rgba(218,41,28,.22) 0 18%,transparent 19%),linear-gradient(118deg,#001E47 0%,#0B4A8B 52%,#B21E2B 100%)}
@@ -474,7 +487,7 @@
     .tp76-panel-head h3{margin:4px 0 0;color:#001E47;font-family:var(--f-serif,Georgia,serif);font-size:25px;font-weight:600}
     .tp76-lock{font-size:10px;font-weight:850;color:#5E6B7A;background:#F1F4F8;border-radius:999px;padding:6px 9px}
     .tp76-professional p{font-family:var(--f-serif,Georgia,serif);font-size:17px;line-height:1.65;color:#2B3542;margin:0}
-    .tp76-professional p.is-empty{color:#857E75;font-style:italic}
+    .tp76-professional p.is-empty{color:#59534C;font-style:italic}
     .tp76-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
     .tp76-tags span{padding:7px 10px;border-radius:999px;background:#F4F0EA;border:1px solid #E5DACE;color:#5A463B;font-size:10.5px;font-weight:850}
     .tp76-form{display:flex;flex-direction:column;gap:13px}

@@ -180,7 +180,7 @@
 }
 .app:has(.student-sb) .student-section-header::after,
 .app:has(.student-sb) .student-page > .page-header::after {
-  content: "A";
+  content: none;
   position: absolute;
   right: 24px;
   top: 50%;
