@@ -5,7 +5,7 @@ const SCRIPT_URL_LOGIN = window.APPS_SCRIPT_URL || 'https://script.google.com/ma
 try { window.APPS_SCRIPT_URL = window.APPS_SCRIPT_URL || SCRIPT_URL_LOGIN; } catch (_) {}
 
 const ERR_MSG = {
-  credenciales_invalidas: 'Cédula o contraseña incorrectos',
+  credenciales_invalidas: 'Cédula o contraseña incorrectos. Si fallaste varias veces, esperá 15 minutos o usá Recuperar contraseña.',
   usuario_inactivo: 'Tu cuenta está desactivada. Contactá a la academia.',
 };
 
@@ -288,7 +288,7 @@ function App() {
       else if (data.error === 'backend_html') setErr('El Campus recibió HTML en vez de respuesta del servidor. Recargá con Ctrl+F5.');
       else if (data.error === 'json_invalido') setErr('Respuesta inválida del servidor. Recargá e intentá de nuevo.');
       else if (data.error === 'conexion') setErr('No se pudo conectar. Revisá la conexión e intentá de nuevo.');
-      else setErr(ERR_MSG[data.error] || 'Cédula o contraseña incorrectos');
+      else setErr(ERR_MSG[data.error] || ERR_MSG.credenciales_invalidas);
       return;
     }
 
