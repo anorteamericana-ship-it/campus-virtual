@@ -1,5 +1,14 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 R0 · referencia inmutable de código @460 (13-oct-2026)
+
+**Código desplegado @460:** tag anotado de `campus_backend` **`prod-460`**, commit **`956bf9ae84c9df7f6378de2e56a373a9dc69d964`**. El tag se generó tras el merge R0 #49 y su contenido `prod/` coincide **32/32 SHA-256 normalizado LF**, sin archivos faltantes ni adicionales, con el export independiente de PROD. El despliegue estable de Apps Script sigue en **@460**; no hubo `clasp push` ni deploy.
+
+**Desarrollo ≠ producción:** desde el merge #36 (`f2712c6c55b5a7fdcea570cd8ed30029aa59a15c`), **`campus_backend/main` contiene cambios que NO están desplegados**. Otros merges hacia @461 ampliarán esta diferencia. Nunca llamar a `main` el código exacto de @460; su referencia es `prod-460`.
+
+**F111 · síntoma → causa → prueba → reparación → prevención:** El registro @460 identificaba incorrectamente `backendMain=ef817145…` como 32/32 idéntico a PROD → el 9-oct se comparó PROD contra una carpeta candidata local, no contra la rama main → R0 #49 demostró 7 diferencias; Claude cotejó 32 hashes con export independiente → se fusionó R0 y se fijó el tag anotado `prod-460` en `956bf9ae84c9df7f6378de2e56a373a9dc69d964` → cada puerta compara contenido de `git show prod-460:prod/<archivo>` con PROD y con `git show main:prod/<archivo>`, admitiendo en main únicamente la allowlist del release.
+
+
 Última verificación operativa de frontend F105: **2026-10-09 ~21:10 -06:00**. Las secciones históricas del corte CONAPE V1 @436 permanecen como evidencia de esa fecha.
 
 ## Estado actual · F105 perfil estudiantil y saldo visual (2026-10-09)
