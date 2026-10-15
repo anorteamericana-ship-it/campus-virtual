@@ -1,0 +1,30 @@
+// F111 @463: contrato visual de activación, SIN tocar backend ni estudiantes reales.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+const babel=require('../vendor/babel.js');
+const login=fs.readFileSync('src/login.jsx','utf8');
+const recovery=fs.readFileSync('src/recovery.jsx','utf8');
+const loginHtml=fs.readFileSync('login.html','utf8');
+const recoveryHtml=fs.readFileSync('recovery.html','utf8');
+for(const name of ['src/login.jsx','src/recovery.jsx']){
+  babel.transform(fs.readFileSync(name,'utf8'),{presets:['react'],plugins:['transform-block-scoping']});
+}
+assert(login.includes('cuenta_no_activada'),'El login debe detectar la cuenta no activada');
+assert(login.includes('Activar cuenta'),'Debe ofrecer activación explícita sin pedir código de estudiante');
+assert(login.includes('encodeURIComponent(usuarioLimpio')||login.includes('encodeURIComponent(String(usuario'),
+  'La activación debe prefijar cédula en URL (sin contraseña)');
+assert(login.includes('Cédula') && login.includes('Contraseña'),'Los dos campos de ingreso son cédula/usuario y contraseña');
+assert(login.includes("fn: 'iniciarSesion'"),'No cambiar el endpoint de login');
+assert(!login.includes('Te enviamos un código'),'No afirmar envío antes de solicitud');
+assert(recovery.includes('solicitarRecuperacionAccesoUniversal'),'La activación usa PWREC2 universal');
+assert(recovery.includes('restablecerAccesoUniversal'),'El cambio de clave usa PWREC2 universal');
+assert(!recovery.includes("fn:'restablecerContrasena'"),'No usar el camino PWREC1 que escribía texto plano');
+assert(!recovery.includes("fn:'solicitarRecuperacionContrasena'"),'No usar PWREC1');
+assert(recovery.includes("URLSearchParams") && recovery.includes("get('cedula')"),'Prefill de cédula sin usuario ni contraseña');
+assert(recovery.includes('Si la cuenta tiene un correo registrado')||recovery.includes('Si existe una cuenta activa'),
+  'Respuesta genérica, sin enumeración de cuentas');
+assert(loginHtml.includes('src/login.jsx?v=F111LOGINUNICO20261015'),'Bust de caché login');
+assert(recoveryHtml.includes('src/recovery.jsx?v=F111LOGINUNICO20261015'),'Bust de caché recovery');
+console.log('F111_LOGIN_UNICO_UI_E1_PASS: cédula + contraseña, activación PWREC2, privacidad, prefill, cache');
