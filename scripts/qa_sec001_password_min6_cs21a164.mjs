@@ -1,24 +1,21 @@
+// SEC001 CS21A164 rebasado a la regla firmada F111 @463: inscripción SIN clave.
+// La longitud mínima sigue validándose al ACTIVAR por PWREC2, no en el formulario.
 import fs from 'node:fs';
-
-const path = 'src/inscripcion.jsx';
-const s = fs.readFileSync(path, 'utf8');
-const failures = [];
-const check = (name, ok, detail='') => {
-  if (ok) console.log(`PASS ${name}`);
-  else { failures.push(name); console.error(`FAIL ${name}${detail ? ` · ${detail}` : ''}`); }
+const source=fs.readFileSync('src/inscripcion.jsx','utf8');
+const recovery=fs.readFileSync('src/recovery.jsx','utf8');
+const problems=[];
+const check=(name,condition)=>{
+  if(condition)console.log('PASS '+name);
+  else{problems.push(name);console.error('FAIL '+name);}
 };
-
-check('DatosStep enforces minimum 6', s.includes("clean(form.clave).length < 6) missing.push('clave mínima de 6 caracteres')"));
-check('input exposes minLength 6', s.includes('minLength={6}'));
-check('input caps password length at 128', s.includes('maxLength={128}'));
-check('submit validator independently enforces 6', s.includes("if(clean(form.clave).length < 6) return 'La clave debe tener al menos 6 caracteres.';"));
-check('legacy 4-character copy removed', !s.includes('clave mínima de 4 caracteres'));
-check('legacy 4-character validator removed', !s.includes('clean(form.clave).length < 4'));
-check('field remains password type', /TextInput type="password"[^>]*value=\{form\.clave\}/.test(s));
-check('new password autocomplete remains', s.includes('autoComplete="new-password"'));
-
-if (failures.length) {
-  console.error(`SEC001 PASSWORD MIN6 CS21A164: FAIL (${failures.length})`);
-  process.exit(1);
-}
-console.log('SEC001 PASSWORD MIN6 CS21A164: PASS');
+check('enrollment does not ask for password',!source.includes('Crea tu contraseña para ingresar al Campus virtual'));
+check('enrollment does not require 6-character key',!source.includes("missing.push('clave mínima de 6 caracteres')"));
+check('enrollment does not render a password field',!/TextInput type="password"[^>]*value=\{form\.clave\}/.test(source));
+check('submit deletes stale password fields',source.includes('delete payload.clave;')&&source.includes('delete payload.claveConf;'));
+check('no password selection claim in success ticket',!source.includes('La que acabás de elegir'));
+check('universal recovery endpoint',recovery.includes("fn:'restablecerAccesoUniversal'"));
+check('activation enforces >=8 characters',recovery.includes('if (clave.length < 8)'));
+check('activation requires matching confirmation',recovery.includes('clave !== confirmar'));
+check('activation input uses new-password autocomplete',recovery.includes('autoComplete="new-password"'));
+if(problems.length){console.error('SEC001 F111 @463 PASSWORD CUT: FAIL ('+problems.length+')');process.exit(1);}
+console.log('SEC001 F111 @463 PASSWORD CUT: PASS');
