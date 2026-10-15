@@ -7,6 +7,8 @@ on:
       - 'src/login.jsx'
       - 'src/recovery.jsx'
       - 'login.html'
+      - 'inscripcion.html'
+      - 'src/inscripcion.jsx'
       - 'recovery.html'
       - 'scripts/qa_f111_login_unico_ui.mjs'
       - '.github/workflows/qa-f111-login-unico-ui.yml'
