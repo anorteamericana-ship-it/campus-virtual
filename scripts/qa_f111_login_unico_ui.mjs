@@ -27,4 +27,18 @@ assert(recovery.includes('Si la cuenta tiene un correo registrado')||recovery.in
   'Respuesta genérica, sin enumeración de cuentas');
 assert(loginHtml.includes('src/login.jsx?v=F111LOGINUNICO20261015'),'Bust de caché login');
 assert(recoveryHtml.includes('src/recovery.jsx?v=F111LOGINUNICO20261015'),'Bust de caché recovery');
+const enrollment=fs.readFileSync('src/inscripcion.jsx','utf8');
+const enrollmentHtml=fs.readFileSync('inscripcion.html','utf8');
+assert(!enrollment.includes('Crea tu contraseña para ingresar al Campus virtual'),
+  'La inscripción no puede pedir una contraseña antes de autenticar el correo');
+assert(!enrollment.includes("CLAVE: String(body.clave"),
+  'No reenviar contraseñas mediante el formulario');
+assert(!enrollment.includes("missing.push('clave mínima de 6 caracteres')"),
+  'El avance de matrícula no debe exigir contraseña');
+assert(!enrollment.includes("La que acabás de elegir"),
+  'El comprobante no debe afirmar que el estudiante ya tiene una clave');
+assert(enrollment.includes('delete payload.clave'),
+  'El request de inscripción debe eliminar cualquier contraseña arrastrada por datos previos');
+assert(enrollmentHtml.includes('src/inscripcion.jsx?v=F111LOGINUNICO20261015'),
+  'Invalidar cache del formulario sin contraseña');
 console.log('F111_LOGIN_UNICO_UI_E1_PASS: cédula + contraseña, activación PWREC2, privacidad, prefill, cache');
