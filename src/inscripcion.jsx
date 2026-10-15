@@ -1346,7 +1346,7 @@ function SuccessTicket({result,form,selectedGroup}){
         <SummaryRow label="Opción de pago" value={paymentLabel(form.financiamiento)}/>
       </div>
       <div className="ins-success-actions">
-        <a className="ins-btn primary" href="campus.html">Entrar al portal</a>
+        <a className="ins-btn primary" href="index.html">Volver al inicio</a>
         <button type="button" className="ins-btn ghost" onClick={()=>window.print()}>Guardar comprobante</button>
       </div>
     </div>
