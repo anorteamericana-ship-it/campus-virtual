@@ -52,7 +52,10 @@ const EyeIcon = ({ off }) => (
 
 function RecoveryApp() {
   const [step, setStep] = React.useState('request');
-  const [identificador, setIdentificador] = React.useState('');
+  const [identificador, setIdentificador] = React.useState(() => {
+    try { return String(new URLSearchParams(window.location.search).get('cedula') || '').trim().slice(0,64); }
+    catch (_) { return ''; }
+  });
   const [codigo, setCodigo] = React.useState('');
   const [clave, setClave] = React.useState('');
   const [confirmar, setConfirmar] = React.useState('');
@@ -66,7 +69,7 @@ function RecoveryApp() {
     const c = String(identificador || '').trim();
     if (!c) { setError('Ingresá tu cédula o usuario.'); return; }
     setBusy(true); setError(''); setInfo('');
-    const data = await recoveryPost({ fn:'solicitarRecuperacionContrasena', usuario:c });
+    const data = await recoveryPost({ fn:'solicitarRecuperacionAccesoUniversal', usuario:c });
     setBusy(false);
     if (!data.ok) {
       if (data.error === 'demasiadas_solicitudes') {
@@ -78,7 +81,7 @@ function RecoveryApp() {
       return;
     }
     setIdentificador(c);
-    setInfo(data.mensaje || 'Si existe una cuenta activa con correo registrado, enviamos un código.');
+    setInfo(data.mensaje || 'Si existe una cuenta activa con correo registrado, intentaremos enviar un código.');
     setStep('reset');
   };
 
@@ -89,7 +92,7 @@ function RecoveryApp() {
     if (clave !== confirmar) { setError('Las contraseñas no coinciden.'); return; }
     setBusy(true);
     const data = await recoveryPost({
-      fn:'restablecerContrasena',
+      fn:'restablecerAccesoUniversal',
       usuario:String(identificador || '').trim(),
       codigo,
       nueva_clave:clave,
@@ -121,7 +124,7 @@ function RecoveryApp() {
               Recuperar <em>acceso</em>
             </h2>
             <p style={{ margin:'0 0 22px', fontSize:13, color:'#6B7280', lineHeight:1.55 }}>
-              Ingresá tu cédula o usuario. Si tenés una cuenta activa, enviaremos un código de recuperación al correo registrado.
+              Ingresá tu cédula o usuario. Si la cuenta tiene un correo registrado, podés solicitar un código para crear o recuperar tu contraseña.
             </p>
             <label style={{ fontSize:12, fontWeight:600, display:'block' }}>Cédula o usuario</label>
             <input type="text" autoComplete="username" value={identificador}
@@ -138,7 +141,7 @@ function RecoveryApp() {
               Revisá tu <em>correo</em>
             </h2>
             <p style={{ margin:'0 0 18px', fontSize:13, color:'#6B7280', lineHeight:1.55 }}>
-              El código tiene 6 dígitos, vence en 10 minutos y solo puede utilizarse una vez.
+              Si existe una cuenta activa con correo registrado, recibirá un código de 6 dígitos válido durante 10 minutos. Si no llega, contactá a la Academia.
             </p>
             {info && <div style={{ fontSize:12, lineHeight:1.5, padding:'11px 12px', borderRadius:9,
               background:'#F6F4EF', marginBottom:16 }}>{info}</div>}

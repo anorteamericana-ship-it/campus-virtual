@@ -8,10 +8,12 @@ const loginJs = read('src/login.jsx');
 const failures = [];
 const check = (ok, msg) => ok ? console.log(`PASS: ${msg}`) : failures.push(msg);
 
-// CS21A164: visible password policy alignment, still explicitly frontend-only.
-check((inscripcion.match(/form\.clave\)\.length < 6/g) || []).length >= 2, 'inscripción aplica mínimo 6 en paso y submit final');
-check(inscripcion.includes('minLength={6}'), 'input password declara minLength 6');
-check(inscripcion.includes('maxLength={128}'), 'input password limita longitud visible a 128');
+// CS21A164 superseded by F111 @463: no password is ever created in public enrollment.
+const recovery=read('src/recovery.jsx');
+check(!inscripcion.includes('Crea tu contraseña para ingresar al Campus virtual'), 'inscripción no solicita contraseña');
+check(!inscripcion.includes("missing.push('clave mínima de 6 caracteres')"), 'inscripción no valida claves de login');
+check(inscripcion.includes('delete payload.clave;'), 'payload público descarta cualquier clave de versiones anteriores');
+check(recovery.includes('if (clave.length < 8)'), 'clave propia exige 8 caracteres al activar mediante PWREC2');
 check(!inscripcion.includes('clave mínima de 4 caracteres'), 'no queda copy legacy de 4 caracteres');
 
 // CS21A165: provider-neutral adapter must remain inert and unloaded.

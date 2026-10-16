@@ -7,6 +7,7 @@ try { window.APPS_SCRIPT_URL = window.APPS_SCRIPT_URL || SCRIPT_URL_LOGIN; } cat
 const ERR_MSG = {
   credenciales_invalidas: 'Cédula o contraseña incorrectos. Si fallaste varias veces, esperá 15 minutos o usá Recuperar contraseña.',
   usuario_inactivo: 'Tu cuenta está desactivada. Contactá a la academia.',
+  cuenta_no_activada: 'Tu cuenta todavía no está activada. Tocá Activar cuenta para solicitar un código a tu correo registrado y crear tu contraseña.',
 };
 
 
@@ -205,6 +206,7 @@ function App() {
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const [activationNeeded, setActivationNeeded] = useState(false);
   const [pendingMulti, setPendingMulti] = useState(null);
   const [account, setAccount] = useState(null);
   const [shaking, setShaking] = useState(false);
@@ -259,6 +261,7 @@ function App() {
     event.preventDefault();
     if (loading) return;
     setErr('');
+    setActivationNeeded(false);
     const usuarioLimpio = String(usuario || '').trim().toLowerCase();
     if (!usuarioLimpio || !pass) {
       setErr('Completá ambos campos para continuar.');
@@ -288,7 +291,10 @@ function App() {
       else if (data.error === 'backend_html') setErr('El Campus recibió HTML en vez de respuesta del servidor. Recargá con Ctrl+F5.');
       else if (data.error === 'json_invalido') setErr('Respuesta inválida del servidor. Recargá e intentá de nuevo.');
       else if (data.error === 'conexion') setErr('No se pudo conectar. Revisá la conexión e intentá de nuevo.');
-      else setErr(ERR_MSG[data.error] || ERR_MSG.credenciales_invalidas);
+      else {
+        if (data.error === 'cuenta_no_activada') setActivationNeeded(true);
+        setErr(ERR_MSG[data.error] || ERR_MSG.credenciales_invalidas);
+      }
       return;
     }
 
@@ -361,10 +367,10 @@ function App() {
 
             <form onSubmit={submit} noValidate>
               <div className="field">
-                <label htmlFor="usuario">Cédula / Usuario</label>
+                <label htmlFor="usuario">Cédula o usuario</label>
                 <div className="ctrl">
                   <input id="usuario" type="text" autoComplete="off" placeholder="Ej: 1-2345-6789"
-                         value={usuario} disabled={busy} onChange={event => { setUsuario(event.target.value); setErr(''); }} autoFocus />
+                         value={usuario} disabled={busy} onChange={event => { setUsuario(event.target.value); setErr(''); setActivationNeeded(false); }} autoFocus />
                 </div>
               </div>
 
@@ -401,6 +407,11 @@ function App() {
               </div>
             </form>
 
+            {activationNeeded && <div className="forgot">
+              <a aria-label="Activar cuenta con cédula registrada" href={'recovery.html?cedula=' + encodeURIComponent(String(usuario || '').trim().toLowerCase())}>
+                Activar cuenta
+              </a>
+            </div>}
             <div className="forgot"><a href="recovery.html">¿Olvidaste tu contraseña?</a></div>
           </div>
         </section>

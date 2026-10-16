@@ -1,0 +1,41 @@
+name: F111 @463 Login único UI E1
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/login.jsx'
+      - 'src/recovery.jsx'
+      - 'login.html'
+      - 'inscripcion.html'
+      - 'src/inscripcion.jsx'
+      - 'recovery.html'
+      - 'scripts/qa_f111_login_unico_ui.mjs'
+      - '.github/workflows/qa-f111-login-unico-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  login-unico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: F111 @463 frontend contract
+        run: |
+          node scripts/qa_f111_login_unico_ui.mjs
+      - name: Diff for Claude
+        run: |
+          git diff --check origin/main...HEAD
+          git diff --binary origin/main...HEAD --output=F111_463_FRONTEND_REVIEW.diff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: F111_463_FRONTEND_DIFF
+          path: F111_463_FRONTEND_REVIEW.diff
