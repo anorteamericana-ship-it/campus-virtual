@@ -24,4 +24,7 @@ for(const path of protectedPaths){
  const old=execFileSync('git',['show',base+':'+path],{encoding:'utf8',maxBuffer:30*1024*1024});
  assert.equal(fs.readFileSync(path,'utf8'),old,'Motor o navegación alterados: '+path);
 }
+const mainHtml=fs.readFileSync('campus.html','utf8');
+const mainBaseline=execFileSync('git',['show',base+':campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
+assert.equal(mainHtml,mainBaseline.replace('src/app.jsx?v=F108GRADES20261010','src/app.jsx?v=F111D1CENTROUNICO20261017'),'Solo se permite invalidar caché del app real');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
