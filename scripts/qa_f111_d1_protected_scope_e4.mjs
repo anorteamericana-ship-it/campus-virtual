@@ -16,7 +16,13 @@ const endLabel='// Registro de exámenes con contenido real/oficial (lookup por 
 const endOld=before.indexOf(endLabel),endNew=after.indexOf(endLabel);
 assert(beginOld>0&&beginNew>0&&endOld>beginOld&&endNew>beginNew,'Data bank replacement boundaries');
 assert.equal(after.slice(0,beginNew),before.slice(0,beginOld),'Data metadata prefix mutated');
-assert.equal(after.slice(endNew),before.slice(endOld),'Registry, weights or demos mutated');
+// E3 · retirar todas las respuestas de los 16 fixtures históricos públicos sin cambiar sus metadatos.
+const originalTail=before.slice(endOld);
+const fixtureRe=/respuestas:\s*\{[\s\S]*?\n  \}(?=,?\s*\n\};)/g;
+const fixtureMatches=[...originalTail.matchAll(fixtureRe)];
+assert.equal(fixtureMatches.length,16,'Fixtures públicos esperados: 16');
+const safeTail=originalTail.replace(fixtureRe,'respuestas: {}');
+assert.equal(after.slice(endNew),safeTail,'Registry o metadatos de demos cambiados fuera de E3');
 const evalData=s=>{
  const sandbox={window:{}};vm.runInNewContext(s,sandbox,{timeout:6000});return sandbox.window.EXAMS;
 };
