@@ -20,7 +20,9 @@ assert.match(modes,/0 % de nota oficial/);
 assert.match(modes,/getExam\(selected\.nivel,/);
 assert.match(modes,/String\(session\.rol \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'superadmin'/);
 assert.match(app,/previewKey, setPreviewKey\] = React\.useState\(false\)/);
-assert.match(app,/setPreviewKey\(!!showKey\)/);
+assert.match(app,/examGetPrivatePreviewF111/);
+assert.match(app,/f111ExamPublicContractSafe/);
+assert.match(app,/Practicar este examen \(sin guardar\)/);
 assert.doesNotMatch(app,/Premium.*Compacto.*Hoja/);
 assert.match(css,/max-width:500px/);
 assert.match(css,/\.d1-B1\{background:#E5A823;color:#392900\}/);
@@ -76,8 +78,12 @@ try{
       await frame.getByRole('button',{name:'Ver como estudiante'}).click();
       await frame.getByRole('button',{name:'Mostrar respuestas (personal autorizado)'}).waitFor({timeout:20000});
       assert.equal(await frame.locator('.d1-cbar-warning').count(),0,'clave oculta por defecto');
+      await frame.getByRole('button',{name:'Practicar este examen (sin guardar)'}).click();
+      await frame.locator('.ex-shell.mode-student').waitFor({timeout:10000});
+      await frame.getByRole('button',{name:'Salir de práctica'}).click();
       await frame.getByRole('button',{name:'Mostrar respuestas (personal autorizado)'}).click();
-      assert.equal(await frame.locator('.d1-cbar-warning').count(),1,'aviso de claves');
+      await frame.locator('.d1-cbar-warning[role="status"]').waitFor({timeout:12000});
+      assert.equal(await frame.locator('.ex-shell.show-key').count(),0,'sin autorización backend nunca se exponen claves');
       await frame.getByRole('button',{name:'← Catálogo'}).click();
     }
     assert.equal(errors.length,0,'JavaScript errors: '+errors.join('; '));
@@ -90,7 +96,7 @@ try{
   assert.equal(await normalFrame.locator('.d1-master').count(),0,'admin conserva vista historica');
   assert.equal(await normalFrame.getByRole('button',{name:/Diagnóstico técnico/}).count(),0,'diagnóstico solo superadmin');
   await normal.close();
-  console.log('PR-D1 PLAYWRIGHT PASS: 1280/390, superadmin nuevo, admin legacy, estudiante/docente intactos, preview sin clave');
+  console.log('PR-D1 PLAYWRIGHT PASS: 1280/390, superadmin nuevo, admin legacy, estudiante/docente intactos, practice sin notas y claves bloqueadas sin backend');
   console.log('Capturas: qa-capturas/pr-d1-1280-centro.png, qa-capturas/pr-d1-390-centro.png');
 }finally{
   await browser.close();
