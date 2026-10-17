@@ -1,58 +1,69 @@
-// F111 PR-D1 E4: strict allowlist based on pinned immutable main source.
+// F111 PR-D2 E2 · Strict change scope against deployed Campus 9a63461.
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
-const BASE='de49c25fa3de9f6a606a3d8d48832ebc296971cc';
+import vm from 'node:vm';
+import {execFileSync} from 'node:child_process';
+const BASE='9a63461feb6622a73d6ef5b90a1dc5900a93f8ad';
 const read=n=>fs.readFileSync('src/'+n,'utf8');
-const golden=n=>execFileSync('git',['show',BASE+':src/'+n],{encoding:'utf8',maxBuffer:25*1024*1024});
-const sha=s=>execFileSync('git',['hash-object','--stdin'],{input:s,encoding:'utf8'}).trim();
-const hash={
- 'examenes_modes.jsx':'1514d8e4e28b983c2c662d45fa509270dbf373f7',
- 'examenes_app.jsx':'33a2b36a391ead8d04291eeb713b839e37e21d73',
- 'examenes_appcss.jsx':'4f29e3c5b5290d6d97c54e95f48122b09d560452'
+const previous=n=>execFileSync('git',['show',BASE+':src/'+n],{encoding:'utf8',maxBuffer:32*1024*1024});
+const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx','examenes_render.jsx','examenes_modes.jsx'];
+for(const n of protectedFiles)assert.equal(read(n),previous(n),'Protected exam renderer, motor student, style or administration changed: '+n);
+const before=previous('examenes_data.jsx'),after=read('examenes_data.jsx');
+const markOld='// CONTENIDO REAL — I2_WRITTEN_L18_TEST1_A';
+const beginOld=before.lastIndexOf('// ──',before.indexOf(markOld));
+const beginNew=after.indexOf('// F111 EX-04 E2 · Proyección pública');
+const endLabel='// Registro de exámenes con contenido real/oficial (lookup por id).';
+const endOld=before.indexOf(endLabel),endNew=after.indexOf(endLabel);
+assert(beginOld>0&&beginNew>0&&endOld>beginOld&&endNew>beginNew,'Data bank replacement boundaries');
+assert.equal(after.slice(0,beginNew),before.slice(0,beginOld),'Data metadata prefix mutated');
+assert.equal(after.slice(endNew),before.slice(endOld),'Registry, weights or demos mutated');
+const evalData=s=>{
+ const sandbox={window:{}};vm.runInNewContext(s,sandbox,{timeout:6000});return sandbox.window.EXAMS;
 };
-for(const [n,h] of Object.entries(hash))assert.equal(sha(golden(n)),h,'Pinned baseline mismatch '+n);
-for(const n of ['examenes_css.jsx','examenes_data.jsx','examenes_render.jsx'])
- assert.equal(read(n),golden(n),'Protected engine or bank mutated: '+n);
-const modes=read('examenes_modes.jsx'),prior=golden('examenes_modes.jsx');
-const mStart=modes.indexOf('const F111_PC_SCHEDULE_D1'),mEnd=modes.indexOf('function MetaModal(',mStart);
-const pStart=prior.indexOf('function AdminMode('),pEnd=prior.indexOf('function MetaModal(',pStart);
-assert(mStart>1000&&mEnd>mStart&&pStart>1000&&pEnd>pStart);
-assert.equal(modes.slice(0,mStart).trimEnd(),prior.slice(0,pStart).trimEnd(),'Teacher, backend admin operations or safe helpers changed');
-const metaOld='Nivel detectado en archivo: "Test A · Interchange 3" (título del documento)';
-const metaNew='Libro correspondiente al nivel: {e.libro} (el libro validado manda sobre el título de origen)';
-assert.equal(modes.slice(mEnd).replace(metaNew,metaOld),prior.slice(pEnd),'Protected MetaModal tail changed');
-assert.equal((modes.match(/function AdminMode\(/g)||[]).length,1,'AdminMode duplicated');
-for(const check of ['<ActivationBackendPanel onPreview={onPreview} />','<BackendOperationsPanel />','<BackendContractSpecPanel />','function F111UpcomingActivationsD1('])
- assert(modes.includes(check),'Admin contract disappeared: '+check);
-const adminOnly=modes.slice(mStart,mEnd);
-assert(!/\bexam(?:CloseReview|PushReviewToNotas|SubmitAttempt|SaveAttemptDraft)\b/.test(adminOnly),'Unauthorized grade or student write from admin catalog');
-
-let expected=golden('examenes_app.jsx');
-const change=(old,next,description)=>{
- assert.equal(expected.split(old).length-1,1,'Unique baseline anchor: '+description);
- expected=expected.replace(old,next);
-};
-change('const [previewKey, setPreviewKey] = React.useState(true);','const [previewKey, setPreviewKey] = React.useState(false);','key hidden');
-change("const [plan, setPlan] = React.useState('ambos'); // ambos | con_ina | sin_ina","const [plan, setPlan] = React.useState('con_ina'); // valor de preview; la ponderación real la define el servidor",'preview plan');
-change("const goPreview = (entry) => {\n    if (!canEnter('preview')) return;\n    setPreviewExam(entry);\n    setViewRaw('preview');\n  };","const goPreview = (entry, showKey = false) => {\n    if (!canEnter('preview')) return;\n    setPreviewKey(!!showKey);\n    setPreviewExam(entry);\n    setViewRaw('preview');\n  };",'preview route');
-const app=read('examenes_app.jsx');
-const start='function ControlBar(',end='// Preview/admin:';
-const a=app.indexOf(start),b=app.indexOf(end,a),c=expected.indexOf(start),d=expected.indexOf(end,c);
-assert(a>0&&b>a&&c>0&&d>c);
-assert.equal(app.slice(0,a),expected.slice(0,c),'Protected auth, student runtime or app config changed');
-assert.equal(app.slice(b),expected.slice(d),'Protected preview, React mount or app changed');
-assert.match(app.slice(a,b),/Mostrar respuestas \(personal autorizado\)/);
-
-const css=read('examenes_appcss.jsx'),cssOld=golden('examenes_appcss.jsx');
-const first='*{ box-sizing:border-box; }';
-const delimiter='\n'+String.fromCharCode(96)+';\n(function(){';
-const oldStyles=cssOld.slice(cssOld.indexOf(first),cssOld.indexOf(delimiter));
-assert(css.includes(oldStyles),'Original shared/student/teacher stylesheet changed');
-assert(css.includes('F111 PR-D1 E4')&&css.includes('F111 PR-D1 · Propuesta C'),'D1 scoped CSS missing');
+const oldBank=evalData(before),newBank=evalData(after);
+assert.equal(Object.keys(oldBank).length,16);
+assert.deepEqual(Object.keys(newBank).sort(),Object.keys(oldBank).sort(),'16 IDs correctos, sin cambios de formulario');
+const sensitive=new Set(['correct','accepted','answer','answers','answerkey','answerkeys','answerskey','audioscript','audioscripts','transcript','script','solution','solutions','markscheme','key','teacherkey','privatekey','rubricprivate','gradingkey','correctanswer','correctanswers','acceptedanswers','correctoption','correctchoice','answerkeyfuente','audioscriptfuente','fuenteoriginal','atribucion','teachernotes','note']);
+function scanNoKey(node,p='root'){
+ if(!node||typeof node!=='object')return;
+ for(const [key,value] of Object.entries(node)){
+  const canon=key.toLowerCase().replace(/[\s_-]/g,'');
+  assert(!sensitive.has(canon),'EX-04 contenido confidencial en payload público, propiedad '+p+'.'+key);
+  scanNoKey(value,p+'.'+key);
+ }
+}
+const shape=x=>x.sections.map(sec=>({letter:sec.letter,type:sec.type,points:sec.points,ids:(sec.questions||[]).map(q=>q.id)}));
+for(const id of Object.keys(oldBank)){
+ assert.equal(newBank[id].id,id,'ID público '+id);
+ assert.deepEqual(JSON.parse(JSON.stringify(shape(newBank[id]))),JSON.parse(JSON.stringify(shape(oldBank[id]))),'Estructura de preguntas modificada '+id);
+ scanNoKey(newBank[id],id);
+}
+assert(!/\b(correct|accepted|audioScript)\s*:/.test(after.slice(beginNew,endNew)),'Marcas privadas en archivo distribuido');
+const app=read('examenes_app.jsx'),old=previous('examenes_app.jsx');
+const helperStart=app.indexOf('// F111 PR-D2 E1 · contrato estricto'),helperEnd=app.indexOf('function StudentLiveExamApp()',helperStart);
+const addedGuard=app.indexOf('  if (!f111ExamPublicContractSafe(publicExam, activation))'),startStudentMode=app.indexOf('  return <StudentMode\n',addedGuard);
+assert(helperStart>0&&helperEnd>helperStart&&addedGuard>helperEnd&&startStudentMode>addedGuard,'Student guard anchored before runtime');
+let restored=app.slice(0,addedGuard)+app.slice(startStudentMode);
+restored=restored.slice(0,helperStart)+restored.slice(helperEnd);
+const boundA='function ControlBar(',boundB='class ExamRuntimeBoundaryF950';
+const cutNew=restored.indexOf(boundA),cutOld=old.indexOf(boundA);
+const tailNew=restored.indexOf(boundB),tailOld=old.indexOf(boundB);
+const appNewStart=restored.indexOf('function App()'),appOldStart=old.indexOf('function App()');
+const accessNew=restored.indexOf('function AccessBlockedView'),accessOld=old.indexOf('function AccessBlockedView');
+assert(cutNew>0&&tailNew>cutNew&&appNewStart>tailNew&&accessNew>appNewStart);
+assert.equal(restored.slice(0,cutNew),old.slice(0,cutOld),'Student or teacher program changed outside E2');
+assert.equal(restored.slice(tailNew,appNewStart),old.slice(tailOld,appOldStart),'Protected runtime changed outside E2');
+assert.equal(restored.slice(accessNew),old.slice(accessOld),'Shared access/runtime changed outside E2');
+const preview=restored.slice(cutNew,tailNew),appSection=restored.slice(appNewStart,accessNew);
+for(const marker of ['Practicar este examen (sin guardar)','examGetPrivatePreviewF111','superadmin_private_preview','privateExam && privateExam.id === requestedId']){
+ assert(app.includes(marker),'Mandatory E2 guard/UX absent '+marker);
+}
+assert(!/\bexam(?:PushReviewToNotas|CloseReview|SubmitAttempt|SaveAttemptDraft)\b/.test(preview),'Admin preview must never save grade/attempt');
+assert(appSection.includes("setPreviewKey(false);")&&appSection.includes("setPreviewKey(true);"),'Preview key needs secure gating');
+assert(app.slice(helperStart,helperEnd).includes('f111ExamPublicContractSafe'),'Student backend payload guard missing');
 const names=['examenes_css.jsx','examenes_appcss.jsx','examenes_data.jsx','examenes_render.jsx','examenes_modes.jsx','examenes_app.jsx'];
-const bundle=read('examenes_bundle.jsx');
-const prefix=bundle.slice(0,bundle.indexOf('// ===== '+names[0]+' ====='));
-assert(prefix.includes('Generado desde:'));
-assert.equal(bundle,prefix+names.map(n=>'// ===== '+n+' =====\n\n'+read(n)+'\n').join(''),'Effective bundle drift');
-console.log('F111 E4 STRICT SCOPE PASS: immutable student/teacher, backend operations, engine, question banks, original styles and 6/6 effective bundle.');
+const bundle=read('examenes_bundle.jsx'),prefix=bundle.slice(0,bundle.indexOf('// ===== '+names[0]+' ====='));
+assert(prefix.includes('Generado desde:'),'Effective bundle header');
+assert.equal(bundle,prefix+names.map(n=>'// ===== '+n+' =====\n\n'+read(n)+'\n').join(''),'Effective bundle 6/6 drift');
+console.log('F111 E2 STRICT SCOPE PASS: 16/16 same structure, zero private keys in public forms, student+teacher runtime protected, 6/6 bundle.');
+console.log('HISTORICAL EX-04 remains NO-GO until deployed production verified and exposed forms reviewed.');
