@@ -29,6 +29,16 @@ jobs:
         run: node scripts/qa_f111_exam_master_d1.mjs
       - name: E4 verify immutable protected scope against pinned main
         run: node scripts/qa_f111_d1_protected_scope_e4.mjs
+      - name: E4 legacy BC exact reconstruction mapped to immutable D1 scope
+        run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs --f111-d1-scoped
+      - name: E4 legacy BB admin boundary
+        run: node scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs
+      - name: E4 legacy AZ teacher and admin boundary
+        run: node scripts/qa_examenes_teacher_admin_boundary_cs21a210az.mjs
+      - name: E4 legacy BA teacher safety
+        run: node scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs
+      - name: E4 legacy AY student safety
+        run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
       - name: E4 scan raw error sinks without exceeding pinned main
         run: node scripts/qa_f111_d1_v3_baseline_e4.mjs
       - name: Render real QA frontend 1280 and 390 in Chromium (synthetic parent)
