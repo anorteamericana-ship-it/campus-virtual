@@ -1,0 +1,31 @@
+name: F111 D1 HOTFIX · centro superadmin único
+on:
+  pull_request:
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/qa_f111_superadmin_single_center_20261017.mjs'
+      - '.github/workflows/qa-f111-superadmin-single-center.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/app.jsx'
+      - 'scripts/qa_f111_superadmin_single_center_20261017.mjs'
+      - '.github/workflows/qa-f111-superadmin-single-center.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa-center:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Analizar JSX
+        run: |
+          npm install --no-save @babel/parser@7.28.4
+          node -e "require('@babel/parser').parse(require('fs').readFileSync('src/app.jsx','utf8'),{sourceType:'module',plugins:['jsx']}); console.log('APP JSX PASS')"
+      - name: Conciliar gate superadmin con baseline live y motores protegidos
+        run: node scripts/qa_f111_superadmin_single_center_20261017.mjs
+      - name: Validar diff limpio
+        run: git diff --check
