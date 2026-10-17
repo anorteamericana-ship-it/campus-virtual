@@ -6,8 +6,21 @@ import {execFileSync} from 'node:child_process';
 const BASE='9a63461feb6622a73d6ef5b90a1dc5900a93f8ad';
 const read=n=>fs.readFileSync('src/'+n,'utf8');
 const previous=n=>execFileSync('git',['show',BASE+':src/'+n],{encoding:'utf8',maxBuffer:32*1024*1024});
-const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx','examenes_render.jsx','examenes_modes.jsx'];
+const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx','examenes_modes.jsx'];
 for(const n of protectedFiles)assert.equal(read(n),previous(n),'Protected exam renderer, motor student, style or administration changed: '+n);
+// E4: se permite UNICAMENTE el alias de 2 formatos en ReadingTF; sin alterar el motor restante.
+let expectedRenderer=previous('examenes_render.jsx');
+const replacements=[
+  ["function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {\n  return (",
+   "function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {\n  // F111 E4 · Compatibilidad de lectura Cambridge: los 16 bancos V10G pueden usar\n  // passageTitle/passage o title/paragraphs. No asumir que sec.passage existe.\n  const passageTitle = sec.passageTitle || sec.title || '';\n  const paragraphs = Array.isArray(sec.passage) ? sec.passage : (Array.isArray(sec.paragraphs) ? sec.paragraphs : []);\n  return ("],
+  ['<h3 className="expass-title">{sec.passageTitle}</h3>','<h3 className="expass-title">{passageTitle}</h3>'],
+  ['{sec.passage.map((p, i) => <p key={i}>{p}</p>)}','{paragraphs.map((p, i) => <p key={i}>{p}</p>)}']
+];
+for(const [old,newValue] of replacements){
+ assert.equal(expectedRenderer.split(old).length-1,1,'Renderer E4 anchor unique');
+ expectedRenderer=expectedRenderer.replace(old,newValue);
+}
+assert.equal(read('examenes_render.jsx'),expectedRenderer,'ReadingTF E4 delta only: engine outside this alias is protected');
 const before=previous('examenes_data.jsx'),after=read('examenes_data.jsx');
 const markOld='// CONTENIDO REAL — I2_WRITTEN_L18_TEST1_A';
 const beginOld=before.lastIndexOf('// ──',before.indexOf(markOld));
