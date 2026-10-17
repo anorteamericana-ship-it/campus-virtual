@@ -84,9 +84,11 @@ async function save(showToast){
  if(preview||submitted||busy||!dirty)return;
  busy=true;update();
  try{
+  const snapshot=JSON.stringify(response);
   const j=await api('qzProgressSaveDraft',{...context(),respuestas:{...response}});
   if(j.estado==='ENTREGADO'||j.estado==='REVISADO'){submitted=true;setStatus('Quiz ya entregado.');}
-  else{dirty=false;setStatus('Avance guardado en el Campus.');}
+  else if(snapshot===JSON.stringify(response)){dirty=false;setStatus('Avance guardado en el Campus.');}
+  else{dirty=true;setStatus('Guardando los cambios siguientes…');setTimeout(()=>save(false),1500);}
   if(showToast)setError('');
  }catch(e){setError('No se guardó el avance: '+e.message);setStatus('Sin sincronizar. Volvé a intentar.');}
  finally{busy=false;update();}
@@ -125,7 +127,9 @@ async function start(){
   submitted=['ENTREGADO','REVISADO'].includes(past.estado);
   if(submitted){setStatus(past.estado==='REVISADO'?'Revisado · '+(past.resultado||'')+' · '+(past.comentario_docente||''):'Entregado · pendiente de revisión');$('badge').textContent='Entregado';}
   else setStatus('Tus respuestas se guardan de forma progresiva.');
-  const file=await api('qzProgressPaper',context());pdf(file.pdf_base64);update();
+  if(meta.disponible_hoy){const file=await api('qzProgressPaper',context());pdf(file.pdf_base64);}
+  else{if(!submitted){submitted=true;setStatus('La fecha del quiz terminó. Consultá con tu docente el seguimiento.');} $('pdfInfo').textContent='El documento se mostró durante el Progress Check programado.';}
+  update();
  }catch(e){setError(e.message);$('badge').textContent='No disponible';}
 }
 $('saveBtn').addEventListener('click',()=>save(true));
