@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quiz Progress Check · Academia Norteamericana · F111 QA</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#17253C;background:#F5F7FC;--accent:#EFC44A;--accent-soft:#FFF8DD;--navy:#073B7A;--line:#DAE1EC}
+*{box-sizing:border-box}body{margin:0}button,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+.wrap{max-width:1360px;margin:auto;padding:18px}.top{display:flex;gap:14px;align-items:center;justify-content:space-between;background:#073B7A;color:#fff;padding:15px 22px;border-radius:16px}.brand{display:flex;gap:12px;align-items:center;font-weight:800}.logo{width:38px;height:38px;border-radius:12px;background:#fff;color:#073B7A;display:grid;place-items:center;font-size:15px}
+.overline{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#637493}.intro{padding:23px 3px 17px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.intro h1{margin:6px 0;font-size:clamp(24px,3vw,37px);letter-spacing:-.04em}.intro p{color:#5C6A7D;margin:6px 0;max-width:650px;line-height:1.5}.chip{display:inline-flex;padding:8px 11px;border-radius:999px;background:#E8EEF8;color:#113F7E;font-size:12px;font-weight:800;white-space:nowrap}.chip.accent{background:var(--accent-soft);color:#724C00}.grid{display:grid;grid-template-columns:minmax(0,1.07fr) minmax(320px,.93fr);gap:16px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 25px #13294B08;overflow:hidden}
+.cardhead{padding:19px 20px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.cardhead h2{margin:0;font-size:17px}.cardhead small{color:#60718B;font-size:11px;display:block;margin-top:4px}.pdfBox{min-height:500px;height:60vh;background:#EBEFF5;position:relative}.pdfBox iframe{width:100%;height:100%;border:0}.pdfPlaceholder{display:grid;place-items:center;text-align:center;height:100%;padding:34px;color:#53627A}.pdfPlaceholder .symbol{font-size:40px;margin-bottom:15px}.pdfPlaceholder b{color:#18385E}.answers{padding:17px 20px;max-height:63vh;overflow-y:auto}.section{margin-bottom:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.secthead{display:flex;gap:9px;align-items:center;background:#F7F9FD;padding:9px 11px;font-size:12px;color:#34506F;font-weight:800}.letter{background:#DFE9F7;color:#184C89;padding:5px 9px;border-radius:8px}.section textarea{border:0;width:100%;min-height:94px;padding:12px;resize:vertical;line-height:1.55;font-size:13px;outline:0}.section textarea:focus{box-shadow:inset 0 0 0 2px #97BCE6}.footer{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px 20px;border-top:1px solid var(--line)}.footer .status{font-size:12px;color:#51647E;max-width:53%}.actions{display:flex;gap:8px}.btn{border:1px solid var(--line);background:#fff;color:#173963;border-radius:10px;padding:11px 13px;font-size:12px;font-weight:800}.btn.primary{border-color:#0B4EA2;background:#0B4EA2;color:#fff}.bar{height:6px;background:#E2E8F1;border-radius:999px;overflow:hidden;margin-top:9px}.bar>div{height:100%;background:var(--accent);transition:width .2s}.details{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.notice{margin-top:14px;border:1px solid #D9E7D9;background:#F3FAF3;color:#286039;border-radius:12px;padding:13px 15px;font-size:12px;line-height:1.5}.notice b{font-weight:900}.alert{margin-top:14px;border:1px solid #F1D9AC;background:#FFF9E9;color:#805800;border-radius:12px;padding:13px 15px;font-size:12px}.alert[hidden],.notice[hidden]{display:none}
+:root[data-level=B1]{--accent:#E4BB39;--accent-soft:#FFF6DA}:root[data-level=B2]{--accent:#DE4840;--accent-soft:#FFF0EF}:root[data-level=I1]{--accent:#386FDA;--accent-soft:#EDF3FF}:root[data-level=I2]{--accent:#27915A;--accent-soft:#EBFAF0}
+@media(max-width:870px){.grid{grid-template-columns:1fr}.pdfBox{height:56vh;min-height:320px}.answers{max-height:none}.intro{display:block}.intro>.chip{margin-top:14px}.footer{align-items:flex-start;flex-direction:column}.footer .status{max-width:none}.wrap{padding:8px}.top{border-radius:12px}.card{border-radius:13px}}
+</style></head><body>
+<div class="wrap">
+<header class="top"><div class="brand"><div class="logo">AN</div><div>Academia Norteamericana <div style="font-size:11px;font-weight:500;opacity:.78">Campus Virtual · English Progress</div></div></div><span class="chip">Quiz formativo</span></header>
+<section class="intro">
+<div><div class="overline">English Progress · Interchange 5th Edition</div><h1 id="pageTitle">Quiz de Progress Check</h1><p>Demostrá lo aprendido en estas dos unidades. El resultado le permite a tu docente orientar su comentario de seguimiento.</p><div class="details"><span class="chip accent" id="unitsTag">Unidades —</span><span class="chip" id="lessonTag">Lección —</span><span class="chip">Valor en nota oficial: 0 %</span></div></div>
+<span class="chip" id="badge">Preparando vista</span>
+</section>
+<main class="grid">
+<section class="card"><div class="cardhead"><div><h2>Cuestionario original</h2><small>Leé los ejercicios del documento y escuchá las indicaciones del docente en clase.</small></div><span class="chip">PDF</span></div>
+<div class="pdfBox" id="pdfBox"><div class="pdfPlaceholder"><div><div class="symbol">📄</div><b>Documento de la evaluación</b><p id="pdfInfo">Se cargará únicamente cuando el Quiz corresponda a tu Progress Check.</p></div></div></div>
+</section>
+<section class="card"><div class="cardhead"><div><h2>Mis respuestas</h2><small>Escribí el número de cada ejercicio y tu respuesta dentro de su apartado (A, B, C…).</small></div><span class="chip" id="counter">0 respuestas</span></div>
+<div class="answers" id="answers"></div>
+<div class="footer"><div class="status"><span id="saveState" role="status" aria-live="polite">Todavía no hay respuestas.</span><div class="bar"><div id="progressFill" style="width:0%"></div></div></div><div class="actions"><button class="btn" type="button" id="saveBtn">Guardar avance</button><button class="btn primary" type="button" id="submitBtn">Entregar quiz</button></div></div>
+</section>
+</main>
+<div class="alert" id="listeningInfo" role="status">Listening: pendiente de comprobar audio original Cambridge. Se administrará en clase bajo indicaciones del docente.</div>
+<div class="notice"><b>Importante:</b> este quiz no es uno de los exámenes oficiales INA. No suma ni resta puntos. Después de la entrega, el docente revisa las respuestas, incluyendo las partes orales, auditivas o de escritura, y utiliza la evidencia para documentar tu Progress Check.</div>
+<div class="alert" id="errorBox" hidden role="alert"></div>
+</div>
+<script>
+(function(){
+'use strict';
+const STEPS={4:[1,2],8:[3,4],13:[5,6],16:[7,8],21:[9,10],24:[11,12],28:[13,14],30:[15,16]};
+const LEVELS={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
+const qs=new URLSearchParams(location.search);
+const level=String(qs.get('nivel')||'B1').toUpperCase(), lesson=Number(qs.get('leccion')||4), group=String(qs.get('grupo')||'').trim();
+const preview=qs.get('preview')==='1';
+document.documentElement.dataset.level=LEVELS[level]?level:'B1';
+const $=id=>document.getElementById(id);
+const units=STEPS[lesson]||null;
+let token='',apiUrl='',busy=false,submitted=false,saveTimer=null,dirty=false,lastBlob=null;
+const response={};
+let fields=[];
+$('pageTitle').textContent='Quiz · '+(LEVELS[level]||level);
+$('unitsTag').textContent=units?'Unidades '+units.join('–'):'Unidades no disponibles';
+$('lessonTag').textContent='Progress Check · L'+lesson;
+function setStatus(message){$('saveState').textContent=message;}
+function setError(message){$('errorBox').hidden=!message;$('errorBox').textContent=message||'';}
+function update(){
+ const filled=fields.filter(x=>String(response[x.key]||'').trim()).length;
+ $('counter').textContent=filled+'/'+fields.length+' respuestas';
+ $('progressFill').style.width=Math.round(fields.length?filled/fields.length*100:0)+'%';
+ $('saveBtn').disabled=busy||submitted||preview;
+ $('submitBtn').disabled=busy||submitted||preview||!filled;
+}
+function build(secciones){
+ const root=$('answers'),frag=document.createDocumentFragment();root.replaceChildren();fields=[];
+ const list=Array.isArray(secciones)?secciones:[];
+ for(const section of list){
+  if(!/^[A-Z]$/.test(section.id))continue;
+  const box=document.createElement('div');box.className='section';
+  const title=document.createElement('div');title.className='secthead';
+  const badge=document.createElement('span');badge.className='letter';badge.textContent=section.id;
+  title.append(badge,document.createTextNode(' Apartado '+section.id+' · según el PDF original'));
+  box.appendChild(title);
+  const nums=section.tipo_respuesta==='ITEMS_NUMERADOS'&&Array.isArray(section.items)&&section.items.length>=2?section.items:[null];
+  for(const num of nums){
+   const key=section.id+(num==null?'':num);
+   if(!/^[A-Z][0-9]{0,2}$/.test(key))continue;
+   fields.push({key,section:section.id,number:num});
+   const wrapper=document.createElement('div');wrapper.style.cssText='padding:9px 12px;border-top:1px solid #E5EAF2';
+   const label=document.createElement('label');label.style.cssText='display:block;font-size:12px;font-weight:800;color:#3B5778;margin-bottom:5px';
+   label.textContent=num==null?'Respuestas del apartado '+section.id:'Ejercicio '+num;
+   const field=document.createElement('textarea');
+   field.style.cssText='border:1px solid #D5DFED;border-radius:9px;padding:10px;width:100%;min-height:55px;resize:vertical;font-size:13px';
+   field.setAttribute('aria-label',label.textContent+' · '+section.id);
+   field.placeholder=num==null?'Escribí las respuestas de este apartado, usando la numeración del documento.':'Escribí aquí las respuestas del ejercicio '+num+'.';
+   field.dataset.section=key;
+   field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus('Cambios por guardar…');update();clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);});
+   field.addEventListener('blur',()=>{if(dirty)save(false)});
+   wrapper.append(label,field);box.appendChild(wrapper);
+  }
+  frag.appendChild(box);
+ }
+ root.appendChild(frag);
+ if(!fields.length)throw Error('El quiz no tiene esquema de respuestas verificado.');
+ update();
+}
+function sessionToken(){try{const s=JSON.parse(sessionStorage.getItem('an_usuario')||'{}');return s.token||''}catch(_){return ''}}
+function context(){return {cod_grupo:group,nivel:level,leccion:lesson};}
+async function api(fn,payload={}){
+ if(!apiUrl)throw Error('Este entorno no tiene configurado el servicio QA de quizzes.');
+ const r=await fetch(apiUrl+'?fn='+encodeURIComponent(fn),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token,...payload})});
+ let j;try{j=await r.json()}catch(_){throw Error('El servidor devolvió una respuesta inválida.')}
+ if(!r.ok||!j?.ok)throw Error(j?.mensaje||j?.error||'No se pudo completar la acción.');
+ return j;
+}
+async function save(showToast){
+ if(preview||submitted||busy||!dirty)return;
+ busy=true;update();
+ try{
+  const snapshot=JSON.stringify(response);
+  const j=await api('qzProgressSaveDraft',{...context(),respuestas:{...response}});
+  if(j.estado==='ENTREGADO'||j.estado==='REVISADO'){submitted=true;setStatus('Quiz ya entregado.');}
+  else if(snapshot===JSON.stringify(response)){dirty=false;setStatus('Avance guardado en el Campus.');}
+  else{dirty=true;setStatus('Guardando los cambios siguientes…');setTimeout(()=>save(false),1500);}
+  if(showToast)setError('');
+ }catch(e){setError('No se guardó el avance: '+e.message);setStatus('Sin sincronizar. Volvé a intentar.');}
+ finally{busy=false;update();}
+}
+async function submit(){
+ clearTimeout(saveTimer);
+ if(!fields.some(x=>String(response[x.key]||'').trim())||submitted||busy)return;
+ if(!confirm('¿Entregar el quiz ahora? Luego no podrás editar tus respuestas.'))return;
+ busy=true;update();setError('');
+ try{
+  const j=await api('qzProgressSubmit',{...context(),respuestas:{...response}});
+  submitted=true;dirty=false;setStatus('¡Entregado! En revisión por el docente.');$('badge').textContent='Entregado';
+ }catch(e){setError('No se pudo entregar: '+e.message);setStatus('Entrega pendiente');}
+ finally{busy=false;update();}
+}
+function pdf(base64){
+ const raw=atob(base64),arr=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+ if(lastBlob)URL.revokeObjectURL(lastBlob);
+ lastBlob=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
+ const frame=document.createElement('iframe');frame.src=lastBlob;frame.title='Cuestionario original';
+ $('pdfBox').replaceChildren(frame);
+}
+async function start(){
+ update();
+ if(!units){setError('La lección no corresponde a un Progress Check.');return}
+ if(preview){build([{id:'A',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3,4]},{id:'B',tipo_respuesta:'TEXTO_GUIADO',items:[]},{id:'C',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3]}]);$('badge').textContent='Vista previa QA';setStatus('Diseño de muestra: sin datos ni guardado.');$('pdfInfo').textContent='Vista previa: el PDF original se entrega desde el servidor protegido en la fecha autorizada.';return;}
+ apiUrl=String(window.F111_QZ_QA_API_URL||'').trim();token=sessionToken();
+ if(!apiUrl||!token||!group){setError('Vista QA todavía no habilitada: falta sesión, grupo o configuración del backend aislado.');return;}
+ try{
+  const meta=await api('qzProgressGet',context());
+  build(meta.secciones);
+  if(meta.listening){
+    const a=meta.listening;
+    $('listeningInfo').textContent='Listening · pista '+a.pista+' (Cambridge Assessment Audio CD): grabación no disponible en el Campus QA. Tu docente indicará cómo completar esta sección; no es audio generado automáticamente.';
+  }
+  $('badge').textContent=meta.disponible_hoy?'Disponible · '+meta.fecha:'Fuera de fecha · '+meta.fecha;
+  const past=await api('qzProgressMyAttempt',context());
+  for(const field of fields){if(past.respuestas?.[field.key])response[field.key]=String(past.respuestas[field.key]);}
+  document.querySelectorAll('[data-section]').forEach(el=>{el.value=response[el.dataset.section]||''});
+  submitted=['ENTREGADO','REVISADO'].includes(past.estado);
+  if(submitted){setStatus(past.estado==='REVISADO'?'Revisado · '+(past.resultado||'')+' · '+(past.comentario_docente||''):'Entregado · pendiente de revisión');$('badge').textContent='Entregado';}
+  else setStatus('Tus respuestas se guardan de forma progresiva.');
+  if(meta.disponible_hoy){const file=await api('qzProgressPaper',context());pdf(file.pdf_base64);}
+  else{if(!submitted){submitted=true;setStatus('La fecha del quiz terminó. Consultá con tu docente el seguimiento.');} $('pdfInfo').textContent='El documento se mostró durante el Progress Check programado.';}
+  update();
+ }catch(e){setError(e.message);$('badge').textContent='No disponible';}
+}
+$('saveBtn').addEventListener('click',()=>save(true));
+$('submitBtn').addEventListener('click',submit);
+window.addEventListener('beforeunload',()=>{if(lastBlob)URL.revokeObjectURL(lastBlob)});
+start();
+})();
+</script></body></html>
