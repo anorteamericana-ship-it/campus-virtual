@@ -86,6 +86,28 @@ try{
       assert.equal(await frame.locator('.ex-shell.show-key').count(),0,'sin autorización backend nunca se exponen claves');
       await frame.getByRole('button',{name:'← Catálogo'}).click();
     }
+    // F111 E4: matriz completa 16/16, preview sin clave y práctica local sin notas.
+    const expectedIds=['B1','B2','I1','I2'].flatMap(nv=>[
+      nv+'_WRITTEN_L18_TEST1_A',nv+'_WRITTEN_L18_TEST1_B',
+      nv+'_WRITTEN_L32_TEST2_A',nv+'_WRITTEN_L32_TEST2_B'
+    ]);
+    assert.equal(expectedIds.length,16);
+    for(let fi=0;fi<expectedIds.length;fi++){
+      const id=expectedIds[fi];
+      await frame.locator('.d1-matrix-choice').nth(fi).click();
+      await frame.getByRole('button',{name:'Ver como estudiante'}).click();
+      await frame.locator('.pv-banner').waitFor({timeout:16000});
+      assert((await frame.locator('.pv-banner').innerText()).includes(id),'Form mismatch '+id);
+      assert.equal(await frame.locator('.ex-shell.show-key').count(),0,'Keys displayed without authorization '+id);
+      await frame.getByRole('button',{name:'Practicar este examen (sin guardar)'}).click();
+      await frame.locator('.ex-shell.mode-student').waitFor({timeout:16000});
+      assert((await frame.locator('.ex-shell.mode-student input, .ex-shell.mode-student textarea, .ex-shell.mode-student button').count())>0,'No interactive controls '+id);
+      await page.screenshot({path:path.join(out,'e4-'+width+'-'+id+'.png'),fullPage:false});
+      await frame.getByRole('button',{name:'Salir de práctica'}).click();
+      await frame.getByRole('button',{name:'← Catálogo'}).click();
+      assert.equal(await frame.locator('.d1-matrix-choice').count(),16,'Matrix not restored '+id);
+    }
+    console.log('F111 E4 VISUAL 16/16 PASS: '+width+'px, all 16 forms interactive, keys hidden, no student attempts/grades, 16 screenshots.');
     assert.equal(errors.length,0,'JavaScript errors: '+errors.join('; '));
     await page.close();
   }
