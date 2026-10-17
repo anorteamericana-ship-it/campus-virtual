@@ -41,35 +41,51 @@ const $=id=>document.getElementById(id);
 const units=STEPS[lesson]||null;
 let token='',apiUrl='',busy=false,submitted=false,saveTimer=null,dirty=false,lastBlob=null;
 const response={};
-const letters=['A','B','C','D','E','F','G','H'];
+let fields=[];
 $('pageTitle').textContent='Quiz · '+(LEVELS[level]||level);
 $('unitsTag').textContent=units?'Unidades '+units.join('–'):'Unidades no disponibles';
 $('lessonTag').textContent='Progress Check · L'+lesson;
 function setStatus(message){$('saveState').textContent=message;}
 function setError(message){$('errorBox').hidden=!message;$('errorBox').textContent=message||'';}
 function update(){
- const filled=letters.filter(k=>String(response[k]||'').trim()).length;
- $('counter').textContent=filled+'/8 apartados';
- $('progressFill').style.width=Math.round(filled/letters.length*100)+'%';
+ const filled=fields.filter(x=>String(response[x.key]||'').trim()).length;
+ $('counter').textContent=filled+'/'+fields.length+' respuestas';
+ $('progressFill').style.width=Math.round(fields.length?filled/fields.length*100:0)+'%';
  $('saveBtn').disabled=busy||submitted||preview;
  $('submitBtn').disabled=busy||submitted||preview||!filled;
 }
-function build(){
- const frag=document.createDocumentFragment();
- for(const letter of letters){
+function build(secciones){
+ const root=$('answers'),frag=document.createDocumentFragment();root.replaceChildren();fields=[];
+ const list=Array.isArray(secciones)?secciones:[];
+ for(const section of list){
+  if(!/^[A-Z]$/.test(section.id))continue;
   const box=document.createElement('div');box.className='section';
   const title=document.createElement('div');title.className='secthead';
-  const badge=document.createElement('span');badge.className='letter';badge.textContent=letter;
-  title.append(badge,document.createTextNode(' Apartado '+letter));
-  const field=document.createElement('textarea');
-  field.setAttribute('aria-label','Respuestas apartado '+letter);
-  field.placeholder='Ej.: 1. ...   2. ...  (seguí la numeración del PDF)';
-  field.dataset.section=letter;
-  field.addEventListener('input',()=>{response[letter]=field.value;dirty=true;setStatus('Cambios por guardar…');update();clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);});
-  field.addEventListener('blur',()=>{if(dirty)save(false)});
-  box.append(title,field);frag.appendChild(box);
+  const badge=document.createElement('span');badge.className='letter';badge.textContent=section.id;
+  title.append(badge,document.createTextNode(' Apartado '+section.id+' · según el PDF original'));
+  box.appendChild(title);
+  const nums=section.tipo_respuesta==='ITEMS_NUMERADOS'&&Array.isArray(section.items)&&section.items.length>=2?section.items:[null];
+  for(const num of nums){
+   const key=section.id+(num==null?'':num);
+   if(!/^[A-Z][0-9]{0,2}$/.test(key))continue;
+   fields.push({key,section:section.id,number:num});
+   const wrapper=document.createElement('div');wrapper.style.cssText='padding:9px 12px;border-top:1px solid #E5EAF2';
+   const label=document.createElement('label');label.style.cssText='display:block;font-size:12px;font-weight:800;color:#3B5778;margin-bottom:5px';
+   label.textContent=num==null?'Respuestas del apartado '+section.id:'Ejercicio '+num;
+   const field=document.createElement('textarea');
+   field.style.cssText='border:1px solid #D5DFED;border-radius:9px;padding:10px;width:100%;min-height:55px;resize:vertical;font-size:13px';
+   field.setAttribute('aria-label',label.textContent+' · '+section.id);
+   field.placeholder=num==null?'Escribí las respuestas de este apartado, usando la numeración del documento.':'Escribí aquí las respuestas del ejercicio '+num+'.';
+   field.dataset.section=key;
+   field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus('Cambios por guardar…');update();clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);});
+   field.addEventListener('blur',()=>{if(dirty)save(false)});
+   wrapper.append(label,field);box.appendChild(wrapper);
+  }
+  frag.appendChild(box);
  }
- $('answers').appendChild(frag);
+ root.appendChild(frag);
+ if(!fields.length)throw Error('El quiz no tiene esquema de respuestas verificado.');
+ update();
 }
 function sessionToken(){try{const s=JSON.parse(sessionStorage.getItem('an_usuario')||'{}');return s.token||''}catch(_){return ''}}
 function context(){return {cod_grupo:group,nivel:level,leccion:lesson};}
@@ -95,7 +111,7 @@ async function save(showToast){
 }
 async function submit(){
  clearTimeout(saveTimer);
- if(!letters.some(k=>String(response[k]||'').trim())||submitted||busy)return;
+ if(!fields.some(x=>String(response[x.key]||'').trim())||submitted||busy)return;
  if(!confirm('¿Entregar el quiz ahora? Luego no podrás editar tus respuestas.'))return;
  busy=true;update();setError('');
  try{
@@ -113,16 +129,17 @@ function pdf(base64){
  $('pdfBox').replaceChildren(frame);
 }
 async function start(){
- build();update();
+ update();
  if(!units){setError('La lección no corresponde a un Progress Check.');return}
- if(preview){$('badge').textContent='Vista previa QA';setStatus('Diseño de muestra: sin datos ni guardado.');$('pdfInfo').textContent='Vista previa: el PDF original se entrega desde el servidor protegido en la fecha autorizada.';return;}
+ if(preview){build([{id:'A',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3,4]},{id:'B',tipo_respuesta:'TEXTO_GUIADO',items:[]},{id:'C',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3]}]);$('badge').textContent='Vista previa QA';setStatus('Diseño de muestra: sin datos ni guardado.');$('pdfInfo').textContent='Vista previa: el PDF original se entrega desde el servidor protegido en la fecha autorizada.';return;}
  apiUrl=String(window.F111_QZ_QA_API_URL||'').trim();token=sessionToken();
  if(!apiUrl||!token||!group){setError('Vista QA todavía no habilitada: falta sesión, grupo o configuración del backend aislado.');return;}
  try{
   const meta=await api('qzProgressGet',context());
-  $('badge').textContent='Disponible · '+meta.fecha;
+  build(meta.secciones);
+  $('badge').textContent=meta.disponible_hoy?'Disponible · '+meta.fecha:'Fuera de fecha · '+meta.fecha;
   const past=await api('qzProgressMyAttempt',context());
-  for(const letter of letters){if(past.respuestas?.[letter])response[letter]=String(past.respuestas[letter]);}
+  for(const field of fields){if(past.respuestas?.[field.key])response[field.key]=String(past.respuestas[field.key]);}
   document.querySelectorAll('[data-section]').forEach(el=>{el.value=response[el.dataset.section]||''});
   submitted=['ENTREGADO','REVISADO'].includes(past.estado);
   if(submitted){setStatus(past.estado==='REVISADO'?'Revisado · '+(past.resultado||'')+' · '+(past.comentario_docente||''):'Entregado · pendiente de revisión');$('badge').textContent='Entregado';}
