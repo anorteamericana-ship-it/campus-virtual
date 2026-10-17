@@ -19,7 +19,7 @@ h1{font-size:30px;letter-spacing:-.04em;margin:25px 0 6px}.subtitle{color:#61728
 <div class="field"><label for="outcome">Resultado diagnóstico</label>
 <select id="outcome"><option value="">Seleccionar…</option><option value="LOGRADO">Logrado</option><option value="EN_PROCESO">En proceso</option><option value="NECESITA_REFUERZO">Necesita refuerzo</option><option value="NO_APLICO">No aplicó (seguimiento)</option></select></div>
 <div class="field"><label for="comments">Comentario individual de Progress Check</label><textarea id="comments" placeholder="Escribí evidencia concreta: qué logró, qué debe reforzar y el próximo paso pedagógico."></textarea></div>
-<div class="row" style="justify-content:space-between"><span id="status" class="message" role="status">El comentario requiere confirmación docente.</span><button class="button main" id="save">Guardar revisión diagnóstica</button></div>
+<div class="row" style="justify-content:space-between"><span id="status" class="message" role="status">El comentario requiere confirmación docente.</span><button class="button" id="copy">Copiar al Progress Check</button><button class="button main" id="save">Guardar revisión diagnóstica</button></div>
 <div class="note">Después de guardar, el comentario se puede prellenar en la lección de Progress Check. <b>El docente todavía debe confirmar y guardar el cierre académico.</b> No se emite ninguna nota oficial.</div>
 </div></div>
 </section><p id="error" role="alert" style="color:#9C2835;font-size:13px"></p>
@@ -97,7 +97,7 @@ async function boot(){
  }catch(e){error(e.message)}
 }
 $('question').onclick=()=>showFile('material');$('key').onclick=()=>showFile('clave');$('scriptBtn').onclick=()=>showFile('guion');
-$('save').onclick=save;$('close').onclick=()=>$('modal').classList.remove('visible');
+$('save').onclick=save;$('copy').onclick=async()=>{if(!selected||selected.ESTADO!=='REVISADO'){error('Primero guardá la revisión diagnóstica.');return;}try{await navigator.clipboard.writeText(String(selected.COMENTARIO_DOCENTE||''));$('status').textContent='Comentario copiado. Pegalo y confirmalo en el Progress Check de la lección.';error('');}catch(_){error('Copiá el texto manualmente; tu navegador bloqueó el portapapeles.');}};$('close').onclick=()=>$('modal').classList.remove('visible');
 window.addEventListener('beforeunload',()=>{if(blobUrl)URL.revokeObjectURL(blobUrl)});
 boot();
 })();
