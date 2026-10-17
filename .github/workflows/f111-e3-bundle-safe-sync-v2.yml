@@ -1,0 +1,48 @@
+name: F111 E3 · bundle safe sync V2
+on:
+  push:
+    branches:
+      - hotfix/f111-e3-public-demo-answer-clean-20261017
+    paths:
+      - .github/workflows/f111-e3-bundle-safe-sync-v2.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.ref == 'refs/heads/hotfix/f111-e3-public-demo-answer-clean-20261017'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild six sources verbatim on this feature branch
+        run: |
+          test "$(git branch --show-current)" = "hotfix/f111-e3-public-demo-answer-clean-20261017"
+          node <<'NODE'
+          const fs=require('node:fs');
+          const names=['examenes_css.jsx','examenes_appcss.jsx','examenes_data.jsx','examenes_render.jsx','examenes_modes.jsx','examenes_app.jsx'];
+          const original=fs.readFileSync('src/examenes_bundle.jsx','utf8');
+          const begin=original.indexOf('// ===== '+names[0]+' =====');
+          if(begin<0)throw Error('Bundle header absent');
+          const prefix=original.slice(0,begin);
+          if(!prefix.includes('Generado desde:'))throw Error('Unexpected bundle header');
+          const source=fs.readFileSync('src/examenes_data.jsx','utf8');
+          if((source.match(/respuestas:\s*\{\}/g)||[]).length!==16)throw Error('16 demos must be empty');
+          const result=prefix+names.map(n=>'// ===== '+n+' =====\n\n'+fs.readFileSync('src/'+n,'utf8')+'\n').join('');
+          fs.writeFileSync('src/examenes_bundle.jsx',result,'utf8');
+          console.log('E3: 6/6 bundle rebuilt; 16 sample answer fixtures empty.');
+          NODE
+          git diff --check
+      - name: Commit ONLY regenerated bundle to feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/examenes_bundle.jsx
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "F111 E3 · remove demo answers from generated bundle"
+          git push origin HEAD:refs/heads/hotfix/f111-e3-public-demo-answer-clean-20261017
