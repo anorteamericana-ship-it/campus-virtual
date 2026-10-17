@@ -358,6 +358,17 @@ function ExamenesAdminPanel() {
   const [leccion,setLeccion]=React.useState(9);
   const ses=typeof getSesion==='function'?getSesion():{};
   const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';
+  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del
+  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.
+  // Este último conserva su componente y sus datos fuera de esta vista.
+  if (superadmin) {
+    return <ExamenesIframePanel
+      hideHeader
+      view="admin"
+      screenLabel="Superadmin · Centro de exámenes"
+      iframeTitle="Centro de exámenes · Escritos, Orales y Progress Check"
+    />;
+  }
   const oralSrc=`modulos/examen_oral.html?preview=1&nivel=${encodeURIComponent(nivel)}&leccion=${leccion}&v=F92.6`;
   return <section data-screen-label="Admin · Exámenes" style={{display:'flex',flexDirection:'column',gap:14}}>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}>
