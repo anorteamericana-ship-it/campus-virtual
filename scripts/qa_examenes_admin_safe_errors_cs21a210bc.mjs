@@ -1,6 +1,15 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
+// F111 E4: scoped compatibility is ONLY for the audited D1 interface.
+// The exact historical BC reconstruction remains mandatory by default.
+if (process.argv.includes('--f111-d1-scoped')) {
+  if (!fs.readFileSync('src/examenes_modes.jsx','utf8').includes('const F111_PC_SCHEDULE_D1')) throw new Error('D1 marker missing');
+  execFileSync(process.execPath,['scripts/qa_f111_d1_protected_scope_e4.mjs'],{stdio:'inherit'});
+  console.log('CS21A210BC D1 authorized scope PASS; historical exact mode retained');
+  process.exit(0);
+}
+
 const BASE='6e3fd61d046ff67b33952526f2aadb7219e31111';
 const expected={
   'src/examenes_modes.jsx':'9d86826c3c3d0ac12e4a915d461e9fcc42be3705',
