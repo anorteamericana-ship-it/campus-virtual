@@ -86,10 +86,11 @@ try{
   const normal=await browser.newPage({viewport:{width:1280,height:900}});
   await normal.goto('http://127.0.0.1:8765/__qa/f111-d1?role=admin');
   const normalFrame=normal.frameLocator('#exam');
-  await normalFrame.getByRole('heading',{name:'Centro de exámenes'}).waitFor({timeout:45000});
+  await normalFrame.locator('.ad-head .ad-title').waitFor({timeout:45000});
+  assert.equal(await normalFrame.locator('.d1-master').count(),0,'admin conserva vista historica');
   assert.equal(await normalFrame.getByRole('button',{name:/Diagnóstico técnico/}).count(),0,'diagnóstico solo superadmin');
   await normal.close();
-  console.log('PR-D1 PLAYWRIGHT PASS: 1280/390, catálogo, 3 modalidades, preview sin clave, rol admin/superadmin');
+  console.log('PR-D1 PLAYWRIGHT PASS: 1280/390, superadmin nuevo, admin legacy, estudiante/docente intactos, preview sin clave');
   console.log('Capturas: qa-capturas/pr-d1-1280-centro.png, qa-capturas/pr-d1-390-centro.png');
 }finally{
   await browser.close();
