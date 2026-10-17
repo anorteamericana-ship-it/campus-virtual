@@ -304,6 +304,100 @@ window.EXAM_CSS = `
 // CALGRUPO_F48_20260617_CENTRO_DIAGNOSTICO_EXAMENES_UI_CSS
 /* examenes_appcss.jsx — CSS de la app (barra de control + modos) */
 window.EXAM_APP_CSS = `
+
+/* F111 PR-D1 · Propuesta C, identidad institucional, admin solamente */
+.d1-master{font-family:Poppins,system-ui,sans-serif;color:#001E47}
+.d1-master button{font-family:inherit}
+.d1-header{background:#002F6C;color:#fff;border-radius:17px 17px 0 0;padding:27px 30px 25px;border-bottom:4px solid #8B1A2E}
+.d1-kicker{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#54709B}
+.d1-header .d1-kicker{color:#C9D7EF}
+.d1-header h1{margin:8px 0 5px;font-size:26px;line-height:1.25;color:#fff}
+.d1-header p{margin:0;font-size:13px;color:#DCE7F5}
+.d1-tabs{display:flex;gap:5px;padding:0 22px;background:#fff;border:1px solid #DCE2EC;border-top:0;border-radius:0 0 14px 14px;margin-bottom:22px;overflow-x:auto}
+.d1-tab{position:relative;padding:16px 20px;border:0;background:transparent;color:#50627E;font-weight:700;font-size:13px;white-space:nowrap;cursor:pointer}
+.d1-tab.active{color:#002F6C}
+.d1-tab.active:after{content:"";position:absolute;bottom:0;left:18px;right:18px;height:3px;background:#8B1A2E;border-radius:4px 4px 0 0}
+.d1-workspace{display:grid;grid-template-columns:minmax(0,1fr) 295px;gap:18px;align-items:start}
+.d1-matrix-card,.d1-inspector,.d1-catalog-section,.d1-upcoming{background:#fff;border:1px solid #DCE2EC;border-radius:14px;box-shadow:0 5px 20px rgba(0,30,71,.045)}
+.d1-matrix-card,.d1-catalog-section,.d1-upcoming{padding:20px}
+.d1-section-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.d1-section-heading h2,.d1-section-heading h3{font-size:16px;font-weight:800;margin:0 0 4px;color:#001E47}
+.d1-section-heading p{font-size:11.5px;margin:0;color:#64728B;line-height:1.55}
+.d1-subtle-pill{background:#EAF0F8;color:#184A81;padding:7px 9px;border-radius:7px;font-size:11px;font-weight:700;white-space:nowrap}
+.d1-matrix-scroll{overflow-x:auto;outline-offset:3px}
+.d1-matrix{min-width:620px;display:grid;grid-template-columns:136px repeat(4,minmax(106px,1fr));gap:7px}
+.d1-matrix-corner,.d1-matrix-label{font-size:10px;letter-spacing:.045em;font-weight:800;color:#687A95;align-self:center;padding:0 4px 7px}
+.d1-level-cell{display:flex;align-items:center;gap:9px;min-width:0}
+.d1-level-cell b{font-size:12px;display:block;line-height:1.4}
+.d1-level-cell small{display:block;font-size:10px;color:#6E7A90;line-height:1.4}
+.d1-level-badge{display:inline-flex;align-items:center;justify-content:center;min-width:35px;padding:7px 6px;border-radius:8px;font-size:11px;font-weight:900;letter-spacing:.02em;flex-shrink:0}
+.d1-B1{background:#E5A823;color:#392900}
+.d1-B2{background:#C42A1F;color:#fff}
+.d1-I1{background:#1F6AA8;color:#fff}
+.d1-I2{background:#2E7D32;color:#fff}
+.d1-matrix-choice{position:relative;min-height:72px;border:1px solid #DCE2EC;background:#fff;border-radius:10px;padding:12px 9px;text-align:left;cursor:pointer;color:#001E47;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.d1-matrix-choice b{font-size:12px;font-weight:800}
+.d1-matrix-choice small{font-size:10.5px;color:#63718A}
+.d1-matrix-choice:hover,.d1-matrix-choice:focus-visible{border-color:#1F6AA8;background:#F3F7FC}
+.d1-matrix-choice.selected{background:#EEF3FB;border:2px solid #002F6C;padding:11px 8px}
+.d1-choice-current{font-size:9px;color:#002F6C;font-weight:800}
+.d1-matrix-footer{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;color:#6D7788;margin-top:15px}
+.d1-inspector{padding:21px;position:sticky;top:74px}
+.d1-inspector-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}
+.d1-soft-state{font-size:10px;background:#EAF5EF;color:#1F7A45;border-radius:30px;padding:6px 9px;font-weight:800}
+.d1-inspector h2{font-size:19px;line-height:1.4;margin:7px 0;color:#001E47}
+.d1-inspector p{font-size:12px;line-height:1.55;color:#5B6880}
+.d1-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:17px 0 12px}
+.d1-detail-grid div{padding:10px;border:1px solid #E5E9F0;border-radius:10px;min-width:0}
+.d1-detail-grid dt{font-size:9px;text-transform:uppercase;color:#718099;font-weight:800;letter-spacing:.06em}
+.d1-detail-grid dd{font-size:11.5px;font-weight:800;margin:5px 0 0;line-height:1.45}
+.d1-inspector .d1-help{font-size:10px;color:#69778F}
+.d1-action-stack{display:flex;flex-direction:column;gap:9px;margin-top:18px}
+.d1-primary,.d1-secondary,.d1-quiet{border:1px solid transparent;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:800;cursor:pointer}
+.d1-primary{background:#002F6C;color:#fff}
+.d1-secondary{background:#F1F5FA;color:#002F6C;border-color:#BFD0E6}
+.d1-quiet{background:#fff;color:#002F6C;border-color:#CBD7E6}
+.d1-key-note{border-left:3px solid #8B1A2E;padding:8px 11px;background:#F9F1F3;color:#70414A;font-size:10.5px;line-height:1.55;margin-top:18px;border-radius:0 7px 7px 0}
+.d1-level-nav{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px}
+.d1-level-select{display:flex;align-items:center;gap:7px;background:#fff;color:#001E47;border:1px solid #DCE2EC;border-radius:9px;padding:5px 10px 5px 5px;font-size:11px;cursor:pointer}
+.d1-level-select.active{border:2px solid #002F6C;padding:4px 9px 4px 4px;background:#F0F5FB}
+.d1-oral-grid,.d1-pc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.d1-eval-card{display:flex;flex-direction:column;text-align:left;gap:9px;min-height:112px;border:1px solid #DCE2EC;border-radius:11px;background:#fff;padding:15px;color:#001E47;cursor:pointer}
+.d1-eval-card b{font-size:14px}
+.d1-eval-card small{font-size:11px;color:#5B6880;line-height:1.45}
+.d1-eval-card.active{border:2px solid #002F6C;background:#EFF4FB;padding:14px}
+.d1-card-eyebrow{font-size:9px;letter-spacing:.1em;font-weight:900;color:#577295}
+.d1-selection-info{border-left:4px solid #1F6AA8;background:#F5F8FC;padding:14px 17px;border-radius:7px;margin-top:18px;font-size:12px}
+.d1-selection-info p{margin:6px 0 0;line-height:1.65;color:#5D6B81}
+.d1-pc-pill{background:#E2F1F1;color:#0E5566;padding:8px 10px;border-radius:20px;font-size:11px;font-weight:800}
+.d1-pc .d1-eval-card.active{border-color:#0E5566;background:#EEF6F6}
+.d1-pc-pending{font-size:10px;color:#7F5B14;background:#FDF6E8;padding:4px 8px;border-radius:7px;align-self:flex-start}
+.d1-pc-selected{border-left-color:#0E5566}
+.d1-upcoming{margin-top:20px}
+.d1-upcoming-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.d1-upcoming-item{border:1px solid #E2E8F0;border-radius:10px;padding:11px;display:flex;align-items:center;gap:10px}
+.d1-upcoming-level{font-weight:900;color:#0E5566}
+.d1-upcoming-item b{font-size:12px}
+.d1-upcoming-item small{display:block;color:#60708B;font-size:10px}
+.d1-upcoming-item time{font-family:"JetBrains Mono",monospace;font-size:10px;margin-left:auto;color:#34567E;white-space:nowrap}
+.d1-upcoming-status{font-size:12px;color:#5B6880;margin:8px 0}
+.d1-calendar-note{margin:12px 0 0;font-size:10.5px;line-height:1.55;color:#69758B}
+.d1-ops{margin-top:18px;border:1px solid #E0E6EF;border-radius:12px;background:#fff;padding:14px 18px}
+.d1-ops summary{font-size:12px;font-weight:800;color:#002F6C;cursor:pointer}
+.d1-ops .actbox{margin-top:12px}
+.d1-tech{margin:17px 0}
+.d1-tech-content{padding:15px;background:#F0F3F8;border-radius:10px}
+.d1-tech-content>.d1-quiet{margin-bottom:12px}
+@media(max-width:900px){.d1-workspace{grid-template-columns:1fr}.d1-inspector{position:static}.d1-matrix{min-width:610px}.d1-oral-grid,.d1-pc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){.exmain{padding:14px 10px 50px}.d1-header{padding:22px 18px}.d1-header h1{font-size:23px}.d1-tabs{padding:0 8px}.d1-tab{padding:15px 11px;font-size:11.5px}.d1-matrix-card,.d1-catalog-section,.d1-upcoming{padding:14px}.d1-section-heading h2{font-size:15px}.d1-section-heading p{font-size:10.5px}.d1-subtle-pill{font-size:10px}.d1-inspector{padding:18px}.d1-level-nav{gap:6px}.d1-level-select{font-size:10px}.d1-oral-grid,.d1-pc-grid{gap:8px}.d1-eval-card{padding:11px}.d1-eval-card.active{padding:10px}.d1-upcoming-list{grid-template-columns:1fr}.d1-matrix-scroll{margin-right:-4px}}
+
+.d1-cbar .d1-cbar-row{justify-content:space-between;padding:11px 24px;gap:10px}
+.d1-cbar .cbar-brand{border-right:0}
+.d1-top-actions{display:flex;flex-wrap:wrap;gap:7px}
+.d1-cbar-control{padding:7px 10px;border:1px solid rgba(255,255,255,.32);border-radius:8px;background:transparent;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.d1-cbar-control.warning{background:#8B1A2E}
+.d1-cbar-warning{padding:8px 24px;background:#8B1A2E;color:#fff;font-size:12px;font-weight:700}
+
 *{ box-sizing:border-box; }
 body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink); }
 .btn-primary{ background:var(--an-navy); color:#fff; border:none; padding:11px 22px; border-radius:10px; font-family:var(--f-sans); font-size:14px; font-weight:600; cursor:pointer; box-shadow:var(--sh-1); }
@@ -7327,72 +7421,178 @@ function BackendContractSpecPanel() {
   );
 }
 
-function AdminMode({ shell, density, onPreview }) {
-  const [filtro, setFiltro] = useState('todos');
-  const [sel, setSel] = useState(null);
-  const list = CATALOGO.filter(e => filtro==='todos' ? true : filtro==='real' ? e.estado==='real' : e.opcion===filtro);
-  const real = CATALOGO.filter(e=>e.estado==='real').length;
 
+const F111_PC_SCHEDULE_D1 = [
+  [1,4,'1–2'],[2,8,'3–4'],[3,13,'5–6'],[4,16,'7–8'],
+  [5,21,'9–10'],[6,24,'11–12'],[7,28,'13–14'],[8,30,'15–16']
+];
+const F111_ORAL_LESSONS_D1 = [9,17,25,31];
+const F111_D1_LEVELS = ['B1','B2','I1','I2'];
+
+function F111UpcomingActivationsD1() {
+  const [rows, setRows] = useState([]);
+  const [status, setStatus] = useState('Consultando activaciones del backend…');
+  const refresh = useCallback(async () => {
+    setStatus('Consultando activaciones del backend…');
+    try {
+      const result = await postExamBackend('examListActivations', {});
+      if (!result || !result.ok) {
+        setStatus('No fue posible consultar activaciones. No se mostrarán fechas estimadas.');
+        setRows([]);
+        return;
+      }
+      const now = Date.now();
+      const list = (Array.isArray(result.rows) ? result.rows : [])
+        .filter(r => ['OPEN','SCHEDULED','DRAFT'].includes(String(r.STATUS || '').toUpperCase()))
+        .filter(r => {
+          const raw = r.OPEN_AT || '';
+          const ms = raw ? Date.parse(String(raw).replace(' ', 'T')) : NaN;
+          return Number.isFinite(ms) && ms >= now - 86400000;
+        })
+        .sort((a,b) => Date.parse(String(a.OPEN_AT).replace(' ','T')) - Date.parse(String(b.OPEN_AT).replace(' ','T')))
+        .slice(0,4);
+      setRows(list);
+      setStatus(list.length ? '' : 'Sin activaciones futuras verificables en esta consulta.');
+    } catch (_) {
+      setRows([]);
+      setStatus('No se pudo consultar el backend. No hay fechas de muestra.');
+    }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
   return (
-    <div className="adwrap">
-      <div className="ad-head">
-        <div>
-          <div className="ad-kicker">CATÁLOGO MAESTRO DE EXÁMENES · WRITTEN</div>
-          <h2 className="ad-title">16 entradas · 4 niveles × Test 1/2 × Opción A/B</h2>
-        </div>
-        <div className="ad-legend">
-          <span className="ad-leg"><i className="dot-real" />{real} con contenido real</span>
-          <span className="ad-leg"><i className="dot-pend" />{CATALOGO.length-real} pendientes</span>
-        </div>
+    <section className="d1-upcoming" aria-labelledby="d1-upcoming-title">
+      <div className="d1-section-heading">
+        <div><h3 id="d1-upcoming-title">Activaciones programadas</h3><p>Datos del backend · las fechas académicas completas dependen del calendario del Campus.</p></div>
+        <button type="button" className="d1-quiet" onClick={refresh}>Actualizar</button>
       </div>
+      {rows.length > 0 && <div className="d1-upcoming-list">{rows.map((r,i)=>(
+        <div key={r.ACTIVATION_ID || i} className="d1-upcoming-item">
+          <span className="d1-upcoming-level">{r.NIVEL || '—'}</span>
+          <div><b>{r.COD_GRUPO || 'Grupo no informado'}</b><small>{r.TEST_CODE || r.EXAM_ID || 'Evaluación'} · {r.STATUS || 'DRAFT'}</small></div>
+          <time>{String(r.OPEN_AT || '').replace('T',' ')}</time>
+        </div>
+      ))}</div>}
+      {status && <p className="d1-upcoming-status" role="status">{status}</p>}
+      <p className="d1-calendar-note">No se generan fechas ficticias: este bloque solo muestra activaciones existentes. La sincronización del cronograma de orales y Progress Check queda pendiente del contrato de calendario.</p>
+    </section>
+  );
+}
 
-      <div className="ad-filters">
-        {[['todos','Todos'],['A','Opción A'],['B','Opción B'],['real','Solo reales']].map(([k,l])=>(
-          <button key={k} className={`ad-f${filtro===k?' on':''}`} onClick={()=>setFiltro(k)}>{l}</button>
+function AdminMode({ shell, density, onPreview }) {
+  const [tab, setTab] = useState('written');
+  const [selectedId, setSelectedId] = useState('B1_WRITTEN_L18_TEST1_A');
+  const [selectedLevel, setSelectedLevel] = useState('B1');
+  const [selectedPc, setSelectedPc] = useState(1);
+  const [selectedOral, setSelectedOral] = useState(9);
+  const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const session = getExamParentSession() || {};
+  const isSuperadmin = String(session.rol || '').trim().toLowerCase() === 'superadmin';
+  const selected = CATALOGO.find(e => e.id === selectedId) || CATALOGO[0];
+  const selectedExam = selected ? getExam(selected.nivel, selected.leccion === 18 ? 'TEST1' : 'TEST2', selected.opcion) : null;
+  const selectedSections = selectedExam && Array.isArray(selectedExam.sections) ? selectedExam.sections : [];
+  const real = CATALOGO.filter(e => e.estado === 'real').length;
+  const levelTheme = NIVEL_TEMA[selectedLevel] || NIVEL_TEMA.B1;
+  const columns = [
+    { test:'TEST1', option:'A', label:'PRUEBA 1 · A' },
+    { test:'TEST1', option:'B', label:'PRUEBA 1 · B' },
+    { test:'TEST2', option:'A', label:'PRUEBA 2 · A' },
+    { test:'TEST2', option:'B', label:'PRUEBA 2 · B' }
+  ];
+  const preview = (showKey) => { if (selected && selected.estado === 'real') onPreview(selected, !!showKey); };
+  return (
+    <div className="adwrap d1-master">
+      <header className="d1-header">
+        <div className="d1-kicker">ACADEMIA NORTEAMERICANA / EXAM MASTER</div>
+        <h1>Centro de exámenes</h1>
+        <p>Evaluaciones institucionales · Catálogo académico y seguimiento</p>
+      </header>
+      <nav className="d1-tabs" aria-label="Modalidades del sistema maestro">
+        {[['written','Escritos'],['oral','Orales'],['progress','Progress Check']].map(([id,label])=>(
+          <button key={id} type="button" role="tab" aria-selected={tab===id} className={'d1-tab'+(tab===id?' active':'')} onClick={()=>setTab(id)}>{label}</button>
         ))}
-      </div>
+      </nav>
 
-      <PonderacionModelo />
-
-      <ActivationBackendPanel onPreview={onPreview} />
-
-      <BackendOperationsPanel />
-
-      <BackendContractSpecPanel />
-
-      <div className="ad-grid">
-        {list.map(e => {
-          const t = NIVEL_TEMA[e.nivel];
-          return (
-            <div key={e.id} className={`adcard estado-${e.estado}`} style={{ '--lvl':t.color, '--lvl-soft':t.soft, '--lvl-ink':t.ink }}>
-              <div className="adcard-top">
-                <span className="adcard-lvl">{t.code}</span>
-                <span className={`mini-opt opt-${e.opcion}`}>{e.opcion}</span>
-                <span className={`adcard-state ${e.estado}`}>{e.estado==='real'?'REAL':'PENDIENTE'}</span>
-              </div>
-              <div className="adcard-id">{e.id}</div>
-              <div className="adcard-name">{e.nombre_nivel} · {e.test}</div>
-              <div className="adcard-rows">
-                <div><span>Libro (interno)</span>{e.libro}</div>
-                <div><span>Units</span>{e.units}</div>
-                <div><span>Lección</span>{e.leccion}</div>
-                <div><span>Valor (plan)</span>{e.ponderacion_por_plan.con_ina}% / {e.ponderacion_por_plan.sin_ina}%</div>
-                <div><span>Listening A</span><code className="vid-id">{e.videos.listening_A}</code></div>
-                <div><span>Listening B</span><code className="vid-id">{e.videos.listening_B}</code></div>
-                <div><span>Opción examen</span>{e.opcion}</div>
-                <div><span>Answer key</span>{e.estado==='real'?'incluida':'pendiente'}</div>
-              </div>
-              <div className="adcard-foot">
-                {e.estado==='real'
-                  ? <><button className="btn-sm" onClick={()=>onPreview(e)}>Preview / Admin →</button><button className="ad-meta-btn" onClick={()=>setSel(e)}>Metadatos</button></>
-                  : <span className="adcard-pendmsg">Sin contenido — no inventar preguntas</span>}
-              </div>
+      {tab==='written' && <div className="d1-workspace">
+        <section className="d1-matrix-card" aria-label="Matriz de exámenes escritos">
+          <div className="d1-section-heading">
+            <div><h2>Exámenes escritos</h2><p>4 niveles · 2 pruebas · opciones A/B · {real}/16 con contenido estructurado</p></div>
+            <span className="d1-subtle-pill">50 puntos por examen</span>
+          </div>
+          <div className="d1-matrix-scroll" tabIndex="0" aria-label="Desplazamiento horizontal de la matriz">
+            <div className="d1-matrix">
+              <div className="d1-matrix-corner">NIVEL / LIBRO</div>
+              {columns.map(col=><div key={col.test+col.option} className="d1-matrix-label">{col.label}</div>)}
+              {F111_D1_LEVELS.map(nv=>{
+                const theme = NIVEL_TEMA[nv];
+                return <React.Fragment key={nv}>
+                  <div className="d1-level-cell"><span className={'d1-level-badge d1-'+nv}>{nv}</span><span><b>{theme.nombre}</b><small>{theme.libro}</small></span></div>
+                  {columns.map(col=>{
+                    const exam = CATALOGO.find(e=>e.nivel===nv && e.leccion===(col.test==='TEST1'?18:32) && e.opcion===col.option);
+                    const active = exam && selected && selected.id === exam.id;
+                    return <button key={col.test+col.option} type="button" aria-pressed={!!active}
+                      className={'d1-matrix-choice'+(active?' selected':'')} onClick={()=>exam&&setSelectedId(exam.id)} disabled={!exam}>
+                      <b>Lección {col.test==='TEST1'?'18':'32'}</b>
+                      <small>{col.test==='TEST1'?'U1–8':'U9–16'} · {exam&&exam.puntos_totales?exam.puntos_totales+' pts':'Pendiente'}</small>
+                      {active && <span className="d1-choice-current">Seleccionado</span>}
+                    </button>;
+                  })}
+                </React.Fragment>;
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
+          <div className="d1-matrix-footer"><span>Opción A · grupo</span><span>Opción B · reposición autorizada</span></div>
+        </section>
+        {selected && <aside className="d1-inspector" aria-label="Detalle de examen escrito">
+          <div className="d1-inspector-top"><span className={'d1-level-badge d1-'+selected.nivel}>{selected.nivel}</span><span className="d1-soft-state">{selected.estado==='real'?'Contenido estructurado':'Pendiente'}</span></div>
+          <div className="d1-kicker">EXAMEN SELECCIONADO</div>
+          <h2>{selected.leccion===18?'Prueba escrita 1':'Prueba escrita 2'} · Opción {selected.opcion}</h2>
+          <p>{selected.nombre_nivel} · {selected.libro}</p>
+          <dl className="d1-detail-grid">
+            <div><dt>Lección</dt><dd>{selected.leccion}</dd></div>
+            <div><dt>Unidades</dt><dd>{selected.units}</dd></div>
+            <div><dt>Secciones</dt><dd>{selectedSections.length || '—'}</dd></div>
+            <div><dt>Puntaje</dt><dd>{selected.puntos_totales || '—'} puntos</dd></div>
+            <div><dt>Tiempo de referencia</dt><dd>90 min*</dd></div>
+            <div><dt>Valor académico</dt><dd>5 % INA · 15 % sin INA</dd></div>
+          </dl>
+          <p className="d1-help">*La duración operativa y el reloj real los define el backend por activación, no este catálogo.</p>
+          <div className="d1-action-stack">
+            <button className="d1-primary" type="button" onClick={()=>preview(false)}>Ver como estudiante</button>
+            <button className="d1-secondary" type="button" onClick={()=>preview(true)}>Ver con respuestas (personal autorizado)</button>
+            <button className="d1-quiet" type="button" onClick={()=>window.print()}>Imprimir / guardar PDF</button>
+          </div>
+          <div className="d1-key-note">Las claves deben permanecer ocultas al iniciar una vista previa. No proyectés una vista con respuestas.</div>
+        </aside>}
+      </div>}
 
-      {sel && <MetaModal e={sel} onClose={()=>setSel(null)} />}
+      {tab==='oral' && <section className="d1-catalog-section">
+        <div className="d1-section-heading"><div><h2>Evaluaciones orales</h2><p>Lecciones 9, 17, 25 y 31 · cuatro evaluaciones por nivel · 15 % cada una</p></div></div>
+        <div className="d1-level-nav" aria-label="Nivel oral">{F111_D1_LEVELS.map(nv=><button type="button" key={nv} aria-pressed={selectedLevel===nv} className={'d1-level-select'+(selectedLevel===nv?' active':'')} onClick={()=>setSelectedLevel(nv)}><span className={'d1-level-badge d1-'+nv}>{nv}</span>{NIVEL_TEMA[nv].nombre}</button>)}</div>
+        <div className="d1-oral-grid">{F111_ORAL_LESSONS_D1.map((lesson,i)=><button key={lesson} type="button" className={'d1-eval-card'+(selectedOral===lesson?' active':'')} aria-pressed={selectedOral===lesson} onClick={()=>setSelectedOral(lesson)}><span className="d1-card-eyebrow">ORAL {i+1}</span><b>Lección {lesson}</b><small>Rúbrica 5 criterios · 0–5 · 15 %</small></button>)}</div>
+        <div className="d1-selection-info" style={{borderLeftColor:levelTheme.color}}><b>{selectedLevel} · Oral de lección {selectedOral}</b><p>{selectedLevel==='B1'?'Banco Intro existente. La pantalla operativa del docente se conserva.':'El banco de preguntas de este nivel requiere verificación. El docente utilizará sus preguntas ingresadas hasta su aprobación.'}</p></div>
+      </section>}
+
+      {tab==='progress' && <section className="d1-catalog-section d1-pc">
+        <div className="d1-section-heading"><div><h2>Progress Check</h2><p>32 quizzes diagnósticos · ocho por nivel · 0 % de nota oficial</p></div><span className="d1-pc-pill">Sin tiempo límite</span></div>
+        <div className="d1-level-nav" aria-label="Nivel de Progress Check">{F111_D1_LEVELS.map(nv=><button type="button" key={nv} aria-pressed={selectedLevel===nv} className={'d1-level-select'+(selectedLevel===nv?' active':'')} onClick={()=>setSelectedLevel(nv)}><span className={'d1-level-badge d1-'+nv}>{nv}</span>{NIVEL_TEMA[nv].nombre}</button>)}</div>
+        <div className="d1-pc-grid">{F111_PC_SCHEDULE_D1.map(([number,lesson,units])=><button type="button" key={number} aria-pressed={selectedPc===number} className={'d1-eval-card'+(selectedPc===number?' active':'')} onClick={()=>setSelectedPc(number)}><span className="d1-card-eyebrow">PROGRESS CHECK {String(number).padStart(2,'0')}</span><b>Lección {lesson}</b><small>Unidades {units}</small><span className="d1-pc-pending">Contenido Cambridge: por validar</span></button>)}</div>
+        <div className="d1-selection-info d1-pc-selected"><b>{selectedLevel} · Progress Check {String(selectedPc).padStart(2,'0')}</b><p>Diagnóstico sin opción B, sin ponderación y sin clave visible. El banco oficial se conecta desde QZ32 únicamente cuando el contenido haya sido validado.</p></div>
+      </section>}
+
+      <F111UpcomingActivationsD1 />
+
+      <details className="d1-ops"><summary>Operaciones de activación existentes</summary><ActivationBackendPanel onPreview={(entry)=>onPreview(entry,false)} /></details>
+      {isSuperadmin && <section className="d1-tech">
+        <button type="button" className="d1-quiet" onClick={()=>setTechnicalOpen(x=>!x)} aria-expanded={technicalOpen}>Diagnóstico técnico · superadmin {technicalOpen?'▴':'▾'}</button>
+        {technicalOpen && <div className="d1-tech-content">
+          <button type="button" className="d1-quiet" onClick={()=>setMetadataOpen(true)}>Metadatos del examen seleccionado</button>
+          <PonderacionModelo />
+          <BackendOperationsPanel />
+          <BackendContractSpecPanel />
+        </div>}
+      </section>}
+      {isSuperadmin && metadataOpen && selected && <MetaModal e={selected} onClose={()=>setMetadataOpen(false)} />}
     </div>
   );
 }
@@ -7426,7 +7626,7 @@ function MetaModal({ e, onClose }) {
           <b>Reporte de conversión</b>
           <ul>
             <li>Fuente Word/PDF: {e.fuente_original}</li>
-            <li>Nivel detectado en archivo: "Test A · Interchange 3" (título del documento)</li>
+            <li>Libro correspondiente al nivel: {e.libro} (el libro validado manda sobre el título de origen)</li>
             <li>Nivel final usado: <b>{e.nombre_nivel} ({e.nivel})</b> — el libro {t.libro} manda sobre el título</li>
             <li>Test: {e.test} · {e.units} · Lección {e.leccion}</li>
             <li>Total de puntos: {e.puntos_totales} · Secciones: {secRange}</li>
@@ -7893,17 +8093,18 @@ function App() {
   const [opcion, setOpcion] = React.useState('A');
   const [shell, setShell] = React.useState('premium');
   const [density, setDensity] = React.useState('comfy');
-  const [previewKey, setPreviewKey] = React.useState(true);
+  const [previewKey, setPreviewKey] = React.useState(false);
   const [previewExam, setPreviewExam] = React.useState(null);
-  const [plan, setPlan] = React.useState('ambos'); // ambos | con_ina | sin_ina
+  const [plan, setPlan] = React.useState('con_ina'); // valor de preview; la ponderación real la define el servidor
 
   const canEnter = (target) => INITIAL_VIEW_CONFIG.allowedViews.includes(target);
   const setView = (target) => {
     if (!canEnter(target)) return;
     setViewRaw(target);
   };
-  const goPreview = (entry) => {
+  const goPreview = (entry, showKey = false) => {
     if (!canEnter('preview')) return;
+    setPreviewKey(!!showKey);
     setPreviewExam(entry);
     setViewRaw('preview');
   };
@@ -8020,89 +8221,23 @@ function StudentNoAssignmentView() {
 }
 
 
-function ControlBar({ view, setView, allowedViews, nivel, setNivel, test, setTest, opcion, setOpcion, shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan }) {
-  const showKeyToggle = view==='preview';
+function ControlBar({ view, setView, allowedViews, previewKey, setPreviewKey }) {
   return (
-    <div className="cbar">
-      <div className="cbar-banner">
-        <span className="cbar-eye">●</span>
-        Exámenes institucionales · <b>Academia Norteamericana</b>
-        <button type="button" onClick={()=>window.print()} style={{marginLeft:'auto',border:'1px solid currentColor',background:'#fff',color:'#073B7A',borderRadius:8,padding:'6px 10px',fontWeight:800,cursor:'pointer'}}>Imprimir / Guardar PDF</button>
-      </div>
-      <div className="cbar-row">
-      <div className="cbar-brand">
-        <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
-        <div>
-          <div className="cbar-t">Exámenes · Sistema maestro</div>
-          <div className="cbar-s">Catálogo administrativo · EXAM-MASTER-001</div>
+    <div className="cbar d1-cbar">
+      <div className="cbar-row d1-cbar-row">
+        <div className="cbar-brand">
+          <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
+          <div><div className="cbar-t">Exámenes · Sistema Maestro</div><div className="cbar-s">Evaluación universitaria · Academia Norteamericana</div></div>
+        </div>
+        <div className="d1-top-actions">
+          {view==='preview' && <>
+            <button type="button" className="d1-cbar-control" onClick={()=>setView('admin')}>← Catálogo</button>
+            <button type="button" className={'d1-cbar-control'+(previewKey?' warning':'')} aria-pressed={!!previewKey} onClick={()=>setPreviewKey(x=>!x)}>{previewKey?'Ocultar respuestas':'Mostrar respuestas (personal autorizado)'}</button>
+            <button type="button" className="d1-cbar-control" onClick={()=>window.print()}>Imprimir</button>
+          </>}
         </div>
       </div>
-
-      <div className="cbar-group">
-        <label>Vista</label>
-        <div className="seg">
-          {VIEWS.filter(v => allowedViews.includes(v.k)).map(v => (
-            <button key={v.k} className={view===v.k?'on':''} onClick={()=>setView(v.k)}>{v.t}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Prueba (test)</label>
-        <div className="seg seg-sm">
-          {[["TEST1","Prueba 1"],["TEST2","Prueba 2"]].map(([k,l]) =>
-            <button key={k} className={test===k?'on':''} onClick={()=>setTest(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Opción asignada (examen)</label>
-        <div className="seg seg-sm">
-          {['A','B'].map(o => <button key={o} className={opcion===o?'on':''} onClick={()=>setOpcion(o)}>{o}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Plan académico</label>
-        <div className="seg seg-sm">
-          {[["ambos","Ambos"],["con_ina","CON INA"],["sin_ina","SIN INA"]].map(([k,l]) =>
-            <button key={k} className={plan===k?'on':''} onClick={()=>setPlan(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Tema por nivel</label>
-        <div className="lvlswatches">
-          {Object.keys(NIVEL_TEMA).map(k => (
-            <button key={k} className={`lvlsw${nivel===k?' on':''}`} title={NIVEL_TEMA[k].nombre}
-                    style={{ background:NIVEL_TEMA[k].color }} onClick={()=>setNivel(k)}>{nivel===k?NIVEL_TEMA[k].code:''}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Formato</label>
-        <div className="seg seg-sm">
-          {[["premium","Premium"],["compact","Compacto"],["sheet","Hoja"]].map(([k,l]) =>
-            <button key={k} className={shell===k?'on':''} onClick={()=>setShell(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Densidad</label>
-        <div className="seg seg-sm">
-          {[["comfy","Cómoda"],["compact","Compacta"]].map(([k,l]) =>
-            <button key={k} className={density===k?'on':''} onClick={()=>setDensity(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className={`cbar-group${showKeyToggle?'':' dim'}`}>
-        <label>Clave / preliminar</label>
-        <button className={`tgl${previewKey?' on':''}`} disabled={!showKeyToggle} onClick={()=>setPreviewKey(v=>!v)}>
-          <span className="tgl-dot" />{previewKey?'Visible':'Oculta'}
-        </button>
-      </div>
-      </div>
+      {view==='preview' && previewKey && <div className="d1-cbar-warning" role="alert">Respuestas visibles. No proyectés esta pantalla.</div>}
     </div>
   );
 }
