@@ -50,10 +50,10 @@ const cutNew=restored.indexOf(boundA),cutOld=old.indexOf(boundA);
 const tailNew=restored.indexOf(boundB),tailOld=old.indexOf(boundB);
 const appNewStart=restored.indexOf('function App()'),appOldStart=old.indexOf('function App()');
 const accessNew=restored.indexOf('function AccessBlockedView'),accessOld=old.indexOf('function AccessBlockedView');
-assert(cutNew>0&&tailNew>cutNew&&appNewStart>tailNew&&accessNew>appNewStart);
-assert.equal(restored.slice(0,cutNew),old.slice(0,cutOld),'Student or teacher program changed outside E2');
-assert.equal(restored.slice(tailNew,appNewStart),old.slice(tailOld,appOldStart),'Protected runtime changed outside E2');
-assert.equal(restored.slice(accessNew),old.slice(accessOld),'Shared access/runtime changed outside E2');
+assert(appNewStart>0&&accessNew>appNewStart&&cutNew>accessNew&&tailNew>cutNew,'Component order in E2 guard');
+assert.equal(restored.slice(0,appNewStart),old.slice(0,appOldStart),'Student or teacher program changed outside E2');
+assert.equal(restored.slice(accessNew,cutNew),old.slice(accessOld,cutOld),'Shared access and runtime changed outside E2');
+assert.equal(restored.slice(tailNew),old.slice(tailOld),'Protected React bootstrap/runtime changed outside E2');
 const preview=restored.slice(cutNew,tailNew),appSection=restored.slice(appNewStart,accessNew);
 for(const marker of ['Practicar este examen (sin guardar)','examGetPrivatePreviewF111','superadmin_private_preview','privateExam && privateExam.id === requestedId']){
  assert(app.includes(marker),'Mandatory E2 guard/UX absent '+marker);
