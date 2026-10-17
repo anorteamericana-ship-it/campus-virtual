@@ -766,7 +766,7 @@ const activarEstudiante       = (cedula, grupo, asesor)               => { venta
 // generarDocumento directo desde ventas (eso es admin-only, sin chequeo de
 // propiedad). tipo: 'CERTIFICADO' (hoja de matrícula) | 'MATRICULA_2' (CONAPE).
 async function generarDocumentoVentasSeguro({ cedula, codigo, nivel, tipo }) {
-  return postVentas({
+  const r = await postVentas({
     fn:     'generarDocumentoVentas',
     token:  window.getSessionToken ? window.getSessionToken() : '',
     cedula: cedula || '',
@@ -774,6 +774,22 @@ async function generarDocumentoVentasSeguro({ cedula, codigo, nivel, tipo }) {
     nivel:  nivel  || 'B1',
     tipo,
   });
+  if (!r?.ok) return r || { ok:false, error:'respuesta_vacia' };
+  // F111: entregar exclusivamente PDF privado autenticado, sin enlazar a Drive.
+  if (!r.private_delivery || r.mime_type !== 'application/pdf' || !r.data_base64)
+    return { ok:false, error:'pdf_privado_no_disponible' };
+  const bytes = _ventasPrivateDecodeBase64(r.data_base64);
+  const size = Number(r.size_bytes || 0);
+  if (!bytes?.length || bytes.length > 15*1024*1024 || size !== bytes.length)
+    return { ok:false, error:'pdf_privado_incompleto' };
+  const digest = String(r.sha256 || '').toLowerCase();
+  if (digest && window.crypto?.subtle) {
+    const actual = await _ventasPrivateDocSha256Hex(bytes);
+    if (!actual || actual !== digest) return { ok:false, error:'integridad_pdf_invalida' };
+  }
+  return { ok:true, private_delivery:true,
+    nombre:_ventasPrivateDocSafeName(r.nombre || 'documento.pdf'),
+    mime_type:'application/pdf', blob:new Blob([bytes],{type:'application/pdf'}) };
 }
 
 // ── Matrícula firmada: subir PDF al expediente y notificar ─────────────────

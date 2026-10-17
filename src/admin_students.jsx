@@ -4386,10 +4386,40 @@ function TabDocumentosPanel({ est, detalle, nivelActivo, niveles }) {
       const resp = await fetch(SCRIPT_URL_AS, {
         method:'POST',
         headers:{ 'Content-Type':'text/plain' },
-        body: JSON.stringify({ fn: tipo === 'CERTIFICADO' ? 'generarDocumentoVentas' : 'generarDocumento', token, tipo, codigo: String(est.codigo || est.rec_m || ''), nivel: nivelActivo }),
+        body: JSON.stringify({ fn:'generarDocumentoVentas', token, tipo,
+          codigo:String(est.codigo || est.rec_m || ''), nivel:nivelActivo }),
       });
       const data = await resp.json();
-      setRes(r => ({...r, [tipo]: data.ok ? { url:data.url, nombre:data.nombre } : { error:adminStudentsSafeUserError(data.error || data.mensaje, 'No pudimos generar el documento. Intentá de nuevo.', 'generar_documento') }}));
+      if (!data?.ok || data.private_delivery !== true ||
+          data.mime_type !== 'application/pdf' || !data.data_base64) {
+        setRes(r => ({...r,[tipo]:{error:adminStudentsSafeUserError(
+          data?.error || 'entrega_pdf_privada_no_disponible',
+          'No pudimos generar el documento de forma privada. Intentá de nuevo.',
+          'generar_documento_privado')}}));
+        return;
+      }
+      const raw = window.atob(String(data.data_base64).replace(/\s+/g,''));
+      const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+      if (!bytes.length || bytes.length > 15*1024*1024 ||
+          bytes.length !== Number(data.size_bytes)) {
+        setRes(r => ({...r,[tipo]:{error:'El documento privado llegó incompleto.'}}));
+        return;
+      }
+      if (data.sha256 && window.crypto?.subtle) {
+        const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+        const actual = Array.from(new Uint8Array(digest))
+          .map(x => x.toString(16).padStart(2,'0')).join('');
+        if (actual !== String(data.sha256).toLowerCase()) {
+          setRes(r => ({...r,[tipo]:{error:'No se pudo verificar el documento.'}}));
+          return;
+        }
+      }
+      const url = URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+      const a = document.createElement('a');
+      a.href=url; a.target='_blank'; a.rel='noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url),60000);
+      setRes(r => ({...r,[tipo]:{nombre:data.nombre,private_delivery:true}}));
     } catch(e) {
       setRes(r => ({...r, [tipo]: { error:'Error de conexión' }}));
     } finally {
