@@ -939,23 +939,6 @@ const PC_UNIDADES_MAP = {
   21:'U9-U10', 24:'U11-U12', 28:'U13-U14', 30:'U15-U16',
 };
 
-// F111 QZ-4: leer sugerencias docentes REVISADAS. Jamás crea un Progress Check
-// ni altera retroalimentacion/notas; el docente debe confirmar y guardar el comentario.
-async function pcQuizReviewSuggestionsF111(grupo,nivel,leccion){
-  try{
-    const r=await postCampusData('qzProgressTeacherList',{cod_grupo:grupo,nivel,leccion});
-    if(!r?.ok||!Array.isArray(r.intentos))return {};
-    const map={};
-    r.intentos.forEach(o=>{
-      if(String(o.ESTADO||'').toUpperCase()!=='REVISADO')return;
-      const code=String(o.COD_ESTUDIANTE||'').trim();
-      const note=String(o.COMENTARIO_DOCENTE||'').trim();
-      if(code&&note)map[code]=note;
-    });
-    return map;
-  }catch(_){return {};}
-}
-
 function ModalCompletarProgressCheck({ pendiente, docenteNombre, onClose, onSuccess }) {
   const leccion=Number(pendiente?.leccion||0);
   const unidades=PC_UNIDADES_MAP[leccion]||'';
@@ -977,21 +960,6 @@ function ModalCompletarProgressCheck({ pendiente, docenteNombre, onClose, onSucc
     });
     return()=>{cancel=true;};
   },[pendiente.cod_grupo,pendiente.nivel]);
-
-  // Autocompleta solamente el borrador visible desde un quiz revisado en QA.
-  React.useEffect(()=>{
-    if(!students?.length)return;
-    let active=true;
-    pcQuizReviewSuggestionsF111(pendiente.cod_grupo,pendiente.nivel,leccion).then(suggestions=>{
-      if(!active)return;
-      setComments(prev=>{
-        const next={...prev};let changed=false;
-        students.forEach(s=>{if(!String(next[s.code]||'').trim()&&suggestions[s.code]){next[s.code]=suggestions[s.code];changed=true;}});
-        return changed?next:prev;
-      });
-    });
-    return()=>{active=false};
-  },[pendiente.cod_grupo,pendiente.nivel,leccion,students?.length]);
 
   const submit=async()=>{
     if(submitting)return;
@@ -1079,24 +1047,6 @@ function ModalCierreLeccion({ lec, docenteNombre, registradoPor, onClose, onSucc
 
   const esINA      = programa === 'INA' || programa === 'CON_INA';
   const includesPC = esINA && esPCLec && riel === 'curso';
-  React.useEffect(()=>{
-    if(!includesPC||!students?.length)return;
-    let active=true;
-    pcQuizReviewSuggestionsF111(lec.cod_grupo,lec.nivel,leccionNum).then(suggestions=>{
-      if(!active)return;
-      setFormData(prev=>{
-        const next={...prev};let changed=false;
-        students.forEach(s=>{
-          if(!next[s.code]||String(next[s.code].pc||'').trim()||!suggestions[s.code])return;
-          next[s.code]={...next[s.code],pc:suggestions[s.code]};changed=true;
-        });
-        return changed?next:prev;
-      });
-    });
-    return()=>{active=false};
-  },[includesPC,lec.cod_grupo,lec.nivel,leccionNum,students?.length]);
-
-
 
   // ¿Hay cambios? — para confirmar al cancelar
   const dirty = React.useMemo(() => {
