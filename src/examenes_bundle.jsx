@@ -1140,19 +1140,7 @@ const SUBMISSION_DEMO = {
   enviado:'12 jun 2026 · 18:42',
   tiempo:'41 min',
   estado:'pendiente', // pendiente | en_revision | parcial | listo | cerrado
-  respuestas:{
-    A1:'packing', A2:'vacation',
-    B1:'fun', B2:'subject',
-    C1:'accepted', C2:'modest', C3:'global', C4:'skipping', C5:'triumph',
-    D1:'working', D2:'than', D3:'expected', D4:'meet', D5:'having', D6:'had',
-    E1:'fixed', E2:'damaged', E3:'torn', E4:'replaced', E5:'leak',
-    F:{ 1:'c', 2:'e', 3:'a', 4:'a', 5:'d', 6:'b' },
-    G1:'T', G2:'F', G3:'F', G4:'F', G5:'T',
-    H1:'are repaired', H2:'reduce', H3:'is caused', H4:'limiting',
-    I1:'were shopping', I2:'bought', I3:'got', I4:'caught', I5:'was programming',
-    J1:'had left', J2:'adjusting', J3:'broken', J4:'study', J5:'asking', J6:'to listen',
-    K1:'Do', K2:'to be', K3:'what', K4:'if',
-  },
+  respuestas: {},
 };
 
 
@@ -1169,19 +1157,7 @@ const SUBMISSION_DEMO_I2_T1_B = {
   enviado:'reposición · simulado',
   tiempo:'45 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'brother', A2:'hotel',
-    B1:'helps', B2:'situation',
-    C1:'owes', C2:'stingy', C3:'unemployment', C4:'freezing', C5:'dilemma',
-    D1:'hearing', D2:'than', D3:'to get', D4:'drive', D5:'taking', D6:'had',
-    E1:'OK', E2:'to water', E3:'that', E4:'could',
-    F:{ 1:'c', 2:'a', 3:'f', 4:'e', 5:'b', 6:'d' },
-    G1:'T', G2:'T', G3:'F', G4:'F', G5:'T',
-    H1:'are endangered', H2:'to help', H3:'is depleted', H4:'recycling',
-    I1:'remembered', I2:"hadn't gotten", I3:'went', I4:'was buying', I5:'got',
-    J1:'had gotten', J2:'replaced', J3:'torn', J4:'study', J5:'listening', J6:'to write',
-    K1:'fixed', K2:'chip', K3:'torn', K4:'scratch', K5:'cleaning',
-  },
+  respuestas: {},
 };
 
 // Submission simulada para el examen Test 2 (Units 9–16).
@@ -1196,19 +1172,7 @@ const SUBMISSION_DEMO_T2 = {
   enviado:'13 jun 2026 · 19:05',
   tiempo:'44 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'eating', A2:'group',
-    B1:'meet', B2:'wednesday',
-    C1:'assoon', C2:'since', C3:'during', C4:'ago', C5:'until', C6:'in',
-    D1:'sophisticated', D2:'putup', D3:'rigid', D4:'excuse', D5:'election',
-    E1:'to leave', E2:'volunteering', E3:'painted', E4:'to talk', E5:'make',
-    F:{ 1:'d', 2:'e', 3:'a', 4:'c', 5:'c' },
-    G1:'aren\u2019t', G2:'arrive', G3:'learned', G4:'picked', G5:'which',
-    H1:'accomplished', H2:'traveled', H3:'been', H4:'willget', H5:'llstart', H6:'havebought',
-    I1:'would', I2:'must', I3:'could', I4:'shouldnt',
-    J1:'F', J2:'F', J3:'F', J4:'T', J5:'T', J6:'T',
-    K1:'to be built', K2:'be produced', K3:'undertaken', K4:'to be trained',
-  },
+  respuestas: {},
 };
 
 // Submission simulada para Intermedio II (I2 · Interchange 3 · Test 2 B)
@@ -1223,19 +1187,7 @@ const SUBMISSION_DEMO_I2_T2_B = {
   enviado:'reposición · simulado',
   tiempo:'46 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'accountant', A2:'club',
-    B1:'depressed', B2:'ask',
-    C1:'since', C2:'for', C3:'bythetime', C4:'for', C5:'until', C6:'in',
-    D1:'getting', D2:'hiring', D3:'delivered', D4:'to read', D5:'walked',
-    E1:'pragmatic', E2:'getalong', E3:'insensitive', E4:'demand', E5:'achievement',
-    F:{ 1:'e', 2:'a', 3:'d', 4:'c', 5:'b' },
-    G1:'wasn’t', G2:'to climb', G3:'traveled', G4:'done', G5:'who',
-    H1:'managed', H2:'found', H3:'been', H4:'willmove', H5:'llneed', H6:'havehad',
-    I1:'shouldhave', I2:'musthave', I3:'mayhave', I4:'wouldnthave',
-    J1:'T', J2:'T', J3:'F', J4:'T', J5:'F', J6:'F',
-    K1:'be forced', K2:'to be required', K3:'be fined', K4:'be reduced',
-  },
+  respuestas: {},
 };
 
 
@@ -1251,19 +1203,7 @@ const SUBMISSION_DEMO_I1_T1 = {
   enviado:'13 jun 2026 · 17:58',
   tiempo:'39 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'teacher', A2:'talk',
-    B1:'food', B2:'cook',
-    C1:'would', C2:'have', C3:'should', C4:'could', C5:'youd',
-    D:{ 1:'c', 2:'d', 3:'e', 4:'f', 5:'a', 6:'b' },
-    E1:'notime', E2:'nothing', E3:'thanks', E4:'dont', E5:'mean',
-    F1:'enough', F2:'too', F3:'as', F4:'fewer', F5:'more',
-    G1:'lanes', G2:'takeoff', G3:'modern', G4:'carryon', G5:'download', G6:'turndown',
-    H1:'have you ever tried', H2:"haven't had", H3:'did you drink', H4:'maked', H5:'got',
-    I1:'F', I2:'T', I3:'F', I4:'T',
-    J1:'todownload', J2:'yousend', J3:'could', J4:'toprepare', J5:'after',
-    K1:'were', K2:'out', K3:'use', K4:'when', K5:'opening',
-  },
+  respuestas: {},
 };
 
 const SUBMISSION_DEMO_I1_T2 = {
@@ -1277,18 +1217,7 @@ const SUBMISSION_DEMO_I1_T2 = {
   enviado:'14 jun 2026 · 18:20',
   tiempo:'43 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'working', A2:'actor',
-    B1:'give', B2:'refuse',
-    C1:'walking', C2:'doi', C3:'must', C4:'arentallowed', C5:'shouldhave',
-    D:{ 1:'e', 2:'d', 3:'f', 4:'c', 5:'a', 6:'b' },
-    E1:'job', E2:'dontmind', E3:'dunno', E4:'goodbye', E5:'video', E6:'shower', E7:'wouldnt',
-    F1:'borrow', F2:'tell', F3:'reliable', F4:'luckily', F5:'outstanding',
-    G1:'had', G2:'driving', G3:'heard', G4:'have been working', G5:"'m thinking", G6:"won't need",
-    H1:'F', H2:'T', H3:'F', H4:'T', H5:'F',
-    I1:'were', I2:'died', I3:'because', I4:'playing', I5:'which', I6:'interesting', I7:'to meet',
-    J1:'The telephone was invented by Edison.', J2:'Sushi is eaten in Japan.', J3:'Romeo and Juliet was written by William Shakespeare.', J4:'The hospital was destroyed by a fire.', J5:'These stories are written for a newspaper.',
-  },
+  respuestas: {},
 };
 
 
@@ -1304,19 +1233,7 @@ const SUBMISSION_DEMO_I1_T1_B = {
   enviado:'reposición · simulado',
   tiempo:'42 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'quieter', A2:'talk',
-    B1:'whofood', B2:'cook',
-    C1:'space', C2:'putaway', C3:'rundown', C4:'sandals', C5:'drive', C6:'hangup',
-    D1:'Have you ever owned', D2:'had', D3:'have never had', D4:'keep', D5:'gave',
-    E1:'sorry', E2:'trip', E3:'right', E4:'noon', E5:'looking',
-    F1:'too', F2:'enough', F3:'as', F4:'fewer', F5:'less',
-    G1:'wed', G2:'should', G3:'could', G4:'have', G5:'would',
-    H1:'topark', H2:'temperatureis', H3:'lived', H4:'getting', H5:'when',
-    I1:'Were', I2:'out', I3:'used', I4:'when', I5:'cleaning',
-    J:{ 1:'d', 2:'e', 3:'a', 4:'c', 5:'f', 6:'b' },
-    K1:'F', K2:'F', K3:'T', K4:'T',
-  },
+  respuestas: {},
 };
 
 
@@ -1332,18 +1249,7 @@ const SUBMISSION_DEMO_I1_T2_B = {
   enviado:'reposición · simulado',
   tiempo:'45 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'writing', A2:'actress',
-    B1:'wouldntchange', B2:'notgoout',
-    C1:'fishing', C2:'doi', C3:'must', C4:'cant', C5:'shouldhave',
-    D:{ 1:'d', 2:'e', 3:'a', 4:'f', 5:'c', 6:'b' },
-    E1:'watching', E2:'not', E3:'apologize', E4:'no', E5:'pollution', E6:'acting', E7:'answered',
-    F1:'deny', F2:'made', F3:'levelheaded', F4:'suddenly', F5:'dumb',
-    G1:'rented', G2:'being', G3:'was staying', G4:'have been living', G5:"I'm thinking", G6:'find',
-    H1:'The music for Star Wars was composed by John Williams.', H2:'Chinese food is served in this restaurant.', H3:'Lady Gaga concerts were attended by many music fans last year.', H4:'A lot of computer paper was used by Sonia.', H5:'Is rice grown in Korea?',
-    I1:'T', I2:'T', I3:'F', I4:'F', I5:'F',
-    J1:'will', J2:'asked', J3:'because', J4:'riding', J5:'that', J6:'disgusting', J7:'to take',
-  },
+  respuestas: {},
 };
 
 
@@ -1365,19 +1271,7 @@ const SUBMISSION_DEMO_B2_T2_B = {
   enviado:'reposición · simulado',
   tiempo:'41 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'looking', A2:'beard',
-    B1:'stopped', B2:'paint',
-    C1:'may', C2:'id', C3:'would', C4:'could', C5:'ill',
-    D:{ 1:'f', 2:'c', 3:'d', 4:'e', 5:'b', 6:'a' },
-    E1:'yet', E2:'and', E3:'really', E4:'but', E5:'too',
-    F1:'T', F2:'F', F3:'T', F4:'F', F5:'F',
-    G1:'largest', G2:'How', G3:'climb', G4:'longer', G5:'visit',
-    H1:'dark', H2:'not', H3:'tea', H4:'movie', H5:'so', H6:'hairstyle',
-    I1:'Have you ever tried', I2:'have eaten', I3:'ordered', I4:'did you think', I5:'have had',
-    J1:'height', J2:'bottle', J3:'rode', J4:'rock', J5:'dyed',
-    K1:'It’s important to exercise regularly.', K2:'Please tell George to come early.', K3:'I’ve lived in Japan for a long time.', K4:'Joe is the man with the beard.',
-  },
+  respuestas: {},
 };
 
 // Submission simulada para Básico II (B2 · Interchange 1 · Test 1 A)
@@ -1392,19 +1286,7 @@ const SUBMISSION_DEMO_B2_T1 = {
   enviado:'15 jun 2026 · 18:15',
   tiempo:'37 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'gym', A2:'jogging',
-    B1:'acapulco', B2:'surfing',
-    C1:'am', C2:'do', C3:'Are', C4:'does',
-    D1:'many', D2:'much', D3:'a little', D4:'no one', D5:'nearly all',
-    E1:'T', E2:'F', E3:'F', E4:'F',
-    F1:"doesn't have", F2:'works', F3:'is designing', F4:"don't come", F5:'are getting', F6:'is eating',
-    G1:'flight', G2:'uncle', G3:'had', G4:'reality', G5:'weight',
-    H1:'did do', H2:'Were', H3:'was', H4:'went', H5:'Did have', H6:'did',
-    I:{ 1:'c', 2:'e', 3:'f', 4:'d', 5:'b', 6:'a' },
-    J1:'goldones', J2:'on', J3:'nicerthan', J4:'often', J5:'love', J6:'theres',
-    K1:'Was your new computer very expensive?', K2:'I hardly ever shop in department stores.', K3:'My jacket is warmer than that one.', K4:'How good are you at volleyball?',
-  },
+  respuestas: {},
 };
 
 
@@ -1423,19 +1305,7 @@ const SUBMISSION_DEMO_B2_T1_B = {
   enviado:'reposición · simulado',
   tiempo:'38 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'night', A2:'work',
-    B1:'movie', B2:'hungry',
-    C1:'is', C2:'do', C3:"aren’t", C4:'does',
-    D1:'much', D2:'many', D3:'nearly all', D4:'a few', D5:'a little',
-    E1:'F', E2:'T', E3:'T', E4:'F',
-    F1:'am studying', F2:'have', F3:'works', F4:'are not working', F5:'live', F6:'are taking',
-    G1:'receptionist', G2:'cousin', G3:'took', G4:'pop', G5:'yoga',
-    H1:'Were', H2:'was', H3:'called', H4:"didn’t answer", H5:'did call', H6:'wanted',
-    I:{ 1:'c', 2:'d', 3:'e', 4:'b', 5:'a', 6:'f' },
-    J1:'smallone', J2:'at', J3:'cheaperthan', J4:'good', J5:'would', J6:'theres',
-    K1:'Was Marcos in Peru last week?', K2:'Lynn almost never goes away on vacation.', K3:'This sweater is cheaper than that one.', K4:'How often do you go to the grocery store?',
-  },
+  respuestas: {},
 };
 
 
@@ -1451,19 +1321,7 @@ const SUBMISSION_DEMO_B2_T2 = {
   enviado:'15 jun 2026 · 19:02',
   tiempo:'40 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'works', A2:'school',
-    B1:'job', B2:'ownapt',
-    C1:'may', C2:'ill', C3:'would', C4:'could', C5:'id',
-    D:{ 1:'d', 2:'e', 3:'a', 4:'b', 5:'f', 6:'c' },
-    E1:'but', E2:'really', E3:'already', E4:'too', E5:'though',
-    F1:'F', F2:'T', F3:'F', F4:'T', F5:'F',
-    G1:'largest', G2:'far', G3:'visit', G4:'more', G5:'take',
-    H1:'tall', H2:'so', H3:'why', H4:'work', H5:'neither', H6:'glasses',
-    I1:'Have you ever visited', I2:"haven’t", I3:'went', I4:'Did you like', I5:'has taken',
-    J1:'dark', J2:'toothpaste', J3:'drove', J4:'barbecue', J5:'beard',
-    K1:'It’s a good idea to take vitamins.', K2:'Please ask Jim to call me.', K3:'I haven’t seen Diane for two years.', K4:'Barbara is the woman talking on the phone.',
-  },
+  respuestas: {},
 };
 
 
@@ -1480,19 +1338,7 @@ const SUBMISSION_DEMO_B1_T1 = {
   enviado:'15 jun 2026 · 19:45',
   tiempo:'35 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'luisa', A2:'italian',
-    B1:'microwave', B2:'view',
-    C1:'Are', C2:'am', C3:'Is', C4:'are', C5:'is', C6:'is',
-    D1:'my', D2:'your', D3:'her', D4:'our', D5:'their', D6:"Mary's",
-    E1:'goodlooking', E2:'cashier', E3:'boring', E4:'daughter', E5:'on',
-    F1:'where is', F2:'there', F3:"It's", F4:'these', F5:'they', F6:'Your',
-    G1:'and', G2:'so', G3:'but',
-    H1:'How are you?', H2:'How old are you?', H3:'What do you do?', H4:'Where do you work?',
-    I1:'goodnight', I2:'nice', I3:'pen', I4:'evening', I5:'hat',
-    J1:'are watching', J2:'is raining', J3:"aren’t having", J4:'is doing', J5:'Are wearing', J6:'is not working',
-    K1:'live', K2:'Do have', K3:"don’t", K4:'Does work', K5:'does do',
-  },
+  respuestas: {},
 };
 
 
@@ -1507,17 +1353,7 @@ const SUBMISSION_DEMO_B1_T2 = {
   enviado:'hoy 11:50 a.m.',
   tiempo:'33 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'breakfast', A2:'parents', B1:'newyork', B2:'cameback',
-    C1:'Are going to', C2:'am going to', C3:'are going to', C4:'are going to', C5:'are going to',
-    D1:'was', D2:"didn't work", D3:'watched', D4:'visited', D5:'invited', D6:'ate', D7:'had',
-    E1:'need', E2:'olivia', E3:'sports', E4:'sometimes', E5:'la', E6:'love',
-    F1:'would', F2:'idlove', F3:'areyougoing', F4:'me', F5:'us', F6:'want',
-    G1:"don't feel", G2:'have', G3:'open', G4:'Take', G5:'Drink', G6:"don't go",
-    H1:'Do you ever have soup for breakfast?', H2:'Do we have any chicken?', H3:'Where were you born?', H4:'How old were you in 2000?', H5:'What are you going to do tomorrow?', H6:'Did you go anywhere this weekend?', H7:'Can Maria play the piano?',
-    I1:'fruit', I2:'violin', I3:'elementary', I4:'at', I5:'department',
-    J:{ 1:'a', 2:'b', 3:'c', 4:'d' },
-  }
+  respuestas: {}
 };
 
 
@@ -1534,19 +1370,7 @@ const SUBMISSION_DEMO_B1_T1_B = {
   enviado:'reposición · simulado',
   tiempo:'36 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'celia', A2:'canada',
-    B1:'kitchen', B2:'nicekitchen',
-    C1:'Are', C2:'am', C3:'is', C4:'are', C5:'Is', C6:'is',
-    D1:'my', D2:'his', D3:'her', D4:'our', D5:'their', D6:"John's",
-    E1:'serious', E2:'pilot', E3:'exciting', E4:'mother', E5:'in',
-    F1:'where are', F2:'there', F3:"They're", F4:'this', F5:'it', F6:'Your',
-    G1:'and', G2:'so', G3:'but',
-    H1:'How are you?', H2:'Where are you from?', H3:'What do you do?', H4:'Where do you work?',
-    I1:'bye', I2:'classmate', I3:'chair', I4:'seven', I5:'bed',
-    J1:'am having', J2:'is not wearing', J3:'are taking', J4:'are playing', J5:'is doing', J6:'is not snowing',
-    K1:'live', K2:'Do have', K3:"doesn't", K4:'Do cook', K5:'do do',
-  },
+  respuestas: {},
 };
 
 
@@ -1563,18 +1387,7 @@ const SUBMISSION_DEMO_B1_T2_B = {
   enviado:'reposición · simulado',
   tiempo:'34 min',
   estado:'pendiente',
-  respuestas:{
-    A1:'playwell', A2:'saturday',
-    B1:'la', B2:'college',
-    C1:'are going to', C2:'am going to', C3:'are going to', C4:'is going to', C5:'Are going to',
-    D1:'pasta', D2:'play', D3:'high', D4:'on', D5:'stamps',
-    E1:'bread', E2:'thanks', E3:'beach', E4:'sometimes', E5:'beijing', E6:'draw',
-    F1:'like', F2:'her', F3:'areyougoing', F4:'me', F5:'me', F6:'want',
-    G1:'feel', G2:'have', G3:'Take', G4:'Get', G5:"don't stay up", G6:'Call',
-    H1:'Do you usually have breakfast?', H2:'Do we need any milk?', H3:'Were you at this school last year?', H4:'Where did you grow up?', H5:'What time is the party going to start?', H6:'Did you get up early today?', H7:'Can you ride a horse very well?',
-    I:{ 1:'a', 2:'b', 3:'c', 4:'d' },
-    J1:'was', J2:'worked', J3:'exercised', J4:'went', J5:"didn't watch", J6:'felt', J7:'listened',
-  },
+  respuestas: {},
 };
 
 Object.assign(window, {
