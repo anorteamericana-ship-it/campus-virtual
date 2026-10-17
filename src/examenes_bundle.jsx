@@ -7532,7 +7532,87 @@ function F111UpcomingActivationsD1() {
   );
 }
 
-function AdminMode({ shell, density, onPreview }) {
+function F111LegacyAdminMode({ shell, density, onPreview }) {
+  const [filtro, setFiltro] = useState('todos');
+  const [sel, setSel] = useState(null);
+  const list = CATALOGO.filter(e => filtro==='todos' ? true : filtro==='real' ? e.estado==='real' : e.opcion===filtro);
+  const real = CATALOGO.filter(e=>e.estado==='real').length;
+
+  return (
+    <div className="adwrap">
+      <div className="ad-head">
+        <div>
+          <div className="ad-kicker">CATÁLOGO MAESTRO DE EXÁMENES · WRITTEN</div>
+          <h2 className="ad-title">16 entradas · 4 niveles × Test 1/2 × Opción A/B</h2>
+        </div>
+        <div className="ad-legend">
+          <span className="ad-leg"><i className="dot-real" />{real} con contenido real</span>
+          <span className="ad-leg"><i className="dot-pend" />{CATALOGO.length-real} pendientes</span>
+        </div>
+      </div>
+
+      <div className="ad-filters">
+        {[['todos','Todos'],['A','Opción A'],['B','Opción B'],['real','Solo reales']].map(([k,l])=>(
+          <button key={k} className={`ad-f${filtro===k?' on':''}`} onClick={()=>setFiltro(k)}>{l}</button>
+        ))}
+      </div>
+
+      <PonderacionModelo />
+
+      <ActivationBackendPanel onPreview={onPreview} />
+
+      <BackendOperationsPanel />
+
+      <BackendContractSpecPanel />
+
+      <div className="ad-grid">
+        {list.map(e => {
+          const t = NIVEL_TEMA[e.nivel];
+          return (
+            <div key={e.id} className={`adcard estado-${e.estado}`} style={{ '--lvl':t.color, '--lvl-soft':t.soft, '--lvl-ink':t.ink }}>
+              <div className="adcard-top">
+                <span className="adcard-lvl">{t.code}</span>
+                <span className={`mini-opt opt-${e.opcion}`}>{e.opcion}</span>
+                <span className={`adcard-state ${e.estado}`}>{e.estado==='real'?'REAL':'PENDIENTE'}</span>
+              </div>
+              <div className="adcard-id">{e.id}</div>
+              <div className="adcard-name">{e.nombre_nivel} · {e.test}</div>
+              <div className="adcard-rows">
+                <div><span>Libro (interno)</span>{e.libro}</div>
+                <div><span>Units</span>{e.units}</div>
+                <div><span>Lección</span>{e.leccion}</div>
+                <div><span>Valor (plan)</span>{e.ponderacion_por_plan.con_ina}% / {e.ponderacion_por_plan.sin_ina}%</div>
+                <div><span>Listening A</span><code className="vid-id">{e.videos.listening_A}</code></div>
+                <div><span>Listening B</span><code className="vid-id">{e.videos.listening_B}</code></div>
+                <div><span>Opción examen</span>{e.opcion}</div>
+                <div><span>Answer key</span>{e.estado==='real'?'incluida':'pendiente'}</div>
+              </div>
+              <div className="adcard-foot">
+                {e.estado==='real'
+                  ? <><button className="btn-sm" onClick={()=>onPreview(e)}>Preview / Admin →</button><button className="ad-meta-btn" onClick={()=>setSel(e)}>Metadatos</button></>
+                  : <span className="adcard-pendmsg">Sin contenido — no inventar preguntas</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {sel && <MetaModal e={sel} onClose={()=>setSel(null)} />}
+    </div>
+  );
+}
+
+// F111 D1 LIVE: panel C solo para rol superadmin autenticado en Campus padre.
+// Los demás administradores conservan su interfaz histórica sin bifurcar el Campus.
+function AdminMode(props) {
+  const session = getExamParentSession() || {};
+  const realRole = String(session.rol || '').trim().toLowerCase();
+  return realRole === 'superadmin'
+    ? <F111SuperadminCenterMode {...props} />
+    : <F111LegacyAdminMode {...props} />;
+}
+
+function F111SuperadminCenterMode({ shell, density, onPreview }) {
   const [tab, setTab] = useState('written');
   const [selectedId, setSelectedId] = useState('B1_WRITTEN_L18_TEST1_A');
   const [selectedLevel, setSelectedLevel] = useState('B1');
