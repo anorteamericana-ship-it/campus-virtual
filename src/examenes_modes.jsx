@@ -2267,7 +2267,7 @@ function F111UpcomingActivationsD1() {
   return (
     <section className="d1-upcoming" aria-labelledby="d1-upcoming-title">
       <div className="d1-section-heading">
-        <div><h3 id="d1-upcoming-title">Activaciones programadas</h3><p>Datos del backend · las fechas académicas completas dependen del calendario del Campus.</p></div>
+        <div><h3 id="d1-upcoming-title">Próximas activaciones registradas</h3><p>Datos del backend · las fechas académicas completas dependen del calendario del Campus.</p></div>
         <button type="button" className="d1-quiet" onClick={refresh}>Actualizar</button>
       </div>
       {rows.length > 0 && <div className="d1-upcoming-list">{rows.map((r,i)=>(
@@ -2308,15 +2308,17 @@ function AdminMode({ shell, density, onPreview }) {
   return (
     <div className="adwrap d1-master">
       <header className="d1-header">
-        <div className="d1-kicker">ACADEMIA NORTEAMERICANA / EXAM MASTER</div>
+        <div className="d1-kicker">ADMINISTRACIÓN · EVALUACIONES</div>
         <h1>Centro de exámenes</h1>
-        <p>Evaluaciones institucionales · Catálogo académico y seguimiento</p>
+        <p>Programa Inglés Conversacional · INA Resolución 2519-02 · Interchange 5th Edition</p>
       </header>
       <nav className="d1-tabs" aria-label="Modalidades del sistema maestro">
-        {[['written','Escritos'],['oral','Orales'],['progress','Progress Check']].map(([id,label])=>(
-          <button key={id} type="button" role="tab" aria-selected={tab===id} className={'d1-tab'+(tab===id?' active':'')} onClick={()=>setTab(id)}>{label}</button>
+        {[['written','Escritos',16],['oral','Orales',16],['progress','Progress Check',32]].map(([id,label,count])=>(
+          <button key={id} type="button" role="tab" aria-selected={tab===id} className={'d1-tab'+(tab===id?' active':'')} onClick={()=>setTab(id)} aria-label={label}>{label} <span className="d1-tab-count">· {count}</span></button>
         ))}
       </nav>
+
+      <F111UpcomingActivationsD1 />
 
       {tab==='written' && <div className="d1-workspace">
         <section className="d1-matrix-card" aria-label="Matriz de exámenes escritos">
@@ -2324,6 +2326,7 @@ function AdminMode({ shell, density, onPreview }) {
             <div><h2>Exámenes escritos</h2><p>4 niveles · 2 pruebas · opciones A/B · {real}/16 con contenido estructurado</p></div>
             <span className="d1-subtle-pill">50 puntos por examen</span>
           </div>
+          <p className="d1-swipe-hint">Deslizá para ver las opciones A/B de ambas pruebas <span aria-hidden="true">→</span></p>
           <div className="d1-matrix-scroll" tabIndex="0" aria-label="Desplazamiento horizontal de la matriz">
             <div className="d1-matrix">
               <div className="d1-matrix-corner">NIVEL / LIBRO</div>
@@ -2358,10 +2361,10 @@ function AdminMode({ shell, density, onPreview }) {
             <div><dt>Unidades</dt><dd>{selected.units}</dd></div>
             <div><dt>Secciones</dt><dd>{selectedSections.length || '—'}</dd></div>
             <div><dt>Puntaje</dt><dd>{selected.puntos_totales || '—'} puntos</dd></div>
-            <div><dt>Tiempo de referencia</dt><dd>90 min*</dd></div>
+            <div><dt>Duración operativa</dt><dd>Según activación*</dd></div>
             <div><dt>Valor académico</dt><dd>5 % INA · 15 % sin INA</dd></div>
           </dl>
-          <p className="d1-help">*La duración operativa y el reloj real los define el backend por activación, no este catálogo.</p>
+          <p className="d1-help">*El tiempo operativo lo define la activación del backend. {selectedSections.filter(s=>s.needsReview).length} secciones marcadas para revisión docente.</p>
           <div className="d1-action-stack">
             <button className="d1-primary" type="button" onClick={()=>preview(false)}>Ver como estudiante</button>
             <button className="d1-secondary" type="button" onClick={()=>preview(true)}>Ver con respuestas (personal autorizado)</button>
@@ -2384,8 +2387,6 @@ function AdminMode({ shell, density, onPreview }) {
         <div className="d1-pc-grid">{F111_PC_SCHEDULE_D1.map(([number,lesson,units])=><button type="button" key={number} aria-pressed={selectedPc===number} className={'d1-eval-card'+(selectedPc===number?' active':'')} onClick={()=>setSelectedPc(number)}><span className="d1-card-eyebrow">PROGRESS CHECK {String(number).padStart(2,'0')}</span><b>Lección {lesson}</b><small>Unidades {units}</small><span className="d1-pc-pending">Contenido Cambridge: por validar</span></button>)}</div>
         <div className="d1-selection-info d1-pc-selected"><b>{selectedLevel} · Progress Check {String(selectedPc).padStart(2,'0')}</b><p>Diagnóstico sin opción B, sin ponderación y sin clave visible. El banco oficial se conecta desde QZ32 únicamente cuando el contenido haya sido validado.</p></div>
       </section>}
-
-      <F111UpcomingActivationsD1 />
 
       <details className="d1-ops"><summary>Operaciones de activación existentes</summary><ActivationBackendPanel onPreview={onPreview} /></details>
       {isSuperadmin && <section className="d1-tech">
