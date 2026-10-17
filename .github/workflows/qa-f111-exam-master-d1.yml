@@ -1,0 +1,54 @@
+name: F111 Exam Master PR-D1 QA (no production)
+on:
+  push:
+    branches:
+      - feat/f111-exam-master-pr-d1-centro-qa-20261017
+  pull_request:
+    paths:
+      - "src/examenes_*.jsx"
+      - "scripts/qa_f111_exam_master_d1.mjs"
+      - ".github/workflows/qa-f111-exam-master-d1.yml"
+permissions:
+  contents: read
+jobs:
+  d1-readonly-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install test-only parsers and browser
+        run: |
+          npm install --no-save @babel/parser@7.28.4 playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Validate all six JSX sources and generated bundle
+        run: |
+          node -e "const fs=require('fs'),p=require('@babel/parser');for(const n of ['examenes_css.jsx','examenes_appcss.jsx','examenes_data.jsx','examenes_render.jsx','examenes_modes.jsx','examenes_app.jsx','examenes_bundle.jsx'])p.parse(fs.readFileSync('src/'+n,'utf8'),{sourceType:'script',plugins:['jsx']});"
+      - name: Verify bundle and PR-D1 invariants
+        run: node scripts/qa_f111_exam_master_d1.mjs
+      - name: E4 verify immutable protected scope against pinned main
+        run: node scripts/qa_f111_d1_protected_scope_e4.mjs
+      - name: E4 legacy BC exact reconstruction mapped to immutable D1 scope
+        run: node scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs --f111-d1-scoped
+      - name: E4 legacy BB admin boundary
+        run: node scripts/qa_examenes_admin_effective_boundary_cs21a210bb.mjs
+      - name: E4 legacy AZ teacher and admin boundary
+        run: node scripts/qa_examenes_teacher_admin_boundary_cs21a210az.mjs
+      - name: E4 legacy BA teacher safety
+        run: node scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs
+      - name: E4 legacy AY student safety
+        run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
+      - name: E4 scan raw error sinks without exceeding pinned main
+        run: node scripts/qa_f111_d1_v3_baseline_e4.mjs
+      - name: Render real QA frontend 1280 and 390 in Chromium (synthetic parent)
+        run: F111_BROWSER=1 node scripts/qa_f111_exam_master_d1.mjs
+      - name: Save QA captures
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: f111-pr-d1-qa-capturas
+          path: qa-capturas/*.png
+          if-no-files-found: warn
+      - name: Diff hygiene
+        run: git diff --check HEAD~1 HEAD

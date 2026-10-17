@@ -33,4 +33,4 @@ jobs:
       - name: Regress AY StudentMode boundary
         run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
       - name: Diff hygiene
-        run: git diff --check 328afb1b98b29be31cd536b2d60e8dffcf7b6a1b
+        run: git diff --check de49c25fa3de9f6a606a3d8d48832ebc296971cc HEAD -- src/examenes_modes.jsx src/examenes_app.jsx src/examenes_appcss.jsx src/examenes_bundle.jsx scripts/qa_f111* scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs

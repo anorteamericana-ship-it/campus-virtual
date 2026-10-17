@@ -446,17 +446,18 @@ function App() {
   const [opcion, setOpcion] = React.useState('A');
   const [shell, setShell] = React.useState('premium');
   const [density, setDensity] = React.useState('comfy');
-  const [previewKey, setPreviewKey] = React.useState(true);
+  const [previewKey, setPreviewKey] = React.useState(false);
   const [previewExam, setPreviewExam] = React.useState(null);
-  const [plan, setPlan] = React.useState('ambos'); // ambos | con_ina | sin_ina
+  const [plan, setPlan] = React.useState('con_ina'); // valor de preview; la ponderación real la define el servidor
 
   const canEnter = (target) => INITIAL_VIEW_CONFIG.allowedViews.includes(target);
   const setView = (target) => {
     if (!canEnter(target)) return;
     setViewRaw(target);
   };
-  const goPreview = (entry) => {
+  const goPreview = (entry, showKey = false) => {
     if (!canEnter('preview')) return;
+    setPreviewKey(!!showKey);
     setPreviewExam(entry);
     setViewRaw('preview');
   };
@@ -573,89 +574,23 @@ function StudentNoAssignmentView() {
 }
 
 
-function ControlBar({ view, setView, allowedViews, nivel, setNivel, test, setTest, opcion, setOpcion, shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan }) {
-  const showKeyToggle = view==='preview';
+function ControlBar({ view, setView, allowedViews, previewKey, setPreviewKey }) {
   return (
-    <div className="cbar">
-      <div className="cbar-banner">
-        <span className="cbar-eye">●</span>
-        Exámenes institucionales · <b>Academia Norteamericana</b>
-        <button type="button" onClick={()=>window.print()} style={{marginLeft:'auto',border:'1px solid currentColor',background:'#fff',color:'#073B7A',borderRadius:8,padding:'6px 10px',fontWeight:800,cursor:'pointer'}}>Imprimir / Guardar PDF</button>
-      </div>
-      <div className="cbar-row">
-      <div className="cbar-brand">
-        <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
-        <div>
-          <div className="cbar-t">Exámenes · Sistema maestro</div>
-          <div className="cbar-s">Catálogo administrativo · EXAM-MASTER-001</div>
+    <div className="cbar d1-cbar">
+      <div className="cbar-row d1-cbar-row">
+        <div className="cbar-brand">
+          <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
+          <div><div className="cbar-t">Exámenes · Sistema Maestro</div><div className="cbar-s">Evaluación universitaria · Academia Norteamericana</div></div>
+        </div>
+        <div className="d1-top-actions">
+          {view==='preview' && <>
+            <button type="button" className="d1-cbar-control" onClick={()=>setView('admin')}>← Catálogo</button>
+            <button type="button" className={'d1-cbar-control'+(previewKey?' warning':'')} aria-pressed={!!previewKey} onClick={()=>setPreviewKey(x=>!x)}>{previewKey?'Ocultar respuestas':'Mostrar respuestas (personal autorizado)'}</button>
+            <button type="button" className="d1-cbar-control" onClick={()=>window.print()}>Imprimir</button>
+          </>}
         </div>
       </div>
-
-      <div className="cbar-group">
-        <label>Vista</label>
-        <div className="seg">
-          {VIEWS.filter(v => allowedViews.includes(v.k)).map(v => (
-            <button key={v.k} className={view===v.k?'on':''} onClick={()=>setView(v.k)}>{v.t}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Prueba (test)</label>
-        <div className="seg seg-sm">
-          {[["TEST1","Prueba 1"],["TEST2","Prueba 2"]].map(([k,l]) =>
-            <button key={k} className={test===k?'on':''} onClick={()=>setTest(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Opción asignada (examen)</label>
-        <div className="seg seg-sm">
-          {['A','B'].map(o => <button key={o} className={opcion===o?'on':''} onClick={()=>setOpcion(o)}>{o}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Plan académico</label>
-        <div className="seg seg-sm">
-          {[["ambos","Ambos"],["con_ina","CON INA"],["sin_ina","SIN INA"]].map(([k,l]) =>
-            <button key={k} className={plan===k?'on':''} onClick={()=>setPlan(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Tema por nivel</label>
-        <div className="lvlswatches">
-          {Object.keys(NIVEL_TEMA).map(k => (
-            <button key={k} className={`lvlsw${nivel===k?' on':''}`} title={NIVEL_TEMA[k].nombre}
-                    style={{ background:NIVEL_TEMA[k].color }} onClick={()=>setNivel(k)}>{nivel===k?NIVEL_TEMA[k].code:''}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Formato</label>
-        <div className="seg seg-sm">
-          {[["premium","Premium"],["compact","Compacto"],["sheet","Hoja"]].map(([k,l]) =>
-            <button key={k} className={shell===k?'on':''} onClick={()=>setShell(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Densidad</label>
-        <div className="seg seg-sm">
-          {[["comfy","Cómoda"],["compact","Compacta"]].map(([k,l]) =>
-            <button key={k} className={density===k?'on':''} onClick={()=>setDensity(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className={`cbar-group${showKeyToggle?'':' dim'}`}>
-        <label>Clave / preliminar</label>
-        <button className={`tgl${previewKey?' on':''}`} disabled={!showKeyToggle} onClick={()=>setPreviewKey(v=>!v)}>
-          <span className="tgl-dot" />{previewKey?'Visible':'Oculta'}
-        </button>
-      </div>
-      </div>
+      {view==='preview' && previewKey && <div className="d1-cbar-warning" role="alert">Respuestas visibles. No proyectés esta pantalla.</div>}
     </div>
   );
 }
