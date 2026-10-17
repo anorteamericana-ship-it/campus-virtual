@@ -2387,7 +2387,7 @@ function AdminMode({ shell, density, onPreview }) {
 
       <F111UpcomingActivationsD1 />
 
-      <details className="d1-ops"><summary>Operaciones de activación existentes</summary><ActivationBackendPanel onPreview={(entry)=>onPreview(entry,false)} /></details>
+      <details className="d1-ops"><summary>Operaciones de activación existentes</summary><ActivationBackendPanel onPreview={onPreview} /></details>
       {isSuperadmin && <section className="d1-tech">
         <button type="button" className="d1-quiet" onClick={()=>setTechnicalOpen(x=>!x)} aria-expanded={technicalOpen}>Diagnóstico técnico · superadmin {technicalOpen?'▴':'▾'}</button>
         {technicalOpen && <div className="d1-tech-content">
