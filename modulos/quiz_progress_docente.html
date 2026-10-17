@@ -1,0 +1,104 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Revisión de Quizzes · Progress Check · F111 QA</title>
+<style>
+*{box-sizing:border-box}body{font-family:Inter,Segoe UI,Arial,sans-serif;background:#F5F7FB;color:#1B304D;margin:0}
+main{max-width:1190px;margin:auto;padding:18px}.top{background:#073B7A;color:white;padding:17px 20px;border-radius:16px;display:flex;justify-content:space-between;gap:12px;align-items:center}.top b{font-size:19px}.top small{display:block;margin-top:4px;opacity:.8}.chip{border-radius:999px;padding:8px 10px;background:#E9F1FD;color:#104684;font-size:11px;font-weight:800}.top .chip{background:#1D5DA3;color:white}
+h1{font-size:30px;letter-spacing:-.04em;margin:25px 0 6px}.subtitle{color:#61728C;margin:0 0 17px;font-size:13px;line-height:1.55}.layout{display:grid;grid-template-columns:340px 1fr;gap:16px}.card{background:white;border:1px solid #DBE2ED;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px #18385408}.card h2{font-size:16px;margin:0}.head{padding:17px;border-bottom:1px solid #E5EAF2;display:flex;justify-content:space-between;align-items:center;gap:10px}.list{max-height:69vh;overflow:auto;padding:10px}.person{display:block;width:100%;text-align:left;background:#fff;border:1px solid #E1E6EF;border-radius:10px;padding:12px;margin-bottom:8px;font-size:12px;color:#1E3859}.person:hover,.person.selected{border-color:#366DB5;background:#F3F8FF}.person b{display:block;font-size:13px;margin-bottom:5px}.person small{color:#60728D}.review{padding:18px}.row{display:flex;gap:11px;flex-wrap:wrap;align-items:center}.button{border:1px solid #CAD5E5;border-radius:10px;padding:10px 13px;background:#fff;color:#10468A;font-size:12px;font-weight:800;cursor:pointer}.button.main{color:#fff;background:#0B4EA2;border-color:#0B4EA2}.button:disabled{opacity:.45;cursor:not-allowed}.field{margin:15px 0}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}.field select,.field textarea{border:1px solid #CBD5E2;border-radius:10px;width:100%;padding:12px;color:#1E3859;font:inherit;font-size:13px}.field textarea{min-height:120px;line-height:1.55;resize:vertical}.answers{white-space:pre-wrap;background:#F7F9FD;border-radius:12px;padding:14px;border:1px solid #E3E9F3;max-height:265px;overflow:auto;font-size:12px;line-height:1.6}.message{font-size:12px;color:#516783}.note{border:1px solid #D4E6DB;background:#F3FAF5;border-radius:12px;padding:13px;font-size:12px;color:#336545;line-height:1.6;margin:12px 0}.pdf{position:fixed;inset:0;background:#061B36BB;padding:20px;display:none;align-items:center;justify-content:center;z-index:9}.pdf.visible{display:flex}.viewer{max-width:950px;width:100%;background:white;border-radius:14px;overflow:hidden}.viewer header{display:flex;justify-content:space-between;padding:9px 13px}.viewer iframe{width:100%;height:75vh;border:0;background:#fff}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.list{max-height:230px}main{padding:9px}.top{border-radius:10px}h1{font-size:24px}}
+</style></head><body>
+<main>
+<header class="top"><div><b>Academia Norteamericana</b><small>Campus docente · Revisión de quizzes de Progress Check</small></div><span class="chip">Diagnóstico · 0 % oficial</span></header>
+<h1 id="title">Revisión del Quiz</h1>
+<p class="subtitle">Verificá las respuestas usando el documento original, la clave y el guion de escucha. Guardá una observación individual que servirá como borrador para el Progress Check oficial.</p>
+<section class="layout">
+<div class="card"><div class="head"><h2>Estudiantes</h2><span class="chip" id="total">—</span></div><div class="list" id="people">Cargando…</div></div>
+<div class="card"><div class="head"><h2 id="selected">Seleccioná un estudiante</h2><span class="chip" id="state">—</span></div>
+<div class="review">
+<div class="row"><button class="button" id="question">Ver cuestionario</button><button class="button" id="key">Ver clave privada</button><button class="button" id="scriptBtn">Ver guion de listening</button></div>
+<div class="field"><label>Respuestas presentadas</label><div id="answers" class="answers">Sin estudiante seleccionado.</div></div>
+<div class="field"><label for="outcome">Resultado diagnóstico</label>
+<select id="outcome"><option value="">Seleccionar…</option><option value="LOGRADO">Logrado</option><option value="EN_PROCESO">En proceso</option><option value="NECESITA_REFUERZO">Necesita refuerzo</option><option value="NO_APLICO">No aplicó (seguimiento)</option></select></div>
+<div class="field"><label for="comments">Comentario individual de Progress Check</label><textarea id="comments" placeholder="Escribí evidencia concreta: qué logró, qué debe reforzar y el próximo paso pedagógico."></textarea></div>
+<div class="row" style="justify-content:space-between"><span id="status" class="message" role="status">El comentario requiere confirmación docente.</span><button class="button main" id="save">Guardar revisión diagnóstica</button></div>
+<div class="note">Después de guardar, el comentario se puede prellenar en la lección de Progress Check. <b>El docente todavía debe confirmar y guardar el cierre académico.</b> No se emite ninguna nota oficial.</div>
+</div></div>
+</section><p id="error" role="alert" style="color:#9C2835;font-size:13px"></p>
+</main>
+<div class="pdf" id="modal"><div class="viewer"><header><strong id="pdfTitle">Documento</strong><button class="button" id="close">Cerrar</button></header><iframe id="frame" title="Documento docente autorizado"></iframe></div></div>
+<script>
+(function(){
+'use strict';
+const p=new URLSearchParams(location.search),ctx={cod_grupo:String(p.get('grupo')||''),nivel:String(p.get('nivel')||'B1'),leccion:Number(p.get('leccion')||4)};
+const preview=p.get('preview')==='1',$=id=>document.getElementById(id);
+let apiUrl=String(window.F111_QZ_QA_API_URL||''),token='',people=[],selected=null,blobUrl=null;
+try{token=JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||''}catch(_){}
+$('title').textContent='Quiz de Progress Check · '+ctx.nivel+' · L'+ctx.leccion;
+function error(message){$('error').textContent=message||''}
+async function api(fn,extra={}){
+ if(!apiUrl)throw Error('No está configurado el backend aislado de QA.');
+ const r=await fetch(apiUrl+'?fn='+encodeURIComponent(fn),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token,...ctx,...extra})});
+ let d;try{d=await r.json()}catch(_){throw Error('Respuesta inválida del servidor.')}
+ if(!r.ok||!d?.ok)throw Error(d?.mensaje||d?.error||'Error de conexión');
+ return d;
+}
+function render(){
+ $('total').textContent=people.length+' entregados';
+ const root=$('people');root.replaceChildren();
+ people.forEach(x=>{
+  const o=x.attempt,b=document.createElement('button');b.className='person'+(selected?.COD_ESTUDIANTE===o.COD_ESTUDIANTE?' selected':'');
+  const nm=document.createElement('b');nm.textContent=x.name||'Estudiante';
+  const sub=document.createElement('small');sub.textContent='#'+o.COD_ESTUDIANTE+' · '+(o.ESTADO==='REVISADO'?'Revisado':'Pendiente de revisión');
+  b.append(nm,sub);b.onclick=()=>select(o);root.append(b);
+ });
+ if(!people.length)root.textContent='No hay quizzes entregados para este Progress Check.';
+}
+function select(o){
+ selected=o;$('selected').textContent=o.COD_ESTUDIANTE;$('state').textContent=o.ESTADO||'';
+ let vals={};try{vals=JSON.parse(String(o.RESPUESTAS_JSON||'{}'))}catch(_){}
+ const entries=Object.keys(vals).sort().map(k=>k+': '+String(vals[k]||'')).join('\n\n');
+ $('answers').textContent=entries||'Sin respuestas visibles.';
+ $('outcome').value=o.ESTADO==='REVISADO'?String(o.RESULTADO||''):'';
+ $('comments').value=o.ESTADO==='REVISADO'?String(o.COMENTARIO_DOCENTE||''):'';
+ $('save').disabled=o.ESTADO==='REVISADO';
+ render();
+}
+async function showFile(material){
+ if(preview){error('Vista previa: no se descargan documentos originales.');return;}
+ try{
+  const doc=material==='material'?await api('qzProgressPaper'):await api('qzProgressTeacherMaterials',{material});
+  const raw=atob(doc.pdf_base64),bytes=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+  if(blobUrl)URL.revokeObjectURL(blobUrl);
+  blobUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+  $('frame').src=blobUrl;$('pdfTitle').textContent=doc.nombre||material;$('modal').classList.add('visible');
+ }catch(e){error(e.message)}
+}
+async function save(){
+ if(preview||!selected)return;
+ const outcome=$('outcome').value,comment=$('comments').value.trim();
+ if(!outcome||!comment){error('Seleccioná el resultado y escribí una observación concreta.');return;}
+ $('save').disabled=true;error('');
+ try{
+  const r=await api('qzProgressTeacherReview',{cod_estudiante:selected.COD_ESTUDIANTE,resultado:outcome,comentario:comment});
+  selected.ESTADO='REVISADO';selected.RESULTADO=r.resultado;selected.COMENTARIO_DOCENTE=r.comentario_sugerido;
+  $('status').textContent='Revisión guardada. Confirmá el comentario en el cierre de Progress Check.';
+  render();
+ }catch(e){$('save').disabled=false;error(e.message)}
+}
+async function boot(){
+ if(preview){people=[{name:'Estudiante de muestra',attempt:{COD_ESTUDIANTE:'QA-001',ESTADO:'ENTREGADO',RESPUESTAS_JSON:JSON.stringify({A:'1. Respuesta de muestra',B:'2. Texto de ejemplo'})}}];$('total').textContent='Muestra';render();select(people[0].attempt);$('save').disabled=true;$('status').textContent='Vista previa sin guardar';return;}
+ if(!token||!ctx.cod_grupo||!apiUrl){error('Falta sesión docente, grupo o URL de Apps Script QA.');return;}
+ try{
+  const [list,roster]=await Promise.all([api('qzProgressTeacherList'),api('getEstudiantesParaCierre')]);
+  const names={};(roster.estudiantes||[]).forEach(e=>{names[e.code||e.codigo]=e.name||e.nombre});
+  people=(list.intentos||[]).filter(o=>['ENTREGADO','REVISADO'].includes(String(o.ESTADO))).map(o=>({name:names[String(o.COD_ESTUDIANTE)]||'',attempt:o}));
+  render();
+  if(people.length)select(people[0].attempt);
+ }catch(e){error(e.message)}
+}
+$('question').onclick=()=>showFile('material');$('key').onclick=()=>showFile('clave');$('scriptBtn').onclick=()=>showFile('guion');
+$('save').onclick=save;$('close').onclick=()=>$('modal').classList.remove('visible');
+window.addEventListener('beforeunload',()=>{if(blobUrl)URL.revokeObjectURL(blobUrl)});
+boot();
+})();
+</script></body></html>
