@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install test-only parsers and browser
         run: |
           npm install --no-save @babel/parser@7.28.4 playwright@1.56.1
