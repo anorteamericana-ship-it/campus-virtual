@@ -20,11 +20,12 @@
 <section class="card"><div class="cardhead"><div><h2>Cuestionario original</h2><small>Leé los ejercicios del documento y escuchá las indicaciones del docente en clase.</small></div><span class="chip">PDF</span></div>
 <div class="pdfBox" id="pdfBox"><div class="pdfPlaceholder"><div><div class="symbol">📄</div><b>Documento de la evaluación</b><p id="pdfInfo">Se cargará únicamente cuando el Quiz corresponda a tu Progress Check.</p></div></div></div>
 </section>
-<section class="card"><div class="cardhead"><div><h2>Mis respuestas</h2><small>Escribí el número de cada ejercicio y tu respuesta dentro de su apartado (A, B, C…).</small></div><span class="chip" id="counter">0/8 apartados</span></div>
+<section class="card"><div class="cardhead"><div><h2>Mis respuestas</h2><small>Escribí el número de cada ejercicio y tu respuesta dentro de su apartado (A, B, C…).</small></div><span class="chip" id="counter">0 respuestas</span></div>
 <div class="answers" id="answers"></div>
 <div class="footer"><div class="status"><span id="saveState" role="status" aria-live="polite">Todavía no hay respuestas.</span><div class="bar"><div id="progressFill" style="width:0%"></div></div></div><div class="actions"><button class="btn" type="button" id="saveBtn">Guardar avance</button><button class="btn primary" type="button" id="submitBtn">Entregar quiz</button></div></div>
 </section>
 </main>
+<div class="alert" id="listeningInfo" role="status">Listening: pendiente de comprobar audio original Cambridge. Se administrará en clase bajo indicaciones del docente.</div>
 <div class="notice"><b>Importante:</b> este quiz no es uno de los exámenes oficiales INA. No suma ni resta puntos. Después de la entrega, el docente revisa las respuestas, incluyendo las partes orales, auditivas o de escritura, y utiliza la evidencia para documentar tu Progress Check.</div>
 <div class="alert" id="errorBox" hidden role="alert"></div>
 </div>
@@ -137,6 +138,10 @@ async function start(){
  try{
   const meta=await api('qzProgressGet',context());
   build(meta.secciones);
+  if(meta.listening){
+    const a=meta.listening;
+    $('listeningInfo').textContent='Listening · pista '+a.pista+' (Cambridge Assessment Audio CD): grabación no disponible en el Campus QA. Tu docente indicará cómo completar esta sección; no es audio generado automáticamente.';
+  }
   $('badge').textContent=meta.disponible_hoy?'Disponible · '+meta.fecha:'Fuera de fecha · '+meta.fecha;
   const past=await api('qzProgressMyAttempt',context());
   for(const field of fields){if(past.respuestas?.[field.key])response[field.key]=String(past.respuestas[field.key]);}
