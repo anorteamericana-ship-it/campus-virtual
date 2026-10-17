@@ -2226,72 +2226,178 @@ function BackendContractSpecPanel() {
   );
 }
 
-function AdminMode({ shell, density, onPreview }) {
-  const [filtro, setFiltro] = useState('todos');
-  const [sel, setSel] = useState(null);
-  const list = CATALOGO.filter(e => filtro==='todos' ? true : filtro==='real' ? e.estado==='real' : e.opcion===filtro);
-  const real = CATALOGO.filter(e=>e.estado==='real').length;
 
+const F111_PC_SCHEDULE_D1 = [
+  [1,4,'1–2'],[2,8,'3–4'],[3,13,'5–6'],[4,16,'7–8'],
+  [5,21,'9–10'],[6,24,'11–12'],[7,28,'13–14'],[8,30,'15–16']
+];
+const F111_ORAL_LESSONS_D1 = [9,17,25,31];
+const F111_D1_LEVELS = ['B1','B2','I1','I2'];
+
+function F111UpcomingActivationsD1() {
+  const [rows, setRows] = useState([]);
+  const [status, setStatus] = useState('Consultando activaciones del backend…');
+  const refresh = useCallback(async () => {
+    setStatus('Consultando activaciones del backend…');
+    try {
+      const result = await postExamBackend('examListActivations', {});
+      if (!result || !result.ok) {
+        setStatus('No fue posible consultar activaciones. No se mostrarán fechas estimadas.');
+        setRows([]);
+        return;
+      }
+      const now = Date.now();
+      const list = (Array.isArray(result.rows) ? result.rows : [])
+        .filter(r => ['OPEN','SCHEDULED','DRAFT'].includes(String(r.STATUS || '').toUpperCase()))
+        .filter(r => {
+          const raw = r.OPEN_AT || '';
+          const ms = raw ? Date.parse(String(raw).replace(' ', 'T')) : NaN;
+          return Number.isFinite(ms) && ms >= now - 86400000;
+        })
+        .sort((a,b) => Date.parse(String(a.OPEN_AT).replace(' ','T')) - Date.parse(String(b.OPEN_AT).replace(' ','T')))
+        .slice(0,4);
+      setRows(list);
+      setStatus(list.length ? '' : 'Sin activaciones futuras verificables en esta consulta.');
+    } catch (_) {
+      setRows([]);
+      setStatus('No se pudo consultar el backend. No hay fechas de muestra.');
+    }
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
   return (
-    <div className="adwrap">
-      <div className="ad-head">
-        <div>
-          <div className="ad-kicker">CATÁLOGO MAESTRO DE EXÁMENES · WRITTEN</div>
-          <h2 className="ad-title">16 entradas · 4 niveles × Test 1/2 × Opción A/B</h2>
-        </div>
-        <div className="ad-legend">
-          <span className="ad-leg"><i className="dot-real" />{real} con contenido real</span>
-          <span className="ad-leg"><i className="dot-pend" />{CATALOGO.length-real} pendientes</span>
-        </div>
+    <section className="d1-upcoming" aria-labelledby="d1-upcoming-title">
+      <div className="d1-section-heading">
+        <div><h3 id="d1-upcoming-title">Activaciones programadas</h3><p>Datos del backend · las fechas académicas completas dependen del calendario del Campus.</p></div>
+        <button type="button" className="d1-quiet" onClick={refresh}>Actualizar</button>
       </div>
+      {rows.length > 0 && <div className="d1-upcoming-list">{rows.map((r,i)=>(
+        <div key={r.ACTIVATION_ID || i} className="d1-upcoming-item">
+          <span className="d1-upcoming-level">{r.NIVEL || '—'}</span>
+          <div><b>{r.COD_GRUPO || 'Grupo no informado'}</b><small>{r.TEST_CODE || r.EXAM_ID || 'Evaluación'} · {r.STATUS || 'DRAFT'}</small></div>
+          <time>{String(r.OPEN_AT || '').replace('T',' ')}</time>
+        </div>
+      ))}</div>}
+      {status && <p className="d1-upcoming-status" role="status">{status}</p>}
+      <p className="d1-calendar-note">No se generan fechas ficticias: este bloque solo muestra activaciones existentes. La sincronización del cronograma de orales y Progress Check queda pendiente del contrato de calendario.</p>
+    </section>
+  );
+}
 
-      <div className="ad-filters">
-        {[['todos','Todos'],['A','Opción A'],['B','Opción B'],['real','Solo reales']].map(([k,l])=>(
-          <button key={k} className={`ad-f${filtro===k?' on':''}`} onClick={()=>setFiltro(k)}>{l}</button>
+function AdminMode({ shell, density, onPreview }) {
+  const [tab, setTab] = useState('written');
+  const [selectedId, setSelectedId] = useState('B1_WRITTEN_L18_TEST1_A');
+  const [selectedLevel, setSelectedLevel] = useState('B1');
+  const [selectedPc, setSelectedPc] = useState(1);
+  const [selectedOral, setSelectedOral] = useState(9);
+  const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const session = getExamParentSession() || {};
+  const isSuperadmin = String(session.rol || '').trim().toLowerCase() === 'superadmin';
+  const selected = CATALOGO.find(e => e.id === selectedId) || CATALOGO[0];
+  const selectedExam = selected ? getExam(selected.nivel, selected.leccion === 18 ? 'TEST1' : 'TEST2', selected.opcion) : null;
+  const selectedSections = selectedExam && Array.isArray(selectedExam.sections) ? selectedExam.sections : [];
+  const real = CATALOGO.filter(e => e.estado === 'real').length;
+  const levelTheme = NIVEL_TEMA[selectedLevel] || NIVEL_TEMA.B1;
+  const columns = [
+    { test:'TEST1', option:'A', label:'PRUEBA 1 · A' },
+    { test:'TEST1', option:'B', label:'PRUEBA 1 · B' },
+    { test:'TEST2', option:'A', label:'PRUEBA 2 · A' },
+    { test:'TEST2', option:'B', label:'PRUEBA 2 · B' }
+  ];
+  const preview = (showKey) => { if (selected && selected.estado === 'real') onPreview(selected, !!showKey); };
+  return (
+    <div className="adwrap d1-master">
+      <header className="d1-header">
+        <div className="d1-kicker">ACADEMIA NORTEAMERICANA / EXAM MASTER</div>
+        <h1>Centro de exámenes</h1>
+        <p>Evaluaciones institucionales · Catálogo académico y seguimiento</p>
+      </header>
+      <nav className="d1-tabs" aria-label="Modalidades del sistema maestro">
+        {[['written','Escritos'],['oral','Orales'],['progress','Progress Check']].map(([id,label])=>(
+          <button key={id} type="button" role="tab" aria-selected={tab===id} className={'d1-tab'+(tab===id?' active':'')} onClick={()=>setTab(id)}>{label}</button>
         ))}
-      </div>
+      </nav>
 
-      <PonderacionModelo />
-
-      <ActivationBackendPanel onPreview={onPreview} />
-
-      <BackendOperationsPanel />
-
-      <BackendContractSpecPanel />
-
-      <div className="ad-grid">
-        {list.map(e => {
-          const t = NIVEL_TEMA[e.nivel];
-          return (
-            <div key={e.id} className={`adcard estado-${e.estado}`} style={{ '--lvl':t.color, '--lvl-soft':t.soft, '--lvl-ink':t.ink }}>
-              <div className="adcard-top">
-                <span className="adcard-lvl">{t.code}</span>
-                <span className={`mini-opt opt-${e.opcion}`}>{e.opcion}</span>
-                <span className={`adcard-state ${e.estado}`}>{e.estado==='real'?'REAL':'PENDIENTE'}</span>
-              </div>
-              <div className="adcard-id">{e.id}</div>
-              <div className="adcard-name">{e.nombre_nivel} · {e.test}</div>
-              <div className="adcard-rows">
-                <div><span>Libro (interno)</span>{e.libro}</div>
-                <div><span>Units</span>{e.units}</div>
-                <div><span>Lección</span>{e.leccion}</div>
-                <div><span>Valor (plan)</span>{e.ponderacion_por_plan.con_ina}% / {e.ponderacion_por_plan.sin_ina}%</div>
-                <div><span>Listening A</span><code className="vid-id">{e.videos.listening_A}</code></div>
-                <div><span>Listening B</span><code className="vid-id">{e.videos.listening_B}</code></div>
-                <div><span>Opción examen</span>{e.opcion}</div>
-                <div><span>Answer key</span>{e.estado==='real'?'incluida':'pendiente'}</div>
-              </div>
-              <div className="adcard-foot">
-                {e.estado==='real'
-                  ? <><button className="btn-sm" onClick={()=>onPreview(e)}>Preview / Admin →</button><button className="ad-meta-btn" onClick={()=>setSel(e)}>Metadatos</button></>
-                  : <span className="adcard-pendmsg">Sin contenido — no inventar preguntas</span>}
-              </div>
+      {tab==='written' && <div className="d1-workspace">
+        <section className="d1-matrix-card" aria-label="Matriz de exámenes escritos">
+          <div className="d1-section-heading">
+            <div><h2>Exámenes escritos</h2><p>4 niveles · 2 pruebas · opciones A/B · {real}/16 con contenido estructurado</p></div>
+            <span className="d1-subtle-pill">50 puntos por examen</span>
+          </div>
+          <div className="d1-matrix-scroll" tabIndex="0" aria-label="Desplazamiento horizontal de la matriz">
+            <div className="d1-matrix">
+              <div className="d1-matrix-corner">NIVEL / LIBRO</div>
+              {columns.map(col=><div key={col.test+col.option} className="d1-matrix-label">{col.label}</div>)}
+              {F111_D1_LEVELS.map(nv=>{
+                const theme = NIVEL_TEMA[nv];
+                return <React.Fragment key={nv}>
+                  <div className="d1-level-cell"><span className={'d1-level-badge d1-'+nv}>{nv}</span><span><b>{theme.nombre}</b><small>{theme.libro}</small></span></div>
+                  {columns.map(col=>{
+                    const exam = CATALOGO.find(e=>e.nivel===nv && e.leccion===(col.test==='TEST1'?18:32) && e.opcion===col.option);
+                    const active = exam && selected && selected.id === exam.id;
+                    return <button key={col.test+col.option} type="button" aria-pressed={!!active}
+                      className={'d1-matrix-choice'+(active?' selected':'')} onClick={()=>exam&&setSelectedId(exam.id)} disabled={!exam}>
+                      <b>Lección {col.test==='TEST1'?'18':'32'}</b>
+                      <small>{col.test==='TEST1'?'U1–8':'U9–16'} · {exam&&exam.puntos_totales?exam.puntos_totales+' pts':'Pendiente'}</small>
+                      {active && <span className="d1-choice-current">Seleccionado</span>}
+                    </button>;
+                  })}
+                </React.Fragment>;
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
+          <div className="d1-matrix-footer"><span>Opción A · grupo</span><span>Opción B · reposición autorizada</span></div>
+        </section>
+        {selected && <aside className="d1-inspector" aria-label="Detalle de examen escrito">
+          <div className="d1-inspector-top"><span className={'d1-level-badge d1-'+selected.nivel}>{selected.nivel}</span><span className="d1-soft-state">{selected.estado==='real'?'Contenido estructurado':'Pendiente'}</span></div>
+          <div className="d1-kicker">EXAMEN SELECCIONADO</div>
+          <h2>{selected.leccion===18?'Prueba escrita 1':'Prueba escrita 2'} · Opción {selected.opcion}</h2>
+          <p>{selected.nombre_nivel} · {selected.libro}</p>
+          <dl className="d1-detail-grid">
+            <div><dt>Lección</dt><dd>{selected.leccion}</dd></div>
+            <div><dt>Unidades</dt><dd>{selected.units}</dd></div>
+            <div><dt>Secciones</dt><dd>{selectedSections.length || '—'}</dd></div>
+            <div><dt>Puntaje</dt><dd>{selected.puntos_totales || '—'} puntos</dd></div>
+            <div><dt>Tiempo de referencia</dt><dd>90 min*</dd></div>
+            <div><dt>Valor académico</dt><dd>5 % INA · 15 % sin INA</dd></div>
+          </dl>
+          <p className="d1-help">*La duración operativa y el reloj real los define el backend por activación, no este catálogo.</p>
+          <div className="d1-action-stack">
+            <button className="d1-primary" type="button" onClick={()=>preview(false)}>Ver como estudiante</button>
+            <button className="d1-secondary" type="button" onClick={()=>preview(true)}>Ver con respuestas (personal autorizado)</button>
+            <button className="d1-quiet" type="button" onClick={()=>window.print()}>Imprimir / guardar PDF</button>
+          </div>
+          <div className="d1-key-note">Las claves deben permanecer ocultas al iniciar una vista previa. No proyectés una vista con respuestas.</div>
+        </aside>}
+      </div>}
 
-      {sel && <MetaModal e={sel} onClose={()=>setSel(null)} />}
+      {tab==='oral' && <section className="d1-catalog-section">
+        <div className="d1-section-heading"><div><h2>Evaluaciones orales</h2><p>Lecciones 9, 17, 25 y 31 · cuatro evaluaciones por nivel · 15 % cada una</p></div></div>
+        <div className="d1-level-nav" aria-label="Nivel oral">{F111_D1_LEVELS.map(nv=><button type="button" key={nv} aria-pressed={selectedLevel===nv} className={'d1-level-select'+(selectedLevel===nv?' active':'')} onClick={()=>setSelectedLevel(nv)}><span className={'d1-level-badge d1-'+nv}>{nv}</span>{NIVEL_TEMA[nv].nombre}</button>)}</div>
+        <div className="d1-oral-grid">{F111_ORAL_LESSONS_D1.map((lesson,i)=><button key={lesson} type="button" className={'d1-eval-card'+(selectedOral===lesson?' active':'')} aria-pressed={selectedOral===lesson} onClick={()=>setSelectedOral(lesson)}><span className="d1-card-eyebrow">ORAL {i+1}</span><b>Lección {lesson}</b><small>Rúbrica 5 criterios · 0–5 · 15 %</small></button>)}</div>
+        <div className="d1-selection-info" style={{borderLeftColor:levelTheme.color}}><b>{selectedLevel} · Oral de lección {selectedOral}</b><p>{selectedLevel==='B1'?'Banco Intro existente. La pantalla operativa del docente se conserva.':'El banco de preguntas de este nivel requiere verificación. El docente utilizará sus preguntas ingresadas hasta su aprobación.'}</p></div>
+      </section>}
+
+      {tab==='progress' && <section className="d1-catalog-section d1-pc">
+        <div className="d1-section-heading"><div><h2>Progress Check</h2><p>32 quizzes diagnósticos · ocho por nivel · 0 % de nota oficial</p></div><span className="d1-pc-pill">Sin tiempo límite</span></div>
+        <div className="d1-level-nav" aria-label="Nivel de Progress Check">{F111_D1_LEVELS.map(nv=><button type="button" key={nv} aria-pressed={selectedLevel===nv} className={'d1-level-select'+(selectedLevel===nv?' active':'')} onClick={()=>setSelectedLevel(nv)}><span className={'d1-level-badge d1-'+nv}>{nv}</span>{NIVEL_TEMA[nv].nombre}</button>)}</div>
+        <div className="d1-pc-grid">{F111_PC_SCHEDULE_D1.map(([number,lesson,units])=><button type="button" key={number} aria-pressed={selectedPc===number} className={'d1-eval-card'+(selectedPc===number?' active':'')} onClick={()=>setSelectedPc(number)}><span className="d1-card-eyebrow">PROGRESS CHECK {String(number).padStart(2,'0')}</span><b>Lección {lesson}</b><small>Unidades {units}</small><span className="d1-pc-pending">Contenido Cambridge: por validar</span></button>)}</div>
+        <div className="d1-selection-info d1-pc-selected"><b>{selectedLevel} · Progress Check {String(selectedPc).padStart(2,'0')}</b><p>Diagnóstico sin opción B, sin ponderación y sin clave visible. El banco oficial se conecta desde QZ32 únicamente cuando el contenido haya sido validado.</p></div>
+      </section>}
+
+      <F111UpcomingActivationsD1 />
+
+      <details className="d1-ops"><summary>Operaciones de activación existentes</summary><ActivationBackendPanel onPreview={(entry)=>onPreview(entry,false)} /></details>
+      {isSuperadmin && <section className="d1-tech">
+        <button type="button" className="d1-quiet" onClick={()=>setTechnicalOpen(x=>!x)} aria-expanded={technicalOpen}>Diagnóstico técnico · superadmin {technicalOpen?'▴':'▾'}</button>
+        {technicalOpen && <div className="d1-tech-content">
+          <button type="button" className="d1-quiet" onClick={()=>setMetadataOpen(true)}>Metadatos del examen seleccionado</button>
+          <PonderacionModelo />
+          <BackendOperationsPanel />
+          <BackendContractSpecPanel />
+        </div>}
+      </section>}
+      {isSuperadmin && metadataOpen && selected && <MetaModal e={selected} onClose={()=>setMetadataOpen(false)} />}
     </div>
   );
 }
@@ -2325,7 +2431,7 @@ function MetaModal({ e, onClose }) {
           <b>Reporte de conversión</b>
           <ul>
             <li>Fuente Word/PDF: {e.fuente_original}</li>
-            <li>Nivel detectado en archivo: "Test A · Interchange 3" (título del documento)</li>
+            <li>Libro correspondiente al nivel: {e.libro} (el libro validado manda sobre el título de origen)</li>
             <li>Nivel final usado: <b>{e.nombre_nivel} ({e.nivel})</b> — el libro {t.libro} manda sobre el título</li>
             <li>Test: {e.test} · {e.units} · Lección {e.leccion}</li>
             <li>Total de puntos: {e.puntos_totales} · Secciones: {secRange}</li>
