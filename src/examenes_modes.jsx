@@ -2351,7 +2351,7 @@ function AdminMode({ shell, density, onPreview }) {
           </div>
           <div className="d1-matrix-footer"><span>Opción A · grupo</span><span>Opción B · reposición autorizada</span></div>
         </section>
-        {selected && <aside className="d1-inspector" aria-label="Detalle de examen escrito">
+        {selected && <aside className="d1-inspector" aria-label="Detalle de examen escrito" style={{borderTopColor:NIVEL_TEMA[selected.nivel].color}}>
           <div className="d1-inspector-top"><span className={'d1-level-badge d1-'+selected.nivel}>{selected.nivel}</span><span className="d1-soft-state">{selected.estado==='real'?'Contenido estructurado':'Pendiente'}</span></div>
           <div className="d1-kicker">EXAMEN SELECCIONADO</div>
           <h2>{selected.leccion===18?'Prueba escrita 1':'Prueba escrita 2'} · Opción {selected.opcion}</h2>
