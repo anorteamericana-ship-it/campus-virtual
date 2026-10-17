@@ -1,0 +1,23 @@
+name: F111 EX-04 PR-D2 E1 · contrato de estudiante (sin producción)
+on:
+  pull_request:
+    paths:
+      - 'src/examenes_app.jsx'
+      - 'src/examenes_bundle.jsx'
+      - 'src/examenes_data.jsx'
+      - 'scripts/qa_f111_ex04_public_contract_e1.mjs'
+      - '.github/workflows/qa-f111-ex04-d2-e1.yml'
+  workflow_dispatch:
+jobs:
+  contract-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar contrato V10H y registrar NO-GO público de EX-04
+        run: node scripts/qa_f111_ex04_public_contract_e1.mjs
+      - name: Verificar sin escrituras en datos / notas / despliegues
+        run: |
+          git diff --check
+          echo 'Solo prueba estática: no Apps Script, Sheets, notas ni despliegue.'
