@@ -601,6 +601,7 @@ body{ margin:0; background:var(--bg); font-family:var(--f-sans); color:var(--ink
 
 @media print{ .cbar,.cbar-banner,.admbar,.tch-head,.tch-realbox,.rev-side{display:none!important;} .app,.exam-app,.preview-wrap{padding:0!important;margin:0!important;background:#fff!important;} }
 
+body:has(.d1-master),.exapp:has(.d1-master){background:#F4F6FA!important}
 /* F111 PR-D1 E4 · Corrección de jerarquía por comparación visual con Claude C */
 .d1-master{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
 .d1-header{grid-column:1;padding:3px 0 0;background:transparent!important;border:0!important;border-radius:0!important;min-width:0;box-shadow:none!important}
