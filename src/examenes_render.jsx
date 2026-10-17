@@ -468,11 +468,15 @@ function ShortWrite({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 
 // ── Reading + True/False ──────────────────────────────────────────────────
 function ReadingTF({ sec, answers, onAnswer, ro, mode, showKey, review }) {
+  // F111 E4 · Compatibilidad de lectura Cambridge: los 16 bancos V10G pueden usar
+  // passageTitle/passage o title/paragraphs. No asumir que sec.passage existe.
+  const passageTitle = sec.passageTitle || sec.title || '';
+  const paragraphs = Array.isArray(sec.passage) ? sec.passage : (Array.isArray(sec.paragraphs) ? sec.paragraphs : []);
   return (
     <div>
       <article className="expass">
-        <h3 className="expass-title">{sec.passageTitle}</h3>
-        {sec.passage.map((p, i) => <p key={i}>{p}</p>)}
+        <h3 className="expass-title">{passageTitle}</h3>
+        {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
       </article>
       <div className="exq-rows">
         {sec.questions.map(q => {
