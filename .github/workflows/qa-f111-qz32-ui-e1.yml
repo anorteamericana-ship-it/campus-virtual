@@ -1,0 +1,25 @@
+name: F111 QZ32 Frontend E1 QA
+on:
+  push:
+    branches:
+      - feat/f111-qz32-vista-estudiante-qa-20261016
+  pull_request:
+    paths:
+      - 'modulos/quiz_progress.html'
+      - 'modulos/quiz_progress_docente.html'
+      - 'src/vista_docente.jsx'
+      - 'scripts/qa_f111_qz32_ui_e1.mjs'
+      - '.github/workflows/qa-f111-qz32-ui-e1.yml'
+permissions:
+  contents: read
+jobs:
+  qz-ui-e1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: QA E1 quiz student/teacher source and safety
+        run: node scripts/qa_f111_qz32_ui_e1.mjs
