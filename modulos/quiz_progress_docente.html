@@ -10,6 +10,7 @@ h1{font-size:30px;letter-spacing:-.04em;margin:25px 0 6px}.subtitle{color:#61728
 <header class="top"><div><b>Academia Norteamericana</b><small>Campus docente · Revisión de quizzes de Progress Check</small></div><span class="chip">Diagnóstico · 0 % oficial</span></header>
 <h1 id="title">Revisión del Quiz</h1>
 <p class="subtitle">Verificá las respuestas usando el documento original, la clave y el guion de escucha. Guardá una observación individual que servirá como borrador para el Progress Check oficial.</p>
+<p class="subtitle" id="listeningPanel" role="status">Listening: la grabación original Cambridge aún no está verificada en Drive. El guion escrito no es el audio. Para aplicar, verificar la pista autorizada del Assessment Audio CD/CD-ROM.</p>
 <section class="layout">
 <div class="card"><div class="head"><h2>Estudiantes</h2><span class="chip" id="total">—</span></div><div class="list" id="people">Cargando…</div></div>
 <div class="card"><div class="head"><h2 id="selected">Seleccioná un estudiante</h2><span class="chip" id="state">—</span></div>
@@ -30,9 +31,11 @@ h1{font-size:30px;letter-spacing:-.04em;margin:25px 0 6px}.subtitle{color:#61728
 'use strict';
 const p=new URLSearchParams(location.search),ctx={cod_grupo:String(p.get('grupo')||''),nivel:String(p.get('nivel')||'B1'),leccion:Number(p.get('leccion')||4)};
 const preview=p.get('preview')==='1',$=id=>document.getElementById(id);
+const AUDIO_TRACK={4:2,8:3,13:4,16:5,21:6,24:7,28:8,30:9};
 let apiUrl=String(window.F111_QZ_QA_API_URL||''),token='',people=[],selected=null,blobUrl=null;
 try{token=JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||''}catch(_){}
 $('title').textContent='Quiz de Progress Check · '+ctx.nivel+' · L'+ctx.leccion;
+$('listeningPanel').textContent='Listening · pista '+(AUDIO_TRACK[ctx.leccion]||'sin asignar')+' del Assessment Audio CD/CD-ROM ('+ctx.nivel+'). Grabación original sin verificar: consultá el material institucional autorizado y utilizá el guion solamente como apoyo docente.';
 function error(message){$('error').textContent=message||''}
 async function api(fn,extra={}){
  if(!apiUrl)throw Error('No está configurado el backend aislado de QA.');
