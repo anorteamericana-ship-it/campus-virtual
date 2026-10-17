@@ -312,7 +312,7 @@ function f111ExamPublicContractSafe(publicExam, activation) {
     visited.add(value);
     if (Array.isArray(value)) return value.every(scan);
     return Object.keys(value).every(k => {
-      const normalized = k.toLowerCase().replace(/[\\s_-]/g, '');
+      const normalized = k.toLowerCase().replace(/[\s_-]/g, '');
       return !F111_EX04_FORBIDDEN_PUBLIC_KEYS.has(normalized) && scan(value[k]);
     });
   };
