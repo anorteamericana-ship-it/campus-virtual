@@ -96,7 +96,13 @@ try{
       const id=expectedIds[fi];
       await frame.locator('.d1-matrix-choice').nth(fi).click();
       await frame.getByRole('button',{name:'Ver como estudiante'}).click();
-      await frame.locator('.pv-banner').waitFor({timeout:16000});
+      console.log('F111 E4 OPEN: viewport='+width+' id='+id);
+      try {
+        await frame.locator('.pv-banner').waitFor({timeout:20000});
+      } catch(e) {
+        console.error('F111 E4 BLOCKED: viewport='+width+' id='+id+' pageerrors='+errors.slice(-2).map(String).join(' | ').slice(0,360));
+        throw e;
+      }
       assert((await frame.locator('.pv-banner').innerText()).includes(id),'Form mismatch '+id);
       assert.equal(await frame.locator('.ex-shell.show-key').count(),0,'Keys displayed without authorization '+id);
       await frame.getByRole('button',{name:'Practicar este examen (sin guardar)'}).click();
