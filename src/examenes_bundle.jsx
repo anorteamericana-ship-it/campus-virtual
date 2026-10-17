@@ -8072,6 +8072,35 @@ function StudentLiveStatusCard({ title, badge='Examen no disponible', children, 
     </div>
   );
 }
+// F111 PR-D2 E1 · contrato estricto para el payload oficial del estudiante.
+// No revela claves; el servidor mantiene la autorización, asignación y calificación.
+const F111_EX04_FORBIDDEN_PUBLIC_KEYS = new Set([
+  'correct','accepted','answer','answers','answerkey','answerkeys','key',
+  'audioscript','transcript','solution','solutions','markscheme',
+  'privatekey','secret','gradingkey','teacherkey','correctanswer'
+]);
+function f111ExamPublicContractSafe(publicExam, activation) {
+  if (!publicExam || typeof publicExam !== 'object' || Array.isArray(publicExam)) return false;
+  const id = String(activation && activation.EXAM_ID || '').trim().toUpperCase();
+  const payloadId = String(publicExam.exam_id || publicExam.id || '').trim().toUpperCase();
+  if (!id || !payloadId || payloadId !== id) return false;
+  if (publicExam.id && publicExam.exam_id && String(publicExam.id).trim().toUpperCase() !== String(publicExam.exam_id).trim().toUpperCase()) return false;
+  if (publicExam.payload_scope !== 'student_public_no_keys' || publicExam.public_payload_version !== 'V10H') return false;
+  if (!Array.isArray(publicExam.sections) || !publicExam.sections.length) return false;
+  const visited = new WeakSet();
+  const scan = value => {
+    if (!value || typeof value !== 'object') return true;
+    if (visited.has(value)) return false;
+    visited.add(value);
+    if (Array.isArray(value)) return value.every(scan);
+    return Object.keys(value).every(k => {
+      const normalized = k.toLowerCase().replace(/[\\s_-]/g, '');
+      return !F111_EX04_FORBIDDEN_PUBLIC_KEYS.has(normalized) && scan(value[k]);
+    });
+  };
+  return scan(publicExam);
+}
+
 function StudentLiveExamApp() {
   const [live, setLive] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -8168,6 +8197,11 @@ function StudentLiveExamApp() {
   if (!live || live.assigned !== true || !activation) {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
     return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'No hay una sesión docente abierta de la lección 18 o 32 para tu matrícula activa.'}</StudentLiveStatusCard>;
+  }
+  if (!f111ExamPublicContractSafe(publicExam, activation)) {
+    return <StudentLiveStatusCard title="Contenido de examen no disponible" badge="Protección de examen" tone="red" onRefresh={load}>
+      El servidor no entregó un cuestionario oficial seguro para esta activación. No se mostrará ningún banco de respaldo ni se iniciará el intento. Contactá a la Academia.
+    </StudentLiveStatusCard>;
   }
   return <StudentMode
     shell="premium" density="comfy"
