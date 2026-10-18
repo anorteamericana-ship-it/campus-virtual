@@ -39,7 +39,7 @@ const maxima={'ORAL_1':15,'ORAL_2':15,'ORAL_3':15,'ORAL_4':15,
  'ESCRITO_1':5,'ESCRITO_2':5,'SOCIAL':10,'ICAN':20};
 assert.equal(Object.values(maxima).reduce((a,b)=>a+b,0),100);checks++;
 assert(matrix.every(x=>x.porcentaje_ina===0));checks++;
-assert.equal(checks,19);
+assert.equal(checks,21);
 console.log(JSON.stringify({verdict:'PASS_F111_E7_QZ32_METADATA_ONLY',
  checks,levels:levels.length,progress_checks_per_level:8,slots:matrix.length,
  lessons,ina_weight_added:0,
