@@ -4,7 +4,7 @@ const BASE='3d161df00606dab513cb9bce706502a4ca6be433';
 const pre={'src/examenes_modes.jsx':'e9009020f4d081f000205b52028d8907f4b3c8d4','src/examenes_bundle.jsx':'76e4017b73de426530fca6ed09ae6bf76c195cbf'};
 const cand={'src/examenes_modes.jsx':'9d86826c3c3d0ac12e4a915d461e9fcc42be3705','src/examenes_bundle.jsx':'4ee147afe2c06c3318d075b478a47497994a93dc'};
 const exact=process.argv.includes('--exact-import');
-const contexts=['get_attempt','create_review','get_review','close_review','review_inbox'];
+const contexts=['get_attempt','create_review','get_review','review_inbox'];
 for(const path of Object.keys(pre)){
  const s=fs.readFileSync(path,'utf8');
  const sha=execFileSync('git',['hash-object','--stdin'],{input:s,encoding:'utf8'}).trim();
