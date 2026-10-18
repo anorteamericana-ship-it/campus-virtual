@@ -19,7 +19,7 @@ const rawTeacherPatterns=[
   "if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }",
   "setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');",
 ];
-const safeContexts=['get_attempt','create_review','get_review','close_review','review_inbox'];
+const safeContexts=['get_attempt','create_review','get_review','review_inbox'];
 const activationRaw="const detail = r && (r.mensaje || r.error || (r.errores && r.errores.join(' · ')));";
 const opsRaw="else { setMsg(''); setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.'); }";
 const exact=process.argv.includes('--exact-import');
