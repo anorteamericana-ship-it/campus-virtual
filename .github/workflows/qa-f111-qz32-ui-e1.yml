@@ -23,3 +23,19 @@ jobs:
           node-version: '20'
       - name: QA E1 quiz student/teacher source and safety
         run: node scripts/qa_f111_qz32_ui_e1.mjs
+      - name: Install Chromium for QA previews only
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Render 32 student + 32 teacher quiz previews offline
+        env:
+          F111_QZ_BROWSER: '1'
+        run: node scripts/qa_f111_qz32_ui_e1.mjs
+      - name: Screenshots of QA preview (not live Campus)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f111-qz32-preview
+          path: qa-capturas/QZ32_*.png
+          if-no-files-found: warn
+          retention-days: 7
