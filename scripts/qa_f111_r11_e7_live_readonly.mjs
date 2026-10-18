@@ -149,7 +149,17 @@ try{
  assert.equal(grades.programa,'INA');assert.equal(Number(grades.nota_total),87);
  assert.equal(Number(grades.componentes?.ESCRITO_1?.puntos),4);
  assert.equal(Number(grades.componentes?.ESCRITO_2?.puntos),3);
- browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ // F111 E7 R4: si el instalador Chromium de Playwright está bloqueado en Windows,
+ // usar Chrome del sistema con perfil Playwright efímero (NUNCA perfil personal).
+ // El navegador solo recibe tokens locales aleatorios; secretos QA reales quedan en Node.
+ const browserChannel=String(process.env.F111_E7_BROWSER||'').trim().toLowerCase();
+ if(browserChannel && browserChannel!=='chrome')
+  throw Error('E7_STOP: navegador no permitido; usar F111_E7_BROWSER=chrome o dejar vacío');
+ browser=await chromium.launch({
+  headless:true,
+  ...(browserChannel==='chrome'?{channel:'chrome'}:{}),
+  args:['--no-sandbox']
+ });
  const errors=[];
  const stu=await browser.newPage({viewport:{width:1280,height:820}});
  stu.on('pageerror',e=>errors.push(e.message));
