@@ -192,7 +192,78 @@ function clearVisibleFormF90(message){state.scores={COMPREHENSION:null,FLUENCY:n
 function resetEvaluationF90(){if(state.busy)return toast('Esperá a que termine la operación actual.');if(!confirm('¿Volver a cargar los datos del servidor? Se perderán los cambios que aún no guardaste.'))return;loadPanel();}
 function advanceAfterCloseF90(completedCode){renderStudents();const next=state.students.find(s=>String(s.codigo)!==String(completedCode)&&!['CERRADO','PDF_GENERADO'].includes(String((state.evaluations[s.codigo]||{}).ESTADO||'')));if(next){selectStudent(next.codigo,true);return;}state.selected=null;clearVisibleFormF90('Grupo completado');renderStudents();}
 function pdfBlobUrlF90(base64,mime){if(!base64)return'';const raw=atob(base64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return URL.createObjectURL(new Blob([bytes],{type:mime||'application/pdf'}));}
-async function generatePdfAndCloseF90(){const qs0=new URLSearchParams(location.search);if(qs0.get('preview')==='1')return toast('Vista previa administrativa: no guarda ni genera archivos.');const err=validateClose();if(err)return toast(err);if(state.busy)return;const selectedCode=String(state.selected.codigo);const payload=currentPayload();const btn=document.getElementById('btn-pdf');state.busy=true;if(btn){btn.disabled=true;btn.textContent='GENERANDO…';}try{let ev=state.evaluations[selectedCode]||{};if(!['CERRADO','PDF_GENERADO'].includes(String(ev.ESTADO||'').toUpperCase())){const closed=await api('oralCloseEvaluacion',payload);ev=closed.evaluacion||ev;state.evaluations[selectedCode]=ev;}const archiveHtml=buildPdfHtmlF90(payload,ev,'__AN_LOGO__');const pdf=await api('oralGeneratePdf',{...payload,estado:'CERRADO',html:archiveHtml});ev=pdf.evaluacion||ev;state.evaluations[selectedCode]=ev;if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}state.lastPdfBlobUrl=pdfBlobUrlF90(pdf.pdf_base64,pdf.pdf_mime);state.lastPdfDriveUrl=pdf.pdf_url||'';document.getElementById('pdf-content').innerHTML=buildPdfHtmlF90(payload,ev,'../assets/logo_circular.jpg');advanceAfterCloseF90(selectedCode);notifyParentOral();document.getElementById('pdf-modal').classList.add('open');toast('Evaluación cerrada, nota guardada y PDF archivado.');reportHeightF89();}catch(e){if(e.evaluacion&&state.selected){state.evaluations[state.selected.codigo]=e.evaluacion;selectStudent(state.selected.codigo,true);}toast(e.message||String(e));}finally{state.busy=false;if(btn){btn.disabled=false;btn.textContent='Generar PDF';}}}
+async function generatePdfAndCloseF90(){
+  if(new URLSearchParams(location.search).get('preview')==='1')
+    return toast('Vista previa administrativa: no guarda ni genera archivos.');
+  if(!state.selected)return toast('Seleccioná estudiante.');
+  if(state.busy)return toast('Esperá a que termine la operación actual.');
+  const selectedCode=String(state.selected.codigo);
+  const previous=state.evaluations[selectedCode]||{};
+  const previousState=String(previous.ESTADO||'').toUpperCase();
+  if(previousState==='PDF_GENERADO'){
+    const savedUrl=String(previous.PDF_URL||'').trim();
+    if(!/^https:\/\/(drive|docs)\.google\.com\//.test(savedUrl))
+      return toast('El PDF figura archivado, pero su enlace no está disponible. Solicitá revisión administrativa.');
+    if(!window.open(savedUrl,'_blank','noopener'))
+      toast('El navegador bloqueó el PDF archivado. Permití ventanas emergentes.');
+    return;
+  }
+  // La evaluación ya cerrada debe poder archivar su PDF sin volver a calificar.
+  const error=previousState==='CERRADO'?'':validateClose();
+  if(error)return toast(error);
+  const payload=currentPayload(); // instantánea ANTES de cualquier operación asíncrona
+  const btn=document.getElementById('btn-pdf');
+  state.busy=true;
+  if(btn){btn.disabled=true;btn.textContent='GUARDANDO Y ARCHIVANDO…';}
+  const controls=Array.from(document.querySelectorAll('.score-btn,#qbody input,#comentarios,#sugerencias,#otras-global,#btn-reload'));
+  controls.forEach(control=>control.disabled=true);
+  try{
+    let ev=previous;
+    if(previousState!=='CERRADO'){
+      const closed=await api('oralCloseEvaluacion',payload);
+      ev=closed.evaluacion||{};
+      if(String(ev.ESTADO||'').toUpperCase()!=='CERRADO'||String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase()!=='SINCRONIZADA')
+        throw new Error('El servidor no confirmó la sincronización de la nota; no se generará PDF.');
+      state.evaluations[selectedCode]=ev;
+      document.getElementById('fi-state').textContent='CERRADO';
+      renderStudents();
+      notifyParentOral();
+    }
+    const archiveHtml=buildPdfHtmlF90(payload,ev,'__AN_LOGO__');
+    const pdf=await api('oralGeneratePdf',{...payload,estado:'CERRADO',html:archiveHtml});
+    ev=pdf.evaluacion||ev;
+    state.evaluations[selectedCode]=ev;
+    if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}
+    state.lastPdfBlobUrl=pdfBlobUrlF90(pdf.pdf_base64,pdf.pdf_mime);
+    state.lastPdfDriveUrl=pdf.pdf_url||'';
+    document.getElementById('pdf-content').innerHTML=buildPdfHtmlF90(payload,ev,'../assets/logo_circular.jpg');
+    advanceAfterCloseF90(selectedCode);
+    notifyParentOral();
+    document.getElementById('pdf-modal').classList.add('open');
+    toast('Evaluación cerrada, nota sincronizada y PDF archivado.');
+    reportHeightF89();
+  }catch(e){
+    if(e.evaluacion){
+      state.evaluations[selectedCode]=e.evaluacion;
+      if(state.selected&&String(state.selected.codigo)===selectedCode)selectStudent(selectedCode,true);
+    }
+    const saved=state.evaluations[selectedCode]||{};
+    if(String(saved.ESTADO||'').toUpperCase()==='CERRADO'&&!e.evaluacion)
+      toast('La nota está cerrada. El PDF quedó pendiente: podés intentar archivar únicamente el PDF.');
+    else toast(e.message||String(e));
+  }finally{
+    state.busy=false;
+    if(state.selected){
+      const cur=state.evaluations[state.selected.codigo]||{};
+      const locked=['CERRADO','PDF_GENERADO'].includes(String(cur.ESTADO||'').toUpperCase())||
+        String(cur.NOTA_OFICIAL_ESTADO||'').toUpperCase()==='CONCILIACION_REQUERIDA';
+      document.querySelectorAll('.score-btn,#qbody input').forEach(e=>e.disabled=locked);
+      ['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e){e.disabled=false;e.readOnly=locked;}});
+      if(btn){btn.textContent=cur.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':cur.ESTADO==='CERRADO'?'Generar PDF pendiente':'Cerrar examen y generar PDF';btn.disabled=false;}
+    }else if(btn){btn.disabled=true;btn.textContent='Seleccioná estudiante';}
+    document.getElementById('btn-reload').disabled=false;
+  }
+}
 function closePdfPreviewF90(){document.getElementById('pdf-modal').classList.remove('open');reportHeightF89();}
 function printPdfF90(){const url=state.lastPdfBlobUrl||state.lastPdfDriveUrl;if(!url)return toast('No se encontró el PDF generado.');const w=window.open(url,'_blank','noopener');if(!w)toast('El navegador bloqueó la apertura del PDF. Permití ventanas emergentes para imprimir o guardarlo.');}
 async function loadPanel(){
