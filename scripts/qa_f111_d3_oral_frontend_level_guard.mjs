@@ -55,9 +55,12 @@ verify(context.stateTag('CIERRE_PENDIENTE_NOTA','ERROR')[1].includes('pendiente'
 verify(html.includes("e.evaluacion=j?.evaluacion||null"),'Error del servidor preserva evaluación pendiente');
 verify(html.includes('oralSyncWarningF111(ev);renderStudents()'),'Mensaje de conciliación visible al seleccionar estudiante');
 verify(html.includes('function oralNeedsReviewF111(')&&html.includes('if(oralNeedsReviewF111(state.evaluations[state.selected.codigo]))'),'No permitir cierre/PDF de nota incierta o parcial');
-verify(html.includes('if(oralLockedF111(prev))')&&html.includes('if(oralLockedF111(state.evaluations[state.selected.codigo]))'),'No editar ni guardar borrador sobre cierre parcial o nota incierta');
+verify(html.includes('if(oralLockedF111(prev)||state.uncertainCloseCodes?.[selectedCode])')&&html.includes('if(oralLockedF111(state.evaluations[state.selected.codigo]))'),'No editar ni guardar borrador sobre cierre parcial o nota incierta');
 verify(html.includes('id="btn-draft"')&&html.includes("getElementById('btn-draft').onclick=saveDraft"),'El borrador tiene control visible y enlazado');
 verify(html.includes('state.dirty=true')&&html.includes('if(!interno&&state.dirty'),'No descartar cambios al alternar estudiantes');
 verify(html.includes('oralCompletedF111(ev)?evaluados:pendientes'),'Conteo cerrado solo con nota sincronizada');
 verify(html.includes('oralNeedsReviewF111(ev)||!!state.panel?.preview'),'Bloqueo visual de cierres parciales y vista previa');
+verify(html.includes("await api('oralGetEvaluacion'")&&html.includes('state.uncertainCloseCodes[selectedCode]=true'),'Timeout de cierre debe reconciliar lectura y bloquear nuevos intentos');
+verify(html.includes("if(oralNeedsReviewF111(previous))return toast"),'PDF bloqueado si la nota no está sincronizada');
+verify(html.includes('state.uncertainCloseCodes={}'),'La recarga exitosa rehace estado desde el servidor');
 console.log('F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks='+checks+' ; B2 banco bloqueado, rubric missing protected, browser=0 PROD=0');
