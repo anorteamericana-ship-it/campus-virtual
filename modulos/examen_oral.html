@@ -121,10 +121,16 @@ const QB={
 // Fuente pedagógica consultada: IC5_L1_OQ_Question_Bank.pdf (Drive académico).
 // Ninguna pregunta se publica al docente hasta validación institucional expresa.
 const ORAL_B2_BANK_VALIDADO=false;
+// R5 — Identificación estable y auditable. La versión NO equivale a aprobación.
+const ORAL_BANK_RELEASE_F111=Object.freeze({
+  B1:Object.freeze({id:'IC5-INTRO-ACADEMIA',version:'AN-ORAL-B1-LEGACY-20261018',estado:'LEGADO_SIN_VALIDACION_DE_CATALOGO'}),
+  B2:Object.freeze({id:'IC5-L1-ACADEMIA-B2',version:'AN-ORAL-B2-CANDIDATO-20261018',estado:'CANDIDATO_PENDIENTE_APROBACION'})
+});
+
 const QB_B2={
   1:{title:'Unit 1 — Where are you from?',qs:[
     'Introduce yourself: say what people call you, where you are from, and where you live now.',
-    'Describe two classmates. Where are they from, and what are they like?',
+    'Describe two fictional classmates. Where are they from, and what are they like?',
     'Explain when you have English class and what you usually do after it.',
     'Interview the examiner to learn basic personal information and class preferences.'
   ]},
@@ -171,13 +177,13 @@ const QB_B2={
     'Ask the examiner about stores, parks, and services near their neighborhood.'
   ]},
   9:{title:'Unit 9 — What does she look like?',qs:[
-    'Describe a friend’s physical appearance in enough detail to identify that person.',
+    'Describe a fictional person’s appearance in enough detail for the examiner to recognize the description.',
     'Compare the hair, clothing, and appearance of two people you know.',
-    'Imagine a missing-person description and explain what the person looks like.',
+    'Describe a person in a fictional picture using clothing, height, and hair details.',
     'Ask the examiner to describe a person without revealing their name.'
   ]},
   10:{title:'Unit 10 — Have you ever been to Orlando?',qs:[
-    'Describe a place you have visited and explain when you went there.',
+    'Describe a place you have visited, or a local attraction you know, and explain why it is interesting.',
     'Talk about an experience you have never had but would like to try.',
     'Explain how long you have studied English or lived in your current town.',
     'Ask the examiner about travel, food, or other experiences they have had.'
@@ -191,7 +197,7 @@ const QB_B2={
   12:{title:"Unit 12 — It's important to get some rest.",qs:[
     'Give advice to someone who is tired, stressed, or unable to sleep well.',
     'Explain what you usually do when you catch a cold or feel unwell.',
-    'Role-play a conversation at a pharmacy asking for a suitable nonprescription product.',
+    'Role-play asking a pharmacist for advice about a common minor symptom.',
     'Ask the examiner about habits that help maintain good health.'
   ]},
   13:{title:'Unit 13 — What would you like?',qs:[
@@ -244,7 +250,41 @@ function selectStudent(code,interno=false){if(state.busy&&!interno)return toast(
 function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&ORAL_B2_BANK_VALIDADO?QB_B2:{};}
 function renderQBank(){const p=state.panel||{};const lec=Number(p.leccion||0);const meta=LECCIONES[lec]||{units:[]};document.getElementById('qb-label').textContent=meta.units.length?`U${meta.units[0]}–${meta.units[meta.units.length-1]}`:'—';const qbody=document.getElementById('qbody');if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay banco para esta lección.</div>';return;}
 if(!Object.keys(questionBankForLevelF111()).length){qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado. Para evitar aplicar preguntas de Básico I, registrá las preguntas utilizadas en «Otras preguntas aplicadas» hasta que se apruebe el banco específico.</div>';return;}qbody.innerHTML=meta.units.map(u=>{const data=questionBankForLevelF111()[u]||{title:`Unit ${u}`,qs:[]};const selected=state.questions[u]||[];const other=state.otherByUnit[u]||'';return`<div class="unit"><h3>${data.title}</h3>${data.qs.map((q,i)=>`<label class="q"><input type="checkbox" data-unit="${u}" data-idx="${i}" ${selected.includes(i)?'checked':''}><span>${q}</span></label>`).join('')}<div class="other"><input type="text" data-other-unit="${u}" placeholder="Otro: escribí otra pregunta aplicada" value="${String(other).replace(/"/g,'&quot;')}"></div></div>`}).join('');qbody.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.onchange=()=>{const u=ch.dataset.unit;const i=Number(ch.dataset.idx);state.questions[u]=state.questions[u]||[];if(ch.checked&&!state.questions[u].includes(i))state.questions[u].push(i);if(!ch.checked)state.questions[u]=state.questions[u].filter(x=>x!==i);});qbody.querySelectorAll('[data-other-unit]').forEach(inp=>inp.oninput=()=>{state.otherByUnit[inp.dataset.otherUnit]=inp.value;});}
-function currentPayload(){const c=calc();return{cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,leccion:state.panel.leccion,tipo_eval:state.panel.tipo_eval,cod_estudiante:state.selected?.codigo,cedula:state.selected?.cedula||'',nombre:state.selected?.nombre,programa:state.selected?.programa||state.selected?.convenio||'',docente:state.panel.docente,fecha:state.panel.fecha_iso||state.panel.fecha,criterios:state.scores,puntaje_total:c.total,nota_100:c.nota100,peso_porcentaje:c.weight,nota_ponderada:c.pond,rubrica_version:'CAMBRIDGE_IC5_ORAL_F90',reposicion_id:state.panel?.reposicion_id||'',fecha_tentativa:state.panel?.fecha_tentativa||'',fecha_limite_reposicion:state.panel?.fecha_limite_reposicion||'',preguntas_json:state.questions,otras_preguntas_json:state.otherByUnit,otras_preguntas:document.getElementById('otras-global').value,comentarios:document.getElementById('comentarios').value,sugerencias:document.getElementById('sugerencias').value};}
+
+function oralQuestionTraceF111(){
+  // Compatibilidad: claves numéricas existentes siguen siendo arrays de índices.
+  // El campo reservado no se interpreta como pregunta por el motor F63.
+  const nivel=String(state.panel?.nivel||'').toUpperCase();
+  const banco=ORAL_BANK_RELEASE_F111[nivel]||null;
+  const leccion=Number(state.panel?.leccion||0);
+  const unidades=LECCIONES[leccion]?.units||[];
+  const catalogo=questionBankForLevelF111();
+  const seleccionadas=[];
+  const datos={};
+  unidades.forEach(u=>{
+    const indices=Array.isArray(state.questions[u])?state.questions[u]:[];
+    datos[u]=indices.slice();
+    indices.forEach(i=>{
+      if(!Number.isInteger(i)||!catalogo[u]||typeof catalogo[u].qs[i]!=='string')return;
+      seleccionadas.push({
+        unidad:Number(u),indice:i,
+        id:nivel+'-U'+String(u).padStart(2,'0')+'-Q'+String(i+1).padStart(2,'0'),
+        texto_mostrado:catalogo[u].qs[i]
+      });
+    });
+  });
+  datos._trazabilidad_v1={
+    esquema:'F111_ORAL_QTRACE_V1',
+    banco_id:banco?.id||'SIN_BANCO',
+    version_declarada:banco?.version||'SIN_VERSION',
+    estado_catalogo:banco?.estado||'NO_DISPONIBLE',
+    origen_texto:'CAPTURA_CLIENTE_NO_VERIFICADA',
+    seleccionadas
+  };
+  return datos;
+}
+
+function currentPayload(){const c=calc();return{cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,leccion:state.panel.leccion,tipo_eval:state.panel.tipo_eval,cod_estudiante:state.selected?.codigo,cedula:state.selected?.cedula||'',nombre:state.selected?.nombre,programa:state.selected?.programa||state.selected?.convenio||'',docente:state.panel.docente,fecha:state.panel.fecha_iso||state.panel.fecha,criterios:state.scores,puntaje_total:c.total,nota_100:c.nota100,peso_porcentaje:c.weight,nota_ponderada:c.pond,rubrica_version:'CAMBRIDGE_IC5_ORAL_F90',reposicion_id:state.panel?.reposicion_id||'',fecha_tentativa:state.panel?.fecha_tentativa||'',fecha_limite_reposicion:state.panel?.fecha_limite_reposicion||'',preguntas_json:oralQuestionTraceF111(),otras_preguntas_json:state.otherByUnit,otras_preguntas:document.getElementById('otras-global').value,comentarios:document.getElementById('comentarios').value,sugerencias:document.getElementById('sugerencias').value};}
 function validateClose(){if(!state.selected)return'Seleccioná estudiante.';if(state.evaluations[state.selected.codigo]?.NOTA_OFICIAL_ESTADO==='CONCILIACION_REQUERIDA')return'La nota requiere conciliación supervisada. No podés cerrar ni generar PDF todavía.';const c=calc();if(!c.complete)return'Completá los 5 criterios.';if(!document.getElementById('comentarios').value.trim())return'Comentarios generales es obligatorio.';if(!document.getElementById('sugerencias').value.trim())return'Sugerencias de mejora es obligatorio.';const anyQ=Object.values(state.questions).some(a=>a&&a.length)||Object.values(state.otherByUnit).some(v=>String(v||'').trim())||document.getElementById('otras-global').value.trim();if(!anyQ)return'Seleccioná al menos una pregunta o escribí otra pregunta aplicada.';return'';}
 async function saveDraft(){if(state.busy)return toast('Esperá a que termine la operación actual.');if(!state.selected)return toast('Seleccioná estudiante.');if(state.evaluations[state.selected.codigo]?.NOTA_OFICIAL_ESTADO==='CONCILIACION_REQUERIDA')return toast('No se puede editar: nota pendiente de conciliación.');try{const j=await api('oralSaveDraft',currentPayload());state.evaluations[state.selected.codigo]=j.evaluacion;document.getElementById('fi-state').textContent=j.evaluacion.ESTADO;renderStudents();toast('Borrador guardado.');}catch(e){toast(e.message)}}
 function notifyParentOral(){try{window.parent.postMessage({type:'an:oral-updated',grupo:state.panel?.cod_grupo||'',nivel:state.panel?.nivel||'',leccion:state.panel?.leccion||0},window.location.origin);}catch(_){}}
