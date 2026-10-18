@@ -261,38 +261,6 @@ function validateClose(){if(!state.selected)return'Seleccioná estudiante.';if(s
 async function saveDraft(){if(state.busy)return toast('Esperá a que termine la operación actual.');if(!state.selected)return toast('Seleccioná estudiante.');if(state.evaluations[state.selected.codigo]?.NOTA_OFICIAL_ESTADO==='CONCILIACION_REQUERIDA')return toast('No se puede editar: nota pendiente de conciliación.');try{const j=await api('oralSaveDraft',currentPayload());state.evaluations[state.selected.codigo]=j.evaluacion;document.getElementById('fi-state').textContent=j.evaluacion.ESTADO;renderStudents();toast('Borrador guardado.');}catch(e){toast(e.message)}}
 function notifyParentOral(){try{window.parent.postMessage({type:'an:oral-updated',grupo:state.panel?.cod_grupo||'',nivel:state.panel?.nivel||'',leccion:state.panel?.leccion||0},window.location.origin);}catch(_){}}
 async function closeEval(){const err=validateClose();if(err)return toast(err);try{const j=await api('oralCloseEvaluacion',currentPayload());state.evaluations[state.selected.codigo]=j.evaluacion;document.getElementById('fi-state').textContent=j.evaluacion.ESTADO;renderStudents();toast(j.nota_oficial?'Evaluación cerrada y nota oficial sincronizada.':'Evaluación cerrada.');notifyParentOral();const next=state.students.find(s=>!['CERRADO','PDF_GENERADO'].includes(String((state.evaluations[s.codigo]||{}).ESTADO||'')));if(next)selectStudent(next.codigo);}catch(e){if(e.evaluacion&&state.selected){state.evaluations[state.selected.codigo]=e.evaluacion;selectStudent(state.selected.codigo,true);}toast(e.message)}}
-function collectQuestionsF90(payload){
-  const p=payload||currentPayload();
-  const meta=LECCIONES[state.panel.leccion]||{},rows=[];
-  const selected=p.preguntas_json||{},otherByUnit=p.otras_preguntas_json||{};
-  (meta.units||[]).forEach(u=>{
-    (Array.isArray(selected[u])?selected[u]:[]).forEach(i=>
-      rows.push({unit:`U${u}`,text:(questionBankForLevelF111()[u]?.qs||[])[i]||`Pregunta ${i+1}`}));
-    if(String(otherByUnit[u]||'').trim())rows.push({unit:`U${u}`,text:String(otherByUnit[u]).trim()});
-  });
-  const other=String(p.otras_preguntas||'').trim();
-  if(other)rows.push({unit:'OTRAS',text:other});
-  return rows;
-}
-function classificationF90(total){if(total>=23)return'Excelente';if(total>=20)return'Muy bueno';if(total>=17)return'Bueno';return'Necesita mejorar';}
-function buildPdfHtmlF90(payload,evaluation,logoSrc){
-const p={...(payload||currentPayload())};
-if(evaluation){
-  // Documento del expediente: usar únicamente el resultado persistido al cerrar.
-  p.cod_estudiante=evaluation.COD_ESTUDIANTE||p.cod_estudiante;
-  p.nombre=evaluation.NOMBRE||p.nombre;
-  p.docente=evaluation.DOCENTE_NOMBRE||p.docente;
-  p.fecha=evaluation.FECHA_ISO||evaluation.FECHA||p.fecha;
-  p.comentarios=evaluation.COMENTARIOS??p.comentarios;
-  p.sugerencias=evaluation.SUGERENCIAS??p.sugerencias;
-  p.otras_preguntas=evaluation.OTRAS_PREGUNTAS??p.otras_preguntas;
-  p.criterios=Object.fromEntries(CRITERIA.map(r=>[r[0],evaluation[r[0]]]));
-  for(const [field,source] of [['preguntas_json','PREGUNTAS_JSON'],['otras_preguntas_json','OTRAS_PREGUNTAS_JSON']]){
-    try{p[field]=typeof evaluation[source]==='string'?JSON.parse(evaluation[source]||'{}'):evaluation[source]||{}}
-    catch(_){p[field]={};}
-  }
-}
-const c={total:Number(evaluation?.PUNTAJE_TOTAL??calc().total),nota100:Number(evaluation?.NOTA_100??calc().nota100),pond:Number(evaluation?.NOTA_PONDERADA??calc().pond),weight:Number(evaluation?.PESO_PORCENTAJE??calc().weight)};const meta=LECCIONES[state.panel.leccion]||{};const qs=collectQuestionsF90(p);const oralId=evaluation?.ORAL_ID||'Pendiente de registro';const dateLabel=formatDateEsF90(evaluation?.FECHA_ISO||p.fecha||state.panel.fecha);const teacher=String(evaluation?.DOCENTE_NOMBRE||p.docente||state.panel.docente||'').trim();const examDisplay=state.panel?.es_reposicion?(state.panel.titulo||('Reposición · '+(meta.label||''))):(meta.label||state.panel.titulo);const displayDate=state.panel?.es_reposicion?formatDateEsF90(state.panel.fecha_aplicacion||new Date().toISOString().slice(0,10)):dateLabel;const tentativeDate=state.panel?.es_reposicion&&state.panel?.fecha_tentativa?formatDateEsF90(state.panel.fecha_tentativa):'Sin fecha tentativa';const deadlineDate=state.panel?.es_reposicion&&state.panel?.fecha_limite_reposicion?formatDateEsF90(state.panel.fecha_limite_reposicion):'';const rubricVersion=state.panel?.es_reposicion?'CAMBRIDGE_IC5_ORAL_REPOS_F92_6':'CAMBRIDGE_IC5_ORAL_F90';const scale=[['5','Excelente'],['4','Muy bueno'],['3','Bueno'],['2','Regular'],['1','Deficiente'],['0','No se presentó']];const criterionRows=CRITERIA.map(r=>`<tr><td class="criterion">${escF90(r[1])}</td><td><div class="inst-desc">${escF90(r[2])}</div></td><td class="score">${escF90(p.criterios?.[r[0]])}</td></tr>`).join('');const questionRows=qs.length?qs.map((q,i)=>`<tr><td>${i+1}</td><td class="unit">${escF90(q.unit)}</td><td>${escF90(q.text)}</td></tr>`).join(''):'<tr><td colspan="3">Sin preguntas registradas.</td></tr>';return`<div class="inst-doc"><section class="inst-page"><header class="inst-head"><img class="inst-logo" src="${logoSrc}" alt="Academia Norteamericana"><div class="inst-title"><div class="inst-kicker">Documento oficial de evaluación</div><h1>${state.panel?.es_reposicion?'Rúbrica de Reposición Oral':'Rúbrica de Examen Oral'}</h1><p>Programa Inglés Conversacional<br>Instrumento académico basado en Interchange Fifth Edition</p></div></header><table class="inst-meta"><tr><td class="label">Estudiante</td><td class="value">${escF90(p.nombre)}</td><td class="label">Código</td><td class="value">${escF90(p.cod_estudiante)}</td></tr><tr><td class="label">Grupo</td><td class="value">${escF90(visibleGroupF88(state.panel.cod_grupo))}</td><td class="label">Nivel</td><td class="value">${escF90(levelLabelF90(state.panel.nivel))}</td></tr><tr><td class="label">Evaluación</td><td class="value">${escF90(examDisplay)}</td><td class="label">Fecha aplicada</td><td class="value">${escF90(displayDate)}</td></tr>${state.panel?.es_reposicion?`<tr><td class="label">Fecha tentativa</td><td class="value">${escF90(tentativeDate)}</td><td class="label">Fecha límite</td><td class="value">${escF90(deadlineDate||'—')}</td></tr>`:''}<tr><td class="label">Docente</td><td class="value">${escF90(teacher)}</td><td class="label">ID evaluación</td><td class="value">${escF90(oralId)}</td></tr></table><div class="inst-section-title">Criterios oficiales de evaluación oral</div><table class="inst-rubric"><thead><tr><th>Criterio</th><th>Descripción</th><th>Puntaje</th></tr></thead><tbody>${criterionRows}</tbody></table><div class="inst-scale">${scale.map(x=>`<div><b>${x[0]}</b>${x[1]}</div>`).join('')}</div><div class="inst-results"><div class="inst-result"><small>Puntaje del examen</small><strong>${c.total}/25</strong></div><div class="inst-result"><small>Equivalencia</small><strong>${money(c.nota100)}/100</strong></div><div class="inst-result red"><small>Aporte al curso</small><strong>${money(c.pond)}/${money(c.weight)}%</strong></div></div><div class="inst-two"><div><div class="inst-box-title">Comentarios generales</div><div class="inst-box">${escF90(p.comentarios||'—')}</div></div><div><div class="inst-box-title">Sugerencias de mejora</div><div class="inst-box">${escF90(p.sugerencias||'—')}</div></div></div><div class="inst-sign"><div class="inst-sign-note">Resultado: <b>${escF90(classificationF90(c.total))}</b>. El puntaje propio del examen se expresa sobre 25 puntos. Su aporte a la nota final se calcula según el peso institucional vigente para esta evaluación.</div><div class="inst-signature"><div class="name">${escF90(teacher)}</div><small>Evaluación realizada por</small></div></div><footer class="inst-footer"><span>Academia Norteamericana · Campus Virtual</span><span>Rúbrica Cambridge IC5 · ${state.panel?.es_reposicion?'F92.6':'F90'}</span></footer></section><section class="inst-page"><header class="inst-head"><img class="inst-logo" src="${logoSrc}" alt="Academia Norteamericana"><div class="inst-title"><div class="inst-kicker">Respaldo académico</div><h1>Preguntas aplicadas</h1><p>${escF90(examDisplay)} · ${escF90(p.nombre)}</p></div></header><table class="inst-qtable"><thead><tr><th>#</th><th>Unidad</th><th>Pregunta o indicación aplicada</th></tr></thead><tbody>${questionRows}</tbody></table><div class="inst-audit"><div><b>Puntaje:</b> ${c.total}/25</div><div><b>Clasificación:</b> ${escF90(classificationF90(c.total))}</div><div><b>Docente:</b> ${escF90(teacher)}</div><div><b>Fecha aplicada:</b> ${escF90(displayDate)}</div>${state.panel?.es_reposicion?`<div><b>Fecha tentativa:</b> ${escF90(tentativeDate)}</div><div><b>Fecha límite:</b> ${escF90(deadlineDate||'—')}</div>`:''}<div><b>ID:</b> ${escF90(oralId)}</div><div><b>Versión:</b> ${escF90(rubricVersion)}</div></div><div class="inst-sign"><div class="inst-sign-note">Esta página constituye el respaldo de aplicación: registra las preguntas efectivamente seleccionadas y las preguntas adicionales utilizadas por el docente.</div><div class="inst-signature"><div class="name">${escF90(teacher)}</div><small>Docente evaluador</small></div></div><footer class="inst-footer"><span>Copia archivada en el expediente digital del estudiante</span><span>Academia Norteamericana</span></footer></section></div>`;}
 function clearVisibleFormF90(message){state.scores={COMPREHENSION:null,FLUENCY:null,GRAMMAR:null,VOCABULARY:null,PRONUNCIATION:null};state.questions={};state.otherByUnit={};document.getElementById('comentarios').value='';document.getElementById('sugerencias').value='';document.getElementById('otras-global').value='';document.getElementById('fi-student').textContent=message||'Seleccioná un estudiante';document.getElementById('fi-code').textContent='—';document.getElementById('fi-state').textContent='PENDIENTE';renderScores();renderQBank();}
 function resetEvaluationF90(){if(state.busy)return toast('Esperá a que termine la operación actual.');if(!confirm('¿Volver a cargar los datos del servidor? Se perderán los cambios que aún no guardaste.'))return;loadPanel();}
 function advanceAfterCloseF90(completedCode){renderStudents();const next=state.students.find(s=>String(s.codigo)!==String(completedCode)&&!['CERRADO','PDF_GENERADO'].includes(String((state.evaluations[s.codigo]||{}).ESTADO||'')));if(next){selectStudent(next.codigo,true);return;}state.selected=null;clearVisibleFormF90('Grupo completado');renderStudents();}
@@ -334,14 +302,22 @@ async function generatePdfAndCloseF90(){
       renderStudents();
       notifyParentOral();
     }
-    const archiveHtml=buildPdfHtmlF90(payload,ev,'__AN_LOGO__');
-    const pdf=await api('oralGeneratePdf',{...payload,estado:'CERRADO',html:archiveHtml});
+    // F111 D3-R4: el PDF oficial se construye íntegramente en Apps Script.
+    // Enviar solo la clave académica; jamás HTML ni datos de identidad suministrados por el navegador.
+    const pdf=await api('oralGeneratePdf',{cod_grupo:payload.cod_grupo,nivel:payload.nivel,leccion:payload.leccion,cod_estudiante:payload.cod_estudiante});
     ev=pdf.evaluacion||ev;
     state.evaluations[selectedCode]=ev;
     if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}
     state.lastPdfBlobUrl=pdfBlobUrlF90(pdf.pdf_base64,pdf.pdf_mime);
     state.lastPdfDriveUrl=pdf.pdf_url||'';
-    document.getElementById('pdf-content').innerHTML=buildPdfHtmlF90(payload,ev,'../assets/logo_circular.jpg');
+    const viewer=document.getElementById('pdf-content');
+    viewer.replaceChildren();
+    if(!state.lastPdfBlobUrl)throw new Error('El servidor archivó el PDF, pero no devolvió el documento para visualizarlo. Abrilo desde el expediente.');
+    const frame=document.createElement('iframe');
+    frame.src=state.lastPdfBlobUrl;
+    frame.title='PDF oficial archivado de examen oral';
+    frame.style.cssText='display:block;width:100%;min-height:70vh;border:0;background:#fff';
+    viewer.appendChild(frame);
     advanceAfterCloseF90(selectedCode);
     notifyParentOral();
     document.getElementById('pdf-modal').classList.add('open');
