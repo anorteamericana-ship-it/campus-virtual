@@ -1,0 +1,37 @@
+name: F111 R11 E5 visual student teacher QA (localhost)
+on:
+  push:
+    branches:
+      - test/f111-r11-e5-visual-student-teacher-20261017
+    paths:
+      - scripts/qa_f111_r11_e5_visual_student_teacher.mjs
+      - .github/workflows/qa-f111-r11-e5-visual.yml
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check scripts/qa_f111_r11_e5_visual_student_teacher.mjs
+      - name: Install browser in ephemeral runner
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Visual QA on real frontend and mock localhost API
+        run: |
+          F111_E5_SCREENSHOT_DIR="$RUNNER_TEMP/f111-e5-visual" node scripts/qa_f111_r11_e5_visual_student_teacher.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: f111-r11-e5-synthetic-screenshots
+          path: ${{ runner.temp }}/f111-e5-visual/
+          if-no-files-found: ignore
+          retention-days: 7
