@@ -41,3 +41,41 @@ assert.ok(!view.includes('pcQuizReviewSuggestionsF111'),'protected classroom clo
 assert.ok(teacher.includes('navigator.clipboard.writeText'),'teacher can transfer reviewed observation to Progress Check');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'));
 console.log('PASS F111 QZ32 client QA: 32/32 level/lesson routes, guarded submit/verification, teacher feedback, no grades/keys/PROD, no duplicate HTML');
+
+if(process.env.F111_QZ_BROWSER==='1'){
+ const {chromium}=await import('playwright');
+ const {resolve}=await import('node:path');
+ const {pathToFileURL}=await import('node:url');
+ const {mkdirSync}=await import('node:fs');
+ const browser=await chromium.launch({headless:true});
+ const page=await browser.newPage({viewport:{width:1280,height:850}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  for(const nivel of ['B1','B2','I1','I2']){
+   for(const leccion of Object.keys(mapping).map(Number)){
+    const query='?preview=1&nivel='+nivel+'&leccion='+leccion+'&grupo=QA_SYNTHETIC';
+    const studentUrl=pathToFileURL(resolve('modulos/quiz_progress.html')).href+query;
+    const teacherUrl=pathToFileURL(resolve('modulos/quiz_progress_docente.html')).href+query;
+    await page.goto(studentUrl);
+    await page.waitForFunction(()=>document.querySelector('#badge')?.textContent.includes('Vista previa QA'));
+    assert.equal((await page.locator('#lessonTag').textContent()).includes('L'+leccion),true);
+    assert.equal((await page.locator('#unitsTag').textContent()).includes(mapping[leccion].join('–')),true);
+    assert.equal(await page.locator('#submitBtn').isDisabled(),true,'preview cannot submit');
+    if(nivel==='B1'&&leccion===4){
+     mkdirSync('qa-capturas',{recursive:true});
+     await page.screenshot({path:'qa-capturas/QZ32_estudiante_B1_WQ01_1280.png',fullPage:true});
+    }
+    await page.goto(teacherUrl);
+    await page.waitForFunction(()=>document.querySelector('#people')?.textContent.includes('Estudiante de muestra'));
+    if(nivel==='I2'&&leccion===30){
+     await page.setViewportSize({width:390,height:844});
+     await page.screenshot({path:'qa-capturas/QZ32_docente_I2_WQ08_390.png',fullPage:true});
+     await page.setViewportSize({width:1280,height:850});
+    }
+   }
+  }
+  assert.deepEqual(errors,[],'No frontend uncaught errors across 64 QA route previews');
+  console.log('F111_QZ32_BROWSER_PASS: 32/32 estudiante + 32/32 docente, escritorio/móvil; solo fixture vista previa sin red');
+ }finally{await browser.close();}
+}
+
