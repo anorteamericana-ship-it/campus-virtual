@@ -53,7 +53,7 @@ function mock(role,fn,body){
    return {ok:true,codigo:code,grupo:group,programa:'INA',nota_total:87,
     componentes:{ESCRITO_1:{puntos:4,max:5},ESCRITO_2:{puntos:3,max:5}}};
   return {ok:true,enabled:true,assigned:true,activation:act,public_exam:publicExam,
-   current_attempt:attempts[0],student:{nombre:'Estudiante QA Ficticio',codigo:code,grupo}};
+   current_attempt:attempts[0],student:{nombre:'Estudiante QA Ficticio',codigo:code,grupo:group}};
  }
  if(fn==='examReviewInbox'){
   return {ok:true,total:2,rows:attempts.map((a,i)=>({...a,
