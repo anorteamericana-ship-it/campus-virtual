@@ -148,7 +148,17 @@ function renderQBank(){const p=state.panel||{};const lec=Number(p.leccion||0);co
 if(!Object.keys(questionBankForLevelF111()).length){qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado. Para evitar aplicar preguntas de Básico I, registrá las preguntas utilizadas en «Otras preguntas aplicadas» hasta que se apruebe el banco específico.</div>';return;}qbody.innerHTML=meta.units.map(u=>{const data=questionBankForLevelF111()[u]||{title:`Unit ${u}`,qs:[]};const selected=state.questions[u]||[];const other=state.otherByUnit[u]||'';return`<div class="unit"><h3>${escF90(data.title)}</h3>${data.qs.map((q,i)=>`<label class="q"><input type="checkbox" data-unit="${u}" data-idx="${i}" ${selected.includes(i)?'checked':''}><span>${escF90(q)}</span></label>`).join('')}<div class="other"><input type="text" data-other-unit="${u}" placeholder="Otro: escribí otra pregunta aplicada" value="${escF90(other)}"></div></div>`}).join('');qbody.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.onchange=()=>{const u=ch.dataset.unit;const i=Number(ch.dataset.idx);state.questions[u]=state.questions[u]||[];if(ch.checked&&!state.questions[u].includes(i))state.questions[u].push(i);if(!ch.checked)state.questions[u]=state.questions[u].filter(x=>x!==i);state.dirty=true;});qbody.querySelectorAll('[data-other-unit]').forEach(inp=>inp.oninput=()=>{state.otherByUnit[inp.dataset.otherUnit]=inp.value;state.dirty=true;});}
 
 
-function currentPayload(){const c=calc();return{cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,leccion:state.panel.leccion,tipo_eval:state.panel.tipo_eval,cod_estudiante:state.selected?.codigo,cedula:state.selected?.cedula||'',nombre:state.selected?.nombre,programa:state.selected?.programa||state.selected?.convenio||'',docente:state.panel.docente,fecha:state.panel.fecha_iso||state.panel.fecha,criterios:state.scores,puntaje_total:c.total,nota_100:c.nota100,peso_porcentaje:c.weight,nota_ponderada:c.pond,rubrica_version:'CAMBRIDGE_IC5_ORAL_F90',reposicion_id:state.panel?.reposicion_id||'',fecha_tentativa:state.panel?.fecha_tentativa||'',fecha_limite_reposicion:state.panel?.fecha_limite_reposicion||'',preguntas_json:state.questions,otras_preguntas_json:state.otherByUnit,otras_preguntas:document.getElementById('otras-global').value,comentarios:document.getElementById('comentarios').value,sugerencias:document.getElementById('sugerencias').value};}
+function currentPayload(){return{
+  // D3-R10: metadatos académicos/identidad/documentación los resuelve GAS.
+  cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,leccion:state.panel.leccion,
+  cod_estudiante:state.selected?.codigo,fecha:state.panel.fecha_iso||state.panel.fecha,
+  criterios:{...state.scores},preguntas_json:state.questions,
+  otras_preguntas_json:state.otherByUnit,
+  otras_preguntas:document.getElementById('otras-global').value,
+  comentarios:document.getElementById('comentarios').value,
+  sugerencias:document.getElementById('sugerencias').value,
+  reposicion_id:state.panel?.reposicion_id||''
+};}
 function validateClose(){if(!state.selected)return'Seleccioná estudiante.';if(oralNeedsReviewF111(state.evaluations[state.selected.codigo]))return'El cierre está incompleto o la nota requiere conciliación. No repitás la operación desde el panel docente.';const c=calc();if(!c.complete)return'Completá los 5 criterios.';if(!document.getElementById('comentarios').value.trim())return'Comentarios generales es obligatorio.';if(!document.getElementById('sugerencias').value.trim())return'Sugerencias de mejora es obligatorio.';const anyQ=Object.values(state.questions).some(a=>a&&a.length)||Object.values(state.otherByUnit).some(v=>String(v||'').trim())||document.getElementById('otras-global').value.trim();if(!anyQ)return'Seleccioná al menos una pregunta o escribí otra pregunta aplicada.';return'';}
 async function saveDraft(){
   if(new URLSearchParams(location.search).get('preview')==='1')
@@ -208,7 +218,7 @@ async function saveDraft(){
   }
 }
 function notifyParentOral(){try{window.parent.postMessage({type:'an:oral-updated',grupo:state.panel?.cod_grupo||'',nivel:state.panel?.nivel||'',leccion:state.panel?.leccion||0},window.location.origin);}catch(_){}}
-async function closeEval(){const err=validateClose();if(err)return toast(err);try{const j=await api('oralCloseEvaluacion',currentPayload());state.evaluations[state.selected.codigo]=j.evaluacion;document.getElementById('fi-state').textContent=j.evaluacion.ESTADO;renderStudents();toast(j.nota_oficial?'Evaluación cerrada y nota oficial sincronizada.':'Evaluación cerrada.');notifyParentOral();const next=state.students.find(s=>!['CERRADO','PDF_GENERADO'].includes(String((state.evaluations[s.codigo]||{}).ESTADO||'')));if(next)selectStudent(next.codigo);}catch(e){if(e.evaluacion&&state.selected){state.evaluations[state.selected.codigo]=e.evaluacion;selectStudent(state.selected.codigo,true);}toast(e.message)}}
+// El cierre definitivo se realiza únicamente mediante generatePdfAndCloseF90 y el backend autenticado.
 function clearVisibleFormF90(message){state.dirty=false;state.scores={COMPREHENSION:null,FLUENCY:null,GRAMMAR:null,VOCABULARY:null,PRONUNCIATION:null};state.questions={};state.otherByUnit={};document.getElementById('comentarios').value='';document.getElementById('sugerencias').value='';document.getElementById('otras-global').value='';document.getElementById('fi-student').textContent=message||'Seleccioná un estudiante';document.getElementById('fi-code').textContent='—';document.getElementById('fi-state').textContent='PENDIENTE';renderScores();renderQBank();}
 function resetEvaluationF90(){if(state.busy)return toast('Esperá a que termine la operación actual.');if(!confirm('¿Volver a cargar los datos del servidor? Se perderán los cambios que aún no guardaste.'))return;loadPanel();}
 function advanceAfterCloseF90(completedCode){renderStudents();const next=state.students.find(s=>String(s.codigo)!==String(completedCode)&&!oralCompletedF111(state.evaluations[s.codigo])&&!oralNeedsReviewF111(state.evaluations[s.codigo]));if(next){selectStudent(next.codigo,true);return;}const requiereRevision=state.students.some(s=>!oralCompletedF111(state.evaluations[s.codigo]));state.selected=null;clearVisibleFormF90(requiereRevision?'Sin alumnos evaluables: revisar notas pendientes':'Grupo completado');renderStudents();}
@@ -317,7 +327,7 @@ async function loadPanel(){
       return;
     }
     const j=await api('oralGetPanelDocente',{cod_grupo:qs.get('grupo')||'',nivel:qs.get('nivel')||'',leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',reposicion_id:qs.get('reposicion_id')||''});
-    state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};
+    state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;
     document.getElementById('ctx-grupo').textContent=visibleGroupF88(state.panel.cod_grupo)||'—';
     document.getElementById('ctx-nivel').textContent=state.panel.nivel||'—';
     document.getElementById('ctx-examen').textContent=state.panel.titulo||'—';
@@ -325,7 +335,7 @@ async function loadPanel(){
     document.getElementById('ctx-fecha').textContent=state.panel.es_reposicion?((state.panel.fecha_aplicacion||state.panel.fecha||'—')+' · tentativa '+(state.panel.fecha_tentativa||'sin coordinar')):(state.panel.fecha||'—');
     if(state.panel.fallback){const w=document.getElementById('warning-box');w.style.display='block';w.textContent=state.panel.fallback;}else document.getElementById('warning-box').style.display='none';
     renderStudents(); renderQBank(); setStatus('Listo','ok');
-    if(state.students[0])selectStudent(state.students[0].codigo);
+    if(state.students[0])selectStudent(state.students[0].codigo,true);
   }catch(e){
     setStatus('Revisar','bad');
     const msg=e.message||String(e);
