@@ -116,117 +116,13 @@ const QB={
 16:{title:'Unit 16 — Can I take a message?',qs:['Where is your best friend right now?','Tell me something you have to do this week.','Would you like to go to a concert this weekend?','Leave a phone message for a friend.','Tell me something you want to do in your next English class.']}
 };
 
-// F111 D3-R3: banco académico B2 PREPARADO, NO APROBADO.
-// Preguntas originales adaptadas a los temas de Interchange 5th Edition, Level 1.
-// Fuente pedagógica consultada: IC5_L1_OQ_Question_Bank.pdf (Drive académico).
-// Ninguna pregunta se publica al docente hasta validación institucional expresa.
-const ORAL_B2_BANK_VALIDADO=false;
-// R5 — Identificación estable y auditable. La versión NO equivale a aprobación.
+// F111 D3-R6: B2 se sirve solo desde el catálogo aprobado en Apps Script.
+// B1 mantiene temporalmente el catálogo histórico local para compatibilidad.
 const ORAL_BANK_RELEASE_F111=Object.freeze({
-  B1:Object.freeze({id:'IC5-INTRO-ACADEMIA',version:'AN-ORAL-B1-LEGACY-20261018',estado:'LEGADO_SIN_VALIDACION_DE_CATALOGO'}),
-  B2:Object.freeze({id:'IC5-L1-ACADEMIA-B2',version:'AN-ORAL-B2-CANDIDATO-R5-20261018',estado:'CANDIDATO_PENDIENTE_APROBACION'})
+  B1:Object.freeze({id:'IC5-INTRO-ACADEMIA',version:'AN-ORAL-B1-LEGACY-20261018',estado:'LEGADO_SIN_VALIDACION_DE_CATALOGO'})
 });
 
-const QB_B2={
-  1:{title:'Unit 1 — Where are you from?',qs:[
-    'Introduce yourself: say what people call you, where you are from, and where you live now.',
-    'Describe two fictional classmates. Where are they from, and what are they like?',
-    'Explain when you have English class and what you usually do after it.',
-    'Interview the examiner to learn basic personal information and class preferences.'
-  ]},
-  2:{title:'Unit 2 — What do you do?',qs:[
-    'Describe your typical weekday from morning to night, including the times of three activities.',
-    'Explain what you do at work or school and which part of your day you enjoy most.',
-    'Talk about a family member’s occupation or studies and daily schedule.',
-    'Ask the examiner questions about work, classes, and free-time routines.'
-  ]},
-  3:{title:'Unit 3 — How much are these?',qs:[
-    'Imagine you are shopping for clothes. Ask for prices, colors, sizes, and materials.',
-    'Compare two pieces of clothing in terms of cost, style, and comfort.',
-    'Describe a real or imaginary clothing purchase and explain why you would choose those items.',
-    'Ask the examiner to choose between two items and explain the preference.'
-  ]},
-  4:{title:'Unit 4 — Do you play the guitar?',qs:[
-    'Talk about the kinds of music you enjoy and an artist you would recommend.',
-    'Explain which instruments or games you can play and which ones you would like to learn.',
-    'Compare two kinds of movies or television programs and explain your preference.',
-    'Invite the examiner to an activity this weekend and discuss a possible plan.'
-  ]},
-  5:{title:'Unit 5 — What an interesting family!',qs:[
-    'Describe relatives or a fictional family and explain where they live or work.',
-    'Talk about what two relatives are doing these days and how their routines differ.',
-    'Explain which languages or hobbies are common among your relatives or friends.',
-    'Ask the examiner about family members and their current activities.'
-  ]},
-  6:{title:'Unit 6 — How often do you run?',qs:[
-    'Describe three activities you do regularly, stating how often you do each one.',
-    'Talk about a sport or exercise you enjoy, including where you practice it.',
-    'Explain how much time you spend studying, exercising, or using the Internet each week.',
-    'Interview the examiner about healthy routines and recreational activities.'
-  ]},
-  7:{title:'Unit 7 — We went dancing!',qs:[
-    'Tell a real or imaginary story about last weekend, using past-tense verbs and time expressions.',
-    'Describe a memorable trip or local outing: where you went and what happened.',
-    'Compare a recent weekend with one that you particularly enjoyed.',
-    'Ask the examiner about a past vacation or special event.'
-  ]},
-  8:{title:"Unit 8 — How's the neighborhood?",qs:[
-    'Describe the facilities and services available in your neighborhood.',
-    'Explain whether your community has much traffic, noise, green space, or public transportation.',
-    'Recommend a place to visit near your home and explain how to find it.',
-    'Ask the examiner about stores, parks, and services near their neighborhood.'
-  ]},
-  9:{title:'Unit 9 — What does she look like?',qs:[
-    'Describe a fictional person’s appearance in enough detail for the examiner to recognize the description.',
-    'Compare the hair, clothing, and appearance of two people you know.',
-    'Describe a person in a fictional picture using clothing, height, and hair details.',
-    'Ask the examiner to describe a person without revealing their name.'
-  ]},
-  10:{title:'Unit 10 — Have you ever been to Orlando?',qs:[
-    'Describe a place you have visited, or a local attraction you know, and explain why it is interesting.',
-    'Talk about an experience you have never had but would like to try.',
-    'Explain how long you have studied English or lived in your current town.',
-    'Ask the examiner about travel, food, or other experiences they have had.'
-  ]},
-  11:{title:"Unit 11 — It's a really nice city.",qs:[
-    'Describe your hometown and the attractions that make it interesting.',
-    'Recommend three activities to a visitor who has only one day in your city.',
-    'Explain what visitors should or should not do in your community.',
-    'Compare your town with another place in terms of cost, safety, and transportation.'
-  ]},
-  12:{title:"Unit 12 — It's important to get some rest.",qs:[
-    'Give advice to someone who is tired, stressed, or unable to sleep well.',
-    'Explain what you usually do when you catch a cold or feel unwell.',
-    'Role-play asking a pharmacist for advice about a common minor symptom.',
-    'Ask the examiner about habits that help maintain good health.'
-  ]},
-  13:{title:'Unit 13 — What would you like?',qs:[
-    'Role-play ordering a full meal and a drink at a restaurant.',
-    'Explain which foods you really enjoy and which foods you prefer to avoid.',
-    'Compare two types of international cuisine and describe their flavors.',
-    'Play the role of a server and ask the examiner what they would like to order.'
-  ]},
-  14:{title:"Unit 14 — It's the coldest city!",qs:[
-    'Compare two cities or countries using comparative and superlative forms.',
-    'Recommend the best destination for a vacation and justify your choice.',
-    'Describe a remarkable mountain, river, beach, or natural attraction in your country.',
-    'Ask the examiner questions comparing weather, distance, size, or population.'
-  ]},
-  15:{title:'Unit 15 — What are you doing tonight?',qs:[
-    'Describe your plans for tonight and the coming weekend using future arrangements.',
-    'Explain whom you are meeting soon and what you are planning to do together.',
-    'Role-play leaving a message for a friend who is unavailable.',
-    'Ask the examiner about plans and suggest a possible activity together.'
-  ]},
-  16:{title:'Unit 16 — How have you changed?',qs:[
-    'Explain two ways your studies, routine, or a fictional character’s life have changed over time.',
-    'Describe a skill or activity you have recently learned and why it matters to you.',
-    'Talk about your plans after completing this English level.',
-    'Ask the examiner about learning goals or changes in study and work routines.'
-  ]}
-};
-
-let state={panel:null,students:[],selected:null,evaluations:{},scores:{},questions:{},otherByUnit:{},otherGlobal:'',busy:false,lastPdfBlobUrl:'',lastPdfDriveUrl:''};
+let state={panel:null,bank:null,students:[],selected:null,evaluations:{},scores:{},questions:{},otherByUnit:{},otherGlobal:'',busy:false,lastPdfBlobUrl:'',lastPdfDriveUrl:''};
 function getSesion(){try{return JSON.parse(sessionStorage.getItem('an_usuario')||'null')||{};}catch(_){return {};}}
 function token(){const s=getSesion();return s.token||'';}
 function teacherGroupLabelF88(code){const raw=String(code||'').trim().toUpperCase();const cycle=(raw.split('-').filter(Boolean).pop()||'').trim();const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/)||raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]]||'Grupo';const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]]||'';return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;}
@@ -247,7 +143,7 @@ function oralSyncWarningF111(ev){const box=document.getElementById('warning-box'
 function renderStudents(){const box=document.getElementById('students');const evals=state.evaluations||{};const pendientes=[],evaluados=[];state.students.forEach(s=>{const ev=evals[s.codigo]||{};const st=ev.ESTADO||'PENDIENTE';(st==='CERRADO'||st==='PDF_GENERADO'?evaluados:pendientes).push(s);});function item(s){const ev=evals[s.codigo]||{};const [cls,lbl]=stateTag(ev.ESTADO,ev.NOTA_OFICIAL_ESTADO);return`<button class="student ${cls==='done'?'done':''} ${cls==='draft'?'draft':''} ${state.selected&&state.selected.codigo===s.codigo?'active':''}" data-code="${escF90(s.codigo)}"><span class="tag ${cls}">${lbl}</span><div class="name">${escF90(s.nombre||s.name||'Sin nombre')}</div><div class="meta">#${escF90(s.codigo)}</div></button>`}box.innerHTML=`<div class="group-label">Pendientes (${pendientes.length})</div>${pendientes.map(item).join('')||'<div class="empty">Sin pendientes</div>'}<div class="group-label">Evaluados (${evaluados.length})</div>${evaluados.map(item).join('')||'<div class="empty">Sin evaluados</div>'}`;box.querySelectorAll('.student').forEach(b=>b.onclick=()=>selectStudent(b.dataset.code));document.getElementById('student-count').textContent=`${evaluados.length}/${state.students.length}`;}
 function loadEvaluationIntoForm(ev){state.scores={COMPREHENSION:ev.COMPREHENSION??null,FLUENCY:ev.FLUENCY??null,GRAMMAR:ev.GRAMMAR??null,VOCABULARY:ev.VOCABULARY??null,PRONUNCIATION:ev.PRONUNCIATION??null};try{state.questions=JSON.parse(ev.PREGUNTAS_JSON||'{}')||{};}catch(_){state.questions={};}try{state.otherByUnit=JSON.parse(ev.OTRAS_PREGUNTAS_JSON||'{}')||{};}catch(_){state.otherByUnit={};}document.getElementById('comentarios').value=ev.COMENTARIOS||'';document.getElementById('sugerencias').value=ev.SUGERENCIAS||'';document.getElementById('otras-global').value=ev.OTRAS_PREGUNTAS||'';renderScores();renderQBank();}
 function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();const cerrado=['CERRADO','PDF_GENERADO'].includes(String(ev.ESTADO||'').toUpperCase())||String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase()==='CONCILIACION_REQUERIDA';document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn)pdfBtn.textContent=ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'Cerrar examen y generar PDF';}
-function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&ORAL_B2_BANK_VALIDADO?QB_B2:{};}
+function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&state.bank?.aprobado===true&&state.bank?.version&&state.bank?.unidades?state.bank.unidades:{};}
 function renderQBank(){const p=state.panel||{};const lec=Number(p.leccion||0);const meta=LECCIONES[lec]||{units:[]};document.getElementById('qb-label').textContent=meta.units.length?`U${meta.units[0]}–${meta.units[meta.units.length-1]}`:'—';const qbody=document.getElementById('qbody');if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay banco para esta lección.</div>';return;}
 if(!Object.keys(questionBankForLevelF111()).length){qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado. Para evitar aplicar preguntas de Básico I, registrá las preguntas utilizadas en «Otras preguntas aplicadas» hasta que se apruebe el banco específico.</div>';return;}qbody.innerHTML=meta.units.map(u=>{const data=questionBankForLevelF111()[u]||{title:`Unit ${u}`,qs:[]};const selected=state.questions[u]||[];const other=state.otherByUnit[u]||'';return`<div class="unit"><h3>${data.title}</h3>${data.qs.map((q,i)=>`<label class="q"><input type="checkbox" data-unit="${u}" data-idx="${i}" ${selected.includes(i)?'checked':''}><span>${q}</span></label>`).join('')}<div class="other"><input type="text" data-other-unit="${u}" placeholder="Otro: escribí otra pregunta aplicada" value="${String(other).replace(/"/g,'&quot;')}"></div></div>`}).join('');qbody.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.onchange=()=>{const u=ch.dataset.unit;const i=Number(ch.dataset.idx);state.questions[u]=state.questions[u]||[];if(ch.checked&&!state.questions[u].includes(i))state.questions[u].push(i);if(!ch.checked)state.questions[u]=state.questions[u].filter(x=>x!==i);});qbody.querySelectorAll('[data-other-unit]').forEach(inp=>inp.oninput=()=>{state.otherByUnit[inp.dataset.otherUnit]=inp.value;});}
 
@@ -255,7 +151,7 @@ function oralQuestionTraceF111(){
   // Compatibilidad: claves numéricas existentes siguen siendo arrays de índices.
   // El campo reservado no se interpreta como pregunta por el motor F63.
   const nivel=String(state.panel?.nivel||'').toUpperCase();
-  const banco=ORAL_BANK_RELEASE_F111[nivel]||null;
+  const banco=nivel==='B2'&&state.bank?.aprobado===true?{id:state.bank.id,version:state.bank.version,estado:state.bank.estado}:ORAL_BANK_RELEASE_F111[nivel]||null;
   const leccion=Number(state.panel?.leccion||0);
   const unidades=LECCIONES[leccion]?.units||[];
   const catalogo=questionBankForLevelF111();
@@ -381,7 +277,7 @@ async function loadPanel(){
       const nivel=String(qs.get('nivel')||'B1').toUpperCase();
       const leccion=Number(qs.get('leccion')||9);
       const meta=LECCIONES[leccion]||LECCIONES[9];
-      state.panel={cod_grupo:'PREVIEW-INSTITUCIONAL',nivel,leccion,titulo:meta.label,docente:'Docente de muestra',fecha:new Date().toLocaleDateString('es-CR'),peso_porcentaje:15,preview:true};
+      state.panel={cod_grupo:'PREVIEW-INSTITUCIONAL',nivel,leccion,titulo:meta.label,docente:'Docente de muestra',fecha:new Date().toLocaleDateString('es-CR'),peso_porcentaje:15,preview:true};state.bank=null;
       state.students=[{codigo:'00001',nombre:'ESTUDIANTE DE MUESTRA',cedula:'0-0000-0000',convenio:'Vista previa'}];state.evaluations={};
       document.getElementById('session-chip').textContent='Vista previa administrativa';
       document.getElementById('ctx-grupo').textContent='Sábados de 9am a 4pm - 0326';
@@ -395,7 +291,7 @@ async function loadPanel(){
       return;
     }
     const j=await api('oralGetPanelDocente',{cod_grupo:qs.get('grupo')||'',nivel:qs.get('nivel')||'',leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',reposicion_id:qs.get('reposicion_id')||''});
-    state.panel=j.panel; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};
+    state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};
     document.getElementById('ctx-grupo').textContent=visibleGroupF88(state.panel.cod_grupo)||'—';
     document.getElementById('ctx-nivel').textContent=state.panel.nivel||'—';
     document.getElementById('ctx-examen').textContent=state.panel.titulo||'—';
