@@ -22,7 +22,7 @@
 </section>
 <section class="card"><div class="cardhead"><div><h2>Mis respuestas</h2><small>Escribí el número de cada ejercicio y tu respuesta dentro de su apartado (A, B, C…).</small></div><span class="chip" id="counter">0 respuestas</span></div>
 <div class="answers" id="answers"></div>
-<div class="footer"><div class="status"><span id="saveState" role="status" aria-live="polite">Todavía no hay respuestas.</span><div class="bar"><div id="progressFill" style="width:0%"></div></div></div><div class="actions"><button class="btn" type="button" id="saveBtn">Guardar avance</button><button class="btn primary" type="button" id="submitBtn">Entregar quiz</button></div></div>
+<div class="footer"><div class="status"><span id="saveState" role="status" aria-live="polite">Todavía no hay respuestas.</span><div class="bar"><div id="progressFill" style="width:0%"></div></div></div><div class="actions"><button class="btn" type="button" id="saveBtn">Guardar avance</button><button class="btn primary" type="button" id="submitBtn">Entregar quiz</button><button class="btn" type="button" id="verifyBtn" hidden>Verificar entrega</button></div></div>
 </section>
 </main>
 <div class="alert" id="listeningInfo" role="status">Listening: pendiente de comprobar audio original Cambridge. Se administrará en clase bajo indicaciones del docente.</div>
@@ -40,7 +40,7 @@ const preview=qs.get('preview')==='1';
 document.documentElement.dataset.level=LEVELS[level]?level:'B1';
 const $=id=>document.getElementById(id);
 const units=STEPS[lesson]||null;
-let token='',apiUrl='',busy=false,submitted=false,saveTimer=null,dirty=false,lastBlob=null;
+let token='',apiUrl='',busy=false,submitted=false,uncertainSubmit=false,expired=false,saveTimer=null,dirty=false,lastBlob=null;
 const response={};
 let fields=[];
 $('pageTitle').textContent='Quiz · '+(LEVELS[level]||level);
@@ -52,8 +52,11 @@ function update(){
  const filled=fields.filter(x=>String(response[x.key]||'').trim()).length;
  $('counter').textContent=filled+'/'+fields.length+' respuestas';
  $('progressFill').style.width=Math.round(fields.length?filled/fields.length*100:0)+'%';
- $('saveBtn').disabled=busy||submitted||preview;
- $('submitBtn').disabled=busy||submitted||preview||!filled;
+ $('saveBtn').disabled=busy||submitted||uncertainSubmit||expired||preview;
+ $('submitBtn').disabled=busy||submitted||uncertainSubmit||expired||preview||!filled;
+ $('verifyBtn').hidden=!uncertainSubmit;
+ $('verifyBtn').disabled=busy;
+ document.querySelectorAll('#answers textarea').forEach(el=>{el.readOnly=submitted||uncertainSubmit||expired;});
 }
 function build(secciones){
  const root=$('answers'),frag=document.createDocumentFragment();root.replaceChildren();fields=[];
@@ -98,7 +101,7 @@ async function api(fn,payload={}){
  return j;
 }
 async function save(showToast){
- if(preview||submitted||busy||!dirty)return;
+ if(preview||submitted||uncertainSubmit||expired||busy||!dirty)return;
  busy=true;update();
  try{
   const snapshot=JSON.stringify(response);
@@ -112,13 +115,32 @@ async function save(showToast){
 }
 async function submit(){
  clearTimeout(saveTimer);
- if(!fields.some(x=>String(response[x.key]||'').trim())||submitted||busy)return;
+ if(!fields.some(x=>String(response[x.key]||'').trim())||submitted||uncertainSubmit||expired||busy)return;
  if(!confirm('¿Entregar el quiz ahora? Luego no podrás editar tus respuestas.'))return;
  busy=true;update();setError('');
  try{
   const j=await api('qzProgressSubmit',{...context(),respuestas:{...response}});
   submitted=true;dirty=false;setStatus('¡Entregado! En revisión por el docente.');$('badge').textContent='Entregado';
- }catch(e){setError('No se pudo entregar: '+e.message);setStatus('Entrega pendiente');}
+ }catch(e){
+  // El backend pudo completar la escritura aunque se perdiera el HTTP.
+  uncertainSubmit=true;
+  setError('Entrega sin confirmación. Utilizá «Verificar entrega» antes de realizar otra acción.');
+  setStatus('Confirmación pendiente de verificar.');
+ }
+ finally{busy=false;update();}
+}
+async function verifySubmit(){
+ if(!uncertainSubmit||busy)return;
+ busy=true;update();
+ try{
+  const server=await api('qzProgressMyAttempt',context());
+  if(['ENTREGADO','REVISADO'].includes(server.estado)){
+   submitted=true;uncertainSubmit=false;dirty=false;
+   setStatus(server.estado==='REVISADO'?'Revisado por el docente.':'Entrega confirmada desde el servidor.');
+   $('badge').textContent='Entregado';
+   setError('');
+  }else setError('El servidor aún no confirma la entrega. Consultá con tu docente; no reenvíes a ciegas.');
+ }catch(_){setError('No se pudo verificar la entrega. Conservá esta pantalla y consultá con tu docente.');}
  finally{busy=false;update();}
 }
 function pdf(base64){
@@ -137,6 +159,9 @@ async function start(){
  if(!apiUrl||!token||!group){setError('Vista QA todavía no habilitada: falta sesión, grupo o configuración del backend aislado.');return;}
  try{
   const meta=await api('qzProgressGet',context());
+  if(meta.peso_oficial!==0||meta.nivel!==level||meta.leccion!==lesson||
+     !/^IC5_(B1|B2|I1|I2)_WQ0[1-8]$/.test(meta.quiz_id||''))
+    throw Error('El quiz no coincide con el nivel o la lección activa.');
   build(meta.secciones);
   if(meta.listening){
     const a=meta.listening;
@@ -147,6 +172,7 @@ async function start(){
   for(const field of fields){if(past.respuestas?.[field.key])response[field.key]=String(past.respuestas[field.key]);}
   document.querySelectorAll('[data-section]').forEach(el=>{el.value=response[el.dataset.section]||''});
   submitted=['ENTREGADO','REVISADO'].includes(past.estado);
+  expired=!meta.disponible_hoy;
   if(submitted){setStatus(past.estado==='REVISADO'?'Revisado · '+(past.resultado||'')+' · '+(past.comentario_docente||''):'Entregado · pendiente de revisión');$('badge').textContent='Entregado';}
   else setStatus('Tus respuestas se guardan de forma progresiva.');
   if(meta.disponible_hoy){const file=await api('qzProgressPaper',context());pdf(file.pdf_base64);}
@@ -156,6 +182,7 @@ async function start(){
 }
 $('saveBtn').addEventListener('click',()=>save(true));
 $('submitBtn').addEventListener('click',submit);
+$('verifyBtn').addEventListener('click',verifySubmit);
 window.addEventListener('beforeunload',()=>{if(lastBlob)URL.revokeObjectURL(lastBlob)});
 start();
 })();
