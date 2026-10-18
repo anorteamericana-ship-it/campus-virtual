@@ -261,16 +261,10 @@ async function generatePdfAndCloseF90(){
   const selectedCode=String(state.selected.codigo);
   const previous=state.evaluations[selectedCode]||{};
   const previousState=String(previous.ESTADO||'').toUpperCase();
-  if(previousState==='PDF_GENERADO'){
-    const savedUrl=String(previous.PDF_URL||'').trim();
-    if(!/^https:\/\/(drive|docs)\.google\.com\//.test(savedUrl))
-      return toast('El PDF figura archivado, pero su enlace no está disponible. Solicitá revisión administrativa.');
-    if(!window.open(savedUrl,'_blank','noopener'))
-      toast('El navegador bloqueó el PDF archivado. Permití ventanas emergentes.');
-    return;
-  }
+  // También los PDFs ya archivados se recuperan con autenticación de Campus.
+  // El backend devuelve el archivo previo sin generar ni sobreescribir otro.
   // La evaluación ya cerrada debe poder archivar su PDF sin volver a calificar.
-  const error=previousState==='CERRADO'?'':validateClose();
+  const error=['CERRADO','PDF_GENERADO'].includes(previousState)?'':validateClose();
   if(error)return toast(error);
   const payload=currentPayload(); // instantánea ANTES de cualquier operación asíncrona
   const btn=document.getElementById('btn-pdf');
@@ -280,7 +274,7 @@ async function generatePdfAndCloseF90(){
   controls.forEach(control=>control.disabled=true);
   try{
     let ev=previous;
-    if(previousState!=='CERRADO'){
+    if(previousState!=='CERRADO'&&previousState!=='PDF_GENERADO'){
       const closed=await api('oralCloseEvaluacion',payload);
       ev=closed.evaluacion||{};
       if(String(ev.ESTADO||'').toUpperCase()!=='CERRADO'||String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase()!=='SINCRONIZADA')
