@@ -24,6 +24,7 @@ const context=vm.createContext({
 vm.runInContext(extract('examWeightF90'),context);
 vm.runInContext(extract('calc'),context);
 vm.runInContext(extract('questionBankForLevelF111'),context);
+vm.runInContext(extract('stateTag'),context);
 let checks=0;
 function verify(cond,msg){assert(cond,msg);checks++;}
 context.state.panel.peso_porcentaje=95;
@@ -49,4 +50,10 @@ verify(Object.keys(context.questionBankForLevelF111()).length===1,'Banco existen
 verify(html.includes('b.dataset.crit]!=null')&&html.includes("trim()!==''"),'Marcado visual 0 no se activa por defecto');
 verify(html.includes('El banco de preguntas de este nivel aún no está validado.'),'Aviso explícito en niveles sin banco');
 verify(!html.includes('const data=QB[u]'),'No usar el banco sin nivel en UI');
+verify(context.stateTag('CIERRE_PENDIENTE_NOTA','CONCILIACION_REQUERIDA')[1].includes('Conciliar'), 'Cierre incierto nunca aparece cerrado');
+verify(context.stateTag('CIERRE_PENDIENTE_NOTA','ERROR')[1].includes('pendiente'), 'Fallo previo aparece pendiente');
+verify(html.includes("e.evaluacion=j?.evaluacion||null"),'Error del servidor preserva evaluación pendiente');
+verify(html.includes('oralSyncWarningF111(ev);renderStudents()'),'Mensaje de conciliación visible al seleccionar estudiante');
+verify(html.includes("NOTA_OFICIAL_ESTADO==='CONCILIACION_REQUERIDA'")&&html.includes('function validateClose()'),'No permitir cierre/PDF de nota incierta');
+verify(html.includes('No se puede editar: nota pendiente de conciliación.'),'No modificar rúbrica mientras se concilia');
 console.log('F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks='+checks+' ; B2 banco bloqueado, rubric missing protected, browser=0 PROD=0');
