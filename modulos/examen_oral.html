@@ -162,6 +162,7 @@ async function saveDraft(){
   const btn=document.getElementById('btn-draft');
   const controls=Array.from(document.querySelectorAll('.score-btn,#qbody input,#comentarios,#sugerencias,#otras-global,#btn-reload,#btn-pdf'));
   state.busy=true;
+  let restoredFromServer=false;
   if(btn){btn.disabled=true;btn.textContent='GUARDANDO…';}
   controls.forEach(e=>e.disabled=true);
   try{
@@ -170,18 +171,36 @@ async function saveDraft(){
     if(!ev||String(ev.COD_ESTUDIANTE||'')!==selectedCode)
       throw new Error('El servidor no confirmó la identidad del borrador. Recargá el expediente antes de continuar.');
     state.evaluations[selectedCode]=ev;
+    restoredFromServer=true;
     toast('Borrador guardado en el expediente del estudiante.');
   }catch(e){
-    if(e.evaluacion&&String(e.evaluacion.COD_ESTUDIANTE||'')===selectedCode)
+    if(e.evaluacion&&String(e.evaluacion.COD_ESTUDIANTE||'')===selectedCode){
       state.evaluations[selectedCode]=e.evaluacion;
-    toast(e.message||String(e));
+      restoredFromServer=true;
+    }
+    toast((e.message||String(e))+(restoredFromServer?'':' Los campos escritos siguen visibles; el guardado no está confirmado.'));
   }finally{
     state.busy=false;
     ['comentarios','sugerencias','otras-global'].forEach(id=>{
       const field=document.getElementById(id);if(field)field.disabled=false;
     });
     if(btn)btn.textContent='Guardar borrador';
-    if(state.selected&&String(state.selected.codigo)===selectedCode)selectStudent(selectedCode,true);
+    if(state.selected&&String(state.selected.codigo)===selectedCode){
+      if(restoredFromServer)selectStudent(selectedCode,true);
+      else {
+        // Fallo de red sin estado confirmado: conservar contenido visible.
+        const cur=state.evaluations[selectedCode]||{};
+        const locked=['CERRADO','PDF_GENERADO'].includes(String(cur.ESTADO||'').toUpperCase())||
+          String(cur.NOTA_OFICIAL_ESTADO||'').toUpperCase()==='CONCILIACION_REQUERIDA';
+        document.querySelectorAll('.score-btn,#qbody input').forEach(e=>e.disabled=locked);
+        ['comentarios','sugerencias','otras-global'].forEach(id=>{
+          const field=document.getElementById(id);if(field)field.readOnly=locked;
+        });
+        if(btn)btn.disabled=locked;
+        const pdfBtn=document.getElementById('btn-pdf');
+        if(pdfBtn)pdfBtn.disabled=locked||!!state.panel?.es_reposicion;
+      }
+    }
     document.getElementById('btn-reload').disabled=false;
   }
 }
