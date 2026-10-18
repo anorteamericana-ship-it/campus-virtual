@@ -6,8 +6,18 @@ import {execFileSync} from 'node:child_process';
 const BASE='9a63461feb6622a73d6ef5b90a1dc5900a93f8ad';
 const read=n=>fs.readFileSync('src/'+n,'utf8');
 const previous=n=>execFileSync('git',['show',BASE+':src/'+n],{encoding:'utf8',maxBuffer:32*1024*1024});
-const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx','examenes_modes.jsx'];
+const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx'];
 for(const n of protectedFiles)assert.equal(read(n),previous(n),'Protected exam renderer, motor student, style or administration changed: '+n);
+// F111 D2: la única excepción al límite D1 es el TeacherMode de notas.
+// El hash es el BLOQUE COMPLETO aprobado en este PR: no autoriza otros
+// cambios de docente, admin, estudiante ni contenido de exámenes.
+const teacherSource=read('examenes_modes.jsx');
+const teacherSha=execFileSync('git',['hash-object','--stdin'],{input:teacherSource,encoding:'utf8'}).trim();
+assert.equal(teacherSha,'ec8a15f4a9174374933b2325f232f6c43ee18d6d',
+  'TeacherMode D2 fuera del alcance exacto autorizado');
+assert(teacherSource.includes("Object.assign(payload(), { push_to_notas:'SI' })") &&
+  !teacherSource.includes('onClick={pushToNotas}'),
+  'TeacherMode D2: cierre único y sin reenvío incierto');
 // E4: se permite UNICAMENTE el alias de 2 formatos en ReadingTF; sin alterar el motor restante.
 let expectedRenderer=previous('examenes_render.jsx');
 const replacements=[
