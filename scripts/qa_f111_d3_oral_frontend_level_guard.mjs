@@ -1,4 +1,4 @@
-// F111 D3 - regresión estática/VM del frontend de oral sin navegador, red ni datos reales.
+// F111 D3-R13 - regresión estática/VM en GitHub Actions, sin navegador, red ni datos reales.
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
