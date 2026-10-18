@@ -62,6 +62,18 @@ function api(fn,body){
  if(fn==='examGetReview')return{ok:true,review:state.review||{
   REVIEW_ID:'QA-REV-1',REVIEW_STATUS:'IN_REVIEW',LOCKED:'NO',
   PUSHED_TO_NOTAS:'NO',MANUAL_ADJUSTMENTS_JSON:'{}'},attempt:state.attempt};
+ if(fn==='examCloseReview'){
+  if(!body.student_feedback)return{ok:false,error:'student_feedback_requerido'};
+  if(state.review)Object.assign(state.review,{REVIEW_STATUS:'CLOSED',LOCKED:'SI',
+   FINAL_SCORE_100:body.final_score_100,STUDENT_FEEDBACK:body.student_feedback});
+  return{ok:true,status:'CLOSED',pushed_to_notas:'NO',review_id:'QA-REV-1'};
+ }
+ if(fn==='examPushReviewToNotas'){
+  if(!state.review||state.review.REVIEW_STATUS!=='CLOSED')
+   return{ok:false,error:'review_no_cerrada'};
+  state.review.PUSHED_TO_NOTAS='SI';
+  return{ok:true,pushed_to_notas:'SI',nota_componente:4,nota_total:87};
+ }
  return {ok:false,error:'qa_endpoint_no_soportado'};
 }
 const mime={'.html':'text/html;charset=utf-8','.jsx':'text/plain;charset=utf-8',
@@ -117,10 +129,21 @@ try{
  await tf.locator('.tchrev-live').waitFor({timeout:30000});
  await teacher.screenshot({path:path.join(out,'teacher-review.png')});
  assert(calls.includes('examGetReview'));
+ const reviewButton=tf.getByRole('button',{name:'Enviar Nota'});
+ await reviewButton.waitFor({timeout:10000});
+ await reviewButton.click();
+ await tf.getByText(/retroalimentación.*obligatoria/i).first().waitFor({timeout:10000});
+ assert(!calls.includes('examCloseReview'),'Feedback vacío no debe cerrar revisión');
+ await tf.locator('textarea.rev-fb').fill('Retroalimentación docente sintética.');
+ await tf.getByRole('button',{name:'Enviar Nota'}).click();
+ await tf.getByText('Nota enviada correctamente a Mis Notas.').waitFor({timeout:25000});
+ assert(calls.includes('examCloseReview'));
+ assert(calls.includes('examPushReviewToNotas'));
+ await teacher.screenshot({path:path.join(out,'teacher-note-sent.png')});
  assert(!calls.includes('examGetPrivatePreviewF111'));
  await teacher.close();
  assert.deepEqual(errors,[],'Errores de JavaScript en navegador');
- console.log('F111_R11_E5_VISUAL_QA_PASS: 4 screenshots; renderer real; API localhost sintética; 0 PROD.');
+ console.log('F111_R11_E5_VISUAL_QA_PASS: 5 screenshots; teacher feedback+push; renderer real; API localhost sintética; 0 PROD.');
 }finally{
  await browser.close();
  await new Promise(done=>server.close(done));
