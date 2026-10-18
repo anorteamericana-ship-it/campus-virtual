@@ -21,10 +21,13 @@ const context=vm.createContext({
  examWeightF90:()=>15,
  Number,Object,String
 });
+vm.runInContext(extract('examWeightF90'),context);
 vm.runInContext(extract('calc'),context);
 vm.runInContext(extract('questionBankForLevelF111'),context);
 let checks=0;
 function verify(cond,msg){assert(cond,msg);checks++;}
+context.state.panel.peso_porcentaje=95;
+verify(context.examWeightF90()===15,'El panel no puede alterar ponderación oral');
 verify(context.calc().complete===false,'No evalúa vacío como cero');
 for(const name of criteria)context.state.scores[name]=null;
 verify(context.calc().complete===false,'No califica cinco criterios nulos');
