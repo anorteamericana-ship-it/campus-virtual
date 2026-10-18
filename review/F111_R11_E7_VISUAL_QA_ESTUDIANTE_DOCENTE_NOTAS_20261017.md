@@ -52,3 +52,12 @@ Si la rama local E7 ya existe, usar `git switch test/f111-r11-e7-frontend-live-r
 - Asistencia INA: límite mínimo 85%, ausencias y 16 sesiones I CAN continúan como puerta separada.
 
 **No hacer deploy a producción ni publicar nuevas URL.**
+
+## QZ32 — Puerta D5 de metadatos cerrada, contenido pendiente
+
+El Campus actual define Progress Check en `src/student_academic_summary_core_cs21a113.js` como `[4,8,13,16,21,24,28,30]`. El programa tiene cuatro niveles (B1/B2/I1/I2), por lo que se generan **32 slots (4×8)** sin usar preguntas Cambridge ni inventar fechas de clase.
+
+[GitHub Actions QZ32 — PASS 21/21](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/39096301403) ejecuta `scripts/qa_f111_r11_e7_qz32_matrix_e1.mjs`. Garantiza ocho lecciones por nivel, 32 IDs únicos, que los Progress Check no sean evaluaciones orales o escritas oficiales, y que el máximo de INA permanezca 100% (orales 60, escritos 10, Social 10, I CAN 20). Ningún peso INA se agrega por Progress Check.
+
+**No es 32 quizzes aprobados/digitalizados.** Falta digitalización autorizada, revisión docente, audio, configuración de fechas y ejecución por alumno/grupo antes de activar D5.
+
