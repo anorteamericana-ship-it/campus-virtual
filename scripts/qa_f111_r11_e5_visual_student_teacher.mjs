@@ -115,6 +115,14 @@ try{
  await sf.locator('.sttake').waitFor({timeout:30000});
  await student.screenshot({path:path.join(out,'student-in-progress.png')});
  assert(calls.includes('examStartAttempt'));
+ student.on('dialog',async d=>{await d.accept();});
+ await sf.getByRole('button',{name:'Enviar examen'}).click();
+ await sf.getByRole('button',{name:'Enviar de todos modos'}).waitFor({timeout:12000});
+ await sf.getByRole('button',{name:'Enviar de todos modos'}).click();
+ await sf.getByRole('heading',{name:'Examen enviado'}).waitFor({timeout:30000});
+ assert(calls.includes('examSubmitAttempt'));
+ assert.equal(await sf.locator('.ex-shell.show-key').count(),0);
+ await student.screenshot({path:path.join(out,'student-submitted.png')});
  await student.close();
  const teacher=await browser.newPage({viewport:{width:1280,height:850}});
  teacher.on('pageerror',e=>errors.push(e.message));
@@ -143,7 +151,7 @@ try{
  assert(!calls.includes('examGetPrivatePreviewF111'));
  await teacher.close();
  assert.deepEqual(errors,[],'Errores de JavaScript en navegador');
- console.log('F111_R11_E5_VISUAL_QA_PASS: 5 screenshots; teacher feedback+push; renderer real; API localhost sintética; 0 PROD.');
+ console.log('F111_R11_E5_VISUAL_QA_PASS: 6 screenshots; student submit + teacher feedback+push; renderer real; API localhost sintética; 0 PROD.');
 }finally{
  await browser.close();
  await new Promise(done=>server.close(done));
