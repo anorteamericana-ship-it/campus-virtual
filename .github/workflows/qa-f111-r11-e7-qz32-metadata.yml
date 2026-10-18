@@ -1,0 +1,22 @@
+name: F111 R11 E7 QZ32 Progress Check metadata only
+on:
+  push:
+    branches:
+      - test/f111-r11-e7-frontend-live-readonly-20261017
+    paths:
+      - scripts/qa_f111_r11_e7_qz32_matrix_e1.mjs
+      - .github/workflows/qa-f111-r11-e7-qz32-metadata.yml
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --check scripts/qa_f111_r11_e7_qz32_matrix_e1.mjs
+      - run: node scripts/qa_f111_r11_e7_qz32_matrix_e1.mjs
