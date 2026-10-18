@@ -148,6 +148,8 @@ if(!Object.keys(questionBankForLevelF111()).length){qbody.innerHTML='<div class=
 function currentPayload(){const c=calc();return{cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,leccion:state.panel.leccion,tipo_eval:state.panel.tipo_eval,cod_estudiante:state.selected?.codigo,cedula:state.selected?.cedula||'',nombre:state.selected?.nombre,programa:state.selected?.programa||state.selected?.convenio||'',docente:state.panel.docente,fecha:state.panel.fecha_iso||state.panel.fecha,criterios:state.scores,puntaje_total:c.total,nota_100:c.nota100,peso_porcentaje:c.weight,nota_ponderada:c.pond,rubrica_version:'CAMBRIDGE_IC5_ORAL_F90',reposicion_id:state.panel?.reposicion_id||'',fecha_tentativa:state.panel?.fecha_tentativa||'',fecha_limite_reposicion:state.panel?.fecha_limite_reposicion||'',preguntas_json:state.questions,otras_preguntas_json:state.otherByUnit,otras_preguntas:document.getElementById('otras-global').value,comentarios:document.getElementById('comentarios').value,sugerencias:document.getElementById('sugerencias').value};}
 function validateClose(){if(!state.selected)return'Seleccioná estudiante.';if(state.evaluations[state.selected.codigo]?.NOTA_OFICIAL_ESTADO==='CONCILIACION_REQUERIDA')return'La nota requiere conciliación supervisada. No podés cerrar ni generar PDF todavía.';const c=calc();if(!c.complete)return'Completá los 5 criterios.';if(!document.getElementById('comentarios').value.trim())return'Comentarios generales es obligatorio.';if(!document.getElementById('sugerencias').value.trim())return'Sugerencias de mejora es obligatorio.';const anyQ=Object.values(state.questions).some(a=>a&&a.length)||Object.values(state.otherByUnit).some(v=>String(v||'').trim())||document.getElementById('otras-global').value.trim();if(!anyQ)return'Seleccioná al menos una pregunta o escribí otra pregunta aplicada.';return'';}
 async function saveDraft(){
+  if(new URLSearchParams(location.search).get('preview')==='1')
+    return toast('Vista previa: no se guardan borradores.');
   if(state.busy)return toast('Esperá a que termine la operación actual.');
   if(!state.selected)return toast('Seleccioná estudiante.');
   if(state.panel?.es_reposicion)return toast('Las reposiciones orales continúan bloqueadas.');
@@ -175,6 +177,9 @@ async function saveDraft(){
     toast(e.message||String(e));
   }finally{
     state.busy=false;
+    ['comentarios','sugerencias','otras-global'].forEach(id=>{
+      const field=document.getElementById(id);if(field)field.disabled=false;
+    });
     if(btn)btn.textContent='Guardar borrador';
     if(state.selected&&String(state.selected.codigo)===selectedCode)selectStudent(selectedCode,true);
     document.getElementById('btn-reload').disabled=false;
