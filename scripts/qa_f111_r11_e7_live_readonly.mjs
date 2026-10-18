@@ -155,7 +155,14 @@ try{
  stu.on('pageerror',e=>errors.push(e.message));
  await stu.goto(origin+'/fixture?role=student');
  const sf=stu.frameLocator('#exam');
- await sf.getByRole('heading',{name:'Examen enviado'}).waitFor({timeout:60000});
+ try {
+  await sf.getByRole('heading',{name:'Examen enviado'}).waitFor({timeout:16000});
+ } catch (_) {
+  // Solo diagnósticos de texto de estudiante QA sintético, NUNCA material docente.
+  const visible=String(await sf.locator('body').innerText()).slice(0,450);
+  throw Error('E7_STUDENT_RENDER_BLOCKED: '+visible+'; READS='+
+    readCalls.map(x=>x.fn+':'+x.ok).join(',')+'; DENIED='+denyCount);
+ }
  assert.equal(await sf.locator('.ex-shell.show-key').count(),0);
  assert.equal(await sf.getByRole('button',{name:/Iniciar examen|Enviar examen/i}).count(),0);
  await stu.close();
