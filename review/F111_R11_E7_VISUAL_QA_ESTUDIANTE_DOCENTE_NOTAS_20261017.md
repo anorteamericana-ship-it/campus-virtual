@@ -61,3 +61,25 @@ El Campus actual define Progress Check en `src/student_academic_summary_core_cs2
 
 **No es 32 quizzes aprobados/digitalizados.** Falta digitalización autorizada, revisión docente, audio, configuración de fechas y ejecución por alumno/grupo antes de activar D5.
 
+
+## E7-R4 — Recuperación de Playwright sin reinstalar Chromium
+
+El operador confirmó que Windows tiene procesos `chrome.exe` y que `npx playwright install chromium` quedó inactivo mientras descargaba la distribución de Playwright (`chromium-1194` / `__dirlock`). No modificar políticas PowerShell ni terminar procesos Node ajenos a la Academia.
+
+Se añadió una opción explícita al mismo ejecutor: `F111_E7_BROWSER=chrome`. Esto ejecuta **Google Chrome del sistema** con perfil de Playwright temporal y evita requerir `chromium-headless-shell`; no utiliza el perfil personal ni expone secretos QA en JavaScript del navegador. El proxy localhost de solo lectura sigue igual.
+
+Desde una **nueva ventana de PowerShell**, si no persiste otro proceso instalador, y siempre después de actualizar la rama E7:
+```powershell
+Set-Location "C:\Users\leodr\Documents\anorteam\campus-virtual"
+git pull --ff-only origin test/f111-r11-e7-frontend-live-readonly-20261017
+$env:F111_E7_BROWSER = "chrome"
+try {
+  node .\scripts\qa_f111_r11_e7_live_readonly.mjs --live
+  if ($LASTEXITCODE -ne 0) { throw "STOP: E7 falla; conciliar lectura sin repetir exámenes" }
+} finally {
+  Remove-Item Env:\F111_E7_BROWSER -ErrorAction SilentlyContinue
+}
+```
+
+`--live` continúa **PENDIENTE** hasta que el operador aporte el JSON final, no se puede inferir PASS de haber instalado Chrome. Si se detecta Chrome ausente, detenerse y diagnosticar ruta/instalación; **no ejecutar nuevos `npx playwright install` a ciegas**.
+
