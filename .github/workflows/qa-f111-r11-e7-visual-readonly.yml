@@ -1,0 +1,28 @@
+name: F111 R11 E7 visual real frontend read-only QA (mock CI)
+on:
+  push:
+    branches:
+      - test/f111-r11-e7-frontend-live-readonly-20261017
+    paths:
+      - scripts/qa_f111_r11_e7_live_readonly.mjs
+      - .github/workflows/qa-f111-r11-e7-visual-readonly.yml
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  e7_browser_mock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Syntax
+        run: node --check scripts/qa_f111_r11_e7_live_readonly.mjs
+      - name: Install browser in ephemeral CI
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Real frontend + synthetic API responses, strictly READONLY
+        run: node scripts/qa_f111_r11_e7_live_readonly.mjs --mock
