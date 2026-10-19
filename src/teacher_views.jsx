@@ -915,7 +915,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const rielLeccion=tvIsIcanEventF96(lesson)?'ican':'curso';
   const railPermissions=meta?.permisos_riel||{};
   const canOperateRail=railPermissions[rielLeccion] !== false;
-  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=rielLeccion==='curso'&&tipoLeccion==='EVAL_ORAL';
+  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=rielLeccion==='curso'&&(tipoLeccion==='EVAL_ORAL'||[9,17,25,31].includes(Number(lesson?.leccion||0)));
   const esEscrito=rielLeccion==='curso'&&(tipoLeccion==='EVAL_ESCRITO'||[18,32].includes(Number(lesson?.leccion||0)));
   const esExamen=rielLeccion==='curso'&&(esOral||esEscrito||[9,17,18,25,31,32].includes(Number(lesson?.leccion||0)));
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado);
