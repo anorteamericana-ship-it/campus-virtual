@@ -107,7 +107,92 @@ if(process.env.F111_QZ_BROWSER==='1'){
   await page.reload();
   await page.waitForFunction(()=>document.querySelector('#total')?.textContent==='1 entregados');
   assert.equal(await page.locator('#people .person').count(),1,'entrega visible con roster malformado');
-  assert.deepEqual(errors,[],'No frontend uncaught errors across 64 QA route previews y R10 roster simulado');
+  // R12: render del formulario REAL (sin preview=1) contra un API simulado.
+  // 32 rutas distintas: comprueba metadata, PDF, guardado, entrega y bloqueo.
+  // Nunca comunica con Google ni transmite credenciales productivas.
+  const live=await browser.newPage({viewport:{width:1280,height:850}});
+  const liveErrors=[];live.on('pageerror',e=>liveErrors.push(e.message));
+  const base='https://qz32-r12.test',apiBase=base+'/api';
+  const pdfFixture=Buffer.from('%PDF-1.4\n%F111-QA-SYNTHETIC-ONLY\n'+('synthetic x '.repeat(12))+'\n%%EOF').toString('base64');
+  const stats={metadata:0,pdf:0,draft:0,submit:0};
+  let responseMode='ok';
+  await live.route(base+'/modulos/quiz_progress.html*',
+    route=>route.fulfill({status:200,contentType:'text/html',body:student}));
+  await live.route(apiBase+'*',route=>{
+    const u=new URL(route.request().url()),fn=u.searchParams.get('fn');
+    const req=JSON.parse(route.request().postData()||'{}');
+    assert.equal(req.token,'F111_R12_SYNTHETIC_TOKEN','no production session in browser QA');
+    const idx=[4,8,13,16,21,24,28,30].indexOf(Number(req.leccion))+1;
+    const quizId='IC5_'+req.nivel+'_WQ'+String(idx).padStart(2,'0');
+    assert.equal(req.cod_grupo,'QA-F111-E3');
+    let data;
+    switch(fn){
+      case 'qzProgressGet':
+        stats.metadata++;
+        data={ok:true,quiz_id:responseMode==='wrong-metadata'?'IC5_I2_WQ08':quizId,
+          nivel:req.nivel,leccion:req.leccion,peso_oficial:0,
+          fecha:'2026-10-18',disponible_hoy:true,
+          secciones:['A','B','C','D','E'].map(id=>({id,tipo_respuesta:'TEXTO_GUIADO',items:[]}))};
+        break;
+      case 'qzProgressMyAttempt':
+        data={ok:true,estado:'SIN_INICIAR',respuestas:{}};break;
+      case 'qzProgressPaper':
+        stats.pdf++;
+        data={ok:true,quiz_id:responseMode==='wrong-pdf'?'IC5_I2_WQ08':quizId,
+          mime:'application/pdf',peso_oficial:0,pdf_base64:pdfFixture};break;
+      case 'qzProgressSaveDraft':
+        stats.draft++;
+        assert.ok(String(req.respuestas?.A||'').includes('Respuesta ficticia'),
+          'student sent expected synthetic answer');
+        data={ok:true,estado:'BORRADOR',peso_oficial:0};break;
+      case 'qzProgressSubmit':
+        stats.submit++;
+        assert.ok(String(req.respuestas?.A||'').includes('Respuesta ficticia'));
+        data={ok:true,estado:'ENTREGADO',peso_oficial:0};break;
+      default:data={ok:false,error:'endpoint_no_fixture'};
+    }
+    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
+  });
+  await live.addInitScript(url=>{
+    window.F111_QZ_QA_API_URL=url;
+    sessionStorage.setItem('an_usuario',JSON.stringify({token:'F111_R12_SYNTHETIC_TOKEN'}));
+  },apiBase);
+  live.on('dialog',dialog=>dialog.accept());
+  for(const nivel of ['B1','B2','I1','I2']){
+    for(const leccion of [4,8,13,16,21,24,28,30]){
+      const quizNo=[4,8,13,16,21,24,28,30].indexOf(leccion)+1;
+      const expected='IC5_'+nivel+'_WQ'+String(quizNo).padStart(2,'0');
+      const uri=base+'/modulos/quiz_progress.html?grupo=QA-F111-E3&nivel='+nivel+'&leccion='+leccion;
+      await live.goto(uri);
+      await live.waitForFunction(()=>document.querySelector('#pdfBox iframe')?.title==='Cuestionario original');
+      assert.equal(await live.locator('#answers textarea').count(),5,
+        'five editable sections rendered for '+expected);
+      await live.locator('[data-section="A"]').fill('Respuesta ficticia '+expected);
+      await live.locator('#saveBtn').click();
+      await live.waitForFunction(()=>document.querySelector('#saveState')?.textContent.includes('Avance guardado'));
+      await live.locator('#submitBtn').click();
+      await live.waitForFunction(()=>document.querySelector('#badge')?.textContent==='Entregado');
+      assert.equal(await live.locator('#submitBtn').isDisabled(),true,'no second submit');
+      assert.equal(await live.locator('#answers textarea').first().isEditable(),false,
+        'submitted quiz immutable');
+    }
+  }
+  assert.deepEqual(stats,{metadata:32,pdf:32,draft:32,submit:32},
+    '32 complete browser workflows with synthetic QA API');
+  // R12: even syntactically valid IDs must match the requested level and PC.
+  const negative=base+'/modulos/quiz_progress.html?grupo=QA-F111-E3&nivel=B1&leccion=4';
+  responseMode='wrong-metadata';
+  await live.goto(negative);
+  await live.waitForFunction(()=>document.querySelector('#errorBox')?.textContent.includes('no coincide'));
+  assert.equal(await live.locator('#pdfBox iframe').count(),0,'wrong metadata blocks PDF');
+  responseMode='wrong-pdf';
+  await live.goto(negative);
+  await live.waitForFunction(()=>document.querySelector('#errorBox')?.textContent.includes('no corresponde'));
+  assert.equal(await live.locator('#pdfBox iframe').count(),0,'wrong PDF never displayed');
+  assert.deepEqual(liveErrors,[],'no browser uncaught errors across 32 active synthetic forms');
+  await live.close();
+  console.log('F111 QZ32 R12 ACTIVE_UI_SYNTHETIC_PASS: 32/32 metadata+PDF+save+submit+lock and two cross-quiz rejection cases');
+    assert.deepEqual(errors,[],'No frontend uncaught errors across 64 QA route previews y R10 roster simulado');
   console.log('F111_QZ32_BROWSER_PASS: 32/32 estudiante + 32/32 docente, escritorio/móvil; solo fixture vista previa sin red');
  }finally{await browser.close();}
 }
