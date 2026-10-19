@@ -39,6 +39,12 @@ for(const name of ['qzProgressGet','qzProgressPaper','qzProgressMyAttempt','qzPr
 for(const name of ['qzProgressTeacherList','qzProgressTeacherReview','qzProgressTeacherMaterials'])assert.ok(teacher.includes(name),'teacher API '+name);
 assert.ok(!view.includes('pcQuizReviewSuggestionsF111'),'protected classroom closure unchanged');
 assert.ok(teacher.includes('navigator.clipboard.writeText'),'teacher can transfer reviewed observation to Progress Check');
+// R10: fallos o formatos inesperados del roster auxiliar no deben ocultar entregas.
+assert.match(teacher,/const list=await api\('qzProgressTeacherList'\)/,'la lista de entregas se consulta primero');
+assert.match(teacher,/try\{roster=await api\('getEstudiantesParaCierre'\)\}/,'el roster opcional tiene su propio try');
+assert.match(teacher,/catch\(_\)\{\$\('status'\)/,'roster fallido presenta estado no fatal');
+assert.ok(teacher.includes('Array.isArray(roster?.estudiantes)'),'roster malformed is tolerated');
+assert.ok(!teacher.includes("Promise.all([api('qzProgressTeacherList'),api('getEstudiantesParaCierre')]"),'una falla de roster no borra entregas');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'));
 console.log('PASS F111 QZ32 client QA: 32/32 level/lesson routes, guarded submit/verification, teacher feedback, no grades/keys/PROD, no duplicate HTML');
 
