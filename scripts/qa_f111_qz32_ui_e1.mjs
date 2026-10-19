@@ -80,7 +80,34 @@ if(process.env.F111_QZ_BROWSER==='1'){
     }
    }
   }
-  assert.deepEqual(errors,[],'No frontend uncaught errors across 64 QA route previews');
+  // R10: navegador real, servidor simulado. Nunca se usan sesiones ni datos productivos.
+  // El fallo del roster auxiliar no puede anular la bandeja de entregas.
+  let rosterMode='error';
+  await page.route('https://qz32-qa.test/modulos/quiz_progress_docente.html*',
+    route=>route.fulfill({status:200,contentType:'text/html',body:teacher}));
+  await page.route('https://qz32-qa.test/api*',route=>{
+    const fn=new URL(route.request().url()).searchParams.get('fn');
+    const result=fn==='qzProgressTeacherList'
+      ?{ok:true,intentos:[{COD_ESTUDIANTE:'QA-001',ESTADO:'ENTREGADO',RESPUESTAS_JSON:'{"A":"respuesta sintética"}'}]}
+      :fn==='getEstudiantesParaCierre'
+        ?(rosterMode==='error'?{ok:false,error:'roster_qa_no_disponible'}:{ok:true,estudiantes:{formato:'inesperado'}})
+        :{ok:false,error:'funcion_fuera_del_fixture'};
+    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(result)});
+  });
+  await page.addInitScript(()=>{
+    window.F111_QZ_QA_API_URL='https://qz32-qa.test/api';
+    sessionStorage.setItem('an_usuario',JSON.stringify({token:'SOLO_TOKEN_SINTETICO_R10'}));
+  });
+  const teacherQaUrl='https://qz32-qa.test/modulos/quiz_progress_docente.html?grupo=QA-GRUPO&nivel=B1&leccion=4';
+  await page.goto(teacherQaUrl);
+  await page.waitForFunction(()=>document.querySelector('#total')?.textContent==='1 entregados');
+  assert.equal(await page.locator('#people .person').count(),1,'entrega visible aun cuando el roster falla');
+  assert.match(await page.locator('#status').textContent(),/nombres de matrícula no disponibles/);
+  rosterMode='malformed';
+  await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#total')?.textContent==='1 entregados');
+  assert.equal(await page.locator('#people .person').count(),1,'entrega visible con roster malformado');
+  assert.deepEqual(errors,[],'No frontend uncaught errors across 64 QA route previews y R10 roster simulado');
   console.log('F111_QZ32_BROWSER_PASS: 32/32 estudiante + 32/32 docente, escritorio/móvil; solo fixture vista previa sin red');
  }finally{await browser.close();}
 }
