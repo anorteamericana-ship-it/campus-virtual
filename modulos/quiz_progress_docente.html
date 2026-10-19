@@ -92,7 +92,12 @@ async function boot(){
  if(preview){people=[{name:'Estudiante de muestra',attempt:{COD_ESTUDIANTE:'QA-001',ESTADO:'ENTREGADO',RESPUESTAS_JSON:JSON.stringify({A:'1. Respuesta de muestra',B:'2. Texto de ejemplo'})}}];$('total').textContent='Muestra';render();select(people[0].attempt);$('save').disabled=true;$('status').textContent='Vista previa sin guardar';return;}
  if(!token||!ctx.cod_grupo||!apiUrl){error('Falta sesión docente, grupo o URL de Apps Script QA.');return;}
  try{
-  const [list,roster]=await Promise.all([api('qzProgressTeacherList'),api('getEstudiantesParaCierre')]);
+  // La lista de entregas es la fuente principal. El roster es un enriquecimiento
+  // opcional: una falla de ese endpoint no debe ocultar entregas ya confirmadas.
+  const list=await api('qzProgressTeacherList');
+  let roster={estudiantes:[]};
+  try{roster=await api('getEstudiantesParaCierre')}
+  catch(_){$('status').textContent='Entregas cargadas; nombres de matrícula no disponibles en QA.';}
   const names={};(roster.estudiantes||[]).forEach(e=>{names[e.code||e.codigo]=e.name||e.nombre});
   people=(list.intentos||[]).filter(o=>['ENTREGADO','REVISADO'].includes(String(o.ESTADO))).map(o=>({name:names[String(o.COD_ESTUDIANTE)]||'',attempt:o}));
   render();
