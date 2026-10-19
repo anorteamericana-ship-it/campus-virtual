@@ -114,10 +114,12 @@ if(process.env.F111_QZ_BROWSER==='1'){
   const liveErrors=[];live.on('pageerror',e=>liveErrors.push(e.message));
   const base='https://qz32-r12.test',apiBase=base+'/api';
   const pdfFixture=Buffer.from('%PDF-1.4\n%F111-QA-SYNTHETIC-ONLY\n'+('synthetic x '.repeat(12))+'\n%%EOF').toString('base64');
-  const stats={metadata:0,pdf:0,draft:0,submit:0};
+  const stats={metadata:0,pdf:0,draft:0,submit:0,teacherList:0,teacherReview:0,teacherKey:0};
   let responseMode='ok';
   await live.route(base+'/modulos/quiz_progress.html*',
     route=>route.fulfill({status:200,contentType:'text/html',body:student}));
+  await live.route(base+'/modulos/quiz_progress_docente.html*',
+    route=>route.fulfill({status:200,contentType:'text/html',body:teacher}));
   await live.route(apiBase+'*',route=>{
     const u=new URL(route.request().url()),fn=u.searchParams.get('fn');
     const req=JSON.parse(route.request().postData()||'{}');
@@ -149,6 +151,24 @@ if(process.env.F111_QZ_BROWSER==='1'){
         stats.submit++;
         assert.ok(String(req.respuestas?.A||'').includes('Respuesta ficticia'));
         data={ok:true,estado:'ENTREGADO',peso_oficial:0};break;
+      case 'qzProgressTeacherList':
+        stats.teacherList++;
+        data={ok:true,quiz_id:quizId,intentos:[{COD_ESTUDIANTE:'QA-001',
+          ESTADO:'ENTREGADO',RESPUESTAS_JSON:JSON.stringify({A:'Respuesta ficticia '+quizId})}]};
+        break;
+      case 'getEstudiantesParaCierre':
+        data={ok:true,estudiantes:[{codigo:'QA-001',nombre:'Estudiante sintético'}]};break;
+      case 'qzProgressTeacherReview':
+        stats.teacherReview++;
+        assert.equal(req.cod_estudiante,'QA-001');
+        assert.equal(req.resultado,'EN_PROCESO');
+        data={ok:true,estado:'REVISADO',resultado:req.resultado,comentario_sugerido:req.comentario,peso_oficial:0};
+        break;
+      case 'qzProgressTeacherMaterials':
+        stats.teacherKey++;
+        data={ok:true,quiz_id:responseMode==='wrong-key'?'IC5_I2_WQ08':quizId,
+          mime:'application/pdf',material:req.material,pdf_base64:pdfFixture,solo_docente:true};
+        break;
       default:data={ok:false,error:'endpoint_no_fixture'};
     }
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
@@ -189,7 +209,34 @@ if(process.env.F111_QZ_BROWSER==='1'){
   await live.goto(negative);
   await live.waitForFunction(()=>document.querySelector('#errorBox')?.textContent.includes('no corresponde'));
   assert.equal(await live.locator('#pdfBox iframe').count(),0,'wrong PDF never displayed');
-  assert.deepEqual(liveErrors,[],'no browser uncaught errors across 32 active synthetic forms');
+  // R12: 32 revisiones docentes completas con la misma interfaz, sin notas oficiales.
+  responseMode='ok';
+  for(const nivel of ['B1','B2','I1','I2'])for(const leccion of [4,8,13,16,21,24,28,30]){
+    const uri=base+'/modulos/quiz_progress_docente.html?grupo=QA-F111-E3&nivel='+nivel+'&leccion='+leccion;
+    await live.goto(uri);
+    await live.waitForFunction(()=>document.querySelector('#total')?.textContent==='1 entregados');
+    await live.locator('#outcome').selectOption('EN_PROCESO');
+    await live.locator('#comments').fill('Diagnóstico ficticio; lectura y escucha pendientes.');
+    await live.locator('#save').click();
+    await live.waitForFunction(()=>document.querySelector('#status')?.textContent.includes('Revisión guardada'));
+    assert.equal(await live.locator('#save').isDisabled(),true);
+  }
+  // Test key isolation in the same real teacher renderer (never a Cambridge PDF).
+  const teacherUri=base+'/modulos/quiz_progress_docente.html?grupo=QA-F111-E3&nivel=B1&leccion=4';
+  await live.goto(teacherUri);
+  await live.waitForFunction(()=>document.querySelector('#total')?.textContent==='1 entregados');
+  await live.locator('#key').click();
+  await live.waitForFunction(()=>document.querySelector('#modal')?.classList.contains('visible'));
+  assert.equal(await live.locator('#frame').count(),1,'synthetic teacher PDF can be displayed');
+  await live.locator('#close').click();
+  responseMode='wrong-key';
+  await live.locator('#key').click();
+  await live.waitForFunction(()=>document.querySelector('#error')?.textContent.includes('no corresponde'));
+  assert.equal(await live.locator('#modal').getAttribute('class'),'pdf','mismatched key never displayed');
+  assert.deepEqual({teacherList:stats.teacherList,teacherReview:stats.teacherReview,teacherKey:stats.teacherKey},
+    {teacherList:33,teacherReview:32,teacherKey:2},
+    '32 teacher reviews and two private-document checks');
+  assert.deepEqual(liveErrors,[],'no browser uncaught errors across student and teacher synthetic flows');
   await live.close();
   console.log('F111 QZ32 R12 ACTIVE_UI_SYNTHETIC_PASS: 32/32 metadata+PDF+save+submit+lock and two cross-quiz rejection cases');
     assert.deepEqual(errors,[],'No frontend uncaught errors across 64 QA route previews y R10 roster simulado');
