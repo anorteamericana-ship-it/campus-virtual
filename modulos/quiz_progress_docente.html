@@ -98,7 +98,7 @@ async function boot(){
   let roster={estudiantes:[]};
   try{roster=await api('getEstudiantesParaCierre')}
   catch(_){$('status').textContent='Entregas cargadas; nombres de matrícula no disponibles en QA.';}
-  const names={};(roster.estudiantes||[]).forEach(e=>{names[e.code||e.codigo]=e.name||e.nombre});
+  const names={};(Array.isArray(roster?.estudiantes)?roster.estudiantes:[]).forEach(e=>{names[e.code||e.codigo]=e.name||e.nombre});
   people=(list.intentos||[]).filter(o=>['ENTREGADO','REVISADO'].includes(String(o.ESTADO))).map(o=>({name:names[String(o.COD_ESTUDIANTE)]||'',attempt:o}));
   render();
   if(people.length)select(people[0].attempt);
