@@ -144,7 +144,10 @@ async function verifySubmit(){
  finally{busy=false;update();}
 }
 function pdf(base64){
- const raw=atob(base64),arr=new Uint8Array(raw.length);
+ if(typeof base64!=='string'||base64.length<20)throw Error('El cuestionario no contiene un PDF válido.');
+ const raw=atob(base64);
+ if(!raw.startsWith('%PDF-'))throw Error('El servidor no entregó un PDF válido.');
+ const arr=new Uint8Array(raw.length);
  for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
  if(lastBlob)URL.revokeObjectURL(lastBlob);
  lastBlob=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
@@ -159,9 +162,11 @@ async function start(){
  if(!apiUrl||!token||!group){setError('Vista QA todavía no habilitada: falta sesión, grupo o configuración del backend aislado.');return;}
  try{
   const meta=await api('qzProgressGet',context());
-  if(meta.peso_oficial!==0||meta.nivel!==level||meta.leccion!==lesson||
-     !/^IC5_(B1|B2|I1|I2)_WQ0[1-8]$/.test(meta.quiz_id||''))
-    throw Error('El quiz no coincide con el nivel o la lección activa.');
+  const quizNo=Object.keys(STEPS).indexOf(String(lesson))+1;
+  const expectedId='IC5_'+level+'_WQ'+String(quizNo).padStart(2,'0');
+  if(quizNo<1||meta.peso_oficial!==0||meta.nivel!==level||
+     meta.leccion!==lesson||meta.quiz_id!==expectedId)
+    throw Error('El quiz no coincide exactamente con el grupo, nivel y lección activa.');
   build(meta.secciones);
   if(meta.listening){
     const a=meta.listening;
@@ -175,7 +180,12 @@ async function start(){
   expired=!meta.disponible_hoy;
   if(submitted){setStatus(past.estado==='REVISADO'?'Revisado · '+(past.resultado||'')+' · '+(past.comentario_docente||''):'Entregado · pendiente de revisión');$('badge').textContent='Entregado';}
   else setStatus('Tus respuestas se guardan de forma progresiva.');
-  if(meta.disponible_hoy){const file=await api('qzProgressPaper',context());pdf(file.pdf_base64);}
+  if(meta.disponible_hoy){
+   const file=await api('qzProgressPaper',context());
+   if(file.quiz_id!==expectedId||file.mime!=='application/pdf'||file.peso_oficial!==0)
+     throw Error('El archivo PDF no corresponde al Progress Check solicitado.');
+   pdf(file.pdf_base64);
+  }
   else{if(!submitted){submitted=true;setStatus('La fecha del quiz terminó. Consultá con tu docente el seguimiento.');} $('pdfInfo').textContent='El documento se mostró durante el Progress Check programado.';}
   update();
  }catch(e){setError(e.message);$('badge').textContent='No disponible';}
