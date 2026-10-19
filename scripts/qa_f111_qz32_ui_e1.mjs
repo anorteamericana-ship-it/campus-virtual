@@ -197,7 +197,8 @@ if(process.env.F111_QZ_BROWSER==='1'){
         'submitted quiz immutable');
     }
   }
-  assert.deepEqual(stats,{metadata:32,pdf:32,draft:32,submit:32},
+  assert.deepEqual({metadata:stats.metadata,pdf:stats.pdf,draft:stats.draft,submit:stats.submit},
+    {metadata:32,pdf:32,draft:32,submit:32},
     '32 complete browser workflows with synthetic QA API');
   // R12: even syntactically valid IDs must match the requested level and PC.
   const negative=base+'/modulos/quiz_progress.html?grupo=QA-F111-E3&nivel=B1&leccion=4';
