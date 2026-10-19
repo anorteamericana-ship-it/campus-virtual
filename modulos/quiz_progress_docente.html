@@ -69,7 +69,16 @@ async function showFile(material){
  if(preview){error('Vista previa: no se descargan documentos originales.');return;}
  try{
   const doc=material==='material'?await api('qzProgressPaper'):await api('qzProgressTeacherMaterials',{material});
-  const raw=atob(doc.pdf_base64),bytes=new Uint8Array(raw.length);
+  const slot=[4,8,13,16,21,24,28,30].indexOf(ctx.leccion)+1;
+  const expected='IC5_'+ctx.nivel+'_WQ'+String(slot).padStart(2,'0');
+  if(slot<1||doc.quiz_id!==expected||doc.mime!=='application/pdf'||
+     (material!=='material'&&doc.material!==material))
+    throw Error('El documento no corresponde al quiz y material solicitado.');
+  if(typeof doc.pdf_base64!=='string'||doc.pdf_base64.length<20)
+    throw Error('El documento recibido no contiene un PDF válido.');
+  const raw=atob(doc.pdf_base64);
+  if(!raw.startsWith('%PDF-'))throw Error('El documento no tiene firma PDF válida.');
+  const bytes=new Uint8Array(raw.length);
   for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
   if(blobUrl)URL.revokeObjectURL(blobUrl);
   blobUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
