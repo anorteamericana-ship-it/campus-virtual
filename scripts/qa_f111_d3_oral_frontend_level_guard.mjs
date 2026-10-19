@@ -63,4 +63,42 @@ verify(html.includes('oralNeedsReviewF111(ev)||!!state.panel?.preview'),'Bloqueo
 verify(html.includes("await api('oralGetEvaluacion'")&&html.includes('state.uncertainCloseCodes[selectedCode]=true'),'Timeout de cierre debe reconciliar lectura y bloquear nuevos intentos');
 verify(html.includes("if(oralNeedsReviewF111(previous))return toast"),'PDF bloqueado si la nota no está sincronizada');
 verify(html.includes('state.uncertainCloseCodes={}'),'La recarga exitosa rehace estado desde el servidor');
+
+// F111 urgent B2 L9: candidate prompts are display-only until an acta-approved bank exists.
+const guideMatch=html.match(/const B2_GUIDE_F111=(\{[^\n]+\});/);
+verify(!!guideMatch,'Guía B2 local disponible para clase de hoy');
+const guide=JSON.parse(guideMatch[1]);
+verify([1,2,3,4].every(u=>guide[u]?.qs?.length===4),'16 propuestas B2 para U1–4, cuatro por unidad');
+verify(html.includes('NO un banco aprobado')&&
+       html.includes('data-b2-guide-unit'),'Guía marcada no aprobada y botón de registro manual');
+verify(html.includes('addB2GuideQuestionF111(b.dataset.b2GuideUnit,b.dataset.b2GuideIdx)'),
+ 'Cada botón carga la pregunta en el campo libre');
+verify(!html.includes("state.bank={aprobado:true")&&
+       !html.includes("body.preguntas_json=B2_GUIDE_F111"),
+ 'Ningún atajo falso aprueba banco ni envía índices sin aprobación');
+const textArea={value:''},output=[];
+const qctx=vm.createContext({
+ state:{panel:{nivel:'B2',leccion:9},selected:{codigo:'SIM-1'},
+        busy:false,evaluations:{},uncertainCloseCodes:{},dirty:false},
+ B2_GUIDE_F111:guide,
+ document:{getElementById:()=>textArea},
+ oralLockedF111:()=>false,
+ toast:m=>output.push(m),
+ Number,String
+});
+vm.runInContext(extract('addB2GuideQuestionF111'),qctx);
+qctx.addB2GuideQuestionF111('1',0);
+verify(textArea.value.includes(guide[1].qs[0])&&qctx.state.dirty,
+ 'Registrar pregunta en campo libre marca formulario como pendiente');
+qctx.addB2GuideQuestionF111('1',0);
+verify(textArea.value.split(guide[1].qs[0]).length===2,
+ 'No registrar dos veces la misma pregunta por doble clic');
+qctx.state.evaluations['SIM-1']={ESTADO:'CERRADO'};
+qctx.oralLockedF111=()=>true;
+const oldValue=textArea.value;
+qctx.addB2GuideQuestionF111('2',0);
+verify(textArea.value===oldValue,
+ 'No cambiar preguntas tras cierre');
+verify(!('questions' in qctx.state),'La guía nunca selecciona índices del banco oficial');
+
 console.log('F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks='+checks+' ; B2 banco bloqueado, rubric missing protected, browser=0 PROD=0');
