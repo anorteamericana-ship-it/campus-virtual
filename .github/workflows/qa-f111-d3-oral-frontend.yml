@@ -7,6 +7,12 @@ on:
       - 'modulos/examen_oral.html'
       - 'scripts/qa_f111_d3_oral_frontend_level_guard.mjs'
       - '.github/workflows/qa-f111-d3-oral-frontend.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'scripts/qa_f111_d3_oral_frontend_level_guard.mjs'
+      - '.github/workflows/qa-f111-d3-oral-frontend.yml'
   workflow_dispatch:
 permissions:
   contents: read
