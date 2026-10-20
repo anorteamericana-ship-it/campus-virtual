@@ -42,6 +42,16 @@ Inventario inicial verificado: **544 ramas frontend + 68 backend = 612**; **10 P
 - Política académica reafirmada: APR depende de nota, asistencia y requisitos académicos, nunca de mora ni deuda. Cobro y CONAPE son circuitos separados.
 - Sin escrituras a Apps Script, Sheets, matrículas, certificados ni CONAPE. Versión Apps Script aún pendiente de consulta remota (readback @462 el 17-oct; documento JSON histórico @460 del 9-oct).
 
+### Limpieza L3 · Barrido GitHub de merges antiguos (20-oct-2026)
+
+- **Frontend #529** fusionado SHA 0fa2b03edcfc593ad93fe5e1cb6fb176c656aa3b. Workflow 39371432380 PASS: 10 ramas frontend confirmadas eliminadas (#501/#519/#520/#521/#523/#524/#525/#526/#527/#528). Su rama temporal y la del #529 también desaparecieron al fusionarse. Ningún alumno, pago o backend modificado.
+- **Backend #71** fusionado SHA 84dbe90517ffbed553919fa5e9f2b287b1236e4d. Workflow 39371576330 PASS: 7 ramas (#25/#53/#63/#64/#66/#67/#70) eliminadas. La rama de mantenimiento #71 también desapareció al fusionarse.
+- **Frontend #530** fusionado SHA 7d7dfe2d97bab2d1d4516cc9180f9ac53e956f0d. Añade barrido global seguro: únicamente PR MERGED + SHA actual igual al de PR + rama mismo repo + sin PR abierto; preserva main/release/prod. Workflow de barrido frontend `39372079114` seguía ejecutándose en la primera observación. Consultar su conclusión y log `MERGED_SWEEP_TOTAL` ANTES de contar su total definitivo.
+- **Backend #72** fusionado SHA fd35c0f2c4a47ed2b25a079a7561c8596f09e8f8. Workflow 39372204001 PASS: **30 ramas adicionales** antiguas fusionadas eliminadas (logs `MERGED_SWEEP_DELETED`). Tras el barrido la API listó **31 ramas backend**; los 26 PR todavía abiertos conservan sus candidatos.
+- **Cierres PR vigentes:** 9 históricos archivados en L1+L2; abiertos: 7 frontend + 26 backend = 33. #69/#522 escritos y #61/#512 quizzes NO se fusionaron ni eliminaron.
+- **Regla de no-repetición:** NO reexaminar los PR cerrados #501/#519/#520 y #25/#53/#63/#64/#66/#67, ni los fusionados #521/#523/#524/#525/#526/#527/#528/#529/#530 y backend #70/#71/#72. Ya hay evidencia de cierre/merge y sus repositorios conservaron main.
+- La única tarea pendiente de esta etapa es consultar el resultado final del sweep frontend #39372079114 y registrar cuenta definitiva. Después: lectura REAL del deployment Apps Script antes de cualquier push. La última evidencia de runtime encontrada corresponde a @462 el 17-oct; NO se ha verificado una versión posterior.
+
 ### Orden ejecutivo pendiente (sin reabrir fases cerradas)
 
 1. Confirmar/verificar eliminación remota de ramas fusionadas y cerrar PR obsoletos por lotes comprobados. **Solo un inventario canónico aquí.**
