@@ -8,7 +8,10 @@ const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',
 const anchor="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  const oralSrc=";
 const inject="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del\n  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.\n  // Este último conserva su componente y sus datos fuera de esta vista.\n  if (superadmin) {\n    return <ExamenesIframePanel\n      hideHeader\n      view=\"admin\"\n      screenLabel=\"Superadmin · Centro de exámenes\"\n      iframeTitle=\"Centro de exámenes · Escritos, Orales y Progress Check\"\n    />;\n  }\n  const oralSrc=";
 assert.equal(baseline.split(anchor).length-1,1,'Anchor exacto una vez');
-assert.equal(source,baseline.replace(anchor,inject),'Cambios fuera del gate no autorizados');
+const newStudentsAsset='src/admin_students.jsx?v=F111I2PROJECTED20261020';
+const previousStudentsAsset='src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008';
+assert.equal(source.split(newStudentsAsset).length-1,3,'Solo los tres accesos de Estudiantes deben actualizar caché');
+assert.equal(source.replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado; solo caché de Estudiantes cambia');
 const adminStart=source.indexOf('function ExamenesAdminPanel()');
 const adminEnd=source.indexOf('const APP_ORAL_DEFS_F927',adminStart);
 assert(adminStart>=0&&adminEnd>adminStart,'Componente admin original conservado');
@@ -26,5 +29,5 @@ for(const path of protectedPaths){
 }
 const mainHtml=fs.readFileSync('campus.html','utf8');
 const mainBaseline=execFileSync('git',['show',base+':campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
-assert.equal(mainHtml,mainBaseline.replace('src/app.jsx?v=F108GRADES20261010','src/app.jsx?v=F111D1CENTROUNICO20261017'),'Solo se permite invalidar caché del app real');
+assert.equal(mainHtml.replace('src/app.jsx?v=F111I2PROJECTED20261020','src/app.jsx?v=F111D1CENTROUNICO20261017'),mainBaseline.replace('src/app.jsx?v=F108GRADES20261010','src/app.jsx?v=F111D1CENTROUNICO20261017'),'Solo cambió el cache-bust de app.jsx');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
