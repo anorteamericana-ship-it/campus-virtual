@@ -1217,6 +1217,11 @@ function tvTodayIsoCostaRicaF98() {
   }
 }
 
+// Solo normaliza el fragmento visual; no cambia ni guarda el texto original.
+function tvRosterCommentPreviewF111(raw) {
+  if(typeof raw!=='string')return '';
+  return raw.replace(/\s+/g,' ').trim();
+}
 function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle, asistenciaGrupo, comentariosDetalle, notasGrupo, meta, programa, docenteNombre, leccionHoy, onSaved, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const todayIso=tvTodayIsoCostaRicaF98();
   const allLessons=React.useMemo(()=>(lecciones||[])
@@ -1234,6 +1239,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
   const viewStorageKey=`an_teacher_attendance_view:${groupCode||'default'}`;
   const [viewMode,setViewMode]=React.useState('total');
   const [studentSearch,setStudentSearch]=React.useState('');
+  const [commentView,setCommentView]=React.useState('readable');
   const filteredRoster=React.useMemo(()=>{
     const terms=tvSearchNormalizeF98(studentSearch).split(' ').filter(Boolean);
     if(!terms.length)return roster||[];
@@ -1283,12 +1289,12 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
   },[nextCourseLesson,nextIcanLesson,nextLesson,viewMode]);
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
   const calendarRef=React.useRef(null), topScrollRef=React.useRef(null), positionedRef=React.useRef('');
-  const COL_W=94, LEFT_W=384, RIGHT_W=154, HEADER_H=104, ROW_H=112;
+  const COL_W=commentView==='readable'?172:94, LEFT_W=384, RIGHT_W=154, HEADER_H=104, ROW_H=112;
 
   React.useEffect(()=>{
     const box=calendarRef.current;
     if(!box||!lessons.length||!nextLesson)return;
-    const key=`${tvGroupCode(meta)}|${viewMode}|${nextKey}|${lessons.length}`;
+    const key=`${tvGroupCode(meta)}|${viewMode}|${nextKey}|${lessons.length}|${COL_W}`;
     if(positionedRef.current===key)return;
     positionedRef.current=key;
     const idx=lessons.findIndex(l=>tvLessonKeyF97(l)===tvLessonKeyF97(nextLesson)&&String(l.fecha||'')===String(nextLesson.fecha||''));
@@ -1299,7 +1305,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
       box.scrollLeft=targetLeft;
       if(topScrollRef.current)topScrollRef.current.scrollLeft=targetLeft;
     });
-  },[tvGroupCode(meta),viewMode,nextKey,lessons.length]);
+  },[tvGroupCode(meta),viewMode,nextKey,lessons.length,COL_W]);
 
   const syncHorizontalScroll=(source,targetRef)=>{
     const target=targetRef.current;
@@ -1333,6 +1339,11 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
               return <button key={opt.id} type="button" role="tab" aria-selected={active} onClick={()=>selectView(opt.id)} style={{border:'1px solid '+(active?(purple?'#6A3D91':'var(--an-navy)'):'transparent'),background:active?(purple?'#6A3D91':'var(--an-navy)'):'#FFF',color:active?'#FFF':purple?'#6A3D91':'var(--ink-2)',borderRadius:9,padding:'7px 10px',fontSize:9.5,fontWeight:900,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap'}}>{opt.label} <span style={{opacity:.78}}>({opt.count})</span></button>;
             })}
           </div>
+          <button type="button" aria-pressed={commentView==='readable'} onClick={()=>setCommentView(v=>v==='readable'?'compact':'readable')}
+            title={commentView==='readable'?'Reducir columnas sin perder acceso a los comentarios':'Mostrar una vista previa del texto de cada comentario'}
+            style={{border:'1px solid #B7C8DE',background:commentView==='readable'?'#EBF3FE':'#FFF',color:'#183E69',padding:'7px 11px',borderRadius:9,fontSize:10,fontWeight:800,cursor:'pointer'}}>
+            {commentView==='readable'?'Vista compacta':'Mostrar comentarios'}
+          </button>
           <div style={{display:'flex',gap:7}}>
             <button type="button" onClick={()=>scrollBy(-6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la izquierda">←</button>
             <button type="button" onClick={()=>scrollBy(6*COL_W)} className="btn btn-ghost" style={{width:38,padding:8}} aria-label="Desplazar columnas a la derecha">→</button>
@@ -1400,9 +1411,19 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
               </th>;
             })}</tr></thead>
             <tbody>{filteredRoster.length?filteredRoster.map((r,i)=><tr key={r.code||i}>{lessons.map(l=>{
-              const key=tvLessonKeyF97(l),det=asistenciaDetalle?.[key]?.[r.code]||asistenciaDetalle?.[String(l.leccion)]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||comentariosDetalle?.[String(l.leccion)]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=isRailNext(l),isIcan=tvIsIcanEventF96(l),isPC=tvIsProgressCheckF96(l);
+              const key=tvLessonKeyF97(l),det=asistenciaDetalle?.[key]?.[r.code]||asistenciaDetalle?.[String(l.leccion)]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||comentariosDetalle?.[String(l.leccion)]?.[r.code]||''):'',commentText=tvRosterCommentPreviewF111(comment),future=String(l.fecha||'')>todayIso,isNext=isRailNext(l),isIcan=tvIsIcanEventF96(l),isPC=tvIsProgressCheckF96(l);
               return <td key={`${r.code}-${key}-${l.fecha}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...bodyCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',padding:'6px 5px',background:isNext?(isIcan?'#F2E8F9':'#F0F7FF'):isIcan?'#FBF7FE':isPC?'#FFFBF2':'#FFF',borderLeft:isNext?`1px solid ${isIcan?'#A985C7':'#8EB9E8'}`:undefined,borderRight:isNext?`1px solid ${isIcan?'#A985C7':'#8EB9E8'}`:undefined}}>
-                {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
+                {det?<div title={commentText||'Sin comentario'}>
+                  <div style={{display:'inline-flex',minWidth:60,justifyContent:'center',padding:'4px 7px',borderRadius:999,fontSize:10,fontWeight:850,color:det.presente===false?'#9F2119':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>
+                  {commentText&&(commentView==='readable'?
+                    <button type="button" title={commentText} aria-label={`Abrir comentario de ${r.name}, lección ${l.leccion}: ${commentText}`}
+                      onClick={e=>{e.stopPropagation();setSelectedLesson({...l,__isNextDate:isNext});}}
+                      style={{display:'block',width:'100%',marginTop:5,padding:'5px 7px',textAlign:'left',background:'#F2F6FC',color:'#243D5A',border:'1px solid #D6E3F1',borderLeft:'3px solid #42699B',borderRadius:7,cursor:'pointer',fontFamily:'inherit'}}>
+                      <span style={{display:'block',fontSize:8.7,fontWeight:850,color:'#365B88',marginBottom:3}}>💬 Comentario</span>
+                      <span style={{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',fontSize:10.4,lineHeight:'13px',fontWeight:620,wordBreak:'break-word'}}>{commentText}</span>
+                    </button>
+                    :<div style={{fontSize:9.5,color:'#365B88',fontWeight:750,marginTop:5}}>💬 Comentario</div>)}
+                </div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
               </td>;
             })}</tr>):<tr><td colSpan={Math.max(1,lessons.length)} style={{...bodyCell,height:ROW_H,textAlign:'center',color:'var(--ink-3)',fontSize:10.5,fontWeight:750}}>Ajustá la búsqueda para volver a mostrar estudiantes.</td></tr>}</tbody>
           </table>}

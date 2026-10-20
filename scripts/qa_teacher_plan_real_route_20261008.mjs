@@ -12,8 +12,8 @@ for(const [path,src] of [['teacher_views.jsx',tv],['panel_suspensiones.jsx',admi
   B.transform(src,{presets:['react'],plugins:['transform-block-scoping']});
 }
 assert(app.includes('cronograma_grupo: <LazyRoute title="Cronograma Inglés Conversacional" component="CronogramaDocenteSeguroF82"'));
-assert(app.includes('teacher_views.jsx?v=F104NEXTROSTER20261009'));
-assert(bridge.includes('teacher_views.jsx?v=F104NEXTROSTER20261009'));
+assert(app.includes('teacher_views.jsx?v=F111COMMENTPREVIEW20261014'));
+assert(bridge.includes('teacher_views.jsx?v=F111COMMENTPREVIEW20261014'));
 assert(page.includes('src/app.jsx?v=F104NEXTROSTER20261009'));
 assert(page.includes('src/att77_bridge.js?v=F104NEXTROSTER20261009'));
 assert(tv.includes('Organizar cronograma'));
