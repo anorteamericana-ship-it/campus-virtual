@@ -2117,7 +2117,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
     }
   }
 
-  if (!estudiantes.length) return null;
+  const sinExpedientes = estudiantes.length === 0;
   const subtitulo = calcularSubtitulo(estudiantes);
 
   // Datos de calendario (período / lecciones / exámenes) — vienen del backend en data.grupo.periodos[niv]
@@ -2136,7 +2136,7 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
     const st = String(e.estatus || e.status_actual || '').toUpperCase();
     return st === 'APR' && certPagoEstudiante(e) && !certRegistroEstudiante(e);
   }).length;
-  const todosAprobados = estudiantes.every(e => e.estatus === 'APR');
+  const todosAprobados = !sinExpedientes && estudiantes.every(e => e.estatus === 'APR');
   const [abierto, setAbierto] = React.useState(!todosAprobados);
   const estudiantesOrdenados = sortEstudiantes ? sortEstudiantes(estudiantes) : estudiantes;
   const sortArrow = (col) => sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
@@ -2248,8 +2248,14 @@ function TablaEstudiantes({ estudiantes, nivelKey, periodo, programa, sortCol, s
 
         <span style={{ fontSize:11, marginLeft: 4, opacity:0.85, flexShrink:0 }}>{abierto ? '▲' : '▼'}</span>
       </div>
+      {/* Un nivel calendarizado sin expedientes se muestra sin inventar matrículas. */}
+      {abierto && sinExpedientes && (
+        <div style={{ border: `1px solid ${cfg.color}`, borderTop:'none', borderRadius:'0 0 8px 8px', background:cfg.bg, padding:'16px 18px', color:'var(--ink-2,#5b6170)', fontSize:12, lineHeight:1.5 }}>
+          <strong>{cfg.nombre} está configurado en el calendario.</strong> Aún no hay expedientes de este nivel registrados para el grupo consultado. No se han creado estudiantes ni cambiado estados.
+        </div>
+      )}
       {/* Tabla — rediseño operativo compacto para Calendario de Grupo */}
-      {abierto && (
+      {abierto && !sinExpedientes && (
       <div style={{ overflowX: 'auto', border: `1px solid ${cfg.color}`, borderTop: 'none', borderRadius: '0 0 8px 8px', background:'var(--surface,#fff)' }}>
         <table style={{ width: '100%', minWidth: 1200, tableLayout:'fixed', borderCollapse: 'separate', borderSpacing: 0, fontSize: 12 }}>
           <thead>
@@ -3095,10 +3101,12 @@ function AdminEstudiantesView({ onNavigate, grupoInicial, modo }) {
 
   // Construir secciones desde getRadiografiaGrupo (data.niveles = { B1:[], B2:[], I1:[], I2:[] })
   const secciones = React.useMemo(() => {
-    if (!data || !data.niveles) return [];
+    if (!data) return [];
+    const niveles = data.niveles || {};
+    const periodosConfigurados = data.grupo?.periodos || {};
     return ORDEN_NIVELES
-      .filter(n => data.niveles[n] && data.niveles[n].length > 0)
-      .map(n => ({ nivel: n, estudiantes: data.niveles[n] }));
+      .filter(n => (Array.isArray(niveles[n]) && niveles[n].length > 0) || !!periodosConfigurados[n])
+      .map(n => ({ nivel: n, estudiantes: Array.isArray(niveles[n]) ? niveles[n] : [] }));
   }, [data]);
 
   const resumenOperativo = React.useMemo(() => resumenOperativoEstudiantes(secciones), [secciones]);
