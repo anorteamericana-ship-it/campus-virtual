@@ -1,5 +1,53 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · CONSOLIDACIÓN CANÓNICA — 19/20-oct-2026 (registrado en GitHub)
+
+**Este bloque es el índice operativo vigente** para el proyecto F111 y la limpieza de ramas. Las secciones debajo son **cortes históricos**: no tomar como deployment actual sus frases "sigue en @460", "sigue en @431" o "vigente" sin verificar la versión remota. **No crear otro handoff paralelo.** El detalle histórico del examen oral/escritos permanece en [backend #69, archivo review/F111_HANDOFF_CANONICO_20261019.md](https://github.com/anorteamericana-ship-it/campus_backend/blob/release/f111-d2-escritos-privado-y-notas-20261018/review/F111_HANDOFF_CANONICO_20261019.md), que **no está en backend main**. Este bloque registra los cambios posteriores.
+
+### Fuentes actuales, sin asumir despliegues
+
+- **Campus oficial:** https://anorteamerican.com/campus-virtual/campus.html.
+- **Frontend GitHub:** `anorteamericana-ship-it/campus-virtual/main` en commit `2e9c6cd6ac2e5ee7268644d6c2d670b50bc4a673` al iniciar conciliación. GitHub Pages del PR #527: workflow 39363515490 **SUCCESS 3/3**. Se publicó el frontend; acceso autenticado sigue siendo una verificación distinta.
+- **Backend GitHub:** `anorteamericana-ship-it/campus_backend/main` en `786946dea164a8f7703824fcd8e5e1a31aa6ad96`, PR #70 CONAPE fusionado. **No representa la versión desplegada de Apps Script**.
+- **Apps Script PROD:** Script ID `1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2`, Deployment ID estable `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`. El corte inmutable `prod-460` consta documentado. En PR backend #64 consta lectura real del 17-oct de un **deployment @462**, posterior al archivo JSON @460 del 9-oct; **la versión exacta hoy sigue sin consulta remota nueva**. Leer deployment antes de release. El delta GitHub `prod-460...backend/main` contiene 114 commits y 13 archivos bajo `prod/`; **PROHIBIDO push integral de main**.
+- **Norma de cambios:** frontend pequeño: rama temporal + PR + checks + Pages. Backend/sesiones/pagos/notas: release controlado desde código desplegado real, delta mínimo, misma URL/deployment; no tratar QA como producción.
+
+### F111: hechos completados que NO hay que repetir
+
+| Área | Resultado verificado | Límite |
+|---|---|---|
+| Orales: frontend #521, #523, #524, #525 | Fusionados; #525 reemplaza guía provisional por bancos originales B2/I1/I2 (48 unidades) | Una prueba autenticada de borrador/cierre/PDF sigue pendiente |
+| Poner al día I2: #526 | Fusionado; botón final I2 y salida visual recuperable de CONAPE | No valida por sí mismo deployment backend |
+| Niveles proyectados: #527 | Fusionado; muestra nivel calendario sin fabricar matrículas | Grupo 0426 fue seleccionado por error: **no es el de certificados** |
+| CONAPE 17079 | Operación concreta conciliada en CAMPUS_OPERATIVO `CONFIRMADO/OK` | Hotfix general backend #70 no confirmado publicado |
+| Certificados grupo `B1-LJ69-B1-0226` | I2 APR: 17079 (97), 17107 (70), 17139 (70). Seis consecutivos y seis PDFs localizados en Drive | Falta confirmar apertura autenticada de PDF desde Campus; **no reemitir ni cobrar** |
+| Escritos backend #69 / frontend #522 | Candidatos DRAFT, no fusionados ni desplegados | Reconciliar con backend publicado |
+| QZ32 backend #61 / frontend #512 | Candidatos DRAFT, Progress Check 0% | No convertir a evaluación ponderada |
+
+### Limpieza de PR y ramas · Ronda L1
+
+Inventario inicial verificado: **544 ramas frontend + 68 backend = 612**; **10 PR abiertos frontend + 32 backend = 42**. Los conteos de ramas incluyen main y otros trabajos históricos, y no equivalen a 612 proyectos.
+
+- **PR cerrados administrativamente por consolidación** (comentario explicativo preservado): frontend **#519, #520** (QA visual sin producción), **#501** (auditoría documental histórica); backend **#67** (QA oral apilada, candidato integrado selectivamente #69), **#64** (banco privado y endpoint ya candidatos en #69), **#63** (saneamiento EX04 consolidado #69). **6 PR cerrados, 0 merges de esas copias, 0 borrados de datos**. Conteo esperado tras L1: 7 frontend + 29 backend = **36 PR abiertos**; validar nuevamente antes de próxima tanda.
+- **Ramas fusionadas candidatas a borrado remoto, previa comprobación de que el merge está preservado**: frontend #521 `fix/f111-d3-keylor-oral-rubric-level-bank-20261018`, #523 `hotfix/f111-oral-l9-session-gate-20261019`, #524 `hotfix/f111-b2-oral-guide-20261019`, #525 `fix/f111-oral-bancos-originales-20261019`, #526 `hotfix/f111-i2-conape-cierre-modal-20261019`, #527 `hotfix/f111-i2-proyectado-visible-20261020`; backend #70 `hotfix/conape-conciliar-historial-extra-20261019`. **No se han borrado ramas**: el conector GitHub actual carece de acción `delete ref/branch`; no hacer un `update_ref --force` como sustituto. Borrarlas únicamente por una herramienta que admita `DELETE` cuando haya conexión autorizada.
+- **No cerrar ni borrar todavía:** #69 backend y #522 frontend (escritos); #61 backend y #512 frontend (quizzes); #55 backend y #511 frontend (banco privado/oral, revisar diferencia funcional contra #525); #495/#500 frontend y candidatos de INA backend (normativa pendiente); otros PR con cambios académicos/seguridad únicos. No usar `git merge` masivo ni descartar un PR con trabajo único por su antigüedad.
+- **Regla de avance:** antes de releer una copia histórica, consultar primero esta tabla, el PR dueño y el runtime. Una vez cerrado un PR por duplicación, **no volver a hacer la misma auditoría** sin evidencia nueva. En cada pasada registrar PR cerrados, ramas realmente eliminadas, PR activos, estado Pages, backend deployment real y próximo cierre.
+
+### Orden ejecutivo pendiente (sin reabrir fases cerradas)
+
+1. Confirmar/verificar eliminación remota de ramas fusionadas y cerrar PR obsoletos por lotes comprobados. **Solo un inventario canónico aquí.**
+2. Consultar deployments Apps Script PROD actuales y hacer delta sobre esa versión antes de publicar #70 u otro backend.
+3. Cerrar **una** evaluación oral real docente con borrador, nota y PDF, sin alterar grupo en vivo innecesariamente.
+4. Reconciliar y desplegar escritos con pesos INA/SIN INA; conservar integridad de notas.
+5. Integrar QZ32 sin ponderación y asociar a Progress Check; cerrar pruebas y branches experimentales luego de publicar.
+
+### Observación puntual de CI
+
+El run GitHub Pages #527 terminó SUCCESS, pero el workflow histórico `F111 D1 HOTFIX · centro superadmin único` falló en main por una aserción de cache-bust con URL antigua. Eso **no** invalida Pages, pero debe corregirse en su gate sin debilitar pruebas de motor. No declarar automáticamente 100% de CI post-merge.
+
+---
+
+
 ## F111 R0 · referencia inmutable de código @460 (13-oct-2026)
 
 **Código desplegado @460:** tag anotado de `campus_backend` **`prod-460`**, commit **`956bf9ae84c9df7f6378de2e56a373a9dc69d964`**. El tag se generó tras el merge R0 #49 y su contenido `prod/` coincide **32/32 SHA-256 normalizado LF**, sin archivos faltantes ni adicionales, con el export independiente de PROD. El despliegue estable de Apps Script sigue en **@460**; no hubo `clasp push` ni deploy.
