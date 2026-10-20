@@ -2,6 +2,13 @@
 
 ## F111 · CONSOLIDACIÓN CANÓNICA — 19/20-oct-2026 (registrado en GitHub)
 
+### F111 I CAN R2 — integridad y QA, 20-oct-2026
+
+- **Misma rama/PR backend #73 (DRAFT):** https://github.com/anorteamericana-ship-it/campus_backend/pull/73 · HEAD `2d12208bb50cfbba6b06b9276858d868d7777f02`. Sin PR paralelo. 4/4 contratos ya escritos y enrutados. R2 elimina selección arbitraria de primer nivel por asistencia, deniega matrícula CA ambigua o grupo incompatible; exige `DOCENTE_ICAN` exacto por grupo+nivel antes de mostrar lista docente; cambia a historial append-only con `PREV_RESERVA_ID` y `ACCION`, una inserción por transición bajo lock; bandera doble `ICAN_R1_ENV=QA` + `ICAN_R1_WRITES=YES`, apagada por defecto. No se crearon hojas ni se tocaron notas/asistencia.
+- **QA código aislado:** 34/34 PASS, 0 fallos, `qa-ican-r1` https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/39452366310 ; Backend E1 y N02 E1 PASS = 3/3 checks. Valida ACL, concurrencia simulada, eventos y bloqueo de PROD. **PASS sintético NO equivale a Apps Script QA autenticado**. No afirmar atomicidad real verificada.
+- **QA autenticado aislado NO ejecutado:** preparar Apps Script independiente y dos libros de datos SINTÉTICOS separados; el `SHEET_ID` principal también debe ser QA porque `getICANEstudiante` y `validarSesion` acceden a APOLLO/SESIONES. Schema `ICAN_SESIONES` (10 columnas), `ICAN_RESERVAS` (11, + `PREV_RESERVA_ID`, `ACCION`). Instrucciones detalladas en descripción del mismo PR #73, sin otro documento. Ningún endpoint real invocado.
+- **Dictamen:** **NO GO PROD** hasta autenticar perfiles sintéticos, validar Google Sheets y locks reales en ambiente aislado, resolver reglas de cancelación/reprogramación/retención, reconciliar estudiantes con más de una CA y verificar versión exacta del deployment estable. Sin merge, sin publicación ni activación de properties.
+
 ### F111 I CAN R1 — corte 20-oct-2026
 
 - **Backend PR #73 DRAFT:** https://github.com/anorteamericana-ship-it/campus_backend/pull/73 — rama `feat/f111-ican-r1-contratos-qa-20261020` (sin fusionar). Cuatro contratos: `getICANPortalEstudiante`, `reservarICANSesionEstudiante`, `cancelarReservaICANEstudiante`, `getICANDocenteReservas`; enrutamiento F92 y almacenamiento separado `ICAN_R1_SS_ID`. No crear hojas, ni conectar reservas con asistencia/notas. `ICAN_R1_WRITES` OFF por defecto; nunca habilitado aquí.
