@@ -107,4 +107,79 @@ must(guard.split(originalBranch).length === 2, 'ancla de allowlist ausente o dup
 // El gate solo opera si existen cuatro propiedades QA adicionales, un docente
 // QA real autenticado, grupo de prueba -99XX y un único alumno QA-. Expira
 // automáticamente en un máximo de 24 horas; no hay apertura permanente.
-const extra = String.raw
+const extra = [
+"function _qaF111B2Allowed_(req){",
+"  try {",
+"    var prop = PropertiesService.getScriptProperties();",
+"    function p(n){ return String(prop.getProperty(n) || '').trim(); }",
+"    if (p('QA_F111_B2_ORAL_ENABLED') !== 'YES') return false;",
+"    var group = p('QA_F111_B2_GROUP_CODE');",
+"    var student = p('QA_F111_B2_STUDENT_CODE');",
+"    var teacher = p('QA_F111_B2_TEACHER_USERNAME');",
+"    var expires = Date.parse(p('QA_F111_B2_EXPIRES_UTC'));",
+"    var now = Date.now();",
+"    if (!/^B1-(?:LM|KJ)[0-9]{2}-C[1-9]-99[0-9]{2}$/.test(group) ||",
+"        !/^QA-[A-Z0-9-]+$/.test(student) || !/^qa_[a-z0-9_.-]+$/i.test(teacher) ||",
+"        !Number.isFinite(expires) || expires <= now || expires-now > 86400000) return false;",
+"    var b = req && req.body || {};",
+"    var f = String(req.fn || '').toLowerCase();",
+"    if (req.ambiguous || !_qa144IdsOk_() || b.reposicion_id) return false;",
+"    if (String(b.cod_grupo || b.grupo || b.codGrupo || '').trim() !== group) return false;",
+"    if (String(b.nivel || '').trim().toUpperCase() !== 'B2') return false;",
+"    var l = Number(b.leccion || b.leccion_num || 0);",
+"    var oral = ['oralgetpaneldocente','oralgetevaluacion','oralsavedraft',",
+"                'oralcloseevaluacion','oralgeneratepdf'];",
+"    var classRead = ['getdocentesesionactivaf87','getestudiantesparacierre'];",
+"    var classWrite = ['docenteiniciarsesionclasef77','docentecerrarclaseconasistenciaf87'];",
+"    if (oral.indexOf(f) === -1 && classRead.indexOf(f) === -1 && classWrite.indexOf(f) === -1) return false;",
+"    if (oral.indexOf(f) !== -1 && l !== 9) return false;",
+"    if (classWrite.indexOf(f) !== -1 && l !== 8 && l !== 9) return false;",
+"    if (classRead.indexOf(f) !== -1 && l !== 8 && l !== 9) return false;",
+"    var rawToken = String(b.token || b.session_token || '').trim();",
+"    if (!rawToken) return false;",
+"    var ses = validarSesion(rawToken);",
+"    if (!ses || ses.ok !== true || String(ses.rol || '').toLowerCase() !== 'teacher') return false;",
+"    if (!_qa144IdentityAllowed_(ses)) return false;",
+"    var who = String(ses.usuario || ses.email || ses.correo || '').trim();",
+"    if (who.toLowerCase() !== teacher.toLowerCase()) return false;",
+"    var mine = [];",
+"    if (Array.isArray(ses.grupos)) mine = ses.grupos.map(String);",
+"    if (ses.grupo) mine.push(String(ses.grupo));",
+"    if (mine.indexOf(group) === -1) return false;",
+"    if (['oralgetevaluacion','oralsavedraft','oralcloseevaluacion','oralgeneratepdf'].indexOf(f) !== -1) {",
+"      if (String(b.cod_estudiante || b.codigo || '').trim() !== student) return false;",
+"    }",
+"    if (classWrite.indexOf(f) !== -1) {",
+"      var records = b.asistencias || b.estudiantes || b.alumnos || [];",
+"      if (!Array.isArray(records) || records.length !== 1) return false;",
+"      var record = records[0] || {};",
+"      var code = typeof record === 'string' ? record :",
+"        String(record.cod_estudiante || record.codigo || record.CODIGO || '');",
+"      if (code !== student) return false;",
+"    }",
+"    return true;",
+"  } catch (_) { return false; }",
+"}",
+].join('\n');
+
+const addition = [
+  '    if (_qaF111B2Allowed_(req)) {',
+  '      return _qa144DoPostBase_(e);',
+  '    }',
+].join('\n');
+
+let patched = guard.replace(marker, extra + '\n\n' + marker);
+patched = patched.replace(originalBranch, originalBranch + '\n' + addition);
+must(patched !== guard && patched.includes('QA_F111_B2_EXPIRES_UTC'), 'no se pudo preparar candidato');
+must(patched.includes('qa_endpoint_not_allowlisted') && patched.includes('qa_write_blocked'), 'candidate elimina default-deny');
+must(patched.includes('var _qa144DoGetBase_ = doGet;'), 'candidate altera GET');
+
+fs.mkdirSync(outputDir, { recursive: true });
+const dest = path.join(outputDir, '99_QA_Staging_Guard.js');
+fs.writeFileSync(dest, patched, 'utf8');
+console.log('F111_QA_GUARD_CANDIDATE=PREPARADO_LOCAL; DEPLOYED=NO');
+console.log('CANDIDATE_SHA256=' + sha(Buffer.from(patched, 'utf8')));
+console.log('CANDIDATE_BYTES=' + Buffer.byteLength(patched, 'utf8'));
+console.log('OUTPUT=' + dest);
+console.log('ALCANCE=solo QA; habilitación runtime requiere propiedades temporales y cohorte ficticia.');
+console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
