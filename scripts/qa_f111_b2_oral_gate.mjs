@@ -260,6 +260,13 @@ if (publish) {
     console.log('POST_PUSH_REMOTE_GUARD_SHA256=' + sha(fs.readFileSync(path.join(verifyDir, '99_QA_Staging_Guard.js'))));
     console.log('DEPLOYMENT_QA_CANONICO=@HEAD; OTROS_DEPLOYMENTS_INTACTOS');
     console.log('QA_F111_B2_ORAL_ENABLED=OFF_POR_DEFECTO; NO SE CAMBIARON PROPIEDADES');
+    console.log('PROPIEDADES_QA_SUGERIDAS_PARA_UNICO_TEST:');
+    console.log('QA_F111_B2_ORAL_ENABLED=YES');
+    console.log('QA_F111_B2_GROUP_CODE=B1-LM69-C3-9926');
+    console.log('QA_F111_B2_STUDENT_CODE=QA-F111-B2-01');
+    console.log('QA_F111_B2_TEACHER_USERNAME=qa_docente');
+    console.log('QA_F111_B2_EXPIRES_UTC=' + new Date(Date.now() + 4 * 3600000).toISOString());
+    console.log('Estas propiedades solo se configuran en Apps Script QA tras verificar readback.');
     console.log('PRODUCCION=NO_TOCADA; SHEETS=NO_CAMBIADAS_POR_ESTE_RUNNER');
   } finally {
     fs.rmSync(workRoot, { recursive: true, force: true });
