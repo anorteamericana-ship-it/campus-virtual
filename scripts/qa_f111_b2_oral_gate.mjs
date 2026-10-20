@@ -188,7 +188,8 @@ console.log('CANDIDATE_SHA256=' + sha(Buffer.from(patched, 'utf8')));
 console.log('CANDIDATE_BYTES=' + Buffer.byteLength(patched, 'utf8'));
 console.log('OUTPUT=' + dest);
 console.log('ALCANCE=solo QA; habilitación runtime requiere propiedades temporales y cohorte ficticia.');
-console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
+if (!publish) console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
+else console.log('CANDIDATO LOCAL PREPARADO; INICIANDO PROTOCOLO QA CON PUSH PROTEGIDO.');
 
 
 if (publish) {
