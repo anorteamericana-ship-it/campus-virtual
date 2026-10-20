@@ -194,7 +194,8 @@ console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
 if (publish) {
   // Publicación exclusivamente al Script ID QA canónico, sin --force.
   // Re-clonar HEAD y exigir 71/71 hashes idénticos antes de un único push.
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const isWindows = process.platform === 'win32';
+  const npx = isWindows ? (process.env.ComSpec || 'cmd.exe') : 'npx';
   const clasp = ['--yes', '@google/clasp@3.3.0'];
   const qaDeployment = 'AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ';
   const remoteDir = path.join(workRoot, 'remote-qa-head');
@@ -202,7 +203,8 @@ if (publish) {
   fs.mkdirSync(remoteDir, { recursive: true });
   fs.mkdirSync(verifyDir, { recursive: true });
   function claspRun(command, cwd) {
-    const result = spawnSync(npx, clasp.concat(command), {
+    const params = isWindows ? ['/d', '/c', 'npx.cmd'].concat(clasp, command) : clasp.concat(command);
+    const result = spawnSync(npx, params, {
       cwd,
       encoding: 'utf8',
       windowsHide: true,
