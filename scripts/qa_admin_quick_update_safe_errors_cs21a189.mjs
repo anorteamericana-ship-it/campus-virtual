@@ -18,8 +18,8 @@ must(state.includes("'No se pudo guardar el cambio de estatus. Intentá de nuevo
 must(state.includes("'No se pudo actualizar el expediente académico. Intentá de nuevo.'"), 'academic fallback present');
 must(state.includes("'No se pudo consultar el comprobante. Intentá de nuevo.'"), 'receipt lookup fallback present');
 must(state.includes("'No se pudo aplicar el pago. Intentá de nuevo.'"), 'payment fallback present');
-must(state.includes("'No se pudo actualizar CONAPE. Intentá de nuevo.'"), 'CONAPE fallback present');
-must(state.includes("'El cambio quedó guardado, pero la ficha todavía no terminó de refrescar. Usá “Cargar estudiante actualizado”.'"), 'fresh-retry stable fallback preserved');
+must(state.includes("'No se pudo confirmar CONAPE. Consultá su estado antes de volver a intentarlo; los pagos y la aprobación no se repetirán.'"), 'CONAPE no-confirmation fallback present');
+must(state.includes('No fue posible confirmar la ficha nueva automáticamente.'), 'fresh status explicit without new writes');
 
 must(!payment.includes("s.academic?.mensaje||'Expediente académico actualizado.'"), 'raw academic success message no longer rendered');
 must(payment.includes("quickUpdateSafeUserError(s.academic?.mensaje,'Expediente académico actualizado.','academic_success')"), 'academic message sanitized at display boundary');

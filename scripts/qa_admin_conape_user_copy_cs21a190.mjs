@@ -6,7 +6,7 @@ const core = fs.readFileSync('src/admin_students_quick_update_core_cs21a99.js','
 
 function must(ok,label){ if(!ok) throw new Error(`CS21A190 FAIL: ${label}`); }
 
-must(view.includes('Se actualizará CONAPE una sola vez. Después se recargará automáticamente este mismo estudiante hasta mostrarlo actualizado.'), 'operational CONAPE copy present');
+must(view.includes('Se enviará una sola solicitud a CONAPE.') && view.includes('sin repetir pagos ni notas.'), 'operational CONAPE copy present');
 must(!view.includes('sincronización de las hojas 4–7'), 'internal sheet names no longer user-visible');
 must(view.includes("'Dejar CONAPE pendiente'"), 'pending action preserved');
 must(view.includes("'Actualizar CONAPE ahora'"), 'sync action preserved');
