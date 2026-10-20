@@ -93,6 +93,7 @@ body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;ba
 </div>
 <div id="toast" class="toast"></div>
 <div id="pdf-modal" class="modal"><div class="pdf"><div class="pdf-toolbar"><button class="btn ghost" id="btn-pdf-close">Volver</button><button class="btn primary" id="btn-pdf-final">Imprimir / Guardar PDF</button></div><div class="pdf-page" id="pdf-content"></div></div></div>
+<script src="./oral_bancos_ic5.js?v=20261019-f111"></script>
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 const CRITERIA=[['COMPREHENSION','Comprehension','Capacidad para comprender preguntas y responder apropiadamente'],['FLUENCY','Fluency','Capacidad para hablar con naturalidad, continuidad y pocas pausas'],['GRAMMAR','Grammar','Capacidad para usar gramática y estructuras correctas'],['VOCABULARY','Vocabulary','Capacidad para comprender y utilizar palabras y expresiones del nivel'],['PRONUNCIATION','Pronunciation','Capacidad para usar pronunciación, acento, ritmo y entonación apropiados']];
@@ -144,26 +145,77 @@ function renderStudents(){const box=document.getElementById('students');const ev
 function loadEvaluationIntoForm(ev){state.scores={COMPREHENSION:ev.COMPREHENSION??null,FLUENCY:ev.FLUENCY??null,GRAMMAR:ev.GRAMMAR??null,VOCABULARY:ev.VOCABULARY??null,PRONUNCIATION:ev.PRONUNCIATION??null};try{state.questions=JSON.parse(ev.PREGUNTAS_JSON||'{}')||{};}catch(_){state.questions={};}try{state.otherByUnit=JSON.parse(ev.OTRAS_PREGUNTAS_JSON||'{}')||{};}catch(_){state.otherByUnit={};}document.getElementById('comentarios').value=ev.COMENTARIOS||'';document.getElementById('sugerencias').value=ev.SUGERENCIAS||'';document.getElementById('otras-global').value=ev.OTRAS_PREGUNTAS||'';state.dirty=false;renderScores();renderQBank();}
 function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');if(!interno&&state.dirty&&state.selected&&!confirm('Hay cambios sin guardar. ¿Descartarlos y recargar la ficha seleccionada?'))return;const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();const cerrado=!!state.panel?.es_reposicion||oralLockedF111(ev)||!!state.uncertainCloseCodes?.[s.codigo];document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=cerrado||state.busy||!!state.panel?.preview;const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.textContent=state.panel?.es_reposicion?'Reposición pendiente de habilitación':ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'Cerrar examen y generar PDF';pdfBtn.disabled=!!state.panel?.es_reposicion||oralNeedsReviewF111(ev)||!!state.panel?.preview||!!state.uncertainCloseCodes?.[s.codigo];}}
 
-// F111 R24: guia provisional B2 L9, basada en candidato backend; NO es banco aprobado.
-const B2_GUIDE_F111={"1":{"title":"Unit 1 — Where are you from?","qs":["Introduce yourself: say what people call you, where you are from, and where you live now.","Describe two fictional classmates. Where are they from, and what are they like?","Explain when you have English class and what you usually do after it.","Interview the examiner to learn basic personal information and class preferences."]},"2":{"title":"Unit 2 — What do you do?","qs":["Describe your typical weekday from morning to night, including the times of three activities.","Explain what you do at work or school and which part of your day you enjoy most.","Talk about a family member’s occupation or studies and daily schedule.","Ask the examiner questions about work, classes, and free-time routines."]},"3":{"title":"Unit 3 — How much are these?","qs":["Imagine you are shopping for clothes. Ask for prices, colors, sizes, and materials.","Compare two pieces of clothing in terms of cost, style, and comfort.","Describe a real or imaginary clothing purchase and explain why you would choose those items.","Ask the examiner to choose between two items and explain the preference."]},"4":{"title":"Unit 4 — Do you play the guitar?","qs":["Talk about the kinds of music you enjoy and an artist you would recommend.","Explain which instruments or games you can play and which ones you would like to learn.","Compare two kinds of movies or television programs and explain your preference.","Invite the examiner to an activity this weekend and discuss a possible plan."]}};
-
-function addB2GuideQuestionF111(unit,idx){
- const entry=B2_GUIDE_F111[unit],question=entry?.qs?.[Number(idx)];
- const field=document.getElementById('otras-global');
- if(!question||!field||!state.selected||state.busy||state.panel?.es_reposicion||
-    state.panel?.preview||oralLockedF111(state.evaluations[state.selected.codigo])||
-    state.uncertainCloseCodes?.[state.selected.codigo])return toast('Seleccioná un estudiante pendiente antes de agregar preguntas.');
- const entryText='Unit '+unit+': '+question,old=String(field.value||'').trim();
- if(old.includes(entryText))return toast('Esta pregunta ya está registrada.');
- const updated=old?old+'\n'+entryText:entryText;
- if(updated.length>3500)return toast('El registro alcanzó el límite; quitá preguntas que no se aplicaron.');
- field.value=updated;state.dirty=true;
- toast('Pregunta registrada. Guardá el borrador de este estudiante.');
+// F111: bancos originales de B2, I1 e I2: única fuente transcrita de PDFs docentes.
+function originalBankF111(){
+  const nivel=String(state.panel?.nivel||'').toUpperCase();
+  return window.ORAL_BANCOS_IC5?.[nivel]||null;
+}
+function originalQuestionEntryF111(unit,idx,question){
+  return 'U'+unit+' P'+(Number(idx)+1)+': '+question;
+}
+function setOriginalQuestionF111(unit,idx,checked){
+  const source=originalBankF111(),question=source?.[unit]?.qs?.[Number(idx)];
+  const field=document.getElementById('otras-global');
+  if(!question||!field||!state.selected||state.busy||state.panel?.es_reposicion||
+     state.panel?.preview||oralLockedF111(state.evaluations[state.selected.codigo])||
+     state.uncertainCloseCodes?.[state.selected.codigo]){
+    toast('Seleccioná un estudiante pendiente para registrar la pregunta.');
+    return false;
+  }
+  const entry=originalQuestionEntryF111(unit,idx,question);
+  const old=String(field.value||'').trim(),lines=old?old.split(/\\r?\\n/):[];
+  const exists=lines.includes(entry);
+  if(checked&&!exists)lines.push(entry);
+  if(!checked&&exists)lines.splice(lines.indexOf(entry),1);
+  const next=lines.join('\\n');
+  if(next.length>3500){toast('Límite de texto alcanzado: registrá solamente las preguntas aplicadas.');return false;}
+  if(next!==old){field.value=next;state.dirty=true;toast('Pregunta '+(checked?'registrada':'retirada')+'. Guardá el borrador para conservar cambios.');}
+  return true;
 }
 
 function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&state.bank?.aprobado===true&&state.bank?.version&&state.bank?.unidades?state.bank.unidades:{};}
-function renderQBank(){const p=state.panel||{};const lec=Number(p.leccion||0);const meta=LECCIONES[lec]||{units:[]};document.getElementById('qb-label').textContent=meta.units.length?`U${meta.units[0]}–${meta.units[meta.units.length-1]}`:'—';const qbody=document.getElementById('qbody');if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay banco para esta lección.</div>';return;}
-if(!Object.keys(questionBankForLevelF111()).length){if(String(p.nivel||'').toUpperCase()==='B2'&&lec===9){qbody.innerHTML='<div class="warnline">GUÍA PROVISIONAL B2 · Unidades 1–4. Estas preguntas son sugerencias de trabajo, NO un banco aprobado. Agregá solo las preguntas realmente utilizadas; se guardarán como texto libre en «Otras preguntas aplicadas».</div>'+meta.units.map(u=>{const entry=B2_GUIDE_F111[u];return '<div class="unit"><h3>'+escF90(entry.title)+'</h3>'+entry.qs.map((q,i)=>'<div class="q" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>'+escF90(q)+'</span><button type="button" class="btn ghost" data-b2-guide-unit="'+u+'" data-b2-guide-idx="'+i+'" style="white-space:nowrap;flex-shrink:0;font-size:11px">Registrar</button></div>').join('')+'</div>';}).join('');qbody.querySelectorAll('[data-b2-guide-unit]').forEach(b=>b.onclick=()=>addB2GuideQuestionF111(b.dataset.b2GuideUnit,b.dataset.b2GuideIdx));return;}qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado. Para evitar aplicar preguntas de Básico I, registrá las preguntas utilizadas en «Otras preguntas aplicadas» hasta que se apruebe el banco específico.</div>';return;}qbody.innerHTML=meta.units.map(u=>{const data=questionBankForLevelF111()[u]||{title:`Unit ${u}`,qs:[]};const selected=state.questions[u]||[];const other=state.otherByUnit[u]||'';return`<div class="unit"><h3>${escF90(data.title)}</h3>${data.qs.map((q,i)=>`<label class="q"><input type="checkbox" data-unit="${u}" data-idx="${i}" ${selected.includes(i)?'checked':''}><span>${escF90(q)}</span></label>`).join('')}<div class="other"><input type="text" data-other-unit="${u}" placeholder="Otro: escribí otra pregunta aplicada" value="${escF90(other)}"></div></div>`}).join('');qbody.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.onchange=()=>{const u=ch.dataset.unit;const i=Number(ch.dataset.idx);state.questions[u]=state.questions[u]||[];if(ch.checked&&!state.questions[u].includes(i))state.questions[u].push(i);if(!ch.checked)state.questions[u]=state.questions[u].filter(x=>x!==i);state.dirty=true;});qbody.querySelectorAll('[data-other-unit]').forEach(inp=>inp.oninput=()=>{state.otherByUnit[inp.dataset.otherUnit]=inp.value;state.dirty=true;});}
+function renderQBank(){
+  const p=state.panel||{},lec=Number(p.leccion||0),meta=LECCIONES[lec]||{units:[]};
+  document.getElementById('qb-label').textContent=meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
+  const qbody=document.getElementById('qbody');
+  if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay unidades asignadas a esta lección.</div>';return;}
+  const bank=questionBankForLevelF111();
+  if(Object.keys(bank).length){
+    qbody.innerHTML=meta.units.map(u=>{
+      const data=bank[u]||{title:'Unit '+u,qs:[]},selected=state.questions[u]||[],other=state.otherByUnit[u]||'';
+      return '<div class="unit"><h3>'+escF90(data.title)+'</h3>'+
+        data.qs.map((q,i)=>'<label class="q"><input type="checkbox" data-unit="'+u+'" data-idx="'+i+'" '+(selected.includes(i)?'checked':'')+'><span>'+escF90(q)+'</span></label>').join('')+
+        '<div class="other"><input type="text" data-other-unit="'+u+'" placeholder="Otra pregunta aplicada" value="'+escF90(other)+'"></div></div>';
+    }).join('');
+    qbody.querySelectorAll('[data-unit]').forEach(ch=>ch.onchange=()=>{
+      const u=ch.dataset.unit,i=Number(ch.dataset.idx);state.questions[u]=state.questions[u]||[];
+      if(ch.checked&&!state.questions[u].includes(i))state.questions[u].push(i);
+      if(!ch.checked)state.questions[u]=state.questions[u].filter(x=>x!==i);
+      state.dirty=true;
+    });
+    qbody.querySelectorAll('[data-other-unit]').forEach(inp=>inp.oninput=()=>{state.otherByUnit[inp.dataset.otherUnit]=inp.value;state.dirty=true;});
+    return;
+  }
+  const source=originalBankF111();
+  if(source){
+    const saved=String(document.getElementById('otras-global')?.value||'').split(/\\r?\\n/);
+    qbody.innerHTML='<div style="font-size:11px;padding:8px 10px;margin-bottom:8px;border-radius:9px;background:#EFF6FF;color:#073B7A">Banco de preguntas · Interchange 5ª edición. Marcá las preguntas realmente aplicadas y guardá el borrador del estudiante.</div>'+
+      meta.units.map(u=>{
+        const data=source[u]||{title:'Unit '+u,qs:[],notes:[]};
+        return '<div class="unit"><h3>'+escF90(data.title)+'</h3>'+
+          (data.notes||[]).map(t=>'<div class="other" style="font-size:11px;color:#60708A">'+escF90(t)+'</div>').join('')+
+          data.qs.map((q,i)=>{
+            const entry=originalQuestionEntryF111(u,i,q);
+            return '<label class="q"><input type="checkbox" data-original-unit="'+u+'" data-original-idx="'+i+'" '+(saved.includes(entry)?'checked':'')+'><span>'+escF90(q)+'</span></label>';
+          }).join('')+'</div>';
+      }).join('');
+    qbody.querySelectorAll('[data-original-unit]').forEach(ch=>ch.onchange=()=>{
+      if(!setOriginalQuestionF111(ch.dataset.originalUnit,ch.dataset.originalIdx,ch.checked))ch.checked=!ch.checked;
+    });
+    return;
+  }
+  qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado.</div>';
+}
 
 
 function currentPayload(){return{
