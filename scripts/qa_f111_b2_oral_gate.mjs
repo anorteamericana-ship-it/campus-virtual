@@ -104,7 +104,7 @@ const originalBranch = [
 must(guard.split(marker).length === 2, 'ancla doPost ausente o duplicada');
 must(guard.split(originalBranch).length === 2, 'ancla de allowlist ausente o duplicada');
 
-// El gate solo opera si existen cuatro propiedades QA adicionales, un docente
+// El gate solo opera si existen cinco propiedades QA adicionales, un docente
 // QA real autenticado, grupo de prueba -99XX y un único alumno QA-. Expira
 // automáticamente en un máximo de 24 horas; no hay apertura permanente.
 const extra = [
@@ -124,8 +124,12 @@ const extra = [
 "    var b = req && req.body || {};",
 "    var f = String(req.fn || '').toLowerCase();",
 "    if (req.ambiguous || !_qa144IdsOk_() || b.reposicion_id) return false;",
-"    if (String(b.cod_grupo || b.grupo || b.codGrupo || '').trim() !== group) return false;",
-"    if (String(b.nivel || '').trim().toUpperCase() !== 'B2') return false;",
+"    var groupParam = String(b.cod_grupo || b.grupo || b.codGrupo || '').trim();",
+"    var isActiveSessionRead = f === 'getdocentesesionactivaf87';",
+"    if (!isActiveSessionRead && groupParam !== group) return false;",
+"    if (groupParam && groupParam !== group) return false;",
+"    if (!isActiveSessionRead && String(b.nivel || '').trim().toUpperCase() !== 'B2') return false;",
+"    if (isActiveSessionRead && b.nivel && String(b.nivel).trim().toUpperCase() !== 'B2') return false;",
 "    var l = Number(b.leccion || b.leccion_num || 0);",
 "    var oral = ['oralgetpaneldocente','oralgetevaluacion','oralsavedraft',",
 "                'oralcloseevaluacion','oralgeneratepdf'];",
@@ -134,7 +138,7 @@ const extra = [
 "    if (oral.indexOf(f) === -1 && classRead.indexOf(f) === -1 && classWrite.indexOf(f) === -1) return false;",
 "    if (oral.indexOf(f) !== -1 && l !== 9) return false;",
 "    if (classWrite.indexOf(f) !== -1 && l !== 8 && l !== 9) return false;",
-"    if (classRead.indexOf(f) !== -1 && l !== 8 && l !== 9) return false;",
+"    if (classRead.indexOf(f) !== -1 && l && l !== 8 && l !== 9) return false;",
 "    var rawToken = String(b.token || b.session_token || '').trim();",
 "    if (!rawToken) return false;",
 "    var ses = validarSesion(rawToken);",
@@ -149,13 +153,11 @@ const extra = [
 "    if (['oralgetevaluacion','oralsavedraft','oralcloseevaluacion','oralgeneratepdf'].indexOf(f) !== -1) {",
 "      if (String(b.cod_estudiante || b.codigo || '').trim() !== student) return false;",
 "    }",
-"    if (classWrite.indexOf(f) !== -1) {",
-"      var records = b.asistencias || b.estudiantes || b.alumnos || [];",
-"      if (!Array.isArray(records) || records.length !== 1) return false;",
-"      var record = records[0] || {};",
-"      var code = typeof record === 'string' ? record :",
-"        String(record.cod_estudiante || record.codigo || record.CODIGO || '');",
-"      if (code !== student) return false;",
+"    if (f === 'docentecerrarclaseconasistenciaf87') {",
+"      var attendance = b.asistencias;",
+"      if (!attendance || typeof attendance !== 'object' || Array.isArray(attendance)) return false;",
+"      var codes = Object.keys(attendance);",
+"      if (codes.length !== 1 || codes[0] !== student) return false;",
 "    }",
 "    return true;",
 "  } catch (_) { return false; }",
