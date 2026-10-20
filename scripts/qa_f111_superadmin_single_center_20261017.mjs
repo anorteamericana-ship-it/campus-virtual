@@ -29,8 +29,8 @@ for(const path of protectedPaths){
 }
 const mainHtml=fs.readFileSync('campus.html','utf8');
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
-const currentAppSrc=(mainHtml.match(/src\\/app\\.jsx\\?v=[A-Za-z0-9_.-]+/)||[])[0];
-const baselineAppSrc=(mainBaseline.match(/src\\/app\\.jsx\\?v=[A-Za-z0-9_.-]+/)||[])[0];
+const currentAppSrc=(mainHtml.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
+const baselineAppSrc=(mainBaseline.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
 assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 assert.equal(mainHtml.replace(currentAppSrc,baselineAppSrc),mainBaseline,'Solo se permite variar versión de caché de app.jsx');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
