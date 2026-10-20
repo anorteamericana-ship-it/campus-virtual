@@ -64,41 +64,50 @@ verify(html.includes("await api('oralGetEvaluacion'")&&html.includes('state.unce
 verify(html.includes("if(oralNeedsReviewF111(previous))return toast"),'PDF bloqueado si la nota no está sincronizada');
 verify(html.includes('state.uncertainCloseCodes={}'),'La recarga exitosa rehace estado desde el servidor');
 
-// F111 urgent B2 L9: candidate prompts are display-only until an acta-approved bank exists.
-const guideMatch=html.match(/const B2_GUIDE_F111=(\{[^\n]+\});/);
-verify(!!guideMatch,'Guía B2 local disponible para clase de hoy');
-const guide=JSON.parse(guideMatch[1]);
-verify([1,2,3,4].every(u=>guide[u]?.qs?.length===4),'16 propuestas B2 para U1–4, cuatro por unidad');
-verify(html.includes('NO un banco aprobado')&&
-       html.includes('data-b2-guide-unit'),'Guía marcada no aprobada y botón de registro manual');
-verify(html.includes('addB2GuideQuestionF111(b.dataset.b2GuideUnit,b.dataset.b2GuideIdx)'),
- 'Cada botón carga la pregunta en el campo libre');
-verify(!html.includes("state.bank={aprobado:true")&&
-       !html.includes("body.preguntas_json=B2_GUIDE_F111"),
- 'Ningún atajo falso aprueba banco ni envía índices sin aprobación');
-const textArea={value:''},output=[];
-const qctx=vm.createContext({
+// F111: 3 bancos originales transcritos de PDFs; niveles y lecciones sin mezclas.
+const catalogCode=fs.readFileSync('modulos/oral_bancos_ic5.js','utf8');
+const catalogContext=vm.createContext({window:{}});
+vm.runInContext(catalogCode,catalogContext);
+const original=catalogContext.window.ORAL_BANCOS_IC5;
+verify(['B2','I1','I2'].every(level=>
+  original[level]&&Object.keys(original[level]).length===16&&
+  Array.from({length:16},(_,i)=>original[level][i+1]?.qs?.length>0).every(Boolean)
+),'B2 I1 I2 contienen 16 unidades originales cada uno');
+verify(original.B2[1].title.includes('Where are you from?')&&
+       original.I1[1].title.includes('Good memories')&&
+       original.I2[1].title.includes('friend'),'Bancos específicos sin mezclar niveles');
+verify(html.includes('oral_bancos_ic5.js')&&
+       html.includes('data-original-unit'),'La pantalla carga banco canónico y presenta casillas');
+verify(!html.includes('B2_GUIDE_F111')&&!html.includes('data-b2-guide-unit'),
+ 'No queda guía provisional duplicada');
+verify(!html.includes("state.bank={aprobado:true"),'No inventar aprobación desde el navegador');
+verify(html.includes("preguntas_json:state.questions")&&
+       html.includes("otras_preguntas:document.getElementById('otras-global').value"),
+ 'Conservar contrato de backend sin índices falsos ni cambios de notas');
+
+const input={value:''},messages=[];
+const qa=vm.createContext({
+ window:{ORAL_BANCOS_IC5:original},
  state:{panel:{nivel:'B2',leccion:9},selected:{codigo:'SIM-1'},
         busy:false,evaluations:{},uncertainCloseCodes:{},dirty:false},
- B2_GUIDE_F111:guide,
- document:{getElementById:()=>textArea},
- oralLockedF111:()=>false,
- toast:m=>output.push(m),
- Number,String
+ document:{getElementById:()=>input},
+ oralLockedF111:()=>false,toast:m=>messages.push(m),
+ String,Number
 });
-vm.runInContext(extract('addB2GuideQuestionF111'),qctx);
-qctx.addB2GuideQuestionF111('1',0);
-verify(textArea.value.includes(guide[1].qs[0])&&qctx.state.dirty,
- 'Registrar pregunta en campo libre marca formulario como pendiente');
-qctx.addB2GuideQuestionF111('1',0);
-verify(textArea.value.split(guide[1].qs[0]).length===2,
- 'No registrar dos veces la misma pregunta por doble clic');
-qctx.state.evaluations['SIM-1']={ESTADO:'CERRADO'};
-qctx.oralLockedF111=()=>true;
-const oldValue=textArea.value;
-qctx.addB2GuideQuestionF111('2',0);
-verify(textArea.value===oldValue,
- 'No cambiar preguntas tras cierre');
-verify(!('questions' in qctx.state),'La guía nunca selecciona índices del banco oficial');
-
-console.log('F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks='+checks+' ; B2 banco bloqueado, rubric missing protected, browser=0 PROD=0');
+for(const fn of ['originalBankF111','originalQuestionEntryF111','setOriginalQuestionF111'])
+ vm.runInContext(extract(fn),qa);
+const q=original.B2[1].qs[0];
+verify(qa.setOriginalQuestionF111(1,0,true)===true&&
+       input.value.includes(q)&&qa.state.dirty,
+ 'Marcar pregunta original guarda texto y marca ficha sucia');
+qa.setOriginalQuestionF111(1,0,true);
+verify(input.value.split(q).length===2,'Doble selección no duplica texto');
+qa.setOriginalQuestionF111(1,0,false);
+verify(input.value==='', 'Desmarcar pregunta quita solo esa entrada');
+qa.setOriginalQuestionF111(1,0,true);
+qa.state.evaluations['SIM-1']={ESTADO:'CERRADO'};qa.oralLockedF111=()=>true;
+const before=input.value;
+verify(qa.setOriginalQuestionF111(2,0,true)===false&&input.value===before,
+ 'No se añaden preguntas en examen cerrado');
+verify(!('questions' in qa.state),'Preguntas originales no envían índices no aprobados');
+console.log('F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks='+checks+' ; B1 intacto, B2/I1/I2 48 unidades PDF, PROD writes=0');
