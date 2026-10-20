@@ -24,10 +24,10 @@ assert.match(source,/examenes:\s+<ExamenesAdminPanel \/>/,'Ruta del sidebar pres
 assert(source.includes('modulos/examenes.html?view='),'Iframe apunta a módulo real');
 const protectedPaths=['src/examenes_bundle.jsx','src/examenes_modes.jsx','src/examenes_app.jsx','src/examenes_data.jsx','src/sidebar.jsx'];
 for(const path of protectedPaths){
- const old=execFileSync('git',['show',base+':'+path],{encoding:'utf8',maxBuffer:30*1024*1024});
+ const old=execFileSync('git',['show','origin/main:'+path],{encoding:'utf8',maxBuffer:30*1024*1024});
  assert.equal(fs.readFileSync(path,'utf8'),old,'Motor o navegación alterados: '+path);
 }
 const mainHtml=fs.readFileSync('campus.html','utf8');
-const mainBaseline=execFileSync('git',['show',base+':campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
-assert.equal(mainHtml.replace('src/app.jsx?v=F111I2PROJECTED20261020','src/app.jsx?v=F111D1CENTROUNICO20261017'),mainBaseline.replace('src/app.jsx?v=F108GRADES20261010','src/app.jsx?v=F111D1CENTROUNICO20261017'),'Solo cambió el cache-bust de app.jsx');
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
+assert.equal(mainHtml.replace('src/app.jsx?v=F111I2PROJECTED20261020','src/app.jsx?v=F111D1CENTROUNICO20261017'),mainBaseline,'Solo cambió el cache-bust de app.jsx');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
