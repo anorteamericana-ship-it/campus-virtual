@@ -163,11 +163,11 @@ function setOriginalQuestionF111(unit,idx,checked){
     return false;
   }
   const entry=originalQuestionEntryF111(unit,idx,question);
-  const old=String(field.value||'').trim(),lines=old?old.split(/\\r?\\n/):[];
+  const old=String(field.value||'').trim(),lines=old?old.split(/\r?\n/):[];
   const exists=lines.includes(entry);
   if(checked&&!exists)lines.push(entry);
   if(!checked&&exists)lines.splice(lines.indexOf(entry),1);
-  const next=lines.join('\\n');
+  const next=lines.join('\n');
   if(next.length>3500){toast('Límite de texto alcanzado: registrá solamente las preguntas aplicadas.');return false;}
   if(next!==old){field.value=next;state.dirty=true;toast('Pregunta '+(checked?'registrada':'retirada')+'. Guardá el borrador para conservar cambios.');}
   return true;
@@ -198,7 +198,7 @@ function renderQBank(){
   }
   const source=originalBankF111();
   if(source){
-    const saved=String(document.getElementById('otras-global')?.value||'').split(/\\r?\\n/);
+    const saved=String(document.getElementById('otras-global')?.value||'').split(/\r?\n/);
     qbody.innerHTML='<div style="font-size:11px;padding:8px 10px;margin-bottom:8px;border-radius:9px;background:#EFF6FF;color:#073B7A">Banco de preguntas · Interchange 5ª edición. Marcá las preguntas realmente aplicadas y guardá el borrador del estudiante.</div>'+
       meta.units.map(u=>{
         const data=source[u]||{title:'Unit '+u,qs:[],notes:[]};
