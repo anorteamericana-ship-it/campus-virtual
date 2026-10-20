@@ -1,7 +1,7 @@
 // F111 · QA B2 oral: valida el snapshot congelado y prepara un guard opt-in.
 // NO usa red, no lee credenciales, no escribe Sheets/Drive, no hace clasp push.
 // Modo predeterminado: node scripts/qa_f111_b2_oral_gate.mjs "<QA_HEAD_...>"
-// Modo candidato local: agregar --prepare "<carpeta-de-salida-QA>".
+// Modo candidato local: --prepare <carpeta>; --auto-activate-qa publica una ventana temporal de 2 horas SIN tocar propiedades.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -86,8 +86,8 @@ console.log('FILES=71; AGGREGATE=' + EXPECTED.aggregate);
 console.log('CRITICAL_SHA=4/4; ORAL_PUBLIC_ROUTES=5/5');
 console.log('QA_GUARD=DEFAULT_DENY; PROD_IN_INDEX=0');
 console.log('RUNTIME_GET_FLAGS=PROBADAS_POR_DIRECCION_NO_REPETIDAS');
-console.log('B2_CA_FIXTURE=NO_CERTIFICADO; L8_L9_CALENDARIO=NO_CERTIFICADO');
-console.log('POST_QA=NO_GO; PROD=INTACTA');
+console.log('B2_CA_FIXTURE=VERIFICADO_QA_20261020; L8_L9_CALENDARIO=2/2_VERIFICADO_QA');
+console.log('POST_QA=REQUIERE_GUARD_Y_DOCENTE_AUTENTICADO; PROD=INTACTA');
 
 const auto = args[1] === '--auto-activate-qa' && args.length === 2;
 const publish = args[1] === '--publish-qa' && args.length === 2;
@@ -226,7 +226,7 @@ console.log('F111_QA_GUARD_CANDIDATE=PREPARADO_LOCAL; DEPLOYED=NO');
 console.log('CANDIDATE_SHA256=' + sha(Buffer.from(patched, 'utf8')));
 console.log('CANDIDATE_BYTES=' + Buffer.byteLength(patched, 'utf8'));
 console.log('OUTPUT=' + dest);
-console.log('ALCANCE=solo QA; habilitación runtime requiere propiedades temporales y cohorte ficticia.');
+console.log(auto ? 'ALCANCE=solo QA; habilitación 2 horas integrada al guard; SIN PROPIEDADES MANUALES.' : 'ALCANCE=solo QA; habilitación runtime requiere propiedades temporales y cohorte ficticia.');
 if (!release) console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
 else console.log('CANDIDATO LOCAL PREPARADO; INICIANDO PROTOCOLO QA CON PUSH PROTEGIDO.');
 if (auto) console.log('AUTO_ACTIVACION_QA_EXPIRES_UTC=' + autoExpire);
