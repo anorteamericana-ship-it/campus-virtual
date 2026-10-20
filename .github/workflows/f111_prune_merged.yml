@@ -16,7 +16,7 @@ jobs:
   limpiar:
     if: github.event_name == 'push' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Eliminar solo refs cerradas, verificadas y de este repositorio
         env:
@@ -61,6 +61,37 @@ jobs:
             prune 526 no
             prune 527 no
             prune 528 no
+            # Eliminar SOLO las ramas cuyo PR ya esta fusionado y cuyo SHA no cambio.
+            temp="$(mktemp -d)"
+            trap 'rm -rf "$temp"' EXIT
+            gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv' > "$temp/branches"
+            gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[] | .head.ref' > "$temp/open"
+            gh api --paginate "repos/$REPO/pulls?state=closed&per_page=100" --jq '.[] | select(.merged_at != null) | [.number, .head.ref, .head.sha, (.head.repo.full_name // "")] | @tsv' > "$temp/merged"
+            declare -A heads=() active=()
+            while IFS=          elif [[ "$PR_EVENT" =~ ^[0-9]+$ && "$PR_EVENT" -gt 0 ]]; then
+            # Próximos PR: solo ramas del repositorio cuya fusión ya fue confirmada.
+            prune "$PR_EVENT" no
+          fi
+\t' read -r ref sha; do heads["$ref"]="$sha"; done < "$temp/branches"
+            while IFS= read -r ref; do active["$ref"]=1; done < "$temp/open"
+            swept=0
+            while IFS=          elif [[ "$PR_EVENT" =~ ^[0-9]+$ && "$PR_EVENT" -gt 0 ]]; then
+            # Próximos PR: solo ramas del repositorio cuya fusión ya fue confirmada.
+            prune "$PR_EVENT" no
+          fi
+\t' read -r pr ref sha source; do
+              if [[ "$source" != "$REPO" || "$ref" == main || "$ref" == release/* || "$ref" == prod-* ]]; then continue; fi
+              if [[ ! "$ref" =~ ^[a-zA-Z0-9_./-]+$ ]]; then continue; fi
+              if [[ -n "${active[$ref]:-}" || -z "${heads[$ref]:-}" || "${heads[$ref]}" != "$sha" ]]; then continue; fi
+              if gh api -X DELETE "repos/$REPO/git/refs/heads/$ref" >/dev/null; then
+                echo "MERGED_SWEEP_DELETED PR $pr: $ref"
+                swept=$((swept+1))
+                unset 'heads[$ref]'
+              else
+                echo "MERGED_SWEEP_BLOCKED PR $pr: $ref"
+              fi
+            done < "$temp/merged"
+            echo "MERGED_SWEEP_TOTAL=$swept"
           elif [[ "$PR_EVENT" =~ ^[0-9]+$ && "$PR_EVENT" -gt 0 ]]; then
             # Próximos PR: solo ramas del repositorio cuya fusión ya fue confirmada.
             prune "$PR_EVENT" no
