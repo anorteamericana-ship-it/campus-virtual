@@ -33,6 +33,15 @@ Inventario inicial verificado: **544 ramas frontend + 68 backend = 612**; **10 P
 - **No cerrar ni borrar todavía:** #69 backend y #522 frontend (escritos); #61 backend y #512 frontend (quizzes); #55 backend y #511 frontend (banco privado/oral, revisar diferencia funcional contra #525); #495/#500 frontend y candidatos de INA backend (normativa pendiente); otros PR con cambios académicos/seguridad únicos. No usar `git merge` masivo ni descartar un PR con trabajo único por su antigüedad.
 - **Regla de avance:** antes de releer una copia histórica, consultar primero esta tabla, el PR dueño y el runtime. Una vez cerrado un PR por duplicación, **no volver a hacer la misma auditoría** sin evidencia nueva. En cada pasada registrar PR cerrados, ramas realmente eliminadas, PR activos, estado Pages, backend deployment real y próximo cierre.
 
+### Limpieza L2 · Continuación sin reiniciar auditoría
+
+- Backend PR #25, #53 y #66 cerrados con comentarios: #25 condicionaba APR a pagos (contradice política académica); #53 fast path login sin medición A/B ni despliegue aprobado; #66 era un gateway QA sintético aislado, no código en producción. El contenido sigue accesible por los PR.
+- Cierres administrativos F111 acumulados: **9** (frontend #501/#519/#520; backend #25/#53/#63/#64/#66/#67). Inventario tras esos cierres: **7 frontend + 26 backend = 33 PR abiertos**, sin contar el PR de mantenimiento L2. No se alteraron candidatos escritos #69/#522 ni quizzes #61/#512.
+- El archivo `.github/workflows/f111_prune_merged.yml` de esta misma pasada elimina refs antiguas únicamente si el PR está cerrado, si la rama pertenece al mismo repositorio y si su SHA coincide con el HEAD registrado en el PR. Solo permite ramas fusionadas o archivadas expresamente en la lista; omite main, release y prod. **No afirmar que una rama fue borrada hasta observar el workflow SUCCESS y consultar refs actuales.**
+- La lista inicial del workflow frontend corresponde a #501/#519/#520 archivados, y #521/#523/#524/#525/#526/#527/#528 fusionados. En backend requiere permiso/ejecución independiente: el token frontend no opera sobre el otro repositorio. Prohibido usar update_ref --force para simular un borrado.
+- Política académica reafirmada: APR depende de nota, asistencia y requisitos académicos, nunca de mora ni deuda. Cobro y CONAPE son circuitos separados.
+- Sin escrituras a Apps Script, Sheets, matrículas, certificados ni CONAPE. Versión Apps Script aún pendiente de consulta remota (readback @462 el 17-oct; documento JSON histórico @460 del 9-oct).
+
 ### Orden ejecutivo pendiente (sin reabrir fases cerradas)
 
 1. Confirmar/verificar eliminación remota de ramas fusionadas y cerrar PR obsoletos por lotes comprobados. **Solo un inventario canónico aquí.**
