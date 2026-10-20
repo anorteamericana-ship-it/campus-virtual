@@ -61,25 +61,17 @@ jobs:
             prune 526 no
             prune 527 no
             prune 528 no
-            # Eliminar SOLO las ramas cuyo PR ya esta fusionado y cuyo SHA no cambio.
+            # Borrado conservador de otras ramas ya fusionadas.
             temp="$(mktemp -d)"
             trap 'rm -rf "$temp"' EXIT
             gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv' > "$temp/branches"
             gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[] | .head.ref' > "$temp/open"
             gh api --paginate "repos/$REPO/pulls?state=closed&per_page=100" --jq '.[] | select(.merged_at != null) | [.number, .head.ref, .head.sha, (.head.repo.full_name // "")] | @tsv' > "$temp/merged"
             declare -A heads=() active=()
-            while IFS=          elif [[ "$PR_EVENT" =~ ^[0-9]+$ && "$PR_EVENT" -gt 0 ]]; then
-            # Próximos PR: solo ramas del repositorio cuya fusión ya fue confirmada.
-            prune "$PR_EVENT" no
-          fi
-\t' read -r ref sha; do heads["$ref"]="$sha"; done < "$temp/branches"
+            while IFS=$'\t' read -r ref sha; do heads["$ref"]="$sha"; done < "$temp/branches"
             while IFS= read -r ref; do active["$ref"]=1; done < "$temp/open"
             swept=0
-            while IFS=          elif [[ "$PR_EVENT" =~ ^[0-9]+$ && "$PR_EVENT" -gt 0 ]]; then
-            # Próximos PR: solo ramas del repositorio cuya fusión ya fue confirmada.
-            prune "$PR_EVENT" no
-          fi
-\t' read -r pr ref sha source; do
+            while IFS=$'\t' read -r pr ref sha source; do
               if [[ "$source" != "$REPO" || "$ref" == main || "$ref" == release/* || "$ref" == prod-* ]]; then continue; fi
               if [[ ! "$ref" =~ ^[a-zA-Z0-9_./-]+$ ]]; then continue; fi
               if [[ -n "${active[$ref]:-}" || -z "${heads[$ref]:-}" || "${heads[$ref]}" != "$sha" ]]; then continue; fi
