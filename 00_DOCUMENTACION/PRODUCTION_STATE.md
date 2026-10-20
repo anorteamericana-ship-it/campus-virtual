@@ -2,6 +2,14 @@
 
 ## F111 · CONSOLIDACIÓN CANÓNICA — 19/20-oct-2026 (registrado en GitHub)
 
+### F111 I CAN R1 — corte 20-oct-2026
+
+- **Backend PR #73 DRAFT:** https://github.com/anorteamericana-ship-it/campus_backend/pull/73 — rama `feat/f111-ican-r1-contratos-qa-20261020` (sin fusionar). Cuatro contratos: `getICANPortalEstudiante`, `reservarICANSesionEstudiante`, `cancelarReservaICANEstudiante`, `getICANDocenteReservas`; enrutamiento F92 y almacenamiento separado `ICAN_R1_SS_ID`. No crear hojas, ni conectar reservas con asistencia/notas. `ICAN_R1_WRITES` OFF por defecto; nunca habilitado aquí.
+- **CI sintético:** 22/22 PASS, 0 FAIL en https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/39450597662 ; además Backend E1 y F111 N02 E1 PASS (3/3 workflows). Son simulaciones con SpreadsheetApp/LockService falsos, NO prueba con Apps Script autenticado ni producción.
+- **Puertas pendientes:** cotejar el nivel/grupo CA cuando coexisten matrículas; validar docente I CAN vs docente general; consolidar bitácora de cambios/retención; política de cancelación; datos de sesiones y libro QA independiente; probar atomicidad y concurrencia reales; certificar versión Apps Script antes de desplegar. **NO GO PROD**. No reabrir L1-L3 ni mezclar con escritos/QZ32.
+
+
+
 **Este bloque es el índice operativo vigente** para el proyecto F111 y la limpieza de ramas. Las secciones debajo son **cortes históricos**: no tomar como deployment actual sus frases "sigue en @460", "sigue en @431" o "vigente" sin verificar la versión remota. **No crear otro handoff paralelo.** El detalle histórico del examen oral/escritos permanece en [backend #69, archivo review/F111_HANDOFF_CANONICO_20261019.md](https://github.com/anorteamericana-ship-it/campus_backend/blob/release/f111-d2-escritos-privado-y-notas-20261018/review/F111_HANDOFF_CANONICO_20261019.md), que **no está en backend main**. Este bloque registra los cambios posteriores.
 
 ### Fuentes actuales, sin asumir despliegues
