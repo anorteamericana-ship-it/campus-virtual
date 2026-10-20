@@ -5,6 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
 
 const EXPECTED = Object.freeze({
   script: '1GMHihGwnX_-sIS101rRlUoYpAH2HSKyms8lx6L9z7bjb_45YDn-ph6WD',
@@ -87,10 +89,12 @@ console.log('RUNTIME_GET_FLAGS=PROBADAS_POR_DIRECCION_NO_REPETIDAS');
 console.log('B2_CA_FIXTURE=NO_CERTIFICADO; L8_L9_CALENDARIO=NO_CERTIFICADO');
 console.log('POST_QA=NO_GO; PROD=INTACTA');
 
+const publish = args[1] === '--publish-qa' && args.length === 2;
 const i = args.indexOf('--prepare');
-if (i < 0) process.exit(0);
-must(i === 1 && args[i + 1] && args.length === 3, 'usar --prepare "<carpeta-de-salida-QA>"');
-const outputDir = path.resolve(args[i + 1]);
+if (!publish && i < 0) process.exit(0);
+if (!publish) must(i === 1 && args[i + 1] && args.length === 3, 'usar --prepare "<carpeta-de-salida-QA>"');
+const workRoot = publish ? fs.mkdtempSync(path.join(os.tmpdir(), 'f111-b2-qa-release-')) : null;
+const outputDir = publish ? path.join(workRoot, 'candidate') : path.resolve(args[i + 1]);
 must(outputDir !== base && !outputDir.startsWith(base + path.sep), 'no escribir dentro de la fuente congelada');
 must(!fs.existsSync(outputDir) || fs.readdirSync(outputDir).length === 0, 'salida ya tiene archivos: no sobrescribir');
 
@@ -185,3 +189,76 @@ console.log('CANDIDATE_BYTES=' + Buffer.byteLength(patched, 'utf8'));
 console.log('OUTPUT=' + dest);
 console.log('ALCANCE=solo QA; habilitación runtime requiere propiedades temporales y cohorte ficticia.');
 console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
+
+
+if (publish) {
+  // Publicación exclusivamente al Script ID QA canónico, sin --force.
+  // Re-clonar HEAD y exigir 71/71 hashes idénticos antes de un único push.
+  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const clasp = ['--yes', '@google/clasp@3.3.0'];
+  const qaDeployment = 'AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ';
+  const remoteDir = path.join(workRoot, 'remote-qa-head');
+  const verifyDir = path.join(workRoot, 'verify-qa-head');
+  fs.mkdirSync(remoteDir, { recursive: true });
+  fs.mkdirSync(verifyDir, { recursive: true });
+  function claspRun(command, cwd) {
+    const result = spawnSync(npx, clasp.concat(command), {
+      cwd,
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 180000,
+      maxBuffer: 25 * 1024 * 1024,
+    });
+    if (result.status !== 0 || result.error) {
+      fail('clasp ' + command[0] + ' falló: ' +
+        String(result.error?.message || (result.stderr || result.stdout || '')).slice(-700));
+    }
+    return String(result.stdout || '');
+  }
+  function verifyClone(where, expectCandidate) {
+    const claspFile = path.join(where, '.clasp.json');
+    must(fs.existsSync(claspFile), 'sin .clasp.json QA');
+    const settings = JSON.parse(fs.readFileSync(claspFile, 'utf8'));
+    must(settings.scriptId === EXPECTED.script, 'ABORT: .clasp apunta fuera del proyecto QA');
+    const remoteFiles = fs.readdirSync(where)
+      .filter(x => /^(?:.*\.(?:js|gs|html)|appsscript\.json)$/.test(x))
+      .sort();
+    const wanted = m.files.map(x => x.path).sort();
+    must(JSON.stringify(remoteFiles) === JSON.stringify(wanted),
+      'ABORT: inventario HEAD remoto no coincide exactamente con 71/71');
+    for (const item of m.files) {
+      const expectedHash = expectCandidate && item.path === '99_QA_Staging_Guard.js' ?
+        sha(Buffer.from(patched, 'utf8')) : item.sha256;
+      must(sha(fs.readFileSync(path.join(where, item.path))) === expectedHash,
+        'ABORT: drift remoto ' + item.path);
+    }
+    return true;
+  }
+  try {
+    console.log('CLASP_QA_READBACK=INICIANDO');
+    claspRun(['clone-script', EXPECTED.script], remoteDir);
+    verifyClone(remoteDir, false);
+    console.log('CLASP_QA_READBACK=PASS 71/71; SCRIPT_ID_QA_CORRECTO');
+    const target = path.join(remoteDir, '99_QA_Staging_Guard.js');
+    fs.copyFileSync(dest, target);
+    verifyClone(remoteDir, true);
+    console.log('DELTA_LOCAL=SOLO 99_QA_Staging_Guard.js');
+    console.log('PUSH_QA=INICIANDO; PROD_PROHIBIDO; SIN_FORCE');
+    claspRun(['push'], remoteDir);
+    console.log('PUSH_QA=EJECUTADO; VERIFICANDO HEAD REMOTO');
+    claspRun(['clone-script', EXPECTED.script], verifyDir);
+    verifyClone(verifyDir, true);
+    const deployments = claspRun(['list-deployments'], verifyDir);
+    const canonicalLine = deployments.split(/\r?\n/)
+      .find(line => line.includes(qaDeployment));
+    must(canonicalLine && canonicalLine.includes('@HEAD'),
+      'deployment QA canónico no apunta a HEAD; no crear otro deployment');
+    console.log('F111_QA_GUARD_PUSH=PASS');
+    console.log('POST_PUSH_REMOTE_GUARD_SHA256=' + sha(fs.readFileSync(path.join(verifyDir, '99_QA_Staging_Guard.js'))));
+    console.log('DEPLOYMENT_QA_CANONICO=@HEAD; OTROS_DEPLOYMENTS_INTACTOS');
+    console.log('QA_F111_B2_ORAL_ENABLED=OFF_POR_DEFECTO; NO SE CAMBIARON PROPIEDADES');
+    console.log('PRODUCCION=NO_TOCADA; SHEETS=NO_CAMBIADAS_POR_ESTE_RUNNER');
+  } finally {
+    fs.rmSync(workRoot, { recursive: true, force: true });
+  }
+}
