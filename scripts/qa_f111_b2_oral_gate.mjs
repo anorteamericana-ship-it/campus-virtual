@@ -89,12 +89,14 @@ console.log('RUNTIME_GET_FLAGS=PROBADAS_POR_DIRECCION_NO_REPETIDAS');
 console.log('B2_CA_FIXTURE=NO_CERTIFICADO; L8_L9_CALENDARIO=NO_CERTIFICADO');
 console.log('POST_QA=NO_GO; PROD=INTACTA');
 
+const auto = args[1] === '--auto-activate-qa' && args.length === 2;
 const publish = args[1] === '--publish-qa' && args.length === 2;
+const release = publish || auto;
 const i = args.indexOf('--prepare');
-if (!publish && i < 0) process.exit(0);
-if (!publish) must(i === 1 && args[i + 1] && args.length === 3, 'usar --prepare "<carpeta-de-salida-QA>"');
-const workRoot = publish ? fs.mkdtempSync(path.join(os.tmpdir(), 'f111-b2-qa-release-')) : null;
-const outputDir = publish ? path.join(workRoot, 'candidate') : path.resolve(args[i + 1]);
+if (!release && i < 0) process.exit(0);
+if (!release) must(i === 1 && args[i + 1] && args.length === 3, 'usar --prepare "<carpeta-de-salida-QA>"');
+const workRoot = release ? fs.mkdtempSync(path.join(os.tmpdir(), 'f111-b2-qa-release-')) : null;
+const outputDir = release ? path.join(workRoot, 'candidate') : path.resolve(args[i + 1]);
 must(outputDir !== base && !outputDir.startsWith(base + path.sep), 'no escribir dentro de la fuente congelada');
 must(!fs.existsSync(outputDir) || fs.readdirSync(outputDir).length === 0, 'salida ya tiene archivos: no sobrescribir');
 
@@ -177,6 +179,43 @@ const addition = [
 let patched = guard.replace(marker, extra + '\n\n' + marker);
 patched = patched.replace(originalBranch, originalBranch + '\n' + addition);
 must(patched !== guard && patched.includes('QA_F111_B2_EXPIRES_UTC'), 'no se pudo preparar candidato');
+
+// Modo temporal sin edición manual de Script Properties: el guard queda
+// activable exclusivamente para el docente, grupo y alumno ficticios YA
+// certificados, y expira DOS horas después de su construcción.
+// Un NO explícito en QA_F111_B2_ORAL_ENABLED siempre lo desactiva.
+const previousGuardSha = '48bb516d7c788bc4e5c102c96a9c55cc60538f6f01541b9c4a5a22c5a5d03526';
+const autoExpire = auto ? new Date(Date.now() + 2 * 3600000).toISOString() : null;
+if (auto) {
+  must(sha(Buffer.from(patched, 'utf8')) === previousGuardSha,
+    'el guard publicado no corresponde al corte certificado');
+  const originalCheck = "    if (p('QA_F111_B2_ORAL_ENABLED') !== 'YES') return false;";
+  const originalGroup = "    var group = p('QA_F111_B2_GROUP_CODE');";
+  const originalStudent = "    var student = p('QA_F111_B2_STUDENT_CODE');";
+  const originalTeacher = "    var teacher = p('QA_F111_B2_TEACHER_USERNAME');";
+  const originalExpiry = "    var expires = Date.parse(p('QA_F111_B2_EXPIRES_UTC'));";
+  for (const line of [originalCheck,originalGroup,originalStudent,originalTeacher,originalExpiry]) {
+    must(patched.split(line).length === 2, 'ancla del guard F111 cambió');
+  }
+  const quote = JSON.stringify(autoExpire);
+  patched = patched.replace(originalCheck, [
+    "    var configuredFlag = p('QA_F111_B2_ORAL_ENABLED');",
+    "    var builtInExpiry = Date.parse(" + quote + ");",
+    "    var autoEnabled = !configuredFlag && Date.now() < builtInExpiry;",
+    "    if (configuredFlag !== 'YES' && !autoEnabled) return false;",
+  ].join('\n'));
+  patched = patched.replace(originalGroup,
+    "    var group = autoEnabled ? 'B1-LM69-C3-9926' : p('QA_F111_B2_GROUP_CODE');");
+  patched = patched.replace(originalStudent,
+    "    var student = autoEnabled ? 'QA-F111-B2-01' : p('QA_F111_B2_STUDENT_CODE');");
+  patched = patched.replace(originalTeacher,
+    "    var teacher = autoEnabled ? 'qa_docente' : p('QA_F111_B2_TEACHER_USERNAME');");
+  patched = patched.replace(originalExpiry,
+    "    var expires = autoEnabled ? builtInExpiry : Date.parse(p('QA_F111_B2_EXPIRES_UTC'));");
+  must(patched.includes('var autoEnabled = !configuredFlag') &&
+       patched.includes('qa_write_blocked'),
+       'el modo automático no conservó el aislamiento');
+}
 must(patched.includes('qa_endpoint_not_allowlisted') && patched.includes('qa_write_blocked'), 'candidate elimina default-deny');
 must(patched.includes('var _qa144DoGetBase_ = doGet;'), 'candidate altera GET');
 
@@ -188,11 +227,12 @@ console.log('CANDIDATE_SHA256=' + sha(Buffer.from(patched, 'utf8')));
 console.log('CANDIDATE_BYTES=' + Buffer.byteLength(patched, 'utf8'));
 console.log('OUTPUT=' + dest);
 console.log('ALCANCE=solo QA; habilitación runtime requiere propiedades temporales y cohorte ficticia.');
-if (!publish) console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
+if (!release) console.log('SIN PUSH; SIN PUBLICAR; SIN ESCRIBIR SHEETS/DRIVE.');
 else console.log('CANDIDATO LOCAL PREPARADO; INICIANDO PROTOCOLO QA CON PUSH PROTEGIDO.');
+if (auto) console.log('AUTO_ACTIVACION_QA_EXPIRES_UTC=' + autoExpire);
 
 
-if (publish) {
+if (release) {
   // Publicación exclusivamente al Script ID QA canónico, sin --force.
   // Re-clonar HEAD y exigir 71/71 hashes idénticos antes de un único push.
   const isWindows = process.platform === 'win32';
@@ -230,8 +270,9 @@ if (publish) {
     must(JSON.stringify(remoteFiles) === JSON.stringify(wanted),
       'ABORT: inventario HEAD remoto no coincide exactamente con 71/71');
     for (const item of m.files) {
-      const expectedHash = expectCandidate && item.path === '99_QA_Staging_Guard.js' ?
-        sha(Buffer.from(patched, 'utf8')) : item.sha256;
+      const expectedHash = item.path !== '99_QA_Staging_Guard.js' ? item.sha256 :
+        expectCandidate ? sha(Buffer.from(patched, 'utf8')) :
+        auto ? previousGuardSha : item.sha256;
       must(sha(fs.readFileSync(path.join(where, item.path))) === expectedHash,
         'ABORT: drift remoto ' + item.path);
     }
@@ -259,14 +300,14 @@ if (publish) {
     console.log('F111_QA_GUARD_PUSH=PASS');
     console.log('POST_PUSH_REMOTE_GUARD_SHA256=' + sha(fs.readFileSync(path.join(verifyDir, '99_QA_Staging_Guard.js'))));
     console.log('DEPLOYMENT_QA_CANONICO=@HEAD; OTROS_DEPLOYMENTS_INTACTOS');
-    console.log('QA_F111_B2_ORAL_ENABLED=OFF_POR_DEFECTO; NO SE CAMBIARON PROPIEDADES');
-    console.log('PROPIEDADES_QA_SUGERIDAS_PARA_UNICO_TEST:');
-    console.log('QA_F111_B2_ORAL_ENABLED=YES');
-    console.log('QA_F111_B2_GROUP_CODE=B1-LM69-C3-9926');
-    console.log('QA_F111_B2_STUDENT_CODE=QA-F111-B2-01');
-    console.log('QA_F111_B2_TEACHER_USERNAME=qa_docente');
-    console.log('QA_F111_B2_EXPIRES_UTC=' + new Date(Date.now() + 4 * 3600000).toISOString());
-    console.log('Estas propiedades solo se configuran en Apps Script QA tras verificar readback.');
+    console.log(auto ? 'AUTO_ACTIVACION_QA=VENTANA_2_HORAS; SIN_EDITAR_PROPIEDADES' : 'QA_F111_B2_ORAL_ENABLED=OFF_POR_DEFECTO; NO SE CAMBIARON PROPIEDADES');
+    if (!auto) console.log('PROPIEDADES_QA_SUGERIDAS_PARA_UNICO_TEST:');
+    if (!auto) console.log('QA_F111_B2_ORAL_ENABLED=YES');
+    if (!auto) console.log('QA_F111_B2_GROUP_CODE=B1-LM69-C3-9926');
+    if (!auto) console.log('QA_F111_B2_STUDENT_CODE=QA-F111-B2-01');
+    if (!auto) console.log('QA_F111_B2_TEACHER_USERNAME=qa_docente');
+    if (!auto) console.log('QA_F111_B2_EXPIRES_UTC=' + new Date(Date.now() + 4 * 3600000).toISOString());
+    if (!auto) console.log('Estas propiedades solo se configuran en Apps Script QA tras verificar readback.');
     console.log('PRODUCCION=NO_TOCADA; SHEETS=NO_CAMBIADAS_POR_ESTE_RUNNER');
   } finally {
     fs.rmSync(workRoot, { recursive: true, force: true });
