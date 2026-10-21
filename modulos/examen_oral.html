@@ -95,7 +95,82 @@ body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;ba
 <div id="pdf-modal" class="modal"><div class="pdf"><div class="pdf-toolbar"><button class="btn ghost" id="btn-pdf-close">Volver</button><button class="btn primary" id="btn-pdf-final">Imprimir / Guardar PDF</button></div><div class="pdf-page" id="pdf-content"></div></div></div>
 <script src="./oral_bancos_ic5.js?v=20261019-f111"></script>
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+// F111: UNA sola interfaz oral, dos entornos explícitos y aislados.
+// PRODUCCIÓN es el único valor predeterminado. QA jamás usa an_usuario.
+const ORAL_F111_ENV_PARAMS=new URLSearchParams(location.search);
+const ORAL_F111_ENV_VALUE=ORAL_F111_ENV_PARAMS.has('qa')?'qa-no-admitido':ORAL_F111_ENV_PARAMS.get('entorno');
+const ORAL_F111_QA_MODE=ORAL_F111_ENV_VALUE==='qa-f111-b2';
+const ORAL_F111_ENV_BLOCKED=ORAL_F111_ENV_VALUE!==null&&ORAL_F111_ENV_VALUE!=='prod'&&!ORAL_F111_QA_MODE;
+const ORAL_F111_PROD_ENDPOINT='https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
+const ORAL_F111_QA_ENDPOINT='https://script.google.com/macros/s/AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev';
+const APPS_SCRIPT_URL=ORAL_F111_QA_MODE?ORAL_F111_QA_ENDPOINT:ORAL_F111_PROD_ENDPOINT;
+const ORAL_F111_QA_KEY='an_f111_qa_oral_session_only';
+const ORAL_F111_QA_GROUP='B1-LM69-C3-9926';
+const ORAL_F111_QA_STUDENT='QA-F111-B2-01';
+const ORAL_F111_QA_OPERATIONS=new Set(['oralGetPanelDocente','oralGetEvaluacion','oralSaveDraft','oralCloseEvaluacion','oralGeneratePdf']);
+function oralF111QaSesionValida(s){return !!(s&&s.token&&s.ambiente==='QA_F111_B2'&&s.usuario==='qa_docente'&&s.rol==='teacher');}
+function oralF111QaGuard(fn,body,s){
+  if(ORAL_F111_ENV_BLOCKED)throw new Error('Entorno oral no autorizado. No se enviaron datos a producción.');
+  if(!ORAL_F111_QA_MODE)return body; // Prod mantiene exactamente sus payloads.
+  if(!oralF111QaSesionValida(s))throw new Error('QA: iniciá sesión con la cuenta docente exclusiva de pruebas.');
+  if(!ORAL_F111_QA_OPERATIONS.has(fn))throw new Error('QA: operación no autorizada para el examen B2.');
+  if(body.cod_grupo&&body.cod_grupo!==ORAL_F111_QA_GROUP)throw new Error('QA: grupo ajeno al fixture.');
+  if(body.nivel&&body.nivel!=='B2')throw new Error('QA: nivel ajeno al fixture.');
+  if(body.leccion&&Number(body.leccion)!==9)throw new Error('QA: solo lección B2 L9.');
+  if(body.cod_estudiante&&body.cod_estudiante!==ORAL_F111_QA_STUDENT)throw new Error('QA: estudiante ajeno al fixture.');
+  if(body.reposicion_id)throw new Error('QA: reposiciones no autorizadas.');
+  const individual=['oralGetEvaluacion','oralSaveDraft','oralCloseEvaluacion','oralGeneratePdf'].includes(fn);
+  if(individual&&!body.cod_estudiante)throw new Error('QA: falta el estudiante sintético.');
+  return {...body,cod_grupo:ORAL_F111_QA_GROUP,nivel:'B2',leccion:9,reposicion_id:''};
+}
+async function oralF111QaLogin(clave){
+  if(!ORAL_F111_QA_MODE)throw new Error('Inicio QA prohibido fuera del modo QA.');
+  const endpoint=ORAL_F111_QA_ENDPOINT;
+  if(APPS_SCRIPT_URL!==endpoint||endpoint===ORAL_F111_PROD_ENDPOINT)throw new Error('QA: destino inválido; acceso bloqueado.');
+  // Contraseña utilizada únicamente en esta solicitud; nunca se guarda.
+  const r=await fetch(endpoint+'?fn=iniciarSesion',{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:'iniciarSesion',usuario:'qa_docente',clave})});
+  const text=await r.text();let data=null;
+  try{data=JSON.parse(text);}catch(_){throw new Error('QA: el servidor no respondió JSON. No se contactó producción.');}
+  const grupos=[data.grupo,...(Array.isArray(data.grupos)?data.grupos.map(g=>typeof g==='string'?g:g?.grupo||g?.cod_grupo):[])];
+  if(!r.ok||data.ok!==true||data.rol!=='teacher'||!data.token||!grupos.includes(ORAL_F111_QA_GROUP))
+    throw new Error('QA: no se acreditó la identidad docente asignada al fixture. No se guardó sesión.');
+  const qa={ambiente:'QA_F111_B2',usuario:'qa_docente',rol:'teacher',token:data.token,grupo:ORAL_F111_QA_GROUP,nombre:data.nombre||'Docente QA'};
+  sessionStorage.setItem(ORAL_F111_QA_KEY,JSON.stringify(qa));
+  return qa;
+}
+function oralF111QaBanner(){
+  if(!ORAL_F111_QA_MODE)return;
+  const bar=document.querySelector('.topbar');
+  if(!bar)return;
+  bar.style.background='#59331B';
+  const marker=document.createElement('span');
+  marker.id='oral-f111-qa-banner';
+  marker.textContent='QA F111 B2 · NO PRODUCCIÓN · ESTUDIANTE SINTÉTICO';
+  marker.style.cssText='background:#FFF1C8;color:#59331B;border:2px solid #F4CA69;border-radius:8px;padding:8px;font-size:11px;font-weight:900;';
+  bar.appendChild(marker);
+  const out=document.createElement('button');
+  out.type='button';out.textContent='Cerrar QA';out.className='btn ghost';out.onclick=()=>{sessionStorage.removeItem(ORAL_F111_QA_KEY);location.reload();};
+  bar.appendChild(out);
+}
+function oralF111QaLoginPantalla(){
+  const app=document.querySelector('.app');if(app)app.style.visibility='hidden';
+  const overlay=document.createElement('div');overlay.id='oral-f111-qa-login';
+  overlay.style.cssText='position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:20px;background:#FFF7E5;color:#59331B;';
+  overlay.innerHTML='<form id="oral-f111-qa-form" style="width:min(460px,100%);padding:22px;border:2px solid #F4CA69;border-radius:14px;background:white"><h2>QA F111 B2 — NO PRODUCCIÓN</h2><p>Exclusivamente qa_docente y QA-F111-B2-01. Esta sesión NO usa el acceso al Campus real.</p><label style="display:block">Contraseña de la cuenta docente QA<input id="oral-f111-qa-password" type="password" required autocomplete="off" style="display:block;margin-top:8px;width:100%;padding:11px" /></label><p id="oral-f111-qa-login-error" role="alert"></p><button class="btn primary" id="oral-f111-qa-submit" type="submit">Ingresar a QA</button></form>';
+  document.body.appendChild(overlay);
+  const form=overlay.querySelector('form'),pass=overlay.querySelector('#oral-f111-qa-password'),err=overlay.querySelector('#oral-f111-qa-login-error'),btn=overlay.querySelector('#oral-f111-qa-submit');
+  form.onsubmit=async e=>{
+    e.preventDefault();btn.disabled=true;err.textContent='';
+    const clave=pass.value;pass.value='';
+    try{
+      await oralF111QaLogin(clave);
+      overlay.remove();if(app)app.style.visibility='visible';
+      await loadPanel();
+    }catch(ex){err.textContent=ex?.message||'Acceso QA no disponible.';}
+    finally{btn.disabled=false;}
+  };
+}
+
 const CRITERIA=[['COMPREHENSION','Comprehension','Capacidad para comprender preguntas y responder apropiadamente'],['FLUENCY','Fluency','Capacidad para hablar con naturalidad, continuidad y pocas pausas'],['GRAMMAR','Grammar','Capacidad para usar gramática y estructuras correctas'],['VOCABULARY','Vocabulary','Capacidad para comprender y utilizar palabras y expresiones del nivel'],['PRONUNCIATION','Pronunciation','Capacidad para usar pronunciación, acento, ritmo y entonación apropiados']];
 const LECCIONES={9:{label:'Lección 9 — 1.er Examen Oral',units:[1,2,3,4]},17:{label:'Lección 17 — 2.º Examen Oral',units:[5,6,7,8]},25:{label:'Lección 25 — 3.er Examen Oral',units:[9,10,11,12]},31:{label:'Lección 31 — 4.º Examen Oral',units:[13,14,15,16]}};
 const QB={
@@ -121,11 +196,11 @@ const QB={
 // B1 mantiene temporalmente el catálogo histórico local para compatibilidad.
 
 let state={panel:null,bank:null,students:[],selected:null,evaluations:{},scores:{},questions:{},otherByUnit:{},otherGlobal:'',busy:false,dirty:false,uncertainCloseCodes:{},lastPdfBlobUrl:'',lastPdfDriveUrl:''};
-function getSesion(){try{return JSON.parse(sessionStorage.getItem('an_usuario')||'null')||{};}catch(_){return {};}}
+function getSesion(){if(ORAL_F111_ENV_BLOCKED)return {};try{return JSON.parse(sessionStorage.getItem(ORAL_F111_QA_MODE?ORAL_F111_QA_KEY:'an_usuario')||'null')||{};}catch(_){return {};}}
 function token(){const s=getSesion();return s.token||'';}
 function teacherGroupLabelF88(code){const raw=String(code||'').trim().toUpperCase();const cycle=(raw.split('-').filter(Boolean).pop()||'').trim();const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/)||raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]]||'Grupo';const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]]||'';return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;}
 function visibleGroupF88(code){const rol=String(getSesion().rol||'').toLowerCase();return rol==='superadmin'?String(code||''):teacherGroupLabelF88(code);}
-async function api(fn,body={}){const r=await fetch(`${APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token:token(),...body})});const text=await r.text();let j=null;try{j=text?JSON.parse(text):null;}catch(_){throw new Error('El servidor devolvió una respuesta inválida. Recargá e intentá de nuevo.');}if(!r.ok||!j?.ok){const e=new Error(j?.mensaje||j?.error||`No se pudo completar la operación (${r.status}).`);e.code=j?.error||'';e.evaluacion=j?.evaluacion||null;throw e;}return j;}
+async function api(fn,body={}){const ses=getSesion();const safe=oralF111QaGuard(fn,body,ses);const r=await fetch(`${APPS_SCRIPT_URL}?fn=${encodeURIComponent(fn)}`,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...safe,fn,token:ses.token||''})});const text=await r.text();let j=null;try{j=text?JSON.parse(text):null;}catch(_){throw new Error('El servidor devolvió una respuesta inválida. Recargá e intentá de nuevo.');}if(!r.ok||!j?.ok){const e=new Error(j?.mensaje||j?.error||`No se pudo completar la operación (${r.status}).`);e.code=j?.error||'';e.evaluacion=j?.evaluacion||null;throw e;}return j;}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200)}
 function money(v){return Number(v||0).toLocaleString('es-CR',{maximumFractionDigits:1,minimumFractionDigits:1})}
 function examWeightF90(){return 15; /* ORAL_1-4: 15% oficial, no configurable desde el panel */}
@@ -425,6 +500,13 @@ async function loadPanel(){
       return;
     }
     const j=await api('oralGetPanelDocente',{cod_grupo:qs.get('grupo')||'',nivel:qs.get('nivel')||'',leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',reposicion_id:qs.get('reposicion_id')||''});
+    // Verificar identidad del servidor antes de pintar cualquier expediente QA.
+    if(ORAL_F111_QA_MODE){
+      const members=Array.isArray(j.estudiantes)?j.estudiantes:[];
+      if(!j.panel||j.panel.cod_grupo!==ORAL_F111_QA_GROUP||String(j.panel.nivel)!=='B2'||Number(j.panel.leccion)!==9||
+         members.length!==1||String(members[0].codigo)!==ORAL_F111_QA_STUDENT)
+        throw new Error('QA: respuesta fuera del grupo/alumno sintético; no se mostrará el expediente.');
+    }
     state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;state.uncertainCloseCodes={};
     document.getElementById('ctx-grupo').textContent=visibleGroupF88(state.panel.cod_grupo)||'—';
     document.getElementById('ctx-nivel').textContent=state.panel.nivel||'—';
@@ -443,6 +525,24 @@ async function loadPanel(){
     toast(msg);
   }
 }
-let lastHeightF89=0,heightTimerF89=null;function reportHeightF89(){clearTimeout(heightTimerF89);heightTimerF89=setTimeout(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastHeightF89)<4)return;lastHeightF89=h;try{window.parent.postMessage({type:'an:oral-height',height:h},window.location.origin);}catch(_){ }},60);}if(typeof ResizeObserver!=='undefined'){new ResizeObserver(reportHeightF89).observe(document.body);}window.addEventListener('load',reportHeightF89);window.addEventListener('resize',reportHeightF89);document.getElementById('btn-reload').onclick=resetEvaluationF90;document.getElementById('btn-draft').onclick=saveDraft;['comentarios','sugerencias','otras-global'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(state.selected)state.dirty=true;}));document.getElementById('btn-pdf').onclick=generatePdfAndCloseF90;document.getElementById('btn-pdf-close').onclick=closePdfPreviewF90;document.getElementById('btn-pdf-final').onclick=printPdfF90;buildRubric();loadPanel().finally(reportHeightF89);
+let lastHeightF89=0,heightTimerF89=null;function reportHeightF89(){clearTimeout(heightTimerF89);heightTimerF89=setTimeout(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastHeightF89)<4)return;lastHeightF89=h;try{window.parent.postMessage({type:'an:oral-height',height:h},window.location.origin);}catch(_){ }},60);}if(typeof ResizeObserver!=='undefined'){new ResizeObserver(reportHeightF89).observe(document.body);}window.addEventListener('load',reportHeightF89);window.addEventListener('resize',reportHeightF89);document.getElementById('btn-reload').onclick=resetEvaluationF90;document.getElementById('btn-draft').onclick=saveDraft;['comentarios','sugerencias','otras-global'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(state.selected)state.dirty=true;}));document.getElementById('btn-pdf').onclick=generatePdfAndCloseF90;document.getElementById('btn-pdf-close').onclick=closePdfPreviewF90;document.getElementById('btn-pdf-final').onclick=printPdfF90;buildRubric();
+oralF111QaBanner();
+if(ORAL_F111_ENV_BLOCKED){
+  // Nunca dirigir un entorno no reconocido al servidor PROD.
+  const e=document.getElementById('panel-error');
+  e.style.display='block';e.textContent='Entorno de examen no autorizado. No se realizó ninguna conexión. Revisá la dirección.';
+  setStatus('Bloqueado','bad');
+}else if(ORAL_F111_QA_MODE){
+  // Un preview (o token real de an_usuario) nunca habilita escrituras QA.
+  if(new URLSearchParams(location.search).has('preview')){
+    sessionStorage.removeItem(ORAL_F111_QA_KEY);
+    const e=document.getElementById('panel-error');e.style.display='block';e.textContent='QA: vista previa combinada con sesión QA no permitida.';
+  }else if(oralF111QaSesionValida(getSesion())){
+    loadPanel().finally(reportHeightF89);
+  }else{
+    sessionStorage.removeItem(ORAL_F111_QA_KEY);
+    oralF111QaLoginPantalla();
+  }
+}else loadPanel().finally(reportHeightF89);
 </script></body>
 </html>

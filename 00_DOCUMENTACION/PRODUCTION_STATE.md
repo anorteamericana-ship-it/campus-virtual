@@ -1,5 +1,19 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · Frontera LIVE / Pages / QA — 20-oct-2026, 21:32 CR y revisión posterior
+
+**No confundir tres capas:** (1) Campus real de usuarios: `https://anorteamerican.com/campus-virtual/campus.html`; **no se logró lectura del HTML público ni login estudiante autenticado desde el acceso disponible en esta sesión**. (2) GitHub Pages: CI y `pages build and deployment=SUCCESS` validan publicación del repositorio, **NO** el funcionamiento del dominio del Campus ni credenciales/consulta de datos en sesión. (3) Apps Script QA: deployment `AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev`, libros sintéticos QA independientes. Su guard temporal B2 anterior expiró el 20-oct-2026 18:13 CR; ningún E2E oral fue acreditado.
+
+**Causa P0 oral vigente:** `modulos/examen_oral.html` de `main` enviaba siempre al Apps Script **PROD**; usarlo para simular E2E QA habría escrito o intentado escribir en producción. Esto se detectó leyendo el archivo exacto del repo, no una copia QA.
+
+**Corrección implementada en PR frontend [#542](https://github.com/anorteamericana-ship-it/campus-virtual/pull/542), solo rama al corte:** modifica **el mismo** `modulos/examen_oral.html` sin duplicarlo. El comportamiento normal (sin `entorno=qa-f111-b2`) conserva PROD y `sessionStorage.an_usuario` sin cambios; modo QA explícito usa exclusivamente la URL `/dev` fija, sesión `an_f111_qa_oral_session_only` independiente, login `qa_docente`, banner persistente `QA · NO PRODUCCIÓN` y rechazo de otros grupos, niveles, estudiantes, exámenes, reposiciones o endpoints. El fixture único autorizado es `B1-LM69-C3-9926` / `B2 L9` / `QA-F111-B2-01`. NO copiar ni insertar manualmente tokens PROD en QA. E1 `scripts/qa_f111_oral_env_isolation_e1.mjs` se integra en el workflow oral existente y analiza el único HTML. CI oral: `F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks=37`, `F111_ORAL_ENV_ISOLATION_E1_PASS` con 8 bloqueos de operaciones y 4 variantes de parámetros de entorno inválidos rechazados antes de cualquier red; el `fn` y `token` del cuerpo QA prevalecen sobre cualquier campo malicioso o accidental del payload. Todo probado con fetch simulado y **0 escrituras reales**. **Estas son pruebas de VM/mocks, NO login QA auténtico ni PDF/nota real.**
+
+**Puertas estrictas para release de examen:** CI totalidad, merge frontend, Pages SUCCESS separados; después verificar acceso QA /dev y login QA genuino, recertificar guard temporal si se autoriza, validar destino de red solo QA en cada POST, cierre docente L8, L9, rúbrica, nota oficial y PDF/backup en hojas/carpetas QA. QA E2E = **0/1**. Ningún cambio de URL permite por sí mismo invocar PROD bajo el parámetro QA. No activar guard vencido ni fabricar resultado.
+
+**P0 traslado 0826 permanece separado:** en master/operativo PROD 17196 y 17203 están ambos B1 CA, KJ-0826 y L1 PRESENTE; docente B1 Diego. Frontend #537 y #540 tuvieron Pages SUCCESS, pero comprobación autenticada del dominio real aún NO demostrada. Backend #74 CI 2/2 PASS, todavía DRAFT / no merge / no Apps Script PROD. Numerador de incidencia 0826/CONAPE **4/6 puertas**; no mezclar con E2E oral ni con porcentaje histórico del plan F111.
+
+---
+
 ## F111 · INC-0826/CONAPE — Estado consolidado (20-oct-2026, lectura y CI)
 
 **Datos reales auditados SIN ESCRITURAS:** APOLLO_G3 maestro (`USUARIOS` filas 26/33; `ESTATUS` 559–562 y 593–596; `GRUPOS` 46–49) + CAMPUS_OPERATIVO (`ASISTENCIA` filas 312/318). Estudiantes `17196` y `17203`: ambos `USUARIOS.grupo=B1-KJ18-C3-0826` y cuenta activa **2/2**; ambos B1 `CA`, B2/I1/I2 `PE` **2/2**; ambos L1 `2026-10-08`, `PRESENTE`, riel curso **2/2**. Fila GRUPOS B1 en curso: **Diego Armando Martínez Rojas**; Ana Belén solo figura B2/I1/I2 proyectados. No repetir traslados ni inventar asistencia L2/L3. **Lectura de Sheets ≠ prueba autenticada del navegador.**
