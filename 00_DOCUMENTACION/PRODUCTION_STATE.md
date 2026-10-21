@@ -1,5 +1,28 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · TABLERO EJECUTIVO DE CONTINUIDAD — 21-oct-2026 (lectura GitHub actualizada)
+
+**ÚNICA FUENTE DE ESTADO:** este archivo. Se añadió esta cabecera sin duplicar reportes; las secciones posteriores conservan evidencia histórica y deben interpretarse según su fecha. Una afirmación histórica de PR abierto puede haber sido superada por un MERGE posterior. No usar porcentajes antiguos del proyecto global como avance certificado.
+
+| Área / denominador concreto | Código GitHub | Prueba auténtica / Apps Script | Evidencia / próxima puerta |
+|---|---|---|---|
+| INC-0826/CONAPE, 6 puertas G1–G6 | G1–G4 completadas: **4/6 = 66,7%** | G5 QA auténtico **0/1**; G6 PROD/readback **0/1** | Backend #74/#75/#76 MERGED y CI sintético PASS; sigue sin aprobación QA real. NO reabrir ni rehacer sus tests |
+| Lista de asistencia Superadmin (flujo crítico) | Backend #77/#78 MERGED; frontend #557/#558/#559 MERGED | E2E autenticado **0/1**; Apps Script PROD sin nuevo deploy/readback acreditado | UI LIVE comprobada: **8/8** assets HTTP; guardado de ausencias nuevas aún no demostrado en GAS PROD. NO declarar incidencia resuelta |
+| Examen oral | Motor/frontend preparado; bancos privados #55/#511 **DRAFT** | Circuito L8→L9→nota→PDF QA auténtico **0/1** | Modo QA frontend público separado; guard temporal B2 anterior vencido. No probar con sesión PROD ni inventar cierre |
+| Escritos L18/L32 | Backend #69 y frontend #522 **DRAFT** | Certificación E2E por lección **0/2** | Conciliar contrato y pesos CON INA 5% + 5%; no desplegar ramas apiladas a ciegas |
+| Quizzes Progress Check | Backend #61 y frontend #512 **DRAFT**; catálogo 32/32 candidato | Quizzes certificados en ejecución E2E **0/32** | Sin peso oficial (0%); revisión/comentario docente. El catálogo no equivale a 32 quizzes productivos |
+| I CAN | Backend #73 **DRAFT** | Circuito certificado QA/PROD **0/1** | Respetar ponderación INA 20%, sin inventar notas o accesos |
+
+**Últimas referencias GitHub verificadas:** `campus-virtual/main=f56f1c20e7c110aab443d564ba7d8b0a8d8b91c7`; `campus_backend/main=defb3bdd5bfef21ffd8cde13a32ef6187300f542`. En el corte: **34 PR abiertos (7 frontend + 27 backend)**, incluidos trabajos únicos pendientes. No es un plan de 34 despliegues ni permiso para borrarlos por antigüedad. La documentación #548–#551 y #559 quedó integrada; las ramas fusionadas de limpieza L1–L3 ya fueron tratadas.
+
+**Prioridad 1 — desbloqueo operativo:** conciliar versión NUMÉRICA efectiva del deployment Apps Script PROD frente a código desplegado; preparar delta mínimo y rollback, NO publicar `backend/main` completo por su historial no desplegado. Primero cerrar la incidencia de asistencia Superadmin (un caso autenticado y readback controlado) y conservar el guard de seguridad. **Prioridad 2:** G5 CONAPE QA, verificando aislamiento /dev y generando por motor oficial un expediente ficticio único `QA-F111-CONAPE-G5-01` (todavía NO creado), y después G6 bajo release controlado. **Prioridad 3:** oral B2 L8→L9→PDF en QA sin rutas a PROD. **Prioridad 4:** escritos INA/SIN INA. **Prioridad 5:** 32 quizzes e I CAN por flujo real, no por porcentaje de catálogo.
+
+**Bloqueos reales:** no se obtuvo contexto Browser conectado para lectura autenticada del Apps Script; ni el commit de GitHub ni HTTP 200 de archivos públicos certifican sesiones, POST ni Sheets. Se requiere confirmación del deployment efectivo y sesión autorizada para validar cada cambio mutante. No modificar alumnos, notas, pagos, certificados ni CONAPE con atajos. La observación Railway SUCCESS del 21-oct fue reportada en conversación previa; la corrida de importación y conteos no están certificados por este asiento.
+
+**Métrica ejecutiva:** NO declarar un «% global F111» verificable hasta definir denominador de entregables aceptados, E2E y producción. Reportar métricas explícitas de la tabla; distinguir **código fusionado**, **E1 sintética**, **QA autenticado**, **producción** y **lectura posterior**. Cada chat empieza por leer este encabezado y verificar nuevos HEAD/PR; no reauditar #74–#78, #548–#559 o limpiezas L1–L3 salvo regresión nueva demostrada.
+
+---
+
 ## F111 · HOTFIX LISTA DE ASISTENCIA REAL EN SUPERADMIN — 21-oct-2026 (estado vigente)
 
 **Corrección a la solicitud del usuario, basada en captura real de LIVE:** `Gestión académica → Asistencia de grupos` anteriormente era **idéntico** a `Auditoría académica`, pues `src/app.jsx` apuntaba ambos menús a `AuditoriaAcademicaView`. No permitía ver una lista al estilo docente. Screenshot LIVE del grupo `B1-KJ18-C3-0826`, nivel B1, docente Diego Armando Martínez Rojas: 15 activos, 14 asistencias registradas, **0/32 lecciones CERRADAS** en auditoría. Es posible que haya conflicto operativo entre calendario y asistencia; no afirmar datos perdidos ni cerrar lecciones automáticamente.
