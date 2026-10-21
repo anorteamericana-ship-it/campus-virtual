@@ -627,6 +627,26 @@ function StudentDashboard({ toast, onNavigate }) {
   const conapeEstado  = useEstadoConape(esConape ? cedula : null);
   const evaluaciones  = useEvaluaciones(codigo);
   const icanData      = useICAN(codigo, esINA);
+  // F111 0826: la primera fila GRUPOS no es necesariamente el docente B1.
+  // Resolver el docente del nivel vigente a través del endpoint institucional,
+  // sin cambiar ninguna asignación académica.
+  const [docenteVigenteF111, setDocenteVigenteF111] = React.useState({ grupo:'', nombre:'' });
+  React.useEffect(() => {
+    const actual = String(codGrupo || '').trim();
+    let active = true;
+    setDocenteVigenteF111({ grupo:'', nombre:'' });
+    if (actual && codigo) {
+      postCampusData('getGrupoInfo', { cod_grupo:actual })
+        .then(r => {
+          if (!active) return;
+          setDocenteVigenteF111({
+            grupo:actual,
+            nombre:r?.ok ? String(r.teacherName || r.docente || '').trim() : ''
+          });
+        }).catch(() => { if(active) setDocenteVigenteF111({ grupo:'', nombre:'' }); });
+    }
+    return () => { active=false; };
+  }, [codGrupo, codigo]);
 
   // Sin sesión activa
   if (!usr) {
@@ -660,7 +680,9 @@ function StudentDashboard({ toast, onNavigate }) {
 
   // ── Datos derivados de presentación ─────────────────────────────────
   const nivelNombre  = NIVEL_NOMBRE[nivelSeleccionado] || '';
-  const docente      = grupo.DOCENTE || '';
+  const docente      = (nivelSeleccionado === nivelReal && docenteVigenteF111.grupo === String(codGrupo || '').trim())
+    ? (docenteVigenteF111.nombre || 'Por confirmar')
+    : 'Por confirmar';
   const docenteCorto = docente ? docente.split(' ').slice(0,2).join(' ') : '';
   const horarioCurso = horarioGrupoCompletoSD(grupo, codGrupo);
 
