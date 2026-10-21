@@ -44,9 +44,13 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   // El hosting puede inyectar un beacon público de Cloudflare en HTML.
   // Solo clasificar como equivalente si quitar EXACTAMENTE UN beacon conocido
   // devuelve íntegramente el contenido del repositorio, sin otras diferencias.
-  const beaconPattern=/<script\b[^>]*\bsrc="https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js\/[^"]+"[^>]*><\/script>/g;
-  const beaconMatches=spec.kind==='html'?live.match(beaconPattern)||[]:[];
-  const beaconOnly=beaconMatches.length===1&&norm(live.replace(beaconPattern,''))===repoNormalized;
+  const beaconStart='<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/';
+  const beaconAt=spec.kind==='html'?live.indexOf(beaconStart):-1;
+  const beaconEnd=beaconAt>=0?live.indexOf('</script>',beaconAt):-1;
+  const beaconPresent=beaconAt>=0&&beaconEnd>beaconAt&&live.indexOf(beaconStart,beaconAt+1)<0;
+  const beaconSource=beaconPresent?live.slice(beaconAt,beaconEnd+9):'';
+  const withoutBeacon=beaconPresent?live.slice(0,beaconAt)+live.slice(beaconEnd+9):live;
+  const beaconOnly=beaconPresent&&norm(withoutBeacon)===repoNormalized;
   if(liveSha!==spec.sha){
    if(repoNormalized===liveNormalized)verdict='LINE_ENDINGS_OR_BOM_ONLY';
    else if(beaconOnly)verdict='HOST_CLOUDFLARE_BEACON_ONLY';
@@ -63,7 +67,7 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   }
   return{path:spec.path,status,verdict,marker,
    remoteSha:liveSha,repoSha:spec.sha,repoBytes:Buffer.byteLength(spec.content,'utf8'),
-   remoteBytes:buffer.byteLength,...(beaconOnly?{hostingInjection:'Cloudflare Insights beacon only'}:{}),...(diff?{diff}:{})};
+   remoteBytes:buffer.byteLength,...(beaconOnly?{hostingInjection:'Cloudflare Insights beacon only'}:{}),...(beaconPresent?{beaconBytes:Buffer.byteLength(beaconSource,'utf8'),beaconRemovalExact:beaconOnly,remainingBytes:Buffer.byteLength(withoutBeacon,'utf8')}:{}),...(diff?{diff}:{})};
  }catch(e){
   return{path:spec.path,status:null,verdict:'UNREACHABLE',detail:e?.name==='AbortError'?'timeout':'network_or_certificate'};
  }finally{clearTimeout(timer);}
