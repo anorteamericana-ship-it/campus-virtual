@@ -49,8 +49,16 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   const beaconEnd=beaconAt>=0?live.indexOf('</script>',beaconAt):-1;
   const beaconPresent=beaconAt>=0&&beaconEnd>beaconAt&&live.indexOf(beaconStart,beaconAt+1)<0;
   const beaconSource=beaconPresent?live.slice(beaconAt,beaconEnd+9):'';
-  const withoutBeacon=beaconPresent?live.slice(0,beaconAt)+live.slice(beaconEnd+9):live;
-  const beaconOnly=beaconPresent&&norm(withoutBeacon)===repoNormalized;
+  // Cloudflare añade además exactamente un salto LF después del beacon.
+  // Solo sustraerlo SI el documento resultante coincide byte por byte.
+  const removeAt=beaconEnd+9;
+  const afterScript=beaconPresent?live.slice(0,beaconAt)+live.slice(removeAt):live;
+  const afterScriptLf=beaconPresent&&live[removeAt]==='\n'
+    ?live.slice(0,beaconAt)+live.slice(removeAt+1):afterScript;
+  const beaconRemovedExact=beaconPresent&&(norm(afterScript)===repoNormalized);
+  const beaconWithLfExact=beaconPresent&&(norm(afterScriptLf)===repoNormalized);
+  const beaconOnly=beaconRemovedExact||beaconWithLfExact;
+  const withoutBeacon=beaconWithLfExact?afterScriptLf:afterScript;
   if(liveSha!==spec.sha){
    if(repoNormalized===liveNormalized)verdict='LINE_ENDINGS_OR_BOM_ONLY';
    else if(beaconOnly)verdict='HOST_CLOUDFLARE_BEACON_ONLY';
@@ -67,7 +75,7 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   }
   return{path:spec.path,status,verdict,marker,
    remoteSha:liveSha,repoSha:spec.sha,repoBytes:Buffer.byteLength(spec.content,'utf8'),
-   remoteBytes:buffer.byteLength,...(beaconOnly?{hostingInjection:'Cloudflare Insights beacon only'}:{}),...(beaconPresent?{beaconBytes:Buffer.byteLength(beaconSource,'utf8'),beaconRemovalExact:beaconOnly,remainingBytes:Buffer.byteLength(withoutBeacon,'utf8')}:{}),...(diff?{diff}:{})};
+   remoteBytes:buffer.byteLength,...(beaconOnly?{hostingInjection:'Cloudflare Insights beacon only'}:{}),...(beaconPresent?{beaconBytes:Buffer.byteLength(beaconSource,'utf8'),extraHostingLf:!beaconRemovedExact&&beaconWithLfExact,beaconRemovalExact:beaconOnly,remainingBytes:Buffer.byteLength(withoutBeacon,'utf8')}:{}),...(diff?{diff}:{})};
  }catch(e){
   return{path:spec.path,status:null,verdict:'UNREACHABLE',detail:e?.name==='AbortError'?'timeout':'network_or_certificate'};
  }finally{clearTimeout(timer);}
@@ -112,6 +120,9 @@ async function selftest(){
  const beacon='<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/test-version" crossorigin="anonymous"></script>';
  const marked=await inspectOne(fixture,async()=>fakeResponse({body:fixture.content.replace('</body>',beacon+'</body>')}));
  assert.equal(marked.verdict,'HOST_CLOUDFLARE_BEACON_ONLY','Solo se descuenta una inserción pública conocida');
+ const markedLf=await inspectOne(fixture,async()=>fakeResponse({body:fixture.content.replace('</body>',beacon+'\n</body>')}));
+ assert.equal(markedLf.verdict,'HOST_CLOUDFLARE_BEACON_ONLY','Cloudflare más un único LF también conserva bytes originales');
+ assert.equal(markedLf.extraHostingLf,true);
  const modified=await inspectOne(fixture,async()=>fakeResponse({body:fixture.content.replace('</body>','CAMBIO_REAL'+beacon+'</body>')}));
  assert.equal(modified.verdict,'CONTENT_DIFFERS','No ocultar una modificación real adyacente a Cloudflare');
  const mismatch=await inspectOne(fixture,async()=>fakeResponse({body:'<!DOCTYPE html><title>OTRA VERSION</title>'}));
