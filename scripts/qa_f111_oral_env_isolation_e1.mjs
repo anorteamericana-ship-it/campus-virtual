@@ -29,7 +29,7 @@ function harness(search,qaReturn={}){
   vm.createContext(ctx);
   vm.runInContext(block+'\n'+sessionFn+'\n'+`
     globalThis.F111={qa:ORAL_F111_QA_MODE,url:APPS_SCRIPT_URL,qaURL:ORAL_F111_QA_ENDPOINT,prodURL:ORAL_F111_PROD_ENDPOINT,
-    key:ORAL_F111_QA_KEY,group:ORAL_F111_QA_GROUP,guard:oralF111QaGuard,login:oralF111QaLogin,session:getSesion,valid:oralF111QaSesionValida};
+    key:ORAL_F111_QA_KEY,group:ORAL_F111_QA_GROUP,guard:oralF111QaGuard,login:oralF111QaLogin,session:getSesion,valid:oralF111QaSesionValida,blocked:ORAL_F111_ENV_BLOCKED};
   `,ctx);
   return {ctx,store:storage,network,api:ctx.F111};
 }
@@ -42,6 +42,18 @@ assert.equal(live.api.guard('oralSaveDraft',{cod_grupo:'B1-LM18-C3-0726'},{rol:'
   'El modo PROD mantiene payload intacto');
 assert.equal(live.network.length,0,'Ninguna solicitud QA en modo PROD');
 await assert.rejects(live.api.login('nada'),/prohibido fuera/);
+
+const prodExplicit=harness('?entorno=prod');
+assert.equal(prodExplicit.api.url,PROD);
+for(const badQuery of ['?entorno=qa','?qa=1','?entorno=QA-F111-B2','?entorno=qa-f111-b2&qa=1']){
+  const bad=harness(badQuery);
+  bad.store.set('an_usuario',JSON.stringify({token:'PROD_TOKEN_SIMULADO',rol:'teacher'}));
+  assert.equal(bad.api.blocked,true,'Parámetro desconocido debe bloquear: '+badQuery);
+  assert.equal(bad.api.session().token,undefined,'No leer sesión real con entorno desconocido');
+  assert.throws(()=>bad.api.guard('oralSaveDraft',{cod_estudiante:'17196'},bad.api.session()),/Entorno oral no autorizado/);
+  assert.equal(bad.network.length,0,'Cero intentos de red en entorno desconocido');
+}
+assert(html.includes("if(ORAL_F111_ENV_BLOCKED){"),'UI bloquea entorno desconocido antes de cargar panel');
 
 const qa=harness('?entorno=qa-f111-b2');
 qa.store.set('an_usuario',JSON.stringify({rol:'superadmin',token:'PROD_TOKEN_SIMULADO'}));
@@ -75,4 +87,4 @@ assert(html.includes("if(ORAL_F111_QA_MODE){\n      const members"));
 assert(html.includes("members.length!==1||String(members[0].codigo)!==ORAL_F111_QA_STUDENT"));
 assert(html.includes("if(new URLSearchParams(location.search).has('preview'))"));
 assert(html.includes("loadPanel().finally(reportHeightF89)"));
-console.log('F111_ORAL_ENV_ISOLATION_E1_PASS: default PROD intacto, QA /dev fijo, login QA separado, 8 rechazos, cero mutaciones, preview bloqueado');
+console.log('F111_ORAL_ENV_ISOLATION_E1_PASS: PROD default intacto, QA /dev fijo, login separado, 8 bloqueos de operaciones y 4 parámetros inválidos bloqueados, cero mutaciones');
