@@ -5318,6 +5318,11 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }
   async function aprobarConape(r){
     const estado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
     if(estado==='APLICADO_CONAPE'){alert('Este expediente ya está actualizado en CONAPE.');return;}
+    // F111: operaciones parciales o en ejecución nunca se publican dos veces.
+    if(estado==='REQUIERE_CONCILIACION'||estado==='APROBANDO_CONAPE'){
+      alert('Esta gestión CONAPE requiere revisión administrativa antes de intentar otra publicación. No repetás la operación.');
+      return;
+    }
     const referencia=prompt('Referencia o detalle de la respuesta de CONAPE (opcional):','Aprobación recibida por la Academia');
     if(referencia===null)return;
     const confirmacion=prompt(`Para publicar únicamente el expediente ${r.CODIGO}, escribí exactamente su código:`,'');
@@ -5370,7 +5375,9 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }
       const simple=String(r.TIPO_OPERACION||'').toUpperCase()==='TRASLADO_SIMPLE';
       const docKey=`${r.CAMBIO_ID}-${simple?'T':'C'}`;
       const conapeEstado=String(r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'').toUpperCase();
-      const conapePendienteActivo=['PENDIENTE_APROBACION','DOCUMENTOS_EN_PREPARACION','ENVIADO_CONAPE','APROBANDO_CONAPE'].includes(conapeEstado)&&!r.REVERSADO_EN;
+      const conapePendienteActivo=['PENDIENTE_APROBACION','DOCUMENTOS_EN_PREPARACION','ENVIADO_CONAPE'].includes(conapeEstado)&&!r.REVERSADO_EN;
+      const conapeEnProceso=conapeEstado==='APROBANDO_CONAPE';
+      const conapeRequiereConciliacion=conapeEstado==='REQUIERE_CONCILIACION';
       const puedeCerrarNoContinuo=['PENDIENTE_APROBACION','DOCUMENTOS_EN_PREPARACION','ENVIADO_CONAPE'].includes(conapeEstado)&&!r.REVERSADO_EN;
       return <div key={r.CAMBIO_ID} style={{border:'1px solid #E0E6ED',borderRadius:11,padding:12,display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'center'}}>
         <div>
@@ -5381,6 +5388,8 @@ function AkHistorialCambiosModal({ codigo, onClose, onReverted, onConapeClosed }
           {r.PDF_TRASLADO_ESTADO&&<div style={{fontSize:10,color:'#246B2A',fontWeight:900,marginTop:3}}>Constancia: {r.PDF_TRASLADO_ESTADO}</div>}
           {r.CARTA_CONAPE_ESTADO&&<div style={{fontSize:10,color:'#244A7C',fontWeight:900,marginTop:3}}>Carta CONAPE: {r.CARTA_CONAPE_ESTADO}</div>}
           {!simple&&<div style={{fontSize:10,color:String(r.CONAPE_EXPEDIENTE_ESTADO||'').toUpperCase()==='APLICADO_CONAPE'?'#246B2A':'#B42318',fontWeight:900,marginTop:3}}>Expediente CONAPE: {r.CONAPE_EXPEDIENTE_ESTADO||r.CONAPE_SYNC||'PENDIENTE'}</div>}
+          {conapeEnProceso&&<div style={{fontSize:10,color:'#935E12',fontWeight:800}}>Aprobación en curso: no iniciar otra publicación.</div>}
+          {conapeRequiereConciliacion&&<div role="alert" style={{fontSize:10,color:'#B42318',fontWeight:900}}>Requiere conciliación académica y CONAPE. Publicación bloqueada hasta revisión administrativa.</div>}
           {r.CONAPE_REFERENCIA&&<div style={{fontSize:9.5,color:'#667085',marginTop:2}}>Referencia: {r.CONAPE_REFERENCIA}</div>}
           {r.REVERSADO_EN&&<div style={{fontSize:10.5,color:'#B42318',fontWeight:900,marginTop:3}}>Reversado: {String(r.REVERSADO_EN)}</div>}
         </div>
