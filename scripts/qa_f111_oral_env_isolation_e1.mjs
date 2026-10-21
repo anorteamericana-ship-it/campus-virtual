@@ -11,6 +11,8 @@ assert(start>0&&end>start,'Se conserva el HTML único con router F111 al inicio'
 const block=html.slice(start,end);
 const sessionFn=(html.match(/^function getSesion\(\)\{[^\n]+$/m)||[])[0];
 assert(sessionFn,'El módulo conserva una única fuente de sesión');
+const apiFn=(html.split('\n').find(line=>line.startsWith('async function api('))||'');
+assert(apiFn,'La API oral del módulo permanece localizable');
 const fullScript=html.slice(html.indexOf('<script>\n',html.indexOf('./oral_bancos_ic5.js'))+8,html.lastIndexOf('</script>'));
 new vm.Script(fullScript,'modulos/examen_oral.html');
 assert(!html.includes('eval('));
@@ -23,13 +25,16 @@ function harness(search,qaReturn={}){
     sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)},
     fetch:async(url,opts)=>{
       network.push({url,body:JSON.parse(opts.body)});
-      assert.equal(url,QA+'?fn=iniciarSesion','Ingreso QA nunca debe salir de /dev');
-      return{ok:true,text:async()=>JSON.stringify({ok:true,rol:'teacher',token:'QA_TOKEN_SIMULADO',grupo:QA_GROUP,nombre:'Docente sintético',...qaReturn})};
+      assert(url.startsWith(QA+'?fn=')||url.startsWith(PROD+'?fn='),'Los únicos endpoints posibles son los dos oficiales');
+      const isLogin=url===QA+'?fn=iniciarSesion';
+      return{ok:true,text:async()=>JSON.stringify(isLogin?
+        {ok:true,rol:'teacher',token:'QA_TOKEN_SIMULADO',grupo:QA_GROUP,nombre:'Docente sintético',...qaReturn}:
+        {ok:true,evaluacion:{COD_ESTUDIANTE:'QA-F111-B2-01'}})};
     }};
   vm.createContext(ctx);
-  vm.runInContext(block+'\n'+sessionFn+'\n'+`
+  vm.runInContext(block+'\n'+sessionFn+'\n'+apiFn+'\n'+`
     globalThis.F111={qa:ORAL_F111_QA_MODE,url:APPS_SCRIPT_URL,qaURL:ORAL_F111_QA_ENDPOINT,prodURL:ORAL_F111_PROD_ENDPOINT,
-    key:ORAL_F111_QA_KEY,group:ORAL_F111_QA_GROUP,guard:oralF111QaGuard,login:oralF111QaLogin,session:getSesion,valid:oralF111QaSesionValida,blocked:ORAL_F111_ENV_BLOCKED};
+    key:ORAL_F111_QA_KEY,group:ORAL_F111_QA_GROUP,guard:oralF111QaGuard,login:oralF111QaLogin,session:getSesion,valid:oralF111QaSesionValida,blocked:ORAL_F111_ENV_BLOCKED,request:api};
   `,ctx);
   return {ctx,store:storage,network,api:ctx.F111};
 }
@@ -41,6 +46,9 @@ assert.equal(live.api.session().token,'PROD_TOKEN_SIMULADO');
 assert.equal(live.api.guard('oralSaveDraft',{cod_grupo:'B1-LM18-C3-0726'},{rol:'teacher'}).cod_grupo,'B1-LM18-C3-0726',
   'El modo PROD mantiene payload intacto');
 assert.equal(live.network.length,0,'Ninguna solicitud QA en modo PROD');
+await live.api.request('oralGetPanelDocente',{cod_grupo:'B1-LM18-C3-0726'});
+assert.equal(live.network[0].url,PROD+'?fn=oralGetPanelDocente','Solo modo normal usa endpoint de producción en el mock');
+assert.equal(live.network[0].body.token,'PROD_TOKEN_SIMULADO');
 await assert.rejects(live.api.login('nada'),/prohibido fuera/);
 
 const prodExplicit=harness('?entorno=prod');
@@ -78,7 +86,12 @@ for(const [fn,body] of [
   ['oralGetPanelDocente',{reposicion_id:'QA-REPO'}],
   ['oralSaveDraft',{}],['oralGeneratePdf',{cod_estudiante:'17203'}]
 ]) assert.throws(()=>qa.api.guard(fn,body,qa.api.session()),/QA:/,fn);
-assert.equal(qa.network.length,1,'Solo el login mock, cero POSTs académicos');
+await qa.api.request('oralSaveDraft',{cod_estudiante:'QA-F111-B2-01',fn:'aplicarPago',token:'PROD_TOKEN_SIMULADO'});
+assert.equal(qa.network[1].url,QA+'?fn=oralSaveDraft','Operación oral QA nunca enruta a producción');
+assert.equal(qa.network[1].body.fn,'oralSaveDraft','El cuerpo no puede suplantar la función');
+assert.equal(qa.network[1].body.token,'QA_TOKEN_SIMULADO','El cuerpo no puede suplantar token QA con PROD');
+await assert.rejects(qa.api.request('oralSaveDraft',{cod_estudiante:'17196'}),/QA:/);
+assert.equal(qa.network.length,2,'Solo una operación oral mock en QA, cero mutaciones reales');
 const wrong=harness('?entorno=qa-f111-b2',{rol:'admin'});
 await assert.rejects(wrong.api.login('CLAVE_FICTICIA'),/no se acreditó/);
 assert(!wrong.store.has(KEY),'Login con rol incorrecto no genera token local');
