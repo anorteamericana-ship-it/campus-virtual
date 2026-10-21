@@ -1,5 +1,23 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · INC-0826/CONAPE — Estado consolidado (20-oct-2026, lectura y CI)
+
+**Datos reales auditados SIN ESCRITURAS:** APOLLO_G3 maestro (`USUARIOS` filas 26/33; `ESTATUS` 559–562 y 593–596; `GRUPOS` 46–49) + CAMPUS_OPERATIVO (`ASISTENCIA` filas 312/318). Estudiantes `17196` y `17203`: ambos `USUARIOS.grupo=B1-KJ18-C3-0826` y cuenta activa **2/2**; ambos B1 `CA`, B2/I1/I2 `PE` **2/2**; ambos L1 `2026-10-08`, `PRESENTE`, riel curso **2/2**. Fila GRUPOS B1 en curso: **Diego Armando Martínez Rojas**; Ana Belén solo figura B2/I1/I2 proyectados. No repetir traslados ni inventar asistencia L2/L3. **Lectura de Sheets ≠ prueba autenticada del navegador.**
+
+**Frontend producción:** #535 y #536 corrigen docente y filtro por nivel; #537 merge `f7c0f5abdccc17d952297bff1471d2d0045cac38`, Pages SUCCESS, calendario usa expediente vigente y Resumen Académico integra asistencia oficial. #534 se cerró sin merge por estar supersedido. #540 merge `f29c2307613f9c491797e1da9526b45103ff01f8`, **8/8 workflows de PR SUCCESS**, oculta botón de reintento si CONAPE está `APROBANDO_CONAPE` o `REQUIERE_CONCILIACION`; aviso visible a administración. **GitHub Pages de #540 confirmado SUCCESS**, workflow run `39538445519`, commit `f29c2307613f9c491797e1da9526b45103ff01f8`. No equivale a E2E autenticado. Sin QA E2E con estudiante autenticado.
+
+**Backend PROD NO MODIFICADO:** PR [#74](https://github.com/anorteamericana-ship-it/campus_backend/pull/74) DRAFT, HEAD `3ba8901b9b9a93857b937be800d80bc5e71da835`, **2/2 workflows CI SUCCESS**, incluye `F111_0826_USUARIOS_SYNC_E1_PASS` y `F111_0826_CONAPE_APPROVAL_FAILCLOSED_E1_PASS`. El traslado individual pre-valida cuenta y actualiza solo `USUARIOS.grupo` tras aplicar cambio, con readback y rollback específico de celda. La ruta de aprobación CONAPE pre-valida bitácora/simulación/cuenta, exige `freeze.ok`, restaura `APROBANDO_CONAPE` tras aplicar plan y antes de sincronizar cuatro hojas externas para evitar recongelación. Si ocurre fallo parcial, registra `REQUIERE_CONCILIACION`, bloquea reintentos y **NO declara rollback atómico** que no puede garantizarse. Tests solo mocks. PR no fusionado/no publicado por restricciones de Apps Script y pendiente E2E QA.
+
+**CONAPE real en operativo:** en `CONAPE_PLAN_CAMBIOS!O2:O1000`, **2 registros `PENDIENTE_APROBACION`; 0 `APROBANDO_CONAPE`, 0 `REQUIERE_CONCILIACION`** al corte; no se escribió ni aprobó ninguno. La nueva UI no debe promover cambios sin aprobación documental CONAPE.
+
+**Puertas P0 medibles (base: seis controles, NO % del plan maestro F111):** G1 fuente de verdad master/operativo 2/2 verificada = PASS; G2 frontend de expediente/Resumen publicado #537 = PASS; G3 frontend de conciliación #540 publicado Pages = PASS; G4 backend CI E1 2/2 = PASS; G5 QA E2E auténtico sobre recursos aislados, incluyendo aprobación/rollback = 0/1; G6 release backend autorizado + comprobación final con sesiones reales = 0/1. **4/6 puertas PASS (66,7%)**, dos abiertas: G5 QA auténtica y G6 release/readback; el porcentaje es exclusivamente de estas seis puertas de incidencia. El avance F111 histórico aproximado (~70%) NO se recalcula ni se incrementa usando mocks.
+
+**Examen oral P0 separado:** `modulos/examen_oral.html` todavía tiene `APPS_SCRIPT_URL` hardcodeada a deployment PROD. La autorización temporal QA B2 expirada no acredita prueba oral real. No usar el HTML productivo como simulador QA ni disparar POSTs mutantes a PROD. Preparar origen y autenticación exclusivamente QA, guard fail-closed y luego único circuito real L8→L9→nota→PDF en QA; no duplicar alumnos ni carpetas.
+
+**Siguiente paso único:** conciliar la semántica de `REQUIERE_CONCILIACION` con estado del backend y autorización en QA; validar prueba integrada de aprobaciones aisladas, sin escribir CONAPE/estudiantes reales. Después del GO, despliegue backend SOLO por Leonardo con `clasp`, readback y verificación de estudiantes autenticados. No repetir las lecturas y tests ya cerrados. Mantener PR #74 DRAFT hasta QA auténtica.
+
+---
+
 ## F111 · P1 — Inventario de sesiones históricas cerrado por lectura (20-oct-2026)
 
 **Fuente:** libro Google Sheets productivo `CAMPUS_OPERATIVO`, pestaña `DOCENTE_SESIONES_CLASE` rango `A1:Q999`, read-only; cotejo puntual con `CALENDARIO_LECCIONES` rango `A738:V771`. Sin cambiar ninguna celda.
