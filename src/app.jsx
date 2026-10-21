@@ -236,6 +236,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
   React.useEffect(()=>{const id=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(id);},[]);
   React.useEffect(()=>setHidden(false),[viewKey,s?.SESION_ID,s?.sesion_id]);
   if (!s || String(s.ESTADO||s.estado||'').toUpperCase()!=='ABIERTA') return null;
+  if (window.ANTeacherCyclePolicyF111?.isLegacyLesson(s)) return null;
   const tone=appSessionReminderF89(s,l,clock);
   if(!tone||hidden)return null;
   const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
@@ -898,7 +899,10 @@ function App() {
         const r=await postAppF87('getDocenteSesionActivaF87',{},30000);
         if(!live)return;
         if(!r?.ok)throw Error(r?.error||'Consulta de sesión no disponible');
-        setActiveTeacherState(r.sesion?r:null);
+        // F111: el ciclo < 09/2026 queda fuera del panel operativo
+        // sin alterar la sesión académica ni sus filas en Sheets.
+        const legacy = !!(r.sesion && window.ANTeacherCyclePolicyF111?.isLegacyLesson(r.sesion));
+        setActiveTeacherState(r.sesion && !legacy ? r : null);
         setActiveTeacherCheck({ready:true,error:false});
         if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}
       }catch(_){
@@ -997,7 +1001,8 @@ function App() {
       materiales:  <LazyRoute title="Biblioteca del Programa" component="MaterialesView" files={F96_LAZY.syllabus_views} onNavigate={navigateTo} />,
       ican:        <LazyRoute title="Club I CAN" component="ClubICANDocenteView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       mensajes:    <LazyRoute title="Comunicados" component="MensajesView" files={F96_LAZY.student_modules} />,
-      perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
+      // F111: eliminar la ficha de estudiante del rol docente, no envolverla.
+      perfil:      <LazyRoute title="Mi Perfil profesional" component="TeacherProfileCS21A76" files={[]} />,
       academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
       english_lab_live: <LazyRoute title="English LAB Live" component="EnglishLabLiveTeacherView" files={F96_LAZY.english_lab_live} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
