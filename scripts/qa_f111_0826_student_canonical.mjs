@@ -70,6 +70,7 @@ assert(studentRoute.includes("postCronoGrupo('getGrupoInfo',{cod_grupo:grupoCano
 assert(!studentRoute.includes('rawGroups.push(usr.grupo)'));
 assert(calendar.includes('if(vigente && codGrupo!==vigente)setCodGrupo(vigente)'),'Selector debe invalidar React tras traslado');
 assert(menu.includes('F1110826ATT20261020'),'El resumen debe invalidar caché');
-assert.equal(app.split('F1110826CANON20261020').length-1,3,'Tres rutas académicas usan el cronograma actualizado');
-assert(html.includes('src/app.jsx?v=F1110826CANON20261020'),'El Campus real actualiza entrypoint');
+assert.equal(app.split("'src/cronograma_grupo.jsx?v=F111ATTEND20261021'").length-1,3,'Tres rutas académicas usan el cronograma vigente con edición de asistencia');
+assert(html.includes('src/app.jsx?v=F111ATTEND20261021'),'El Campus actualiza entrypoint de asistencia');
+assert(html.includes('src/sidebar.jsx?v=F111ATTEND20261021'),'El Campus invalida caché de menú');
 console.log('F111_0826_FRONTEND_E1_PASS: expediente vigente, docente B1, L1 presente, histórico separado, fallbacks read-only y cache-bust');
