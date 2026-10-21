@@ -557,6 +557,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'estudiantes', label: 'Estudiantes', icon: 'profile' },
         { id: 'matriculas', label: 'Matrículas', icon: 'graduation' },
         { id: 'examenes', label: 'Exámenes', icon: 'check' },
+        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },
         { id: 'auditoria_academica', label: 'Auditoría académica', icon: 'grades' },
       ],
     },
