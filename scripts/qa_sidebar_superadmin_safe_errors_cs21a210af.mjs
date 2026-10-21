@@ -30,12 +30,10 @@ must(src.includes('setSesion(nuevaIdentidad);'),'Se alteró transformación de i
 must(src.includes("window.dispatchEvent(new Event('an:session-changed'));"),'Se alteró recálculo de sesión/router.');
 
 // Prueba fuerte: revertir únicamente AF debe reconstruir byte a byte el blob base.
-const m = src.match(/^[ \t]*\{ id: 'asistencia_grupos'.*\},\s*$/m);
-must(!!m,'El acceso a la asistencia institucional debe tener una sola entrada.');
-must(src.split(m[0]).length===2,'Entrada de asistencia no debe estar duplicada.');
-// La preimagen AF se reconstruye excluyendo SOLO la nueva entrada institucional,
-// no los controles de modo prueba, sesión y autorización.
-const restored=src.replace(m[0],'').replace(NEW,OLD);
+const attendanceMenu="        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },\\n";
+must(src.split(attendanceMenu).length===2,'Entrada de asistencia debe existir una sola vez.');
+// Reconstrucción de preimagen AF, revirtiendo SOLO la entrada aditiva.
+const restored=src.replace(attendanceMenu,'').replace(NEW,OLD);
 must(restored!==src,'No se pudo revertir AF en memoria.');
 must(blobSha(restored)===BASE_BLOB,`La reversión AF no reconstruye la preimagen exacta: ${blobSha(restored)}`);
 console.log('OK: CS21A210AF safe-error boundary + exact preimage reconstruction');
