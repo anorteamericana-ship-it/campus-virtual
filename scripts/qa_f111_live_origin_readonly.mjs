@@ -10,7 +10,10 @@ const SPECS=[
  {path:'campus.html',marker:'F1110826CANON20261020',kind:'html'},
  {path:'modulos/examen_oral.html',marker:'const ORAL_F111_ENV_BLOCKED=',kind:'html'},
  {path:'src/cronograma_grupo.jsx',marker:'F111-0826:',kind:'source'},
- {path:'src/student_academic_summary_dom_cs21a113.js',marker:"postStudentPortal('getAsistenciaEstudiante'",kind:'source'}
+ {path:'src/student_academic_summary_dom_cs21a113.js',marker:"postStudentPortal('getAsistenciaEstudiante'",kind:'source'},
+ {path:'src/sidebar.jsx',marker:"id: 'asistencia_grupos'",kind:'source'},
+ {path:'src/app.jsx',marker:'asistencia_grupos:',kind:'source'},
+ {path:'src/auditoria_academica.jsx',marker:'justificacion: justificacion.trim()',kind:'source'}
 ];
 const digest=t=>createHash('sha256').update(t,'utf8').digest('hex').slice(0,16);
 function expectedFiles(){
@@ -135,8 +138,8 @@ async function selftest(){
  assert.equal(summary([matched,marked]),'LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION');
  assert.equal(summary([matched,mismatch]),'LIVE_MISMATCH_CONFIRMED');
  assert.equal(summary(specs.map(x=>({verdict:'EXACT_MATCH'}))),'LIVE_MATCHES_REPOSITORY');
- assert.equal(SPECS.length,4);
- console.log('F111_LIVE_READONLY_SELFTEST_PASS: 4 GET paths, exact hash, known Cloudflare injection, real diff preserved, mismatch and inconclusive classified');
+ assert.equal(SPECS.length,7);
+ console.log('F111_LIVE_READONLY_SELFTEST_PASS: 7 GET paths, exact hash, known Cloudflare injection, real diff preserved, mismatch and inconclusive classified');
 }
 if(process.argv.includes('--selftest'))await selftest();
 else{
