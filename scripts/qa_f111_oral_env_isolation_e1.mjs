@@ -25,10 +25,10 @@ function harness(search,qaReturn={}){
       return{ok:true,text:async()=>JSON.stringify({ok:true,rol:'teacher',token:'QA_TOKEN_SIMULADO',grupo:QA_GROUP,nombre:'Docente sintético',...qaReturn})};
     }};
   vm.createContext(ctx);
-  vm.runInContext(block+\`
+  vm.runInContext(block+`
     globalThis.F111={qa:ORAL_F111_QA_MODE,url:APPS_SCRIPT_URL,qaURL:ORAL_F111_QA_ENDPOINT,prodURL:ORAL_F111_PROD_ENDPOINT,
     key:ORAL_F111_QA_KEY,group:ORAL_F111_QA_GROUP,guard:oralF111QaGuard,login:oralF111QaLogin,session:getSesion,valid:oralF111QaSesionValida};
-  \`,ctx);
+  `,ctx);
   return {ctx,store:storage,network,api:ctx.F111};
 }
 
