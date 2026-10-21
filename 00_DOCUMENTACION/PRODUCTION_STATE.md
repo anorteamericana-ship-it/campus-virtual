@@ -1,5 +1,21 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · P0 INC-0826 — Corte ejecutivo 20-oct-2026 (documentación de rama; NO equivale a PROD)
+
+**Prioridad vigente:** 17196 y 17203, traslado académico realizado de `B1-LM18-C3-0726` a `B1-KJ18-C3-0826`. No repetirlo. El grupo en `USUARIOS!E26/E33` fue corregido previamente en producción con **2/2 readback PASS** y L1 08-oct PRESENTE figura en asistencia oficial. Nivel B1 corresponde a **Diego Armando Martínez Rojas**, no Ana Belén (niveles posteriores). L2/L3 no deben cerrarse ni completarse automáticamente.
+
+**Frontend YA fusionado en `main` antes de esta pasada:** PR [#535](https://github.com/anorteamericana-ship-it/campus-virtual/pull/535) merge/commit `e8206d59161f0b263999a2fc60a60543cc69cd8a` corrige docente del Resumen y comparación grupo/nivel; PR [#536](https://github.com/anorteamericana-ship-it/campus-virtual/pull/536) merge/commit `8acc1cb67a5525cfa3697827bf90bc887ecbfbd2` corrige docente de Mi Campus. **No reimplementarlos ni dar por acreditada una comprobación autenticada de producción**.
+
+**Causa backend comprobada en código:** `prod/41_CONAPE_Auditoria_Finanzas.js::ejecutarCambioGrupo` actualiza `ESTATUS`, intentos, `DATOS` y plan académico, pero omite `USUARIOS.grupo`. Se creó **PR backend [#74](https://github.com/anorteamericana-ship-it/campus_backend/pull/74) DRAFT, SIN MERGE/DEPLOY**: sincronización estudiante por CODIGO+ROL con prevalidación, readback, idempotencia y reversión. Incorpora `tests/qa_f111_0826_usuarios_sync_e1.mjs` al workflow existente. En el corte GitHub Actions ejecutó dos gates independientes con **SUCCESS** (Backend E1 QA compartida y F111 N02 P0 E1 independiente). Ninguna hoja productiva fue escrita en esta pasada. El flujo CONAPE diferido por aprobación requiere control separado, no tratar PR #74 como cobertura de todo cambio académico.
+
+**Frontend delta nuevo aislado en rama `fix/f111-0826-canonical-student-view-20261020`:** sobre el código ya fusionado #535/#536, `src/cronograma_grupo.jsx` resuelve grupo/nivel desde `getEstudiante` del titular y renueva el selector React tras traslado (no usa sesión vieja como fuente); `src/student_academic_summary_dom_cs21a113.js` combina asistencia oficial mediante lectura directa `getAsistenciaEstudiante` sin escribir, conservando comparación estricta de grupo y nivel y fallback a portal. Se actualizan versiones de caché en `src/app.jsx`, `src/student_menu_academic_cs21a120.jsx` y `campus.html`. Se añade regresión E1 al CI existente; el gate superadmin conserva comparación contra baseline con reversión explícita de cachés. **Rama sin merge, sin despliegue ni E2E autenticado a este corte**; no fusionar el PR frontend viejo [#534](https://github.com/anorteamericana-ship-it/campus-virtual/pull/534) sin reconciliar (basado en snapshot anterior).
+
+**Criterio de cierre aún abierto:** revisión + CI de ambas ramas, integración segura, publicación de frontend (Pages) y backend únicamente mediante responsable `clasp` autorizado, comprobación real autenticada con ambas cuentas de estudiante, selección de docente correcto y L1 PRESENTE en Resumen/Calendario. No inventar L2/L3. **P0 NO CERRADO**. No incrementar el avance general histórico (~70%) por código o CI aislada.
+
+**Siguiente acción única:** terminar CI del PR frontend, conciliar PR #534 y reparar cualquier gate fallido, revisar el PR backend #74 (incluida aprobación CONAPE y rollback), luego promover releases seguros con readback y verificación del Campus real. Puertas posteriores: sesiones históricas → motor oral E2E QA → escritos → QZ32 → I CAN; conservar su estado histórico y no repetir simulaciones.
+
+---
+
 ## F111 · CONSOLIDACIÓN CANÓNICA — 19/20-oct-2026 (registrado en GitHub)
 
 ### F111 — Hotfix real Mi Perfil y pendientes históricos · captura de Keylor (20-oct-2026)

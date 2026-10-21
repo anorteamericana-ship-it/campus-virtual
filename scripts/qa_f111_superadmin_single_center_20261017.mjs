@@ -27,6 +27,7 @@ function revertTeacher(now,before,occ,msg){
 // F111 0826 cambia solo versión de caché del Dashboard; revertirla
 // expresamente en la verificación byte-a-byte sin relajar el motor de exámenes.
 revertTeacher("'src/student_dashboard.jsx?v=F1110826DOCT20261020'","'src/student_dashboard.jsx?v=F1064CERTIFICATE20261010'",1,'caché dashboard 0826');
+revertTeacher("'src/cronograma_grupo.jsx?v=F1110826CANON20261020'","'src/cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009'",3,'caché cronograma canónico 0826');
 revertTeacher(newProfileRoute,oldProfileRoute,1,'ruta de perfil profesional única');
 revertTeacher(newBanner,oldBanner,1,'banner histórico suprimido');
 revertTeacher(newSession,oldSession,1,'sesión histórica excluida');
@@ -61,7 +62,11 @@ assert.equal(mainHtml.split(newProfileScript).length-1,1,'F111: activos docentes
 if (mainBaseline.includes(newProfileScript)) {
   // En el push posterior al merge, origin/main ya contiene la corrección.
   // Se exige igualdad exacta y se evita revertirla contra sí misma.
-  assert.equal(mainHtml,mainBaseline,'MAIN publicado conserva exactamente el HTML F111');
+  // Únicamente se permite modificar el cache-bust del punto de entrada:
+  // se mantiene sin alterar el resto del HTML, los motores y los scripts.
+  const expectedApp='src/app.jsx?v=F1110826CANON20261020';
+  assert.equal(currentAppSrc,expectedApp,'F111: única nueva referencia al app canónico 0826');
+  assert.equal(mainHtml.replace(currentAppSrc,baselineAppSrc),mainBaseline,'MAIN publicado conserva HTML F111 salvo cache-bust de app 0826');
 } else {
   // En el PR original, origin/main todavía no incluía el cambio.
   // Se mantiene la prueba de inversión exacta de las líneas nuevas.
