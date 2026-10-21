@@ -1,5 +1,23 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · LIVE ORIGIN — Primera auditoría reproducible del dominio oficial (20-oct-2026)
+
+**Esta evidencia SÍ procede del servidor LIVE, no de QA ni de GitHub Pages:** desde GitHub Actions, usando solo GET sin cookies, token ni POST, se consultaron cuatro rutas estáticas en `https://anorteamerican.com/campus-virtual/`. Ejecución [#39542652034](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/39542652034) terminada **SUCCESS**, selftest PASS. Resultado explícito `LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION`.
+
+**Readback HTTP y bytes:**
+- `campus.html`: HTTP 200, fuente repositorio 11.763 bytes, respuesta LIVE 12.130 bytes. El hosting agregó únicamente Cloudflare Insights beacon público de 366 bytes + un LF de 1 byte. Después de excluir solo esa inserción conocida, **el resto es byte por byte idéntico** al archivo versionado.
+- `modulos/examen_oral.html`: HTTP 200, fuente repositorio 60.040 bytes, respuesta LIVE 60.407 bytes. Misma inserción Cloudflare (366+1 bytes). **El resto es idéntico** al módulo único en GitHub; este HTML incluye la separación QA/PROD de #542.
+- `src/cronograma_grupo.jsx`: HTTP 200, 211.512 bytes, SHA truncado remoto/repo `811b0fd914f8119d`, **EXACT_MATCH**.
+- `src/student_academic_summary_dom_cs21a113.js`: HTTP 200, 11.856 bytes, SHA truncado remoto/repo `b9efb6ed58ef52f1`, **EXACT_MATCH**.
+
+**Veredicto de alcance:** **4/4 activos web representativos vigentes en el dominio institucional**, sin diferencia funcional atribuible a archivos antiguos dentro de estas cuatro rutas. La diferencia HTML era inyección automática del hosting, no una versión vieja. El workflow [F111 Official LIVE Origin Read-only Audit](https://github.com/anorteamericana-ship-it/campus-virtual/pull/545) queda como comparador reproducible: `LIVE_MATCHES_REPOSITORY`, `LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION`, `LIVE_MISMATCH_CONFIRMED`, `LIVE_NOT_VERIFIED`. Ninguna comprobación modifica registros, claves o Apps Script.
+
+**LO QUE ESTO NO CERTIFICA:** el login real y permisos de estudiante/docente, las respuestas del Apps Script productivo, cierre de L8→L9, notas ni PDF oral. Esas puertas permanecen 0/1 de E2E auténtico. P0 0826/CONAPE sigue 4/6 puertas porque la autorización GET/POST corregida en backend #74 continúa DRAFT y **NO DEPLOY PROD**. Nunca usar este LIVE_ORIGIN_PASS como sinónimo de E2E.
+
+**Siguiente puerta real:** en el backend QA aislado comprobar GET/POST de grupo con sesión obsoleta y estudiante matriculado vigente. Luego certificar el delta productivo de autorización en Apps Script con operador autorizado; solo entonces prueba en usuario real. Mantener separación QA/PROD oral.
+
+---
+
 ## F111 · INC-0826 — Identificada y corregida otra causa de autorización (20-oct-2026)
 
 **Verificación oficial LIVE:** el dominio `https://anorteamerican.com/campus-virtual/campus.html` y las rutas CSS/JS y Apps Script `/dev`/`/exec` **no se pudieron leer directamente** mediante el cliente web accesible a esta conversación. La web pública de la Academia sí muestra el enlace hacia `https://anorteamerican.com/campus-virtual/login`, pero **esto no demuestra** que el módulo real esté cargando la versión GitHub. No declarar LIVE verificado ni hacer suposiciones sobre el hosting. Browser conectado no disponible en esta sesión.
@@ -18,7 +36,7 @@
 
 ## F111 · Frontera LIVE / Pages / QA — 20-oct-2026, 21:32 CR y revisión posterior
 
-**No confundir tres capas:** (1) Campus real de usuarios: `https://anorteamerican.com/campus-virtual/campus.html`; **no se logró lectura del HTML público ni login estudiante autenticado desde el acceso disponible en esta sesión**. (2) GitHub Pages: CI y `pages build and deployment=SUCCESS` validan publicación del repositorio, **NO** el funcionamiento del dominio del Campus ni credenciales/consulta de datos en sesión. (3) Apps Script QA: deployment `AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev`, libros sintéticos QA independientes. Su guard temporal B2 anterior expiró el 20-oct-2026 18:13 CR; ningún E2E oral fue acreditado.
+**No confundir tres capas:** (1) Campus real de usuarios: `https://anorteamerican.com/campus-virtual/campus.html`; **la auditoría HTTP pública desde el runner GitHub Actions ya obtuvo HTTP 200 y correspondencia de 4/4 activos con la fuente GitHub, como se detalla arriba; el login estudiante autenticado sigue sin verificarse**. (2) GitHub Pages: CI y `pages build and deployment=SUCCESS` validan publicación del repositorio, **NO** el funcionamiento del dominio del Campus ni credenciales/consulta de datos en sesión. (3) Apps Script QA: deployment `AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev`, libros sintéticos QA independientes. Su guard temporal B2 anterior expiró el 20-oct-2026 18:13 CR; ningún E2E oral fue acreditado.
 
 **Causa P0 oral vigente:** `modulos/examen_oral.html` de `main` enviaba siempre al Apps Script **PROD**; usarlo para simular E2E QA habría escrito o intentado escribir en producción. Esto se detectó leyendo el archivo exacto del repo, no una copia QA.
 
