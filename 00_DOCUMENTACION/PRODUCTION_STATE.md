@@ -1,5 +1,21 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · INC-0826 — Identificada y corregida otra causa de autorización (20-oct-2026)
+
+**Verificación oficial LIVE:** el dominio `https://anorteamerican.com/campus-virtual/campus.html` y las rutas CSS/JS y Apps Script `/dev`/`/exec` **no se pudieron leer directamente** mediante el cliente web accesible a esta conversación. La web pública de la Academia sí muestra el enlace hacia `https://anorteamerican.com/campus-virtual/login`, pero **esto no demuestra** que el módulo real esté cargando la versión GitHub. No declarar LIVE verificado ni hacer suposiciones sobre el hosting. Browser conectado no disponible en esta sesión.
+
+**Bug de código demostrado (no un fallo probado del servidor LIVE):** aunque PR #537 corrigió el calendario para leer grupo vigente desde `getEstudiante`, tanto `_sec006cValidarPropiedadGet_` como `_an4406_validarPropiedadPost_` en backend `prod/01_Router.js` autorizaban `getGrupoInfo`/`getFechasGrupo` usando `_sec006cGruposSesionSet_(sesion)`, donde `SESIONES.grupo` puede conservar LM después del traslado real a KJ. Por eso una sesión legítima podía recibir `no_autorizado_recurso`, aun con `ESTATUS CA` y `USUARIOS.grupo` correctos.
+
+**Reparación preparada — backend [PR #74](https://github.com/anorteamericana-ship-it/campus_backend/pull/74), DRAFT, NO MERGE NI PROD:** en `prod/01_Router.js` el helper `_f111StudentOwnAcademicGroup_` comprueba `ESTATUS.CODIGO/GRUPO/ESTATUS` de la propia cuenta; permite grupos `CA` activos y `APR/CNV` históricos del mismo código; si el estudiante aún no tiene CA, admite `PE` **solo cuando también coincide con `DATOS.GRUPO`**. GET y POST validan igual. No autoriza grupos ajenos ni usa `SESIONES.grupo` como permiso; bloquea si falta expediente/hoja. La protección IDOR por código sigue intacta. El nuevo runner `tests/qa_f111_0826_student_group_auth_e1.mjs` verifica grupo antiguo→nuevo, grupos de terceros, matrícula futura, histórico y fallo cerrado; **no llama a Google**.
+
+**Evidencia CI del PR #74 HEAD `ac02ec315068d38f141c960b7bee2ad75137f455`:** `Backend E1 QA compartida` run `39541656201` SUCCESS; `F111 N02 P0 E1 independiente` run `39541656324` SUCCESS. Log: `F111_INC0826_ACADEMIC_GROUP_AUTH_E1_PASS`, `F111_HOTFIX_0826_TRANSFER_E1_PASS`, `F111_0826_USUARIOS_SYNC_E1_PASS`, `F111_0826_CONAPE_APPROVAL_FAILCLOSED_E1_PASS`. Estas son pruebas automatizadas sintéticas; **ningún deployment Apps Script, ni prueba autenticada del Campus real**.
+
+**Puertas de la incidencia 0826/CONAPE:** se mantienen **4/6** previamente acreditadas (fuente de datos real leída, frontend en Pages, UI CONAPE Pages, CI backend) y **2 abiertas** (QA auténtica + despliegue backend/readback en Campus). El nuevo hallazgo aumenta precisión técnica de G4, no suma una séptima puerta ni modifica el ~70 % histórico F111.
+
+**Siguiente ejecución autorizable:** probar GET/POST de `getGrupoInfo` contra el Script ID y libros QA, primero con sesión docente/estudiantil sintética y comparación grupo viejo/nuevo, asegurando permisos; aislar el delta crítico de autorización si la prueba CONAPE multi-hojas continúa bloqueando liberación del PR #74. Solo con readback y revisión explícita publicar backend por `clasp` autorizado. No corregir la hoja de estudiantes de nuevo y no usar GitHub Pages como evidencia de LIVE.
+
+---
+
 ## F111 · Frontera LIVE / Pages / QA — 20-oct-2026, 21:32 CR y revisión posterior
 
 **No confundir tres capas:** (1) Campus real de usuarios: `https://anorteamerican.com/campus-virtual/campus.html`; **no se logró lectura del HTML público ni login estudiante autenticado desde el acceso disponible en esta sesión**. (2) GitHub Pages: CI y `pages build and deployment=SUCCESS` validan publicación del repositorio, **NO** el funcionamiento del dominio del Campus ni credenciales/consulta de datos en sesión. (3) Apps Script QA: deployment `AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev`, libros sintéticos QA independientes. Su guard temporal B2 anterior expiró el 20-oct-2026 18:13 CR; ningún E2E oral fue acreditado.
