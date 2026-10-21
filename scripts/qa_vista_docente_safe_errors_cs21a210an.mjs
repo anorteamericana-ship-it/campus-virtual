@@ -103,10 +103,10 @@ const F111_REFETCH = `        // F111: filtrar SOLO visibilidad del panel, no al
 const F111_INITIAL = `        const policy = window.ANTeacherCyclePolicyF111;
         setCalendario(policy ? policy.filterCalendar(cal) : cal);
         setPendientes(policy ? policy.filterPending(pend) : pend);`;
-const F111_OLD_REFETCH = "        setCalendario(cal);\\n        setPendientes(pend);";
+const F111_OLD_REFETCH = "        setCalendario(cal);\n        setPendientes(pend);";
 const F111_OLD_INITIAL = "        setCalendario(cal); setPendientes(pend);";
 must(src.split(F111_REFETCH).length-1===1,'F111 refetch filter must exist once');
-must(src.split(F111_INITIAL).length-1===1,'F111 initial filter must exist once');
+must(src.replace(F111_REFETCH,F111_OLD_REFETCH).split(F111_INITIAL).length-1===1,'F111 initial filter must exist once after refetch removal');
 must(src.includes('window.ANTeacherCyclePolicyF111'),'F111 cycle policy required');
 let preF99=src.replace(F111_REFETCH,F111_OLD_REFETCH).replace(F111_INITIAL,F111_OLD_INITIAL);
 F101_REVERSALS.forEach(function(pair,i){
