@@ -90,6 +90,7 @@ const F96_LAZY = {
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
   supervision: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F111ATTEND20261021'],
+  asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'],
   diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6BD'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
   reportes: ['src/reportes_admin.jsx?v=F96.5G'],
@@ -1019,7 +1020,7 @@ function App() {
       dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} onNavigate={navigateTo} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
       calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
-      asistencia_grupos: <LazyRoute title="Asistencia de grupos" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
+      asistencia_grupos: <LazyRoute title="Asistencia de grupos" component="AttendanceGroupsSuperadminView" files={F96_LAZY.asistencia_grupos} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
       diagnostico_interno: rolReal === 'superadmin'

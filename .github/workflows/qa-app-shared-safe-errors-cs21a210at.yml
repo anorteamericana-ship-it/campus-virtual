@@ -10,6 +10,8 @@ on:
       - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
       - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
       - '.github/workflows/qa-app-shared-safe-errors-cs21a210at.yml'
+      - 'src/admin_attendance_roster.jsx'
+      - 'scripts/qa_f111_admin_attendance_roster_e1.mjs'
       - '00_DOCUMENTACION/APP_SHARED_SAFE_ERRORS_CS21A210AT_2026-08-31.md'
   pull_request:
     paths:
@@ -18,6 +20,8 @@ on:
       - 'scripts/qa_app_shared_safe_errors_cs21a210at.mjs'
       - 'scripts/qa_importador_bcr_wiring_cs21a210as.mjs'
       - '.github/workflows/qa-app-shared-safe-errors-cs21a210at.yml'
+      - 'src/admin_attendance_roster.jsx'
+      - 'scripts/qa_f111_admin_attendance_roster_e1.mjs'
       - '00_DOCUMENTACION/APP_SHARED_SAFE_ERRORS_CS21A210AT_2026-08-31.md'
 
 permissions:
@@ -40,6 +44,8 @@ jobs:
           parser.parse(fs.readFileSync('src/app.jsx','utf8'),{sourceType:'script',plugins:['jsx','optionalChaining','nullishCoalescingOperator']});
           console.log('src/app.jsx: PASS');
           NODE
+      - name: F111 Asistencia Superadmin distinta de Auditoría y readback
+        run: node scripts/qa_f111_admin_attendance_roster_e1.mjs
       - name: Verify AT boundary and exact reconstruction
         run: node scripts/qa_app_shared_safe_errors_cs21a210at.mjs
       - name: Regress AS BCR wiring
