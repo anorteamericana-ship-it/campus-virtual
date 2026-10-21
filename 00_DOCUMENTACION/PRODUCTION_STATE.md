@@ -1,5 +1,17 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · P1 — Inventario de sesiones históricas cerrado por lectura (20-oct-2026)
+
+**Fuente:** libro Google Sheets productivo `CAMPUS_OPERATIVO`, pestaña `DOCENTE_SESIONES_CLASE` rango `A1:Q999`, read-only; cotejo puntual con `CALENDARIO_LECCIONES` rango `A738:V771`. Sin cambiar ninguna celda.
+
+**Inventario observado:** 35 sesiones docentes con datos: 33 `CERRADA`, una `ANULADA`, una `ABIERTA`. **Cero sesiones `ABIERTA` con `FECHA < 2026-09-01`** en esta pestaña al corte. Por tanto el gate P1 de sesiones históricas pendientes **no tiene filas antiguas por cerrar**. No confundir esto con haber saneado todos los calendarios antiguos: el conteo concierne solamente a la pestaña de sesiones, no certifica que todas las lecciones de `CALENDARIO_LECCIONES` estén completas.
+
+**Única sesión ABIERTA legítima a revisar dentro de operación vigente (NO histórica):** fila 36, `SESION_ID=B1-LM69-C2-0526|B2|9|1792450380709`, grupo `B1-LM69-C2-0526`, B2 lección 9, fecha `2026-10-19`, sin `CLOSED_AT`. Lectura de calendario: fila 745 L8 `2026-10-14 CERRADA`/asistencia TRUE, fila 746 L9 `2026-10-19 PROGRAMADA`/asistencia FALSE, fila 747 L10 `2026-10-21 PROGRAMADA`. Docente: Keylor. **No cerrar L9 ni inventar asistencia**; su cierre corresponde al proceso docente real.
+
+**Estado P1 (alcance definido en plan):** inspección de sesiones abiertas históricas **CERRADA / 0 inconsistencias antiguas detectadas**; sin correcciones backend requeridas para ese criterio. **No reabrir por el código 0526:** la sesión abierta ocurre en octubre, no antes de septiembre. Siguiente puerta de ingeniería: QA autenticada del motor oral, mientras INC-0826 mantiene pendiente E2E estudiante y backend PR #74 DRAFT sin producción.
+
+---
+
 ## F111 · P0 INC-0826 — Corte ejecutivo 20-oct-2026 (frontend Pages SUCCESS; E2E y backend pendientes)
 
 **Prioridad vigente:** 17196 y 17203, traslado académico realizado de `B1-LM18-C3-0726` a `B1-KJ18-C3-0826`. No repetirlo. El grupo en `USUARIOS!E26/E33` fue corregido previamente en producción con **2/2 readback PASS** y L1 08-oct PRESENTE figura en asistencia oficial. Nivel B1 corresponde a **Diego Armando Martínez Rojas**, no Ana Belén (niveles posteriores). L2/L3 no deben cerrarse ni completarse automáticamente.
