@@ -30,7 +30,7 @@ must(src.includes('setSesion(nuevaIdentidad);'),'Se alteró transformación de i
 must(src.includes("window.dispatchEvent(new Event('an:session-changed'));"),'Se alteró recálculo de sesión/router.');
 
 // Prueba fuerte: revertir únicamente AF debe reconstruir byte a byte el blob base.
-const attendanceMenu="        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },\\n";
+const attendanceMenu="        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },\n";
 must(src.split(attendanceMenu).length===2,'Entrada de asistencia debe existir una sola vez.');
 // Reconstrucción de preimagen AF, revirtiendo SOLO la entrada aditiva.
 const restored=src.replace(attendanceMenu,'').replace(NEW,OLD);
