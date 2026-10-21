@@ -24,6 +24,9 @@ function revertTeacher(now,before,occ,msg){
   assert.equal(restoredTeacher.split(now).length-1,occ,'F111: '+msg);
   restoredTeacher=restoredTeacher.replaceAll(now,before);
 }
+// F111 0826 cambia solo versión de caché del Dashboard; revertirla
+// expresamente en la verificación byte-a-byte sin relajar el motor de exámenes.
+revertTeacher("'src/student_dashboard.jsx?v=F1110826DOCT20261020'","'src/student_dashboard.jsx?v=F1064CERTIFICATE20261010'",1,'caché dashboard 0826');
 revertTeacher(newProfileRoute,oldProfileRoute,1,'ruta de perfil profesional única');
 revertTeacher(newBanner,oldBanner,1,'banner histórico suprimido');
 revertTeacher(newSession,oldSession,1,'sesión histórica excluida');
