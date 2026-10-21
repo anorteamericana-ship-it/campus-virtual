@@ -78,7 +78,17 @@ function AttendanceGroupsSuperadminView(){
     return !q||attUpper((e.name||e.nombre||'')+' '+(e.code||e.codigo||'')).includes(q);
   });
   const activeLesson=lessons.find(l=>Number(l.leccion)===selected)||null;
-  const readonly=!isSuper||!activeLesson||!attIsClosed(activeLesson);
+  const lessonEvidence=students.some(e=>{
+    const c=attCell(data,selected,attCode(e.code||e.codigo));
+    return c.presente===true||c.presente===false;
+  });
+  const fechaMeta=attCode(activeLesson?.fecha);
+  const fechaPast=/^\d{4}-\d{2}-\d{2}/.test(fechaMeta)&&
+    new Date(fechaMeta.slice(0,10)+'T23:59:59').getTime()<Date.now();
+  // Calendario 0826: 0/32 cerradas aunque hay registros oficiales.
+  // Superadmin edita solo si clase cerrada o fecha pasada + evidencia oficial.
+  const editableByEvidence=!!activeLesson&&lessonEvidence&&fechaPast;
+  const readonly=!isSuper||!activeLesson||(!attIsClosed(activeLesson)&&!editableByEvidence);
   const initial=React.useMemo(()=>{
     const map={};
     students.forEach(e=>{const code=attCode(e.code||e.codigo);if(code)map[code]=attInitialCell(attCell(data,selected,code));});
@@ -277,7 +287,7 @@ function AttendanceGroupsSuperadminView(){
           <div>
             <div style={{fontSize:10,fontWeight:900,color:'#4E6481',letterSpacing:'.12em'}}>LISTA DE UNA LECCIÓN · ASISTENCIA Y COMENTARIOS</div>
             <h2 style={{fontSize:19,margin:'5px 0',color:'#143A6D'}}>Lección {selected||'—'} · {attDay(activeLesson?.fecha)}</h2>
-            <div style={{fontSize:11,color:'var(--ink-3)'}}>Estado: <b>{attStateLabel(activeLesson)}</b>. {readonly?'Solo consulta; la edición requiere Superadmin y lección cerrada.':'Podés corregir registros existentes o agregar ausencias justificadas.'}</div>
+            <div style={{fontSize:11,color:'var(--ink-3)'}}>Estado: <b>{attStateLabel(activeLesson)}</b>. {readonly?'Solo consulta: requiere Superadmin y lección cerrada o con asistencia oficial previa.':'Podés corregir registros existentes o agregar ausencias justificadas.'}</div>
           </div>
           <div style={{minWidth:170}}><label style={labelStyle}>Elegir lección</label>
             <select aria-label="Lección de asistencia" value={selected} onChange={e=>setSelected(Number(e.target.value))} style={{...filterStyle,width:'100%'}}>
