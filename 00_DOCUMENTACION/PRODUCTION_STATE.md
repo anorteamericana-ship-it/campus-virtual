@@ -1,5 +1,15 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · G5 QA CONAPE — preflight read-only de fixture (21-oct-2026, complemento a #75)
+
+**Libro operativo QA históricamente configurado:** `1aPYBZOs8zxF2n9cDOeKazhSXHRfhqyLs8pDM0axt8U0` (título actual `OBSOLETO_QA_CAMPUS_OPERATIVO_STAGING_2026-07-19`). Solo se hizo lectura: metadata confirma pestañas `CONAPE_PLAN_CAMBIOS` (1000 filas, 37 columnas) y `CAMBIOS_GRUPO_LOG` (1000 filas, 57 columnas), con `CODIGO` en D y C respectivamente. Cabeceras compatibles en apariencia con el flujo backend; no acredita prueba ejecutable.
+
+**Hallazgo concreto:** búsqueda exacta en `CONAPE_PLAN_CAMBIOS!D1:D1000` de `QA-F111` y `QA-` = **0 filas coincidentes en ambas búsquedas**; en `CAMBIOS_GRUPO_LOG!C1:C1000`, mismos dos marcadores = **0**. El alcance son únicamente estos 2.000 renglones/columnas, no todas las fuentes ni identificadores alternos. **No se halló en esas columnas una pareja de solicitud/log CONAPE con código QA- apta para iniciar el E2E de aprobación.** La existencia del fixture oral B2 `QA-F111-B2-01` NO implica un pendiente CONAPE.
+
+**G5 continúa NO GO para POST mutante.** Siguiente condición de desbloqueo: verificar mediante runtime Apps Script QA autenticado el guard de aislamiento y IDs efectivos; preparar **un** expediente CONAPE sintético coherente en libro master+operativo QA (mismo CODIGO, CAMBIO_ID, SOLICITUD_ID, simulación antes/después y snapshot seguro), únicamente con escritura autorizada para QA. Luego ejecutar una aprobación de prueba con readback de `ESTATUS`, `DATOS`, `USUARIOS`, log/pending y destino externo QA, inclusive un fallo inducido controlado y su conciliación. Sin credenciales/guard y fixture comprobados, prohibido tocar solicitudes reales, duplicar intentos o llamar G5 PASS. El cierre del backend #74 y regresión #75 permanecen fusionados; **incidencia INC-0826/CONAPE 4/6 = 66,7 %**, sin cambios en PROD.
+
+---
+
 ## F111 · G5 preparatorio: PR backend #75 fusionado y CI E1 ampliado (21-oct-2026)
 
 - **PR [#75 backend](https://github.com/anorteamericana-ship-it/campus_backend/pull/75) MERGED**, commit en `backend/main`: `67fb77be985c2e9eeb374e6468df277dd53add04`. Cierra un delta de **solo prueba y control CI**, basado sobre PR #74 ya fusionado. No hay nuevos cambios a `prod/` en #75; no se alteró Apps Script, Sheets, notas, pagos ni CONAPE.
