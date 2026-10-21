@@ -53,7 +53,7 @@ assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 // El HTML F111 agrega únicamente el loader del filtro y el asset de
 // perfil profesional, sin reordenar otros scripts productivos.
 const oldProfileScript='<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F98.4Z6CS21A76"></script>';
-const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
+const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
 assert.equal(mainHtml.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
 let restoredHtml=mainHtml.replace(newProfileScript,oldProfileScript);
 restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
