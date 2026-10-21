@@ -41,8 +41,15 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   const norm=v=>v.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n');
   const repoNormalized=norm(spec.content),liveNormalized=norm(live);
   let verdict='EXACT_MATCH',diff=null;
+  // El hosting puede inyectar un beacon público de Cloudflare en HTML.
+  // Solo clasificar como equivalente si quitar EXACTAMENTE UN beacon conocido
+  // devuelve íntegramente el contenido del repositorio, sin otras diferencias.
+  const beaconPattern=/<script\b[^>]*\bsrc="https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js\/[^"]+"[^>]*><\/script>/g;
+  const beaconMatches=spec.kind==='html'?live.match(beaconPattern)||[]:[];
+  const beaconOnly=beaconMatches.length===1&&norm(live.replace(beaconPattern,''))===repoNormalized;
   if(liveSha!==spec.sha){
    if(repoNormalized===liveNormalized)verdict='LINE_ENDINGS_OR_BOM_ONLY';
+   else if(beaconOnly)verdict='HOST_CLOUDFLARE_BEACON_ONLY';
    else {
      verdict=spec.kind==='source'&&/^\s*<!doctype html|^\s*<html/i.test(live)
        ? 'WRONG_ASSET_HTML'
@@ -56,13 +63,17 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   }
   return{path:spec.path,status,verdict,marker,
    remoteSha:liveSha,repoSha:spec.sha,repoBytes:Buffer.byteLength(spec.content,'utf8'),
-   remoteBytes:buffer.byteLength,...(diff?{diff}:{})};
+   remoteBytes:buffer.byteLength,...(beaconOnly?{hostingInjection:'Cloudflare Insights beacon only'}:{}),...(diff?{diff}:{})};
  }catch(e){
   return{path:spec.path,status:null,verdict:'UNREACHABLE',detail:e?.name==='AbortError'?'timeout':'network_or_certificate'};
  }finally{clearTimeout(timer);}
 }
 function summary(rows){
- if(rows.every(r=>r.verdict==='EXACT_MATCH'||r.verdict==='LINE_ENDINGS_OR_BOM_ONLY'))return 'LIVE_MATCHES_REPOSITORY';
+ if(rows.every(r=>['EXACT_MATCH','LINE_ENDINGS_OR_BOM_ONLY','HOST_CLOUDFLARE_BEACON_ONLY'].includes(r.verdict))){
+   return rows.some(r=>r.verdict==='HOST_CLOUDFLARE_BEACON_ONLY')
+     ? 'LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION'
+     : 'LIVE_MATCHES_REPOSITORY';
+ }
  if(rows.some(r=>['WRONG_ASSET_HTML','CONTENT_DIFFERS','VERSION_MISSING_MARKER'].includes(r.verdict)))return 'LIVE_MISMATCH_CONFIRMED';
  return 'LIVE_NOT_VERIFIED';
 }
@@ -94,6 +105,11 @@ async function selftest(){
   return fakeResponse({body:fixture.content});
  });
  assert.equal(matched.verdict,'EXACT_MATCH');
+ const beacon='<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/test-version" crossorigin="anonymous"></script>';
+ const marked=await inspectOne(fixture,async()=>fakeResponse({body:fixture.content.replace('</body>',beacon+'</body>')}));
+ assert.equal(marked.verdict,'HOST_CLOUDFLARE_BEACON_ONLY','Solo se descuenta una inserción pública conocida');
+ const modified=await inspectOne(fixture,async()=>fakeResponse({body:fixture.content.replace('</body>','CAMBIO_REAL'+beacon+'</body>')}));
+ assert.equal(modified.verdict,'CONTENT_DIFFERS','No ocultar una modificación real adyacente a Cloudflare');
  const mismatch=await inspectOne(fixture,async()=>fakeResponse({body:'<!DOCTYPE html><title>OTRA VERSION</title>'}));
  assert.equal(mismatch.verdict,'VERSION_MISSING_MARKER');
  const missing=await inspectOne(fixture,async()=>fakeResponse({status:404}));
@@ -101,10 +117,11 @@ async function selftest(){
  const blocked=await inspectOne(fixture,async()=>{throw Error('blocked');});
  assert.equal(blocked.verdict,'UNREACHABLE');
  assert.equal(summary([matched,blocked]),'LIVE_NOT_VERIFIED');
+ assert.equal(summary([matched,marked]),'LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION');
  assert.equal(summary([matched,mismatch]),'LIVE_MISMATCH_CONFIRMED');
  assert.equal(summary(specs.map(x=>({verdict:'EXACT_MATCH'}))),'LIVE_MATCHES_REPOSITORY');
  assert.equal(SPECS.length,4);
- console.log('F111_LIVE_READONLY_SELFTEST_PASS: 4 public paths, only GET, no credentials, MATCH/MISMATCH/INCONCLUSIVE distinguishable');
+ console.log('F111_LIVE_READONLY_SELFTEST_PASS: 4 GET paths, exact hash, known Cloudflare injection, real diff preserved, mismatch and inconclusive classified');
 }
 if(process.argv.includes('--selftest'))await selftest();
 else{
