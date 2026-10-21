@@ -6,12 +6,14 @@ on:
     paths:
       - 'modulos/examen_oral.html'
       - 'scripts/qa_f111_d3_oral_frontend_level_guard.mjs'
+      - 'scripts/qa_f111_oral_env_isolation_e1.mjs'
       - '.github/workflows/qa-f111-d3-oral-frontend.yml'
   pull_request:
     branches: [main]
     paths:
       - 'modulos/examen_oral.html'
       - 'scripts/qa_f111_d3_oral_frontend_level_guard.mjs'
+      - 'scripts/qa_f111_oral_env_isolation_e1.mjs'
       - '.github/workflows/qa-f111-d3-oral-frontend.yml'
   workflow_dispatch:
 permissions:
@@ -27,3 +29,5 @@ jobs:
           node-version: '22'
       - name: Simular nivel B2 y rúbrica vacía sin navegador
         run: node scripts/qa_f111_d3_oral_frontend_level_guard.mjs
+      - name: Verificar aislamiento QA contra ruta y sesión PROD
+        run: node scripts/qa_f111_oral_env_isolation_e1.mjs
