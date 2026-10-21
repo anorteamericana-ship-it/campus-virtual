@@ -27,6 +27,8 @@ function revertTeacher(now,before,occ,msg){
 // F111 0826 cambia solo versión de caché del Dashboard; revertirla
 // expresamente en la verificación byte-a-byte sin relajar el motor de exámenes.
 revertTeacher("'src/student_dashboard.jsx?v=F1110826DOCT20261020'","'src/student_dashboard.jsx?v=F1064CERTIFICATE20261010'",1,'caché dashboard 0826');
+revertTeacher("'src/cronograma_grupo.jsx?v=F111ATTEND20261021'","'src/cronograma_grupo.jsx?v=F1110826CANON20261020'",3,'caché corregida asistencia Superadmin');
+revertTeacher("'src/auditoria_academica.jsx?v=F111ATTEND20261021'","'src/auditoria_academica.jsx?v=F96.5G'",1,'caché editor auditoría Superadmin');
 revertTeacher("'src/cronograma_grupo.jsx?v=F1110826CANON20261020'","'src/cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009'",3,'caché cronograma canónico 0826');
 revertTeacher(newProfileRoute,oldProfileRoute,1,'ruta de perfil profesional única');
 revertTeacher(newBanner,oldBanner,1,'banner histórico suprimido');
@@ -65,6 +67,9 @@ const mainHtml=fs.readFileSync('campus.html','utf8');
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const currentAppSrc=(mainHtml.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
 const baselineAppSrc=(mainBaseline.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
+const currentSidebarSrc=(mainHtml.match(/src[/]sidebar[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
+const baselineSidebarSrc=(mainBaseline.match(/src[/]sidebar[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
+assert(currentSidebarSrc&&baselineSidebarSrc,'Se conserva asset del menú Superadmin');
 assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 // El HTML F111 agrega únicamente el loader del filtro y el asset de
 // perfil profesional, sin reordenar otros scripts productivos.
@@ -76,9 +81,12 @@ if (mainBaseline.includes(newProfileScript)) {
   // Se exige igualdad exacta y se evita revertirla contra sí misma.
   // Únicamente se permite modificar el cache-bust del punto de entrada:
   // se mantiene sin alterar el resto del HTML, los motores y los scripts.
-  const expectedApp='src/app.jsx?v=F1110826CANON20261020';
-  assert.equal(currentAppSrc,expectedApp,'F111: única nueva referencia al app canónico 0826');
-  assert.equal(mainHtml.replace(currentAppSrc,baselineAppSrc),mainBaseline,'MAIN publicado conserva HTML F111 salvo cache-bust de app 0826');
+  const expectedApp='src/app.jsx?v=F111ATTEND20261021';
+  const expectedSidebar='src/sidebar.jsx?v=F111ATTEND20261021';
+  assert.equal(currentAppSrc,expectedApp,'F111: app Superadmin con versión de asistencia actual');
+  assert.equal(currentSidebarSrc,expectedSidebar,'F111: sidebar Superadmin con versión de asistencia actual');
+  assert.equal(mainHtml.replace(currentAppSrc,baselineAppSrc).replace(currentSidebarSrc,baselineSidebarSrc),
+    mainBaseline,'MAIN conserva HTML F111 salvo cache-bust de app y sidebar');
 } else {
   // En el PR original, origin/main todavía no incluía el cambio.
   // Se mantiene la prueba de inversión exacta de las líneas nuevas.
