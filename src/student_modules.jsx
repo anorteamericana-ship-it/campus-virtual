@@ -1190,6 +1190,14 @@ function PerfilView({ onNavigate } = {}) {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
   const rolPerfil = String(usr?.rol || usr?.role || '').toLowerCase();
   const esTeacherPerfil = rolPerfil === 'teacher' || rolPerfil === 'docente';
+  // F111: prohibido volver a enseñar la ficha heredada a un docente,
+  // incluso si una navegación antigua monta PerfilView directamente.
+  if (esTeacherPerfil) {
+    const Professional = window.TeacherProfileCS21A76;
+    return typeof Professional === 'function'
+      ? <Professional onNavigate={onNavigate} />
+      : <ErrorState message="El perfil profesional está cargando. Recargá esta pantalla." />;
+  }
   return (
     <div>
       <PageHeader
