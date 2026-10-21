@@ -1,5 +1,5 @@
 // F111 · Regla canónica de visibilidad operativa docente.
-// Antes de septiembre de 2026: cerrado por acuerdo administrativo.
+// Actividades fechadas antes de septiembre de 2026: fuera del panel vigente.
 // NO modifica, elimina ni da por cerrada ninguna fila del backend.
 // Los expedientes históricos permanecen para conciliación administrativa.
 (function (w) {
@@ -22,9 +22,10 @@
     if (!lesson || typeof lesson !== 'object') return false;
     const code = lesson.cod_grupo || lesson.COD_GRUPO || lesson.codigo_grupo ||
       lesson.CODIGO_GRUPO || lesson.grupo || lesson.GRUPO || '';
-    if (isLegacyGroup(code)) return true;
-    // Registros sin ciclo válido: las actividades anteriores a septiembre
-    // se conservan en histórico, nunca aparecen en pendientes actuales.
+    // F111: la fecha de la ACTIVIDAD manda, nunca el ciclo de ingreso.
+    // Un grupo 0826 puede seguir activo hasta enero de 2027; ocultarlo solo
+    // por el sufijo borraría clases y evaluaciones válidas del docente.
+    // Registros sin fecha comprobable se conservan hasta conciliación.
     const date = String(lesson.fecha || lesson.FECHA || lesson.fecha_leccion || '').slice(0, 10);
     return /^\d{4}-\d{2}-\d{2}$/.test(date) && date < FIRST_OPERATIONAL_DATE;
   }
