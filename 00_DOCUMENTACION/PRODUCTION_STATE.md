@@ -1,5 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · QA B2 ORAL — Readback factual de fixture y bloqueo de habilitación L9 (20-oct-2026, 23:20 CR)
+
+**Lecturas CONECTADAS de Google Sheets QA, todas solo lectura, cero cambios:** se consultó la metadata de los dos libros QA de julio y el operativo de septiembre. La metadata del operativo `1aPYBZOs8zxF2n9cDOeKazhSXHRfhqyLs8pDM0axt8U0` muestra el título `OBSOLETO_QA_CAMPUS_OPERATIVO_STAGING_2026-07-19`; **el nombre no demuestra que sea un destino retirado**. La fuente canónica histórica documentó en octubre que el runtime QA CS21A144 sigue configurado con ese ID y devolvió `qa_ids_ok=true` y `qa_external_resources_ok=true`. Además `scripts/qa_f111_b2_oral_gate.mjs` fija explícitamente esos mismos IDs. El libro distinto `CAMPUS_OPERATIVO_QA_2026-09-19` (ID `1iktH3nUl-6oxsHo0CFATBuqz6DNXf1CFCMqW65CLSKk`) existe, **pero NO hay evidencia de que ese deployment QA lo utilice**. No cambiar destinos por título y no escribir en septiembre por error. Se debe repetir check del runtime antes de liberar un POST mutante.
+
+**Fixture confirmado en los libros configurados de julio, usando rangos exactos y sin exponer contraseñas:**
+- Master QA `1dud749W7dJaYkD7l2C3-CKmbrCx5mG_pahTOYrHLsvE`: `DATOS!A988=QA-F111-B2-01`, `DATOS!J988=B1-LM69-C3-9926`; `ESTATUS!B907:E907` => grupo `B1-LM69-C3-9926`, código `QA-F111-B2-01`, `CA`, `B2`; `USUARIOS!A21=qa_docente`, `C21:G21` => rol `teacher`, nombre `QA DOCENTE CONTROLADO`, grupo `B1-LM69-C3-9926`, activo `TRUE`. Nunca leer ni imprimir `USUARIOS!B21` (contraseña).
+- Operativo QA de julio: `CALENDARIO_LECCIONES!A2914:J2915` confirma B2 L8 **19/10/2026 PROGRAMADA, ASISTENCIA_REGISTRADA=FALSE** y B2 L9 **21/10/2026 PROGRAMADA, ASISTENCIA_REGISTRADA=FALSE**, riel teoría y evaluación oral respectivamente. Search acotado a ID del grupo encontró **2/2 filas** (2914-2915). `ORAL_EVALUACIONES!H1:H1000` del código ficticio **0 filas**; `DOCENTE_SESIONES_CLASE!C1:C1000` del grupo ficticio **0 filas**. Esos cero son del escaneo documentado, no un resultado oral.
+- Búsquedas separadas: DATOS código ficticio **1/1**, ESTATUS **1/1**, USUARIOS qa_docente **1/1**. Sin crear ni duplicar estudiante/docente/lecciones.
+
+**Gate E2E oral:** `L8` NO cerrada; por tanto NO iniciar ni forzar `L9`, ni aplicar notas/PDF, ni activar ventana del guard expirado. QA prueba oral real L8→L9→borrador→cierre→nota→PDF: **0/1**. GET sin credenciales hacia `/dev?fn=getInfoGeneral` no se pudo obtener con los clientes web disponibles; **NO significa que el deployment esté caído**. Ya existía reporte previo de lectura /dev autenticada 5/5 PASS, pero expiró la autorización temporal. La validación nueva exige sesión autorizada /dev y guard actual 5/5 antes de cualquier POST. Si no hay sesión, clasificar `NO_VERIFICADO`, no intercambiar con `/exec` ni PROD.
+
+**Estado separado:** verificación estática LIVE del Campus oficial 4/4 cerrada por auditoría #545; backend PR #74 sigue DRAFT (CI E1 2/2 PASS, sin clasp PROD), no se mezclan estos tres ambientes. **Siguiente avance seguro:** fijar en QA un plan para cierre legítimo L8 por docente ficticio bajo autorización, con readback previo del guard y después de asistencia. No hacerlo en PROD ni registrar asistencias inventadas en la Academia real.
+
+---
+
 ## F111 · LIVE ORIGIN — Primera auditoría reproducible del dominio oficial (20-oct-2026)
 
 **Esta evidencia SÍ procede del servidor LIVE, no de QA ni de GitHub Pages:** desde GitHub Actions, usando solo GET sin cookies, token ni POST, se consultaron cuatro rutas estáticas en `https://anorteamerican.com/campus-virtual/`. Ejecución [#39542652034](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/39542652034) terminada **SUCCESS**, selftest PASS. Resultado explícito `LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION`.
