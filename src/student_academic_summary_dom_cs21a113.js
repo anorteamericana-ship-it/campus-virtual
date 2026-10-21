@@ -5,7 +5,47 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const val=(o,...keys)=>{for(const k of keys)if(o&&o[k]!=null&&o[k]!=='')return o[k];return'';};
   const pct=n=>n==null?'—':`${Math.round(n)}%`;
-  function read(codigo){return Promise.allSettled([postStudentPortal('getPortalEstudianteCompleto',{codigo}),postStudentPortal('getMisNotasF921',{codigo})]).then(r=>({portal:r[0].status==='fulfilled'&&r[0].value?.ok?r[0].value:null,notes:r[1].status==='fulfilled'&&r[1].value?.ok?r[1].value:null}));}
+  // F111 INC-0826: resumen robusto. La asistencia directa se consulta por
+  // código AUTENTICADO y no depende de que el portal agregado sea completo.
+  // Nunca se escribe, atribuye presencia ni inventa notas.
+  async function read(codigo){
+    const results=await Promise.allSettled([
+      postStudentPortal('getPortalEstudianteCompleto',{codigo}),
+      postStudentPortal('getMisNotasF921',{codigo}),
+      postStudentPortal('getAsistenciaEstudiante',{codigo})
+    ]);
+    const success=i=>results[i].status==='fulfilled'&&results[i].value?.ok?results[i].value:null;
+    let portal=success(0),notes=success(1);
+    const asistenciaDirecta=success(2);
+    if(!portal){
+      try {
+        const ficha=await postStudentPortal('getEstudiante',{codigo});
+        if(ficha?.ok)portal={...ficha,cod_grupo:ficha.cod_grupo||ficha.estudiante?.GRUPO||''};
+      }catch(_){}
+    }
+    if(portal&&asistenciaDirecta&&Array.isArray(asistenciaDirecta.asistencia)){
+      const presentes=Array.isArray(portal.asistencia)?portal.asistencia:
+        (Array.isArray(portal.asistencia?.asistencia)?portal.asistencia.asistencia:[]);
+      // Un endpoint agregado que devuelve [] no puede anular filas oficiales.
+      if(asistenciaDirecta.asistencia.length>0||presentes.length===0)
+        portal={...portal,asistencia:asistenciaDirecta};
+    }
+    if(portal){
+      const nivel=C.defaultLevel(portal.niveles||{},notes,portal);
+      const grupo=String(C.levelGroup(portal.niveles||{},nivel)||portal.cod_grupo||
+        portal.estudiante?.GRUPO||portal.grupo?.CODIGO_GRUPO||'').trim();
+      if(grupo){
+        try{
+          const actual=await postStudentPortal('getGrupoInfo',{cod_grupo:grupo});
+          if(actual?.ok){
+            const docente=String(actual.teacherName||actual.docente||actual.DOCENTE||'').trim();
+            if(docente)portal={...portal,docente_nivel_actual:docente,docente_nivel_actual_id:nivel};
+          }
+        }catch(_){}
+      }
+    }
+    return {portal,notes};
+  }
   function normalize(portal,notes,level,session){
     const niveles=portal?.niveles||{},est=portal?.estudiante||{},grupoObj=portal?.grupo||{};
     const evals=C.arr(notes,['evaluaciones']).length?C.arr(notes,['evaluaciones']):C.arr(portal?.evaluaciones,['evaluaciones']);
@@ -22,7 +62,10 @@
     const defs=C.DEFS.filter(d=>d[0]!=='ICAN'||isINA).map(d=>{const[key,title,lesson,kind]=d,row=levelEvals.find(r=>C.type(r)===key),max=key==='ICAN'?20:key==='SOCIAL'?10:(isINA&&kind==='written'?5:15),registered=C.registered(row),rawMax=C.num(row?.max??row?.peso_maximo,max)||max,raw=C.num(row?.nota??row?.puntos,0)||0,p=registered?Math.max(0,Math.min(100,C.num(row?.pct,null)??(raw/rawMax*100))):0;return{key,title,lesson,max,registered,pct:p,points:registered?Math.round((rawMax===max?raw:p*max/100)*100)/100:0};});
     const totalMax=defs.reduce((s,x)=>s+x.max,0)||100,total=Math.round(defs.reduce((s,x)=>s+x.points,0)*100)/100,official=C.final(niveles,level),grade=official??total;
     const cp=course.filter(r=>C.presence(r)==='p').length,ca=course.filter(r=>C.presence(r)==='a').length,ip=ican.filter(r=>C.presence(r)==='p').length;
-    return{niveles,est,grupoObj,active,level,group,course,ican,levelRetro,pcMap,isINA,defs,totalMax,total,official,grade,cp,ca,cPct:course.length?cp/course.length*100:null,ip,iPct:ican.length?ip/ican.length*100:null,pcDone:C.PC.filter(n=>String(pcMap.get(n)?.comentario||'').trim()).length,status:C.status(niveles,level),name:C.name(est.NOMBRE||session?.nombre),teacher:grupoObj.DOCENTE||portal?.docente||'Por confirmar',schedule:grupoObj.HORARIO||grupoObj.HORARIO_CURSO||portal?.horario||'Según cronograma'};
+    return{niveles,est,grupoObj,active,level,group,course,ican,levelRetro,pcMap,isINA,defs,totalMax,total,official,grade,cp,ca,cPct:course.length?cp/course.length*100:null,ip,iPct:ican.length?ip/ican.length*100:null,pcDone:C.PC.filter(n=>String(pcMap.get(n)?.comentario||'').trim()).length,status:C.status(niveles,level),name:C.name(est.NOMBRE||session?.nombre),teacher:(grupoObj.DOCENTES_POR_NIVEL?.[level]
+      ||(level===active&&portal?.docente_nivel_actual_id===level?portal.docente_nivel_actual:'')
+      ||(level===active&&String(grupoObj.NIVEL_ACTUAL_ID||'')===level&&grupoObj.DOCENTES_POR_NIVEL?.[level]?grupoObj.DOCENTE:'')
+      ||'Por confirmar'),schedule:grupoObj.HORARIO||grupoObj.HORARIO_CURSO||portal?.horario||'Según cronograma'};
   }
   function matrix(rows,total,prefix){const m=new Map((rows||[]).map(r=>[C.lesson(r),r]));return `<div class="as113-matrix">${Array.from({length:total},(_,i)=>{const n=i+1,s=m.has(n)?C.presence(m.get(n)):'x';return `<div class="s-${s}"><span>${prefix}${String(n).padStart(2,'0')}</span><b>${s==='p'?'P':s==='a'?'A':'—'}</b></div>`}).join('')}</div>`;}
   function panel(title,sub,body,action=''){return `<section class="as113-panel"><header><div><h2>${esc(title)}</h2><p>${esc(sub)}</p></div>${action?`<button data-go="${action}">Abrir detalle</button>`:''}</header>${body}</section>`;}
