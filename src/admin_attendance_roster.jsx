@@ -316,7 +316,7 @@ function AttendanceGroupsSuperadminView(){
                       style={{padding:'7px 10px',fontSize:11,fontWeight:850,borderRadius:7,
                         border:cell.asistencia===id?'2px solid '+(id==='P'?'#22845F':'#B83B34'):'1px solid #CCD5E1',
                         color:id==='P'?'#176F4D':'#AA3933',background:cell.asistencia===id?(id==='P'?'#E8F5EF':'#FCE9E7'):'white',
-                        cursor:readonly||saving?'not-allowed':'pointer',opacity:readonly?.74:1}}>{id==='P'?'✓':'✕'} {label}</button>)}
+                        cursor:readonly||saving?'not-allowed':'pointer',opacity:readonly ? .74 : 1}}>{id==='P'?'✓':'✕'} {label}</button>)}
                   </div>
                   <div style={{fontSize:10,color:'#64748B',marginTop:5}}>{initialCell.asistencia===''?'Sin registro oficial':initialCell.asistencia==='P'?'Registro: Presente':'Registro: Ausente'}</div>
                 </td>
