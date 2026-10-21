@@ -23,7 +23,8 @@ assert(audit.includes('function AuditoriaAcademicaView('),'Auditoría histórica
 assert(src.includes('Matriz de asistencia · lecciones 1–32'),'Matriz docente de 32 lecciones');
 assert(src.includes('Comentario del docente / corrección'),'Comentarios en fila');
 assert(src.includes('if(!isSuper||readonly||saving||!activeLesson)return'),'Solo superadmin edita');
-assert(src.includes("const readonly=!isSuper||!activeLesson||!attIsClosed(activeLesson)"),'No editar lecciones programadas');
+assert(src.includes("const readonly=!isSuper||!activeLesson||(!attIsClosed(activeLesson)&&!editableByEvidence)"),'Solo editar lección cerrada o fecha pasada con asistencia oficial');
+assert(src.includes('lessonEvidence&&fechaPast'),'No dar acceso a clase futura o sin asistencia oficial');
 assert(src.includes('changes.missing.length&&reason.trim().length<12'),'Justificación obligatoria de altas');
 assert(src.includes("No se puede crear una presencia retroactiva sin registro previo"),'No fabricar presencia');
 assert(src.includes("window.fetchEditarAsistenciaNotaCerrada({"),'Motor backend real de asistencia');
