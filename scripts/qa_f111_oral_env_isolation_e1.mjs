@@ -8,7 +8,7 @@ const html=fs.readFileSync('modulos/examen_oral.html','utf8');
 const start=html.indexOf('// F111: UNA sola interfaz oral, dos entornos explícitos');
 const end=html.indexOf('const CRITERIA=',start);
 assert(start>0&&end>start,'Se conserva el HTML único con router F111 al inicio');
-const block=html.slice(start,end);
+const block=html.slice(start,end);\nconst sessionFn=(html.match(/^function getSesion\(\)\{[^\n]+$/m)||[])[0];\nassert(sessionFn,'El módulo conserva una única fuente de sesión');
 const fullScript=html.slice(html.indexOf('<script>\n',html.indexOf('./oral_bancos_ic5.js'))+8,html.lastIndexOf('</script>'));
 new vm.Script(fullScript,'modulos/examen_oral.html');
 assert(!html.includes('eval('));
@@ -25,7 +25,7 @@ function harness(search,qaReturn={}){
       return{ok:true,text:async()=>JSON.stringify({ok:true,rol:'teacher',token:'QA_TOKEN_SIMULADO',grupo:QA_GROUP,nombre:'Docente sintético',...qaReturn})};
     }};
   vm.createContext(ctx);
-  vm.runInContext(block+`
+  vm.runInContext(block+'\n'+sessionFn+'\n'+`
     globalThis.F111={qa:ORAL_F111_QA_MODE,url:APPS_SCRIPT_URL,qaURL:ORAL_F111_QA_ENDPOINT,prodURL:ORAL_F111_PROD_ENDPOINT,
     key:ORAL_F111_QA_KEY,group:ORAL_F111_QA_GROUP,guard:oralF111QaGuard,login:oralF111QaLogin,session:getSesion,valid:oralF111QaSesionValida};
   `,ctx);
