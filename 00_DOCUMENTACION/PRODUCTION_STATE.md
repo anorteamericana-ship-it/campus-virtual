@@ -1,5 +1,19 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · CIERRE PR BACKEND #74 — 21-oct-2026 (FUENTE VIGENTE)
+
+**CÓDIGO INTEGRADO EN BACKEND MAIN — NO DEPLOY APPS SCRIPT:** [backend PR #74](https://github.com/anorteamericana-ship-it/campus_backend/pull/74) **MERGED/CLOSED**, squash commit `4ed4c7b0ce89959e32ef9d7d8e3219a287fdac69` corroborado en `anorteamericana-ship-it/campus_backend/main`. HEAD previo validado `da68c7215124243a756121bb05947df9aa5a5767`. Se eliminó estado DRAFT del PR; NO se modificó Apps Script QA ni PROD, ni expedientes, hojas, notas, asistencia, pagos o CONAPE.
+
+**Correcciones finales de la fuente:** (a) `USUARIOS.grupo` concuerda con traslado académico, preflight, readback e idempotencia, rollback condicionado; (b) `getGrupoInfo/getFechasGrupo` GET+POST autorizan grupo del propio estudiante por `ESTATUS` vigente, no por token desfasado; (c) aprobación CONAPE con freeze confirmado, bandera `REQUIERE_CONCILIACION` tras mutación parcial, sin reintentos automáticos; (d) cierre P0: relectura de identidad, estado y solicitud **dentro** de `_akWithChangeLock_`, impidiendo segunda aprobación con snapshot anterior, probado con cinco condiciones concurrentes. El commit del test `da68c7...` corrigió también el fixture para separar snapshots pre y post lock.
+
+**Evidencia 3/3 verificaciones de código:** PR #74 [Backend E1 compartida](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/39614685917) SUCCESS, [F111 N02 E1](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/39614686004) SUCCESS, y **CI push de `backend/main`** [Backend E1](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/39615011121) SUCCESS. Las pruebas usan mocks/snapshot sintético; ninguna equivale a E2E QA Apps Script ni readback autenticado del Campus real.
+
+**Gates de incidencia 0826/CONAPE: siguen 4/6 (66,7 %) acreditados**. Puerta de merge/CI queda cerrada como parte de G4, no altera el denominador ni acredita QA E2E. Pendientes: G5 E2E QA de traslado y aprobación CONAPE multi-libro, incluyendo `USUARIOS`, `ESTATUS`, bitácora, locks, estados y fallo parcial; G6 delta contra Apps Script PROD real, despliegue manual exclusivo Leonardo, readback y rollback. Frontend LIVE 4/4 activos estáticos ya verificados; **backend PROD no actualizado** por merge GitHub. Importante: las referencias más abajo a `#74 DRAFT` y HEADs anteriores describen los **cortes históricos** de 20-oct, no el estado vigente. NO reabrir ese PR ni duplicar motores/ramas para la siguiente puerta.
+
+**Siguiente trabajo específico:** demostrar G5 en QA realmente aislado y de recursos comprobados. Un POST de aprobación puede alterar varias Sheets y debe tratarse como transacción no atómica; no ejecutar operaciones financieras/académicas reales para probarlo. Si no se dispone de entorno/control aprobado, dejar G5 NO-GO y avanzar con contrato E2E sin tocar PROD.
+
+---
+
 ## F111 · CONTINUIDAD NOCTURNA (21-oct-2026, pasada previa a 8 tareas horarias)
 
 **Ejecución concreta en backend PR [#74](https://github.com/anorteamericana-ship-it/campus_backend/pull/74), sin merge ni despliegue:** defecto identificado en congelación de cambios CONAPE: la marca de solicitud `APROBANDO_CONAPE` podía propagarse al objeto pendiente antes del freeze; `_cs21a15FreezePendingChange_` devuelve `{ok:true,frozen:false,reason:'NO_PENDING'}` en un estado no pendiente, mientras la función llamadora antigua solo verificaba `ok`. Se introdujeron dos controles: `pendienteFreezeF111=Object.assign({},p,{ESTADO:estadoAnterior})` antes de aplicar y verificación obligatoria de `freezeF111.frozen===true`. Esto evita aceptar un congelador omitido como restauración correcta, sin crear ninguna operación o ruta nueva.
