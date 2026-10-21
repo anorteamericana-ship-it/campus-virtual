@@ -3,12 +3,18 @@ on:
   pull_request:
     paths:
       - 'src/app.jsx'
+      - 'src/cronograma_grupo.jsx'
+      - 'src/student_academic_summary_dom_cs21a113.js'
+      - 'scripts/qa_f111_0826_student_canonical.mjs'
       - 'scripts/qa_f111_superadmin_single_center_20261017.mjs'
       - '.github/workflows/qa-f111-superadmin-single-center.yml'
   push:
     branches: [main]
     paths:
       - 'src/app.jsx'
+      - 'src/cronograma_grupo.jsx'
+      - 'src/student_academic_summary_dom_cs21a113.js'
+      - 'scripts/qa_f111_0826_student_canonical.mjs'
       - 'scripts/qa_f111_superadmin_single_center_20261017.mjs'
       - '.github/workflows/qa-f111-superadmin-single-center.yml'
   workflow_dispatch:
@@ -27,5 +33,7 @@ jobs:
           node -e "require('@babel/parser').parse(require('fs').readFileSync('src/app.jsx','utf8'),{sourceType:'module',plugins:['jsx']}); console.log('APP JSX PASS')"
       - name: Conciliar gate superadmin con baseline live y motores protegidos
         run: node scripts/qa_f111_superadmin_single_center_20261017.mjs
+      - name: Probar expediente y calendario del estudiante trasladado (E1 sintética)
+        run: node scripts/qa_f111_0826_student_canonical.mjs
       - name: Validar diff limpio
         run: git diff --check
