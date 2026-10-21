@@ -53,7 +53,10 @@ for(const path of protectedPaths){
  const attendanceMenu="        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },\n";
  if(path==='src/sidebar.jsx'){
    assert.equal(sourceProtected.split(attendanceMenu).length-1,1,'Entrada única Asistencia de grupos');
-   assert.equal(sourceProtected.replace(attendanceMenu,''),old,'Sidebar histórico preservado salvo ruta aditiva');
+   // Tras el merge, origin/main YA contiene la nueva opción; en un PR aún
+   // no fusionado, la preimagen origin/main no la contiene.
+   const normalized=old.includes(attendanceMenu)?sourceProtected:sourceProtected.replace(attendanceMenu,'');
+   assert.equal(normalized,old,'Sidebar histórico preservado salvo ruta aditiva');
  }else{
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
