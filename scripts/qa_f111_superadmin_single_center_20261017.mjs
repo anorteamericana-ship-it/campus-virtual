@@ -55,7 +55,15 @@ assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 const oldProfileScript='<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F98.4Z6CS21A76"></script>';
 const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
 assert.equal(mainHtml.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
-let restoredHtml=mainHtml.replace(newProfileScript,oldProfileScript);
-restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
-assert.equal(restoredHtml,mainBaseline,'HTML conserva fuente original al revertir cambios explícitos F111');
+if (mainBaseline.includes(newProfileScript)) {
+  // En el push posterior al merge, origin/main ya contiene la corrección.
+  // Se exige igualdad exacta y se evita revertirla contra sí misma.
+  assert.equal(mainHtml,mainBaseline,'MAIN publicado conserva exactamente el HTML F111');
+} else {
+  // En el PR original, origin/main todavía no incluía el cambio.
+  // Se mantiene la prueba de inversión exacta de las líneas nuevas.
+  let restoredHtml=mainHtml.replace(newProfileScript,oldProfileScript);
+  restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
+  assert.equal(restoredHtml,mainBaseline,'HTML conserva fuente original al revertir cambios explícitos F111');
+}
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
