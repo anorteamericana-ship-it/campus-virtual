@@ -97,7 +97,10 @@ body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;ba
 <script>
 // F111: UNA sola interfaz oral, dos entornos explícitos y aislados.
 // PRODUCCIÓN es el único valor predeterminado. QA jamás usa an_usuario.
-const ORAL_F111_QA_MODE=new URLSearchParams(location.search).get('entorno')==='qa-f111-b2';
+const ORAL_F111_ENV_PARAMS=new URLSearchParams(location.search);
+const ORAL_F111_ENV_VALUE=ORAL_F111_ENV_PARAMS.has('qa')?'qa-no-admitido':ORAL_F111_ENV_PARAMS.get('entorno');
+const ORAL_F111_QA_MODE=ORAL_F111_ENV_VALUE==='qa-f111-b2';
+const ORAL_F111_ENV_BLOCKED=ORAL_F111_ENV_VALUE!==null&&ORAL_F111_ENV_VALUE!=='prod'&&!ORAL_F111_QA_MODE;
 const ORAL_F111_PROD_ENDPOINT='https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 const ORAL_F111_QA_ENDPOINT='https://script.google.com/macros/s/AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev';
 const APPS_SCRIPT_URL=ORAL_F111_QA_MODE?ORAL_F111_QA_ENDPOINT:ORAL_F111_PROD_ENDPOINT;
@@ -107,6 +110,7 @@ const ORAL_F111_QA_STUDENT='QA-F111-B2-01';
 const ORAL_F111_QA_OPERATIONS=new Set(['oralGetPanelDocente','oralGetEvaluacion','oralSaveDraft','oralCloseEvaluacion','oralGeneratePdf']);
 function oralF111QaSesionValida(s){return !!(s&&s.token&&s.ambiente==='QA_F111_B2'&&s.usuario==='qa_docente'&&s.rol==='teacher');}
 function oralF111QaGuard(fn,body,s){
+  if(ORAL_F111_ENV_BLOCKED)throw new Error('Entorno oral no autorizado. No se enviaron datos a producción.');
   if(!ORAL_F111_QA_MODE)return body; // Prod mantiene exactamente sus payloads.
   if(!oralF111QaSesionValida(s))throw new Error('QA: iniciá sesión con la cuenta docente exclusiva de pruebas.');
   if(!ORAL_F111_QA_OPERATIONS.has(fn))throw new Error('QA: operación no autorizada para el examen B2.');
@@ -192,7 +196,7 @@ const QB={
 // B1 mantiene temporalmente el catálogo histórico local para compatibilidad.
 
 let state={panel:null,bank:null,students:[],selected:null,evaluations:{},scores:{},questions:{},otherByUnit:{},otherGlobal:'',busy:false,dirty:false,uncertainCloseCodes:{},lastPdfBlobUrl:'',lastPdfDriveUrl:''};
-function getSesion(){try{return JSON.parse(sessionStorage.getItem(ORAL_F111_QA_MODE?ORAL_F111_QA_KEY:'an_usuario')||'null')||{};}catch(_){return {};}}
+function getSesion(){if(ORAL_F111_ENV_BLOCKED)return {};try{return JSON.parse(sessionStorage.getItem(ORAL_F111_QA_MODE?ORAL_F111_QA_KEY:'an_usuario')||'null')||{};}catch(_){return {};}}
 function token(){const s=getSesion();return s.token||'';}
 function teacherGroupLabelF88(code){const raw=String(code||'').trim().toUpperCase();const cycle=(raw.split('-').filter(Boolean).pop()||'').trim();const m=raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})-/)||raw.match(/-(LM|KJ|LJ|L4|SA|SAB|L|K|M|J|V|D)(\d{2})/);const day=({LM:'Lunes y miércoles',KJ:'Martes y jueves',LJ:'Lunes y jueves',L4:'Lunes a jueves',SA:'Sábados',SAB:'Sábados',L:'Lunes',K:'Martes',M:'Miércoles',J:'Jueves',V:'Viernes',D:'Domingos'})[m?.[1]]||'Grupo';const hours=({'69':'6pm a 9pm','94':'9am a 4pm','96':'9am a 12pm'})[m?.[2]]||'';return `${day}${hours?' de '+hours:''}${cycle?' - '+cycle:''}`;}
 function visibleGroupF88(code){const rol=String(getSesion().rol||'').toLowerCase();return rol==='superadmin'?String(code||''):teacherGroupLabelF88(code);}
@@ -523,7 +527,12 @@ async function loadPanel(){
 }
 let lastHeightF89=0,heightTimerF89=null;function reportHeightF89(){clearTimeout(heightTimerF89);heightTimerF89=setTimeout(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastHeightF89)<4)return;lastHeightF89=h;try{window.parent.postMessage({type:'an:oral-height',height:h},window.location.origin);}catch(_){ }},60);}if(typeof ResizeObserver!=='undefined'){new ResizeObserver(reportHeightF89).observe(document.body);}window.addEventListener('load',reportHeightF89);window.addEventListener('resize',reportHeightF89);document.getElementById('btn-reload').onclick=resetEvaluationF90;document.getElementById('btn-draft').onclick=saveDraft;['comentarios','sugerencias','otras-global'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(state.selected)state.dirty=true;}));document.getElementById('btn-pdf').onclick=generatePdfAndCloseF90;document.getElementById('btn-pdf-close').onclick=closePdfPreviewF90;document.getElementById('btn-pdf-final').onclick=printPdfF90;buildRubric();
 oralF111QaBanner();
-if(ORAL_F111_QA_MODE){
+if(ORAL_F111_ENV_BLOCKED){
+  // Nunca dirigir un entorno no reconocido al servidor PROD.
+  const e=document.getElementById('panel-error');
+  e.style.display='block';e.textContent='Entorno de examen no autorizado. No se realizó ninguna conexión. Revisá la dirección.';
+  setStatus('Bloqueado','bad');
+}else if(ORAL_F111_QA_MODE){
   // Un preview (o token real de an_usuario) nunca habilita escrituras QA.
   if(new URLSearchParams(location.search).has('preview')){
     sessionStorage.removeItem(ORAL_F111_QA_KEY);
