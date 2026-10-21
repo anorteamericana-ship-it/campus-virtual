@@ -38,20 +38,31 @@ async function inspectOne(spec,fetcher,base=OFFICIAL){
   const live=new TextDecoder('utf-8').decode(buffer);
   const liveSha=digest(live);
   const marker=live.includes(spec.marker);
-  let verdict='EXACT_MATCH';
+  const norm=v=>v.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n');
+  const repoNormalized=norm(spec.content),liveNormalized=norm(live);
+  let verdict='EXACT_MATCH',diff=null;
   if(liveSha!==spec.sha){
-   verdict=spec.kind==='source'&&/^\s*<!doctype html|^\s*<html/i.test(live)
-     ? 'WRONG_ASSET_HTML'
-     : marker?'CONTENT_DIFFERS':'VERSION_MISSING_MARKER';
+   if(repoNormalized===liveNormalized)verdict='LINE_ENDINGS_OR_BOM_ONLY';
+   else {
+     verdict=spec.kind==='source'&&/^\s*<!doctype html|^\s*<html/i.test(live)
+       ? 'WRONG_ASSET_HTML'
+       : marker?'CONTENT_DIFFERS':'VERSION_MISSING_MARKER';
+     const repoLines=repoNormalized.split('\n'),liveLines=liveNormalized.split('\n');
+     let first=0;while(first<Math.max(repoLines.length,liveLines.length)&&repoLines[first]===liveLines[first])first++;
+     function excerpt(v){return String(v||'').replace(/\s+/g,' ').slice(0,130);}
+     diff={firstLine:first+1,repoLines:repoLines.length,remoteLines:liveLines.length,
+       repoExcerpt:excerpt(repoLines[first]),remoteExcerpt:excerpt(liveLines[first])};
+   }
   }
   return{path:spec.path,status,verdict,marker,
-   remoteSha:liveSha,repoSha:spec.sha,remoteBytes:buffer.byteLength};
+   remoteSha:liveSha,repoSha:spec.sha,repoBytes:Buffer.byteLength(spec.content,'utf8'),
+   remoteBytes:buffer.byteLength,...(diff?{diff}:{})};
  }catch(e){
   return{path:spec.path,status:null,verdict:'UNREACHABLE',detail:e?.name==='AbortError'?'timeout':'network_or_certificate'};
  }finally{clearTimeout(timer);}
 }
 function summary(rows){
- if(rows.every(r=>r.verdict==='EXACT_MATCH'))return 'LIVE_MATCHES_REPOSITORY';
+ if(rows.every(r=>r.verdict==='EXACT_MATCH'||r.verdict==='LINE_ENDINGS_OR_BOM_ONLY'))return 'LIVE_MATCHES_REPOSITORY';
  if(rows.some(r=>['WRONG_ASSET_HTML','CONTENT_DIFFERS','VERSION_MISSING_MARKER'].includes(r.verdict)))return 'LIVE_MISMATCH_CONFIRMED';
  return 'LIVE_NOT_VERIFIED';
 }
@@ -61,10 +72,10 @@ function summaryMarkdown(rows,result){
  '',
  '**Resultado: '+result+'**',
  '',
- '| Archivo | HTTP | Resultado | SHA remoto | SHA repositorio |',
- '|---|---:|---|---|---|'];
+ '| Archivo | HTTP | Resultado | SHA remoto | SHA repositorio | Primera diferencia |',
+ '|---|---:|---|---|---|---:|'];
  for(const r of rows)header.push('| '+r.path+' | '+(r.status??'—')+
-  ' | '+r.verdict+' | '+(r.remoteSha||'—')+' | '+(r.repoSha||'—')+' |');
+  ' | '+r.verdict+' | '+(r.remoteSha||'—')+' | '+(r.repoSha||'—')+' | '+(r.diff?.firstLine||'—')+' |');
  header.push('','No se utilizaron cookies, tokens, datos personales ni solicitudes POST.',
  'GitHub Pages SUCCESS no equivale a que el dominio institucional sirva estos archivos.',
  'Si el resultado es LIVE_NOT_VERIFIED, **no** declarar coincidencia ni falla de producción.');
