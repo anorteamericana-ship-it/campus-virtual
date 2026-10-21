@@ -11,7 +11,25 @@ assert.equal(baseline.split(anchor).length-1,1,'Anchor exacto una vez');
 const newStudentsAsset='src/admin_students.jsx?v=F111I2PROJECTED20261020';
 const previousStudentsAsset='src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008';
 assert.equal(source.split(newStudentsAsset).length-1,3,'Solo los tres accesos de Estudiantes deben actualizar caché');
-assert.equal(source.replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado; solo caché de Estudiantes cambia');
+// F111 docente: revertir SOLO los cambios exactos del perfil y de los ciclos
+// para conservar la auditoría D1 del Centro de Exámenes sin falso positivo.
+const oldProfileRoute = '      perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,';
+const newProfileRoute = '      // F111: eliminar la ficha de estudiante del rol docente, no envolverla.\n      perfil:      <LazyRoute title="Mi Perfil profesional" component="TeacherProfileCS21A76" files={[]} />,';
+const oldBanner = "  if (!s || String(s.ESTADO||s.estado||'').toUpperCase()!=='ABIERTA') return null;";
+const newBanner = oldBanner + "\n  if (window.ANTeacherCyclePolicyF111?.isLegacyLesson(s)) return null;";
+const oldSession = "        setActiveTeacherState(r.sesion?r:null);";
+const newSession = "        // F111: el ciclo < 09/2026 queda fuera del panel operativo\n        // sin alterar la sesión académica ni sus filas en Sheets.\n        const legacy = !!(r.sesion && window.ANTeacherCyclePolicyF111?.isLegacyLesson(r.sesion));\n        setActiveTeacherState(r.sesion && !legacy ? r : null);";
+let restoredTeacher=source;
+function revertTeacher(now,before,occ,msg){
+  assert.equal(restoredTeacher.split(now).length-1,occ,'F111: '+msg);
+  restoredTeacher=restoredTeacher.replaceAll(now,before);
+}
+revertTeacher(newProfileRoute,oldProfileRoute,1,'ruta de perfil profesional única');
+revertTeacher(newBanner,oldBanner,1,'banner histórico suprimido');
+revertTeacher(newSession,oldSession,1,'sesión histórica excluida');
+revertTeacher("'src/student_modules.jsx?v=F111PROFILECANONICAL20261020'","'src/student_modules.jsx?v=F108GRADES20261010'",3,'caché módulos');
+revertTeacher("'src/vista_docente.jsx?v=F111ARCHIVESEP20261020'","'src/vista_docente.jsx?v=F104NEXTROSTER20261009'",7,'caché docente');
+assert.equal(restoredTeacher.replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado tras revertir exactamente el cambio docente F111');
 const adminStart=source.indexOf('function ExamenesAdminPanel()');
 const adminEnd=source.indexOf('const APP_ORAL_DEFS_F927',adminStart);
 assert(adminStart>=0&&adminEnd>adminStart,'Componente admin original conservado');
@@ -32,5 +50,12 @@ const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encodi
 const currentAppSrc=(mainHtml.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
 const baselineAppSrc=(mainBaseline.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
 assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
-assert.equal(mainHtml.replace(currentAppSrc,baselineAppSrc),mainBaseline,'Solo se permite variar versión de caché de app.jsx');
+// El HTML F111 agrega únicamente el loader del filtro y el asset de
+// perfil profesional, sin reordenar otros scripts productivos.
+const oldProfileScript='<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F98.4Z6CS21A76"></script>';
+const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
+assert.equal(mainHtml.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
+let restoredHtml=mainHtml.replace(newProfileScript,oldProfileScript);
+restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
+assert.equal(restoredHtml,mainBaseline,'HTML conserva fuente original al revertir cambios explícitos F111');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
