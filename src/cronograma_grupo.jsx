@@ -3798,6 +3798,7 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
   const [confirmar, setConfirmar]   = React.useState(false);
   const [enviando, setEnviando]     = React.useState(false);
   const [errEnvio, setErrEnvio]     = React.useState('');
+  const [justificacion, setJustificacion] = React.useState('');
 
   // Cargar estudiantes + intentar precargar valores actuales
   React.useEffect(() => {
@@ -3949,6 +3950,7 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
           leccion: leccionNum,
           asistencias: cambios.cambioAsist,
           notas:       cambios.cambioNota,
+          justificacion: justificacion.trim(),
           editado_por: superadminNombre,
         }).then(r => {
           if (!r?.ok) throw new Error(r?.error || 'Error guardando asistencia/notas.');
@@ -4157,6 +4159,23 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
             </ul>
           )}
         </div>
+
+        {cambios.cambioAsist.some(a => a.presente === false) && (
+          <div style={{padding:'10px 22px 14px',background:'var(--surface)',borderTop:'1px solid var(--line)'}}>
+            <label htmlFor="cg-motivo-ausencia" style={{display:'block',fontSize:12,fontWeight:700,marginBottom:6}}>
+              Motivo de corrección de asistencia
+            </label>
+            <input id="cg-motivo-ausencia" type="text" value={justificacion}
+              onChange={e => setJustificacion(e.target.value)} disabled={enviando}
+              placeholder="Ej.: ingreso tardío del estudiante; ausencia en lección anterior"
+              maxLength={300}
+              style={{width:'100%',boxSizing:'border-box',padding:'9px 11px',border:'1px solid var(--line)',borderRadius:8,fontSize:12}}
+            />
+            <div style={{fontSize:11,color:'var(--ink-3)',marginTop:5}}>
+              Necesario para crear una ausencia faltante en lección cerrada.
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{
