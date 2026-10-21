@@ -36,7 +36,9 @@ revertTeacher(newSession,oldSession,1,'sesión histórica excluida');
 revertTeacher("'src/student_modules.jsx?v=F111PROFILECANONICAL20261020'","'src/student_modules.jsx?v=F108GRADES20261010'",3,'caché módulos');
 revertTeacher("'src/vista_docente.jsx?v=F111ARCHIVESEP20261020'","'src/vista_docente.jsx?v=F104NEXTROSTER20261009'",7,'caché docente');
 // Ruta institucional aditiva: eliminarla SOLO de la preimagen D1, sin tocarla en producción.
-revertTeacher("      asistencia_grupos: <LazyRoute title=\"Asistencia de grupos\" component=\"AuditoriaAcademicaView\" files={F96_LAZY.auditoria} />,\n",'',1,'navegación institucional de asistencia');
+// La nueva pantalla sustituye la ruta duplicada sin alterar exámenes.
+revertTeacher("      asistencia_grupos: <LazyRoute title=\"Asistencia de grupos\" component=\"AttendanceGroupsSuperadminView\" files={F96_LAZY.asistencia_grupos} />,\n",'',1,'pantalla independiente de asistencia');
+revertTeacher("  asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'],\n",'',1,'loader aislado de asistencia');
 assert.equal(restoredTeacher.replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado tras revertir exactamente el cambio docente F111');
 const adminStart=source.indexOf('function ExamenesAdminPanel()');
 const adminEnd=source.indexOf('const APP_ORAL_DEFS_F927',adminStart);
@@ -81,7 +83,7 @@ if (mainBaseline.includes(newProfileScript)) {
   // Se exige igualdad exacta y se evita revertirla contra sí misma.
   // Únicamente se permite modificar el cache-bust del punto de entrada:
   // se mantiene sin alterar el resto del HTML, los motores y los scripts.
-  const expectedApp='src/app.jsx?v=F111ATTEND20261021';
+  const expectedApp='src/app.jsx?v=F111ATTROSTER20261021';
   const expectedSidebar='src/sidebar.jsx?v=F111ATTEND20261021';
   assert.equal(currentAppSrc,expectedApp,'F111: app Superadmin con versión de asistencia actual');
   assert.equal(currentSidebarSrc,expectedSidebar,'F111: sidebar Superadmin con versión de asistencia actual');
