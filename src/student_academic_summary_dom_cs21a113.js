@@ -8,14 +8,14 @@
   function read(codigo){
     return Promise.allSettled([postStudentPortal('getPortalEstudianteCompleto',{codigo}),postStudentPortal('getMisNotasF921',{codigo}),postStudentPortal('getAsistenciaEstudiante',{codigo})])
       .then(async r=>{
-        const portal=r[0].status==='fulfilled'&&r[0].value?.ok?r[0].value:null;
+        let portal=r[0].status==='fulfilled'&&r[0].value?.ok?r[0].value:null;
         const notes=r[1].status==='fulfilled'&&r[1].value?.ok?r[1].value:null;
         // Fuente oficial directa: si el portal compuesto conserva un snapshot
         // incompleto, integrar la asistencia del estudiante autenticado.
         const directa=r[2].status==='fulfilled'&&r[2].value?.ok?r[2].value:null;
         if(portal&&Array.isArray(directa?.asistencia)&&directa.asistencia.length){
           const previa=C.arr(portal.asistencia,['asistencia','items','registros']);
-          portal.asistencia={ok:true,asistencia:[...previa,...directa.asistencia]};
+          portal={...portal,asistencia:{ok:true,asistencia:[...previa,...directa.asistencia]}};
         }
         // Consultar la fila ACTIVA del grupo; la primera/última fila de
         // GRUPOS puede corresponder a otro nivel o a un docente futuro.
