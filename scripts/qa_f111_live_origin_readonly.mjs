@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 
 const OFFICIAL='https://anorteamerican.com/campus-virtual/';
 const SPECS=[
- {path:'campus.html',marker:'F1110826CANON20261020',kind:'html'},
+ {path:'campus.html',marker:'F111ATTEND20261021',kind:'html'},
  {path:'modulos/examen_oral.html',marker:'const ORAL_F111_ENV_BLOCKED=',kind:'html'},
  {path:'src/cronograma_grupo.jsx',marker:'F111-0826:',kind:'source'},
  {path:'src/student_academic_summary_dom_cs21a113.js',marker:"postStudentPortal('getAsistenciaEstudiante'",kind:'source'},
