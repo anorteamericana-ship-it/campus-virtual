@@ -1019,6 +1019,7 @@ function App() {
       dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} onNavigate={navigateTo} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
       calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
+      asistencia_grupos: <LazyRoute title="Asistencia de grupos" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
       diagnostico_interno: rolReal === 'superadmin'

@@ -1177,6 +1177,7 @@ function AAEditarLeccion({ leccion, estudiantes, matriz, codGrupo, nivel, supera
 
   const [form, setForm] = React.useState(() => JSON.parse(JSON.stringify(initial)));
   const [confirmar, setConfirmar] = React.useState(false);
+  const [justificacion, setJustificacion] = React.useState('');
   const [estado, setEstado] = React.useState('idle'); // idle | guardando | error
   const [errMsg, setErrMsg] = React.useState('');
 
@@ -1239,7 +1240,7 @@ function AAEditarLeccion({ leccion, estudiantes, matriz, codGrupo, nivel, supera
       calls.push(window.fetchEditarAsistenciaNotaCerrada({
         cod_grupo: codGrupo, nivel, leccion: leccionNum,
         asistencias: cambios.cambioAsist, notas: cambios.cambioNota,
-        editado_por: superadminNombre,
+        justificacion: justificacion.trim(), editado_por: superadminNombre,
       }));
     }
     try {
@@ -1398,6 +1399,24 @@ function AAEditarLeccion({ leccion, estudiantes, matriz, codGrupo, nivel, supera
             </ul>
           )}
         </div>
+
+        {/* La inserción de ausencia faltante requiere motivo; las ediciones existentes no. */}
+        {cambios.cambioAsist.some(a => a.presente === false) && (
+          <div style={{padding:'10px 22px 14px',borderTop:'1px solid var(--line)',background:'var(--surface)'}}>
+            <label htmlFor="aa-motivo-ausencia" style={{display:'block',fontSize:12,fontWeight:700,marginBottom:6}}>
+              Motivo de corrección de asistencia
+            </label>
+            <input id="aa-motivo-ausencia" type="text" value={justificacion}
+              onChange={e => setJustificacion(e.target.value)} disabled={guardando}
+              placeholder="Ej.: ingreso tardío; ausencia en lección anterior a su incorporación"
+              maxLength={300}
+              style={{width:'100%',boxSizing:'border-box',padding:'9px 11px',border:'1px solid var(--line)',borderRadius:8,fontSize:12}}
+            />
+            <div style={{fontSize:11,color:'var(--ink-3)',marginTop:5}}>
+              Obligatorio cuando se registra una ausencia que todavía no existía. La clase sigue cerrada.
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{

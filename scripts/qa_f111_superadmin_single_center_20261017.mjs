@@ -33,6 +33,8 @@ revertTeacher(newBanner,oldBanner,1,'banner histórico suprimido');
 revertTeacher(newSession,oldSession,1,'sesión histórica excluida');
 revertTeacher("'src/student_modules.jsx?v=F111PROFILECANONICAL20261020'","'src/student_modules.jsx?v=F108GRADES20261010'",3,'caché módulos');
 revertTeacher("'src/vista_docente.jsx?v=F111ARCHIVESEP20261020'","'src/vista_docente.jsx?v=F104NEXTROSTER20261009'",7,'caché docente');
+// Ruta institucional aditiva: eliminarla SOLO de la preimagen D1, sin tocarla en producción.
+revertTeacher("      asistencia_grupos: <LazyRoute title=\"Asistencia de grupos\" component=\"AuditoriaAcademicaView\" files={F96_LAZY.auditoria} />,\n",'',1,'navegación institucional de asistencia');
 assert.equal(restoredTeacher.replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado tras revertir exactamente el cambio docente F111');
 const adminStart=source.indexOf('function ExamenesAdminPanel()');
 const adminEnd=source.indexOf('const APP_ORAL_DEFS_F927',adminStart);
@@ -47,7 +49,14 @@ assert(source.includes('modulos/examenes.html?view='),'Iframe apunta a módulo r
 const protectedPaths=['src/examenes_bundle.jsx','src/examenes_modes.jsx','src/examenes_app.jsx','src/examenes_data.jsx','src/sidebar.jsx'];
 for(const path of protectedPaths){
  const old=execFileSync('git',['show','origin/main:'+path],{encoding:'utf8',maxBuffer:30*1024*1024});
- assert.equal(fs.readFileSync(path,'utf8'),old,'Motor o navegación alterados: '+path);
+ const sourceProtected=fs.readFileSync(path,'utf8');
+ const attendanceMenu="        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },\n";
+ if(path==='src/sidebar.jsx'){
+   assert.equal(sourceProtected.split(attendanceMenu).length-1,1,'Entrada única Asistencia de grupos');
+   assert.equal(sourceProtected.replace(attendanceMenu,''),old,'Sidebar histórico preservado salvo ruta aditiva');
+ }else{
+   assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
+ }
 }
 const mainHtml=fs.readFileSync('campus.html','utf8');
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
