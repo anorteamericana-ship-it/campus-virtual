@@ -17,6 +17,112 @@ function preview(){
  url.searchParams.set('rol','docente');
  window.open(url.href,'_blank','noopener,noreferrer');
 }
+const QZ_GROUP='B1-KJ18-C3-0826';
+const qzContext={cod_grupo:QZ_GROUP,nivel:'B1',leccion:4};
+async function postQuiz(fn,data){
+ const token=window.getSessionToken?window.getSessionToken():'';
+ const base=String(window.APPS_SCRIPT_URL||'');
+ if(!token||!base)throw Error('Sesión docente no disponible');
+ const res=await fetch(base+'?fn='+encodeURIComponent(fn),{
+  method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+  body:JSON.stringify(Object.assign({fn,token},data||{}))
+ });
+ let j;try{j=await res.json()}catch(_){throw Error('Sin respuesta del servidor')}
+ if(!res.ok||!j||j.ok!==true)throw Error(j&&j.error||'Operación no disponible');
+ return j;
+}
+function buildReviewEditor(container){
+ if(container.dataset.loading==='1')return;
+ container.dataset.loading='1';
+ container.replaceChildren(make('p','Consultando entregas…'));
+ postQuiz('qzProgressTeacherList',qzContext).then(result=>{
+  container.replaceChildren();
+  const list=Array.isArray(result.intentos)?result.intentos:[];
+  if(!list.length){container.append(make('p','Todavía no hay quizzes entregados.'));return;}
+  list.forEach(row=>{
+   const entry=make('article',null,'f111-tqr-entry');
+   const code=String(row.COD_ESTUDIANTE||'');
+   entry.append(make('h4','Estudiante · '+code));
+   const answers=make('div',null,'f111-tqr-answers');
+   let a={};try{a=JSON.parse(String(row.RESPUESTAS_JSON||'{}'))}catch(_){}
+   Object.keys(a).sort().forEach(key=>{
+    const line=make('div');
+    line.append(make('b',key+' · '),make('span',String(a[key]).slice(0,1500)));
+    answers.append(line);
+   });
+   entry.append(answers);
+   if(String(row.ESTADO)==='REVISADO'){
+    entry.append(make('p','Nota: '+String(row.RESULTADO||'—')+'/100'));
+    entry.append(make('p','Comentario de Progress Check: '+String(row.COMENTARIO_DOCENTE||'—')));
+   }else{
+    const form=make('form',null,'f111-tqr-form');
+    const label=make('label','Nota del Quiz 1 (0–100)');
+    const grade=make('input');grade.type='number';grade.min='0';grade.max='100';grade.step='0.01';grade.required=true;
+    label.append(grade);
+    const commentLabel=make('label','Comentario de Progress Check (obligatorio, independiente de asistencia)');
+    const comment=make('textarea');comment.required=true;comment.minLength=5;comment.maxLength=1500;comment.rows=3;
+    commentLabel.append(comment);
+    const button=make('button','Guardar nota y comentario','f111-tqr-open');
+    button.type='submit';
+    const feedback=make('p','','f111-tqr-feedback');
+    form.append(label,commentLabel,button,feedback);
+    form.addEventListener('submit',async ev=>{
+     ev.preventDefault();
+     if(!form.reportValidity())return;
+     if(!confirm('Cerrar revisión del Progress Check de '+code+' con nota '+grade.value+'/100 y comentario obligatorio?'))return;
+     button.disabled=true;feedback.textContent='Guardando revisión…';
+     try{
+      const result=await postQuiz('qzProgressTeacherReview',Object.assign({},qzContext,{
+        cod_estudiante:code,nota:grade.value,comentario_progress_check:comment.value.trim()
+      }));
+      if(result.estado!=='REVISADO'||result.comentario_asistencia_modificado!==false)throw Error('Sin readback de revisión');
+      feedback.textContent='Nota y comentario guardados. El comentario de asistencia sigue siendo obligatorio por separado.';
+      // Refrescar para impedir segunda revisión o doble envío.
+      buildReviewEditor(container);
+     }catch(err){feedback.textContent='No se pudo guardar. Verificá la entrega antes de reintentar: '+err.message;button.disabled=false;}
+    });
+    entry.append(form);
+   }
+   container.append(entry);
+  });
+ }).catch(err=>{container.replaceChildren(make('p','No se pudieron consultar las entregas: '+err.message));})
+ .finally(()=>{container.dataset.loading='0'});
+}
+function attachLessonAction(){
+ const drawers=document.querySelectorAll('aside[data-teacher-level="B1"][data-teacher-lesson="4"][data-teacher-rail="curso"]');
+ drawers.forEach(drawer=>{
+  const preview=drawer.querySelector('[data-f111-lesson-quiz="B1-L4"]');
+  if(!preview||drawer.querySelector('[data-f111-quiz-activation]'))return;
+  const text=drawer.textContent||'';
+  if(!text.includes('B1-KJ18-C3-0826')||!text.includes('GUARDAR Y CERRAR CLASE'))return;
+  const button=make('button','Consultando apertura del quiz…','f111-tqr-activate');
+  button.type='button';button.dataset.f111QuizActivation='B1-L4';button.disabled=true;
+  const feedback=make('small','','f111-tqr-feedback');
+  preview.parentNode.insertBefore(button,preview.nextSibling);
+  button.after(feedback);
+  const refresh=()=>{
+   postQuiz('qzProgressTeacherAvailability',qzContext).then(r=>{
+    if(r.digital_disponible!==true)throw Error('Quiz no disponible');
+    button.dataset.status=r.estado;
+    button.textContent=r.estado==='ABIERTO'?'Cerrar quiz para estudiantes':'Habilitar Quiz 1 para estudiantes';
+    button.disabled=false;
+    feedback.textContent=r.estado==='ABIERTO'?'Abierto: los estudiantes pueden guardar y entregar.':'Todavía no disponible para estudiantes.';
+   }).catch(()=>{button.disabled=true;button.textContent='Activación pendiente del servidor';feedback.textContent='La vista previa sigue disponible.'});
+  };
+  button.addEventListener('click',async()=>{
+   const next=button.dataset.status==='ABIERTO'?'CERRADO':'ABIERTO';
+   if(!confirm(next==='ABIERTO'?'¿Habilitar el Quiz 1 para estudiantes de este grupo?':'¿Cerrar el Quiz 1? No podrán enviar nuevas respuestas.'))return;
+   button.disabled=true;feedback.textContent='Actualizando…';
+   try{
+    const r=await postQuiz('qzProgressTeacherSetAvailability',Object.assign({},qzContext,{estado:next}));
+    if(r.estado!==next)throw Error('Apertura sin confirmación');
+    refresh();
+   }catch(err){feedback.textContent='No se confirmó el cambio: '+err.message;refresh();}
+  });
+  refresh();
+ });
+}
+
 function renderGrid(container,level){
  container.replaceChildren();
  LESSONS.forEach(([lesson,units],i)=>{
@@ -31,6 +137,16 @@ function renderGrid(container,level){
     button.setAttribute('data-f111-quiz-preview','B1-L4');
     button.addEventListener('click',preview);
     card.append(button);
+    const gradeBtn=make('button','REVISAR ENTREGAS Y CALIFICAR','f111-tqr-open');
+    gradeBtn.type='button';
+    gradeBtn.dataset.f111QuizTeacherReviews='B1-L4';
+    const gradePanel=make('div',null,'f111-tqr-review-panel');
+    gradePanel.hidden=true;
+    gradeBtn.addEventListener('click',()=>{
+      gradePanel.hidden=!gradePanel.hidden;
+      if(!gradePanel.hidden)buildReviewEditor(gradePanel);
+    });
+    card.append(gradeBtn,gradePanel);
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
@@ -68,6 +184,7 @@ function build(){
  return box;
 }
 function attach(){
+ attachLessonAction();
  const screen=document.querySelector('section[data-screen-label="Docente · Exámenes"]');
  if(!screen||screen.querySelector('[data-f111-teacher-quizzes]'))return;
  const heading=Array.from(screen.children).find(el=>(el.textContent||'').includes('EXÁMENES DEL DOCENTE'));
@@ -93,7 +210,19 @@ function installStyle(){
  '.f111-tqr-card span{font-size:11px;color:#697C91}',
  '.f111-tqr-card em{font-size:10px;font-style:normal;color:#7A8A9A;margin-top:7px}',
  '.f111-tqr-open{padding:9px 10px;border-radius:8px;background:#F2C83D;color:#173959;border:1px solid #D9B12B;font-size:11px;font-weight:900;cursor:pointer;margin-top:4px}',
- '.f111-tqr .f111-tqr-foot{font-size:11px;color:#667D92;margin:12px 0 0}'
+ '.f111-tqr .f111-tqr-foot{font-size:11px;color:#667D92;margin:12px 0 0}',
+ '.f111-tqr-review-panel[hidden]{display:none!important}',
+ '.f111-tqr-review-panel{grid-column:1/-1;padding:10px;margin-top:8px;border-top:1px solid #d6e3ef;max-height:520px;overflow:auto}',
+ '.f111-tqr-entry{background:white;border:1px solid #d6e3ef;border-radius:10px;padding:11px;margin-top:10px}',
+ '.f111-tqr-entry h4{font-size:13px;color:#163d65;margin:2px 0 8px}',
+ '.f111-tqr-answers{font-size:11px;max-height:150px;overflow:auto;white-space:pre-wrap;color:#45647c;padding:7px;background:#f5f8fc}',
+ '.f111-tqr-answers>div{padding:3px 0;border-bottom:1px solid #dde6ef}',
+ '.f111-tqr-form{margin-top:10px;display:grid;gap:10px}',
+ '.f111-tqr-form label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#254f72}',
+ '.f111-tqr-form input,.f111-tqr-form textarea{border:1px solid #c8d8e8;border-radius:8px;padding:9px;font:inherit;width:100%}',
+ '.f111-tqr-feedback{font-size:11px;color:#617791;line-height:1.4;display:block}',
+ '.f111-tqr-activate{border:1px solid #ceab36;background:#f2c83d;color:#193858;border-radius:9px;font-size:12px;font-weight:900;padding:10px;cursor:pointer}',
+ '.f111-tqr-activate:disabled{opacity:.65;cursor:not-allowed}'
  ].join('\n');
  document.head.append(s);
 }
