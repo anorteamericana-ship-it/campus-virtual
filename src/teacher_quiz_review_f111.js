@@ -77,7 +77,8 @@ function buildReviewEditor(container){
       }));
       if(result.estado!=='REVISADO'||result.comentario_asistencia_modificado!==false)throw Error('Sin readback de revisión');
       feedback.textContent='Nota y comentario guardados. El comentario de asistencia sigue siendo obligatorio por separado.';
-      // Refrescar para impedir segunda revisión o doble envío.
+      // El readback confirma el cierre. Actualizamos la lista sin reenviar.
+      container.dataset.loading='0';
       buildReviewEditor(container);
      }catch(err){feedback.textContent='No se pudo guardar. Verificá la entrega antes de reintentar: '+err.message;button.disabled=false;}
     });
