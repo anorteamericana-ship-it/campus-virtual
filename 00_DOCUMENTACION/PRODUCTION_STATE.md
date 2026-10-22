@@ -1,6 +1,24 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · B1 PC01 — CERTIFICACIÓN GAS PROD: PUERTA INMUTABLE PREPARADA · 22-oct-2026
+
+**RESULTADO VERIFICADO DE ESTA PASADA:**
+- Se identificó el Apps Script institucional por su ID de proyecto (presente en la configuración única del frontend/backend) y se verificó mediante metadata de Drive el nombre **CAMPUS VIRTUAL - Apps Script v4**, MIME `application/vnd.google-apps.script`, modificación de proyecto **16-oct-2026 16:40:52 UTC**. Esto acredita que el proyecto existe, pero **NO revela el número de versión del deployment activo**.
+- La conexión GitHub está operativa, pero navegador Apps Script conectado **NO disponible** (requiere contexto de navegador de origen) y Desktop Commander **OFFLINE**, último contacto indicado hace unas 142 horas. No hay herramienta con acceso OAuth a Apps Script deployments.get / getContent. **Cualquier afirmación “PROD @462/@463 actualmente” sería especulativa**. El archivo histórico `config/apps-script-production.json` muestra @460 con fecha 09-oct y es **STALE**, no usarlo para promoción.
+- [Backend PR #88](https://github.com/anorteamericana-ship-it/campus_backend/pull/88) **MERGED**, commit `576ac328b3620a570ac48c0e5f64a70d00bb24a0`; CI **Backend E1 QA compartida SUCCESS**. Se añadió `tests/helpers/f111_pc01_prod_immutable_readonly.mjs` y prueba de mocks `tests/qa_f111_pc01_prod_readonly_e1.mjs`, integradas en el workflow EXISTENTE `.github/workflows/qa-backend-e1.yml`. El guard original se respetó, sin nuevas rutas de workflow ni código operativo en PROD.
+- El inspector **SOLO GET**, con OAuth de dos scopes readonly, consulta `projects.deployments.get` para el deployment institucional y obtiene el `versionNumber` real; después consulta `projects.getContent?versionNumber=N` y calcula SHA256 inmutable por archivo, sin imprimir fuentes ni token. Falla cerrado ante discrepancia scriptId/deploymentId, versión inválida o autenticación ausente. **Selftest E1 PASS** con respuestas sintéticas. Trabajo en vivo **NO EJECUTADO**.
+
+**PUERTAS DE RELEASE DEL PRIMER QUIZ:** 1) herramienta de readback + selftest E1 **PASS**; 2) lectura OAuth deployment y versión inmutable **PENDIENTE**; 3) Apps Script QA E3 READ_ONLY + flujo sintético E4 (apertura→SAVE→SUBMIT→REVIEW 25/25, nota/2 comentarios, huella de NOTAS y asistencia sin alteración) **PENDIENTE**; 4) delta mínimo con rollback contra versión efectiva, despliegue Web App PROD institucional y readback **PENDIENTE**; 5) habilitación docente real + primer envío de estudiante autorizado y readback **PENDIENTE**. **Herramienta preparada 1/5; autorización de entrega real 0/1.** La UI de GitHub Pages está publicada, pero el backend `prod/75_F111_WQ_Progress_QA.js` sigue QA fail-closed y **NO DEBE cambiarse `F111_QZ_QA_ENABLED` para usar hojas PROD**.
+
+**PASO OPERATIVO ÚNICO PARA DESBLOQUEAR:** en la cuenta propietaria abrir Apps Script del proyecto institucional > **Implementar > Administrar implementaciones** > seleccionar el deployment existente `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` > verificar su **Versión** numérica y descripción (captura sin tokens). Para el cotejo de código hay que disponer de una sesión OAuth readonly autorizada (no pegar credenciales en chat), o acceso a Apps Script desde navegador/desktop conectado. En GitHub Actions, el paso opcional dentro de **Backend E1 QA compartida** está manual y apagado por defecto: requiere environment protegido `f111-gas-prod-readonly`, token temporal readonly `F111_GAS_PROD_READONLY_OAUTH_TOKEN`, variable `F111_PC01_READBACK_ENABLED=YES` y SHA revisado `F111_PC01_READBACK_SHA`. No lanzar la tarea de producción ni crear una versión nueva hasta cotejar el snapshot inmutable. El workflow normal de QA sigue funcionando sin esos secretos.
+
+**CONTINUAMOS CON:** readback efectivo del deployment PROD → comparación del motor QZ con fuente inmutable, seleccionando únicamente rutas/archivos necesarios → E3/E4 auténtico sintético → despliegue controlado y verificación de Diego. No reabrir PR #87, #580 ni rehacer el preview, audio, imagen o catálogo.
+
+---
+
+
+
 ## F111 · B1 PC01 — APERTURA, ENTREGA, NOTA Y DOS COMENTARIOS · 22-oct-2026
 
 **CÓDIGO INTEGRADO (NO APPS SCRIPT PROD):**
