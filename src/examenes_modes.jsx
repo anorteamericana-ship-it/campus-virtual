@@ -2464,8 +2464,21 @@ function F111SuperadminCenterMode({ shell, density, onPreview }) {
       {tab==='progress' && <section className="d1-catalog-section d1-pc">
         <div className="d1-section-heading"><div><h2>Progress Check</h2><p>32 quizzes diagnósticos · ocho por nivel · 0 % de nota oficial</p></div><span className="d1-pc-pill">Sin tiempo límite</span></div>
         <div className="d1-level-nav" aria-label="Nivel de Progress Check">{F111_D1_LEVELS.map(nv=><button type="button" key={nv} aria-pressed={selectedLevel===nv} className={'d1-level-select'+(selectedLevel===nv?' active':'')} onClick={()=>setSelectedLevel(nv)}><span className={'d1-level-badge d1-'+nv}>{nv}</span>{NIVEL_TEMA[nv].nombre}</button>)}</div>
-        <div className="d1-pc-grid">{F111_PC_SCHEDULE_D1.map(([number,lesson,units])=><button type="button" key={number} aria-pressed={selectedPc===number} className={'d1-eval-card'+(selectedPc===number?' active':'')} onClick={()=>setSelectedPc(number)}><span className="d1-card-eyebrow">PROGRESS CHECK {String(number).padStart(2,'0')}</span><b>Lección {lesson}</b><small>Unidades {units}</small><span className="d1-pc-pending">Contenido Cambridge: por validar</span></button>)}</div>
-        <div className="d1-selection-info d1-pc-selected"><b>{selectedLevel} · Progress Check {String(selectedPc).padStart(2,'0')}</b><p>Diagnóstico sin opción B, sin ponderación y sin clave visible. El banco oficial se conecta desde QZ32 únicamente cuando el contenido haya sido validado.</p></div>
+        <div className="d1-pc-grid">{F111_PC_SCHEDULE_D1.map(([number,lesson,units])=><button type="button" key={number} aria-pressed={selectedPc===number} className={'d1-eval-card'+(selectedPc===number?' active':'')} onClick={()=>setSelectedPc(number)}><span className="d1-card-eyebrow">PROGRESS CHECK {String(number).padStart(2,'0')}</span><b>Lección {lesson}</b><small>Unidades {units}</small>{selectedLevel==='B1' && number===1 ? <span className="d1-pc-pending" style={{background:'#e6f6e9',color:'#216539'}}>Contenido digital · 25 respuestas · Preview</span> : <span className="d1-pc-pending">Contenido Cambridge: por validar</span>}</button>)}</div>
+        <div className="d1-selection-info d1-pc-selected">
+          <b>{selectedLevel} · Progress Check {String(selectedPc).padStart(2,'0')}</b>
+          {selectedLevel==='B1' && selectedPc===1
+           ? <>
+             <p>Lección 4 · Grupo Diego B1-KJ18-C3-0826. Ya está digitalizado el cuestionario de 25 preguntas A–F. Esta vista permite responderlo como los escritos, sin PDF y sin mostrar respuestas correctas.</p>
+             <button type="button" className="d1-primary" onClick={()=>{
+               const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',window.location.href));
+               url.searchParams.set('preview','1');url.searchParams.set('grupo','B1-KJ18-C3-0826');
+               window.open(url.href,'_blank','noopener,noreferrer');
+             }}>Ver preview interactivo · B1 Lección 4 ↗</button>
+             <p className="d1-help">Vista previa para evaluación: las respuestas se guardan solo en el navegador y no se registran como entregas ni notas oficiales.</p>
+             </>
+           : <p>Diagnóstico sin opción B, sin ponderación y sin clave visible. El banco oficial se conecta desde QZ32 únicamente cuando el contenido haya sido validado.</p>}
+        </div>
       </section>}
 
       <details className="d1-ops"><summary>Operaciones de activación existentes</summary><ActivationBackendPanel onPreview={onPreview} /></details>
