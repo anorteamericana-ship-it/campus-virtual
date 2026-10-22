@@ -13,6 +13,20 @@ for(const [name,html] of [['student',student],['teacher',teacher]]){
  assert.ok(!html.includes('AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ'),name+' does not target PROD URL');
  assert.ok(!html.includes('_Key.pdf')&&!html.includes('correct:'),name+' has no correct answers');
 }
+
+const firstDigital=read('modulos/qz_b1_pc01_digital.html');
+assert.match(firstDigital,/Quiz 1 · Básico I/,'first digital quiz title B1');
+assert.ok(!firstDigital.includes('<iframe')&&!firstDigital.includes('<embed')&&!firstDigital.includes('.pdf'),'the first digital quiz never displays a PDF');
+const firstQuestionIds=['A1','A2','A3','A4','B1','B2','B3','C1','C2','C3','C4',
+  'D1','D2','D3','D4','E1a','E1b','E2a','E2b','E3a','E3b','F1','F2','F3','F4'];
+for(const qid of firstQuestionIds)assert.ok(firstDigital.includes("['"+qid+"'"),'real quiz item '+qid);
+assert.equal(firstQuestionIds.length,25);
+assert.ok(firstDigital.includes('sessionStorage.setItem'),'preview state local only');
+assert.ok(!firstDigital.includes('fetch(')&&!firstDigital.includes('qzProgressSubmit'),'preview never writes backend or student grades');
+const firstScript=firstDigital.match(/<script>([\s\S]*?)<\/script>/);
+assert.ok(firstScript,'digital page script exists');
+new Function(firstScript[1]);
+
 assert.ok(student.includes('0 %'),'student understands zero official weight');
 // Los mismos 8 PC por nivel alimentan las 32 rutas del mismo módulo,
 // sin 32 copias HTML ni preguntas/soluciones distribuidas en Pages.
@@ -237,6 +251,22 @@ if(process.env.F111_QZ_BROWSER==='1'){
   assert.deepEqual({teacherList:stats.teacherList,teacherReview:stats.teacherReview,teacherKey:stats.teacherKey},
     {teacherList:33,teacherReview:32,teacherKey:2},
     '32 teacher reviews and two private-document checks');
+
+  // B1 PC01: real text-based UI in the public static artifact; no iframe/PDF or server write.
+  await live.goto(base+'/modulos/qz_b1_pc01_digital.html?preview=1');
+  await live.waitForFunction(()=>document.querySelector('#tabs')?.children.length===6);
+  assert.equal(await live.locator('#page .question').count(),4,'A has 4 authentic listening questions');
+  await live.locator('input[name="A1"]').first().check();
+  await live.locator('#tabs button').nth(2).click();
+  assert.equal(await live.locator('#page .question input[type="text"]').count(),4,'C has 4 fill-in fields');
+  await live.locator('#page input[type="text"]').first().fill('Are');
+  await live.locator('#tabs button').nth(5).click();
+  assert.equal(await live.locator('#page .question').count(),4,'F has 4 preposition questions');
+  assert.equal(await live.locator('iframe').count(),0,'digital quiz includes no PDF viewer');
+  await live.screenshot({path:'qa-capturas/QZ32_B1_PC01_DIGITAL_PREVIEW_1280.png',fullPage:true});
+  await live.locator('#submit').click();
+  assert.ok((await live.locator('#note').textContent()).includes('Sin envío real'),'submission is visibly preview-only');
+
   assert.deepEqual(liveErrors,[],'no browser uncaught errors across student and teacher synthetic flows');
   await live.close();
   console.log('F111 QZ32 R12 ACTIVE_UI_SYNTHETIC_PASS: 32/32 metadata+PDF+save+submit+lock and two cross-quiz rejection cases');
