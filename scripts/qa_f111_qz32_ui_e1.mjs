@@ -274,4 +274,3 @@ if(process.env.F111_QZ_BROWSER==='1'){
   console.log('F111_QZ32_BROWSER_PASS: 32/32 estudiante + 32/32 docente, escritorio/móvil; solo fixture vista previa sin red');
  }finally{await browser.close();}
 }
-
