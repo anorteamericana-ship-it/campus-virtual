@@ -21,6 +21,15 @@ const firstQuestionIds=['A1','A2','A3','A4','B1','B2','B3','C1','C2','C3','C4',
   'D1','D2','D3','D4','E1a','E1b','E2a','E2b','E3a','E3b','F1','F2','F3','F4'];
 for(const qid of firstQuestionIds)assert.ok(firstDigital.includes("['"+qid+"'"),'real quiz item '+qid);
 assert.equal(firstQuestionIds.length,25);
+
+const pcPhoto=readFileSync(new URL('../media/qz32/b1_pc01_original_photo.png',import.meta.url));
+assert.equal(pcPhoto.subarray(0,8).toString('hex'),'89504e470d0a1a0a','original photo must be actual PNG');
+assert.ok(pcPhoto.length>100000,'original supplied photo retains full resolution');
+assert.ok(firstDigital.includes('../media/qz32/b1_pc01_original_photo.png'),'original photograph referenced in Section F');
+assert.ok(!firstDigital.includes('svg viewBox="0 0 650 250"'),'synthetic sketch removed entirely');
+assert.ok(firstDigital.includes('b1Pc01Player')&&firstDigital.includes('b1Pc01AudioFile'),'listening player allows instructor-provided track');
+assert.ok(!firstDigital.includes('speechSynthesis')&&!firstDigital.includes('track2.mp3'),'do not impersonate unverified original recording');
+
 assert.ok(firstDigital.includes('sessionStorage.setItem'),'preview state local only');
 assert.ok(!firstDigital.includes('fetch(')&&!firstDigital.includes('qzProgressSubmit'),'preview never writes backend or student grades');
 const firstScript=firstDigital.match(/<script>([\s\S]*?)<\/script>/);
@@ -255,15 +264,26 @@ if(process.env.F111_QZ_BROWSER==='1'){
   // B1 PC01: real text-based UI in the public static artifact; no iframe/PDF or server write.
   await live.route(base+'/modulos/qz_b1_pc01_digital.html*',
     route=>route.fulfill({status:200,contentType:'text/html',body:firstDigital}));
+
+  await live.route(base+'/media/qz32/b1_pc01_original_photo.png',route=>route.fulfill({
+    status:200,contentType:'image/png',body:pcPhoto
+  }));
   await live.goto(base+'/modulos/qz_b1_pc01_digital.html?preview=1');
   await live.waitForFunction(()=>document.querySelector('#tabs')?.children.length===6);
   assert.equal(await live.locator('#page .question').count(),4,'A has 4 authentic listening questions');
+  assert.equal(await live.locator('#b1Pc01Player').count(),1,'A has audio player');
+  await live.locator('#b1Pc01AudioFile').setInputFiles({name:'cambridge_original_track2.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('ID3'+'F111 QA fixture')});
+  assert.ok((await live.locator('#b1Pc01Player').getAttribute('src')).startsWith('blob:'),'selected audio plays locally, not uploaded');
+
   await live.locator('input[name="A1"]').first().check();
   await live.locator('#tabs button').nth(2).click();
   assert.equal(await live.locator('#page .question input[type="text"]').count(),4,'C has 4 fill-in fields');
   await live.locator('#page input[type="text"]').first().fill('Are');
   await live.locator('#tabs button').nth(5).click();
   assert.equal(await live.locator('#page .question').count(),4,'F has 4 preposition questions');
+  await live.waitForFunction(()=>document.querySelector('.drawing img')?.naturalWidth>200);
+  assert.equal(await live.locator('.drawing img').count(),1,'F displays actual provided photo');
+  assert.equal(await live.locator('.drawing svg').count(),0,'SVG reconstruction absent');
   assert.equal(await live.locator('iframe').count(),0,'digital quiz includes no PDF viewer');
   await live.screenshot({path:'qa-capturas/QZ32_B1_PC01_DIGITAL_PREVIEW_1280.png',fullPage:true});
   await live.locator('#submit').click();
