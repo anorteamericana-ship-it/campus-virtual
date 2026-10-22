@@ -29,6 +29,8 @@ assert.ok(firstDigital.includes('../media/qz32/b1_pc01_original_photo.png'),'ori
 assert.ok(!firstDigital.includes('svg viewBox="0 0 650 250"'),'synthetic sketch removed entirely');
 assert.ok(firstDigital.includes('b1Pc01Player')&&firstDigital.includes('b1Pc01AudioFile'),'listening player allows instructor-provided track');
 assert.ok(!firstDigital.includes('speechSynthesis')&&!firstDigital.includes('track2.mp3'),'do not impersonate unverified original recording');
+assert.ok(!firstDigital.includes('El guion Cambridge está identificado')&&!firstDigital.includes('No se pudo')&&!firstDigital.includes('Google Sheets'),'no technical QA explanation shown to teacher');
+assert.ok(firstDigital.includes('Vista previa docente · Podés probar el quiz.'),'teacher preview has short clear disclaimer');
 
 assert.ok(firstDigital.includes('sessionStorage.setItem'),'preview state local only');
 assert.ok(!firstDigital.includes('fetch(')&&!firstDigital.includes('qzProgressSubmit'),'preview never writes backend or student grades');
@@ -265,7 +267,7 @@ if(process.env.F111_QZ_BROWSER==='1'){
   await live.route(base+'/modulos/qz_b1_pc01_digital.html*',
     route=>route.fulfill({status:200,contentType:'text/html',body:firstDigital}));
 
-  await live.route(base+'/media/qz32/b1_pc01_original_photo.png',route=>route.fulfill({
+  await live.route(base+'/media/qz32/b1_pc01_original_photo.png*',route=>route.fulfill({
     status:200,contentType:'image/png',body:pcPhoto
   }));
   await live.goto(base+'/modulos/qz_b1_pc01_digital.html?preview=1');
