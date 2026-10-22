@@ -253,6 +253,8 @@ if(process.env.F111_QZ_BROWSER==='1'){
     '32 teacher reviews and two private-document checks');
 
   // B1 PC01: real text-based UI in the public static artifact; no iframe/PDF or server write.
+  await live.route(base+'/modulos/qz_b1_pc01_digital.html*',
+    route=>route.fulfill({status:200,contentType:'text/html',body:firstDigital}));
   await live.goto(base+'/modulos/qz_b1_pc01_digital.html?preview=1');
   await live.waitForFunction(()=>document.querySelector('#tabs')?.children.length===6);
   assert.equal(await live.locator('#page .question').count(),4,'A has 4 authentic listening questions');
