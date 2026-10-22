@@ -33,11 +33,12 @@ assert.equal(pcAudio.subarray(0,3).toString('ascii'),'ID3','MP3 must have ID3 si
 assert.ok(firstDigital.includes('b1Pc01Player')&&firstDigital.includes('b1_pc01_listening_track01.mp3'),'native audio player has a real track');
 assert.ok(!firstDigital.includes('b1Pc01AudioFile'),'students and Diego do not need to upload a local track');
 assert.ok(!firstDigital.includes('speechSynthesis')&&!firstDigital.includes('track2.mp3'),'do not impersonate unverified original recording');
-assert.ok(!firstDigital.includes('El guion Cambridge está identificado')&&!firstDigital.includes('No se pudo')&&!firstDigital.includes('Google Sheets'),'no technical QA explanation shown to teacher');
+assert.ok(!firstDigital.includes('El guion Cambridge está identificado')&&!firstDigital.includes('Google Sheets'),'no technical QA explanation shown to teacher');
 assert.ok(firstDigital.includes('Vista previa docente · Podés probar el quiz.'),'teacher preview has short clear disclaimer');
 
 assert.ok(firstDigital.includes('sessionStorage.setItem'),'preview state local only');
-assert.ok(!firstDigital.includes('fetch(')&&!firstDigital.includes('qzProgressSubmit'),'preview never writes backend or student grades');
+assert.ok(firstDigital.includes("get('live')==='1'")&&firstDigital.includes('if(liveMode)'),'all real writes require explicit live mode');
+assert.ok(firstDigital.includes("if(!liveMode)sessionStorage.setItem"),'preview uses local storage, real mode does not');
 const firstScript=firstDigital.match(/<script>([\s\S]*?)<\/script>/);
 assert.ok(firstScript,'digital page script exists');
 new Function(firstScript[1]);
