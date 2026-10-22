@@ -5,7 +5,7 @@ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const app=read('src/app.jsx');
 const lesson=read('src/teacher_views.jsx');
 const quiz=read('modulos/qz_b1_pc01_digital.html');
-const data=read('media/qz32/b1_pc01_listening_track01.mp3');
+const data=readFileSync(new URL('../media/qz32/b1_pc01_listening_track01.mp3',import.meta.url));
 assert.ok(app.includes("function TeacherQuizReviewF111()"),'teacher quiz catalog exists');
 assert.ok(app.includes("<TeacherQuizReviewF111 />{activeExamCard}"),'catalog appears above existing exam cards');
 assert.ok(app.includes('Revisión de material de quizzes'),'teacher-facing material title');
