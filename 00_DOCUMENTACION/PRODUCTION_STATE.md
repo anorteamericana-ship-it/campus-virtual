@@ -1,5 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · B1 PROGRESS CHECK 01 — PRIMER QUIZ DIGITAL · 22-oct-2026
+
+**CASO PRIORITARIO:** Grupo Diego B1-KJ18-C3-0826, Básico I, lección 4 del 22/10/2026, inicio comunicado 18:00.
+El formulario proviene del cuestionario Cambridge Intro U1–2 original de Drive privado (PDF del estudiante, clave y guion privados leídos). Se transcribieron y estructuraron 25 preguntas: A4 Listening, B3 posesivos, C4 conversación, D4 respuesta, E6 palabras y F4 preposiciones. No incluye visor PDF ni la clave de respuestas. Sección A aún necesita audio original aplicado por docente; dibujo F es reconstrucción editorial NO cotejada exactamente con el impreso.
+
+**FRONTEND INTEGRADO:** PR #569 MERGED, commit 6f2d3b96c5c65839b32ea4862b9cdda58fbd1f8e. GitHub Pages run 39838906828 **SUCCESS**. Primer formulario: modulos/qz_b1_pc01_digital.html. El enlace se añade al Centro Superadmin al seleccionar Exámenes > Progress Check > B1 > Lección 4, mediante modulos/examenes.html, sin modificar la fuente React ni el bundle de exámenes oficiales (intocables por guard de integridad). Preview institucional esperado: https://anorteamerican.com/campus-virtual/modulos/qz_b1_pc01_digital.html?preview=1 . La comprobación externa del dominio desde automatizaciones no fue posible por resolución DNS; Pages SUCCESS no sustituye que dirección lo abra en su navegador.
+
+**QA PR #569:** 5/5 workflows completaron SUCCESS: QZ32 Frontend E1 QA (Chromium con 25 inputs B1 PC01, navegación por secciones, cero PDF iframe y simulación de entrega sin POST), Teacher Admin Boundary, Student Safe Errors, English LAB Source Truth Guard y Virtual Campus Review. Código digital y superficie publicada.
+
+**LÍMITE MUY IMPORTANTE:** la vista guarda respuestas únicamente en sessionStorage del navegador, muestra progreso y simula entrega. NO registra intentos en Apps Script, NO notifica al docente, NO calcula nota ni modifica estudiantes. Quizzes de Progress Check pesan 0% oficial. Apps Script QA E3 sigue NOT RUN y Apps Script PROD no desplegado; 0/1 envíos reales certificados. No usar con alumnos como prueba oficial hasta activar backend autenticado y validar audio y el dibujo F.
+
+**SIGUIENTE CIERRE:** apertura y evaluación visual del enlace por dirección; cotejar original y dibujo F; recuperar acceso de la cuenta Apps Script QA, ejecutar E3 READ_ONLY, luego SAVE/SUBMIT/REVIEW con alumno sintético; finalmente delta seguro y desplegar version de backend contra la versión efectiva de GAS PROD. NO repetir desarrollo/QA de #569 ni de los PR QZ32 cerrados.
+
+---
+
 
 ## F111 · QZ32 — INTEGRACIÓN DEL CÓDIGO Y VISTAS QA · 21/10/2026 (corte confirmado)
 
