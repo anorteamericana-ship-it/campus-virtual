@@ -1,5 +1,17 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · INC-0826 · SUSPENSIÓN L3 APLICADA EN PRODUCCIÓN — 21/10/2026
+
+**EVIDENCIA DIRECTA (Google Sheets readback):** CAMPUS_OPERATIVO `CALENDARIO_LECCIONES`, `SOLICITUDES_CAMBIO_CLASE` y `SUSPENSIONES`; Apollo `GRUPOS`. Solicitud `CC-F111-0826-L3-EXCEPCION-20261021` estado **APLICADA**, movimiento `MOV-F111-0826-L3-20261021`. B1-KJ18-C3-0826 nivel B1: L1/L2 CERRADAS sin tocar; L3 PROGRAMADA el **20/10/2026**, asistencia FALSE y sin sesión previa, L4 22/10, L9 oral 10/11, L32 escrita **02/02/2027**; total 30 fechas movidas (L3..L32) y `LIBRE` añadido al 15/10. `SUSPENSIONES` registro B1 L3 comprobado. 32/32 curso, 16/16 I CAN B1 sin cambios; ninguna ausencia o comentario falsos L3.
+
+**PROYECCIÓN RECONCILIADA:** B2 curso L1 04/02/2027 → L32 27/05/2027; I1 curso L1 01/06/2027 → L32 21/09/2027. Se cambiaron 32 fechas por cada nivel, junto con `APOLLO.GRUPOS.FECHA_INICIO` B2 04/02/2027 e I1 01/06/2027 (ambos Proyectado), readback PASS. Todas las fechas I CAN de los tres niveles conservaron su programación previa; sus primeras sesiones futuras quedan 1 semana/día antes del inicio de curso en B2/I1: **revisar académicamente** sin modificar I CAN sin autorización específica. I2 sin cambios. Entre 96 clases de curso B1/B2/I1 no hay fechas duplicadas; B1 I CAN sin choque con curso.
+
+**ASISTENCIA DOCENTE:** `src/teacher_views.jsx::LessonDrawerF82` muestra `INICIAR CLASE` para L3 PROGRAMADA, independientemente de si fecha es pasada. `prod/02_Auth_Sesiones_Usuarios.js::docenteIniciarSesionClaseF77` acepta inicio fuera de fecha con traza automática; `prod/10_Estudiantes.js::cerrarLeccion` obtiene `FECHA_LECCION` del calendario y guardará 20/10/2026, no la fecha de captura. Aún **NO hay prueba autenticada de envío de asistencia L3**, y se observó una sesión abierta de Diego de **B1 I CAN 2** el 21/10 a las 19:31:56 en `DOCENTE_SESIONES_CLASE`. F77 rechaza iniciar otra sesión hasta cerrarla legítimamente; no cerrar ni asignar asistencia ficticia. Confirmar acceso L3 solo después de cierre I CAN2 real, e inspeccionar readback de asistencia/retroalimentación entonces. **No afirmar que Diego ya completó asistencia**.
+
+**Motivo y auditoría:** Suspensión excepcional del 15/10 por lluvia intensa / servicio de internet no disponible, con autorización explícita del usuario para corregir. Se conservó el texto del plan inicial aprobado (lecciones 14–24), con movimientos históricos anteriores mencionados en sus notas; se anexó motivo F111 por lección. El cambio se aplicó por conectores de Sheets, no por un despliegue nuevo de Apps Script. La mejora preventiva del motor de choques global PR backend #81 estaba fusionada pero producción GAS sigue sin nuevo deploy acreditado. Priorizar posterior prueba de regresión para suspensiones futuras sin borrar seguimiento histórico.
+
+**NO REHACER:** lectura y actualización del calendario B1/L3, solicitud ya APLICADA, Apollo B2/I1 reprogramados, I CAN sin cambios; reauditar solo si una nueva evidencia contradice el readback.
+
 
 ## F111 — D4-CAL-SUSP0826 · Motor real de suspensión auditado (21-oct-2026)
 
