@@ -15,12 +15,12 @@ body{margin:0}.wrap{max-width:1050px;margin:auto;padding:19px}.hero{background:#
 .question input[type=text]{width:100%;max-width:560px;padding:12px;border-radius:9px;border:1px solid #bccbdd;font-size:15px}
 .foot{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:17px 0}.foot>div{display:flex;flex-wrap:wrap;gap:8px}
 button.action{border:none;background:#073b78;color:white;border-radius:9px;padding:12px 15px;font-weight:800;cursor:pointer}.action.secondary{background:#fff;color:#073b78;border:1px solid #b7cadf}.action:disabled{opacity:.4;cursor:default}
-.progress{font-size:12px;color:#4d6583;font-weight:700}.drawing{background:#ebf4fa;padding:13px;border:1px solid #d6e6f3;border-radius:12px}.drawing svg{width:100%;max-height:240px}.done{background:#e7f5e7;border:1px solid #b4d6ba;color:#256036;padding:12px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.progress{font-size:12px;color:#4d6583;font-weight:700}.drawing{background:#ebf4fa;padding:13px;border:1px solid #d6e6f3;border-radius:12px}.drawing img{display:block;width:100%;height:auto;max-width:680px;margin:auto;border-radius:9px}.f111-audio{margin:8px 0 18px;padding:15px;border:1px solid #bdd4eb;background:#eff7ff;border-radius:12px}.f111-audio strong{display:block;color:#164e87;margin-bottom:6px}.f111-audio small{display:block;color:#526c88;line-height:1.5;margin-bottom:10px}.f111-audio audio{width:100%;max-width:600px;display:block;margin:8px 0}.f111-audio input{font-size:12px;max-width:100%}.f111-audio label{font-size:12px;font-weight:700;color:#164e87}.f111-audio-note{font-size:12px;color:#59708b}.done{background:#e7f5e7;border:1px solid #b4d6ba;color:#256036;padding:12px;border-radius:10px;margin-bottom:12px;font-size:13px}
 @media(max-width:620px){.wrap{padding:8px}.card{padding:14px}.hero{padding:17px}}
 </style></head>
 <body><main class="wrap">
 <header class="hero"><div><small>ACADEMIA NORTEAMERICANA · PROGRESS CHECK</small><h1>Quiz 1 · Básico I</h1><p>Interchange Intro · Units 1–2 · Lección 4 · Grupo Diego B1-KJ18-C3-0826</p></div><span class="pill">PREVIEW DIGITAL · 25 PUNTOS</span></header>
-<div class="note" id="note" role="status">Evaluación digital para revisión de Superadmin: 6 secciones, 25 respuestas y sin visor PDF. Esta vista previa guarda solo en el navegador; no envía datos a Google Sheets ni modifica notas. Listening A requiere que el docente lea o reproduzca Track 2.</div>
+<div class="note" id="note" role="status">Evaluación digital para revisión de Superadmin: 6 secciones, 25 respuestas y sin visor PDF. Esta vista previa guarda solo en el navegador; no envía datos a Google Sheets ni modifica notas. Sección F: fotografía original. Listening: reproductor disponible para cargar la pista 2 auténtica.</div>
 <nav class="tabs" id="tabs" role="tablist"></nav><div class="track"><div class="fill" id="fill"></div></div>
 <section id="page" class="card" aria-live="polite"></section>
 <footer class="foot"><span class="progress" id="progress"></span><div>
@@ -70,6 +70,7 @@ if(total!==25)throw new Error('Bank integrity: expected 25 responses');
 var storage='F111_B1_PC01_DIGITAL_PREVIEW_20261022';
 var saved;try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}
 var answers=saved.answers||{},sent=!!saved.sent,active=0;
+var previewAudioUrl='',previewAudioName='';
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
 var persist=function(){sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
@@ -77,14 +78,42 @@ var filled=function(){return Object.keys(answers).filter(function(k){return Stri
 sections.forEach(function(s,i){var tab=node('button',s.id+' · '+s.items.length);tab.type='button';tab.setAttribute('role','tab');tab.addEventListener('click',function(){active=i;render()});byId('tabs').append(tab)});
 function diagram(){
 var box=node('div',null,'drawing');
-box.innerHTML='<svg viewBox="0 0 650 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustración esquemática de mochila, llaves, teléfono, periódico y libros sobre y alrededor de la mesa"><rect width="650" height="250" rx="18" fill="#e7f1f8"/><rect x="67" y="184" width="519" height="9" rx="4" fill="#8daec7"/><path d="M207 81Q207 44 244 44H309Q348 44 348 81V181H207Z" stroke="#255a7f" stroke-width="5" fill="#4f8fb6"/><rect x="224" y="121" width="105" height="50" rx="9" fill="#6fadd0" stroke="#255a7f" stroke-width="3"/><path d="M245 68V48Q245 24 277 24Q309 24 309 48V68" fill="none" stroke="#255a7f" stroke-width="7"/><circle cx="260" cy="93" r="7" fill="#e7b82e"/><path d="M260 99V121M260 115H272" stroke="#e7b82e" stroke-width="5"/><rect x="409" y="93" width="54" height="89" rx="10" fill="#1e3956"/><rect x="416" y="103" width="40" height="65" rx="3" fill="#8ad3e3"/><path d="M174 186H316L307 226H181Z" fill="#e6e9e6" stroke="#849baa" stroke-width="3"/><path d="M183 201H307M185 211H301M186 219H299" stroke="#a7bbc8"/><path d="M404 194H501L489 205H394Z" fill="#e28c59"/><path d="M396 207H493L481 218H386Z" fill="#6caeaa"/><path d="M404 219H502L492 233H398Z" fill="#efc761"/><g font-size="13" fill="#31516d" font-family="Arial"><text x="235" y="16">Keys</text><text x="219" y="244">Backpack</text><text x="400" y="84">Cell phone</text><text x="108" y="239">Newspaper</text><text x="516" y="225">Books</text></g></svg>';
-box.append(node('small','Ilustración reconstruida para evaluar este modelo; cotejo gráfico final pendiente.'));return box;
+var img=node('img');
+img.src='../media/qz32/b1_pc01_original_photo.png';
+img.alt='Fotografía original: mochila roja con llaves encima; teléfono junto a la mochila; periódico debajo; dos libros sobre la mesa.';
+img.width=555;img.height=375;img.loading='eager';
+box.append(img);
+return box;
+}
+function listening(){
+var box=node('div',null,'f111-audio');
+var label=node('strong','♪ Listening · Track 2');
+var info=node('small','Reproductor del quiz. El guion Cambridge está identificado, pero todavía no se localizó la grabación oficial del Assessment CD en los archivos accesibles. Podés elegirla desde tu equipo sin subirla ni publicarla.');
+var player=node('audio');player.controls=true;player.preload='metadata';player.id='b1Pc01Player';
+player.setAttribute('aria-label','Listening original de Cambridge Track 2');
+var uploadLabel=node('label','Cargar grabación original MP3, M4A, WAV u OGG desde este equipo:');
+uploadLabel.htmlFor='b1Pc01AudioFile';
+var upload=node('input');upload.type='file';upload.id='b1Pc01AudioFile';upload.accept='audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/ogg,.mp3,.m4a,.wav,.ogg';
+var status=node('p','Sin audio oficial cargado. La prueba permanece en vista previa.','f111-audio-note');
+if(previewAudioUrl){player.src=previewAudioUrl;player.load();status.textContent='Pista local lista: '+previewAudioName+'. No se sube al Campus.'}
+upload.addEventListener('change',function(){
+ if(previewAudioUrl){URL.revokeObjectURL(previewAudioUrl);previewAudioUrl='';previewAudioName=''}
+ var file=upload.files&&upload.files[0];
+ if(!file){player.removeAttribute('src');player.load();status.textContent='Sin audio cargado.';return}
+ var ext=/\.(mp3|m4a|wav|ogg)$/i.test(file.name||'');
+ if(!ext||file.size>25*1024*1024){status.textContent='Seleccioná un archivo de audio válido de hasta 25 MB.';upload.value='';return}
+ previewAudioUrl=URL.createObjectURL(file);previewAudioName=file.name;player.src=previewAudioUrl;player.load();
+ status.textContent='Pista local lista para reproducirse: '+file.name+'. No se sube al Campus.';
+});
+box.append(label,info,player,uploadLabel,upload,status);
+return box;
 }
 function status(){var n=filled();byId('progress').textContent=n+' de '+total+' respuestas · '+Math.round(n/total*100)+' %';byId('fill').style.width=Math.round(n/total*100)+'%'}
 function render(){
 var s=sections[active],page=byId('page');page.replaceChildren();
 page.append(node('h2',s.id+' · '+s.title+' · '+s.items.length+' puntos'),node('p',s.help,'help'));
 if(sent)page.append(node('p','Entrega de demostración completada. Sin escritura de notas o expedientes.','done'));
+if(s.id==='A')page.append(listening());
 if(s.id==='F')page.append(diagram());
 s.items.forEach(function(q){var card=node('div',null,'question');card.append(node('strong',q[0]+' · '+q[1]));
 if(q[2]===null){var t=node('input');t.type='text';t.value=answers[q[0]]||'';t.placeholder='Type your answer';t.autocomplete='off';t.disabled=sent;t.setAttribute('aria-label',q[1]);t.addEventListener('input',function(){answers[q[0]]=t.value;persist();status()});card.append(t)}
@@ -94,6 +123,7 @@ Array.from(byId('tabs').children).forEach(function(x,i){x.setAttribute('aria-sel
 byId('prev').disabled=active===0;byId('next').hidden=active===sections.length-1;
 byId('submit').hidden=active!==sections.length-1||sent;byId('save').disabled=sent;status();
 }
+window.addEventListener('pagehide',function(){if(previewAudioUrl)URL.revokeObjectURL(previewAudioUrl)},{once:true});
 byId('prev').onclick=function(){if(active>0){active--;render();window.scrollTo(0,0)}};
 byId('next').onclick=function(){if(active<sections.length-1){active++;render();window.scrollTo(0,0)}};
 byId('save').onclick=function(){persist();byId('note').textContent='Vista previa guardada exclusivamente en este navegador. No es una entrega oficial del Campus.'};
