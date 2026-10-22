@@ -1,5 +1,16 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · B1 PC01 ORIGINAL FOTO + AUDIO · CIERRE VISUAL 22-oct-2026
+
+**Imagen original COMPLETADA, publicada y verificable:** PR frontend [#571](https://github.com/anorteamericana-ship-it/campus-virtual/pull/571) MERGED; commit `d9d8711e5425f4d4d10115fa9dd88563629cf97d`. Fotografía PNG completa de **555×375**, 372.871 bytes, aportada por dirección, ahora en `media/qz32/b1_pc01_original_photo.png` (blob SHA `8e6b21a72facfc09b11ef8a76f22efd80fc0275c`). El formulario `modulos/qz_b1_pc01_digital.html` reemplazó íntegramente su SVG reconstruido por el <img> que referencia esa ruta. La foto es el contenido enviado por dirección, NO generada ni retocada por IA. El esquema Cambridge A4 B3 C4 D4 E6 F4 (25 respuestas) y el motor de exámenes escritos/orales quedaron intactos. GitHub `pages build and deployment` en ese commit **SUCCESS**. Vista: `https://anorteamerican.com/campus-virtual/modulos/qz_b1_pc01_digital.html?preview=1`. El verificador web externo NO pudo acceder al dominio, por lo que queda pendiente readback visual del navegador de dirección; el deployment Pages sí está certificado.
+
+**Listening con control de archivo LOCAL, grabación original NO localizada:** en sección A ya existe un reproductor nativo `<audio controls id="b1Pc01Player">` más selector local `b1Pc01AudioFile` (MP3/M4A/WAV/OGG, máx. 25MB). Docente puede elegir la pista original de su equipo y reproducirla **en esa pestaña**, con objectURL conservado al cambiar de sección y liberado al cerrar; no se sube a GitHub, Drive ni Apps Script. **No se publicó ningún MP3 Cambridge de Track 2**: Drive institucional conectado devolvió 0 archivos MIME `audio/*`; `ic5_intro_wq_u1to2_script.pdf` contiene el *guion de escucha* Track 2, no audio; el repositorio solo contiene efectos sonoros de interfaz. La biblioteca del Campus tiene audios por unidad mediante `getAudioPistaEstudiante`, pero sin sesión autorizada **no está certificado** que ninguna pista corresponda a este assessment. No inventar ni enlazar un audio de Unit 1 como si fuera el Track 2 Cambridge. **Próximo cierre** para audio embebido automático: recuperar/identificar el MP3/M4A de Quiz Intro U1–2, Track 2 auténtico desde el proveedor/cuenta institucional autorizada, comprobar contenido/duración y agregar al circuito seguro de materiales evaluativos, evitando una URL pública sin control. Estado grabación auténtica `0/1`; interfaz reproductora `1/1`.
+
+**QA completada para cambio:** en PR #571 `F111 QZ32 Frontend E1 QA` SUCCESS (test navegador Chromium de fotografía PNG real, 0 SVG, audio local blob, 25 reactivos), `English LAB Source Truth Guard` SUCCESS; `Virtual Campus Review CS21A137` seguía en ejecución en el corte inmediato al merge. En `main` después del squash, `English LAB Source Truth Guard` SUCCESS y `pages build and deployment` SUCCESS. No se modificaron matrículas, audios privados, notas ni Apps Script. Sigue siendo **preview formativo sin almacenamiento oficial**: 0/1 flujo real Apps Script SAVE→SUBMIT→REVIEW certificado. No regresar a auditar #569 ni #571; siguiente paso únicamente recuperación del audio original y QA auténtico.
+
+---
+
+
 ## F111 · B1 PROGRESS CHECK 01 — PRIMER QUIZ DIGITAL · 22-oct-2026
 
 **CASO PRIORITARIO:** Grupo Diego B1-KJ18-C3-0826, Básico I, lección 4 del 22/10/2026, inicio comunicado 18:00.
