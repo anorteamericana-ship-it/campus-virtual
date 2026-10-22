@@ -517,46 +517,6 @@ function WrittenSessionCardF929({ session }) {
   </>;
 }
 
-// F111: índice docente de Progress Check. Solo el PC01 B1 existe como quiz digital.
-function TeacherQuizReviewF111() {
-  const [level,setLevel]=React.useState('B1');
-  const levels=[['B1','Básico I','#E0AC1E'],['B2','Básico II','#B3313B'],['I1','Intermedio I','#2874B7'],['I2','Intermedio II','#36814C']];
-  const slots=[[4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],[21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']];
-  const openQuiz=()=>{
-    const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',window.location.href));
-    url.searchParams.set('preview','1');
-    url.searchParams.set('rol','docente');
-    window.open(url.href,'_blank','noopener,noreferrer');
-  };
-  return <section aria-label="Revisión de material de quizzes" data-f111-teacher-quizzes="true"
-    style={{background:'#fff',border:'1px solid #D6E0EB',borderRadius:14,padding:16,margin:'12px 0'}}>
-    <div style={{fontSize:10,letterSpacing:'.12em',fontWeight:900,color:'#85640B'}}>PROGRESS CHECK · MATERIAL DOCENTE</div>
-    <h3 style={{fontSize:19,fontWeight:900,color:'#113A61',margin:'5px 0'}}>Revisión de material de quizzes</h3>
-    <p style={{fontSize:12,color:'#536E87',margin:'4px 0 12px'}}>Revisá las preguntas antes de iniciar la lección.</p>
-    <div role="group" aria-label="Seleccionar nivel" style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:13}}>
-      {levels.map(([code,label,color])=><button key={code} type="button" aria-pressed={level===code}
-        onClick={()=>setLevel(code)}
-        style={{background:level===code?'#F5F9FE':'#fff',border:level===code?'2px solid '+color:'1px solid #D5E0EB',borderRadius:9,padding:'8px 10px',fontSize:11,fontWeight:800,color:'#123960',cursor:'pointer'}}>
-        <span style={{display:'inline-block',padding:'3px 5px',background:color,color:'#fff',borderRadius:5,marginRight:7}}>{code}</span>{label}
-      </button>)}
-    </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))',gap:8}}>
-      {slots.map(([lesson,units],i)=>{
-        const ready=level==='B1'&&lesson===4;
-        return <div key={lesson} style={{border:'1px solid '+(ready?'#E0C271':'#D8E2EC'),background:ready?'#FFFCED':'#F8FAFC',borderRadius:10,padding:11}}>
-          <div style={{fontSize:9,fontWeight:900,color:'#657A91'}}>PROGRESS CHECK {String(i+1).padStart(2,'0')}</div>
-          <div style={{fontSize:14,fontWeight:900,color:'#153B66',margin:'5px 0'}}>Lección {lesson}</div>
-          <div style={{fontSize:11,color:'#62768C',marginBottom:9}}>Unidades {units}</div>
-          {ready?<button type="button" data-f111-quiz-preview="B1-L4" onClick={openQuiz}
-              style={{padding:'9px 7px',background:'#F2C83D',border:'1px solid #D8B12A',borderRadius:8,color:'#173959',fontSize:11,fontWeight:900,width:'100%',cursor:'pointer'}}>VER QUIZ ↗</button>
-            :<span style={{fontSize:10,color:'#77889B'}}>Pendiente de digitalizar</span>}
-        </div>;
-      })}
-    </div>
-    <p style={{fontSize:11,color:'#657C93',margin:'10px 0 0'}}>Vista previa · No habilita estudiantes ni registra notas.</p>
-  </section>;
-}
-
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
@@ -568,7 +528,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
   :esEscrito?<WrittenSessionCardF929 session={s}/>
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
-  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div><TeacherQuizReviewF111 />{activeExamCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
   return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={top}/>;
 }
 
