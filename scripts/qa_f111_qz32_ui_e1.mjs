@@ -27,7 +27,11 @@ assert.equal(pcPhoto.subarray(0,8).toString('hex'),'89504e470d0a1a0a','original 
 assert.ok(pcPhoto.length>100000,'original supplied photo retains full resolution');
 assert.ok(firstDigital.includes('../media/qz32/b1_pc01_original_photo.png'),'original photograph referenced in Section F');
 assert.ok(!firstDigital.includes('svg viewBox="0 0 650 250"'),'synthetic sketch removed entirely');
-assert.ok(firstDigital.includes('b1Pc01Player')&&firstDigital.includes('b1Pc01AudioFile'),'listening player allows instructor-provided track');
+const pcAudio=readFileSync(new URL('../media/qz32/b1_pc01_listening_track01.mp3',import.meta.url));
+assert.equal(pcAudio.length,1887842,'MP3 bytes match verified Cambridge quiz source');
+assert.equal(pcAudio.subarray(0,3).toString('ascii'),'ID3','MP3 must have ID3 signature');
+assert.ok(firstDigital.includes('b1Pc01Player')&&firstDigital.includes('b1_pc01_listening_track01.mp3'),'native audio player has a real track');
+assert.ok(!firstDigital.includes('b1Pc01AudioFile'),'students and Diego do not need to upload a local track');
 assert.ok(!firstDigital.includes('speechSynthesis')&&!firstDigital.includes('track2.mp3'),'do not impersonate unverified original recording');
 assert.ok(!firstDigital.includes('El guion Cambridge está identificado')&&!firstDigital.includes('No se pudo')&&!firstDigital.includes('Google Sheets'),'no technical QA explanation shown to teacher');
 assert.ok(firstDigital.includes('Vista previa docente · Podés probar el quiz.'),'teacher preview has short clear disclaimer');
@@ -270,12 +274,18 @@ if(process.env.F111_QZ_BROWSER==='1'){
   await live.route(base+'/media/qz32/b1_pc01_original_photo.png*',route=>route.fulfill({
     status:200,contentType:'image/png',body:pcPhoto
   }));
+  await live.route(base+'/media/qz32/b1_pc01_listening_track01.mp3*',route=>route.fulfill({
+    status:200,contentType:'audio/mpeg',body:pcAudio,
+    headers:{'Accept-Ranges':'bytes','Content-Length':String(pcAudio.length)}
+  }));
   await live.goto(base+'/modulos/qz_b1_pc01_digital.html?preview=1');
   await live.waitForFunction(()=>document.querySelector('#tabs')?.children.length===6);
   assert.equal(await live.locator('#page .question').count(),4,'A has 4 authentic listening questions');
   assert.equal(await live.locator('#b1Pc01Player').count(),1,'A has audio player');
-  await live.locator('#b1Pc01AudioFile').setInputFiles({name:'cambridge_original_track2.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('ID3'+'F111 QA fixture')});
-  assert.ok((await live.locator('#b1Pc01Player').getAttribute('src')).startsWith('blob:'),'selected audio plays locally, not uploaded');
+  assert.match(await live.locator('#b1Pc01Player').getAttribute('src'),/b1_pc01_listening_track01\.mp3/,'audio points to exact quiz track');
+  await live.waitForFunction(()=>document.querySelector('#b1Pc01Player')?.readyState>=1);
+  const audioDuration=await live.locator('#b1Pc01Player').evaluate(el=>el.duration);
+  assert.ok(audioDuration>115&&audioDuration<121,'original quiz audio metadata duration ~118 sec');
 
   await live.locator('input[name="A1"]').first().check();
   await live.locator('#tabs button').nth(2).click();

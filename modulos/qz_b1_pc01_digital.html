@@ -15,7 +15,7 @@ body{margin:0}.wrap{max-width:1050px;margin:auto;padding:19px}.hero{background:#
 .question input[type=text]{width:100%;max-width:560px;padding:12px;border-radius:9px;border:1px solid #bccbdd;font-size:15px}
 .foot{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:17px 0}.foot>div{display:flex;flex-wrap:wrap;gap:8px}
 button.action{border:none;background:#073b78;color:white;border-radius:9px;padding:12px 15px;font-weight:800;cursor:pointer}.action.secondary{background:#fff;color:#073b78;border:1px solid #b7cadf}.action:disabled{opacity:.4;cursor:default}
-.progress{font-size:12px;color:#4d6583;font-weight:700}.drawing{background:#ebf4fa;padding:13px;border:1px solid #d6e6f3;border-radius:12px}.drawing img{display:block;width:100%;height:auto;max-width:680px;margin:auto;border-radius:9px}.f111-audio{margin:8px 0 18px;padding:15px;border:1px solid #bdd4eb;background:#eff7ff;border-radius:12px}.f111-audio strong{display:block;color:#164e87;margin-bottom:7px}.f111-audio audio{width:100%;max-width:500px;margin:8px 0}.f111-audio audio:not([src]){display:none}.f111-audio input[type=file]{display:none}.f111-audio .track-pick{display:inline-block;cursor:pointer;border:1px solid #a9c8e5;color:#164e87;background:#fff;border-radius:9px;padding:9px 12px;font-size:12px;font-weight:700}.f111-audio-note{font-size:11px;color:#59708b;margin:7px 0 0}.f111-audio{padding:12px 14px}.done{background:#e7f5e7;border:1px solid #b4d6ba;color:#256036;padding:12px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.progress{font-size:12px;color:#4d6583;font-weight:700}.drawing{background:#ebf4fa;padding:13px;border:1px solid #d6e6f3;border-radius:12px}.drawing img{display:block;width:100%;height:auto;max-width:680px;margin:auto;border-radius:9px}.f111-audio{margin:8px 0 18px;padding:15px;border:1px solid #bdd4eb;background:#eff7ff;border-radius:12px}.f111-audio strong{display:block;color:#164e87;margin-bottom:7px}.f111-audio audio{width:100%;max-width:500px;margin:8px 0}.f111-audio-note{font-size:11px;color:#59708b;margin:7px 0 0}.f111-audio{padding:12px 14px}.done{background:#e7f5e7;border:1px solid #b4d6ba;color:#256036;padding:12px;border-radius:10px;margin-bottom:12px;font-size:13px}
 @media(max-width:620px){.wrap{padding:8px}.card{padding:14px}.hero{padding:17px}}
 </style></head>
 <body><main class="wrap">
@@ -70,7 +70,7 @@ if(total!==25)throw new Error('Bank integrity: expected 25 responses');
 var storage='F111_B1_PC01_DIGITAL_PREVIEW_20261022';
 var saved;try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}
 var answers=saved.answers||{},sent=!!saved.sent,active=0;
-var previewAudioUrl='',previewAudioName='';
+
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
 var persist=function(){sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
@@ -87,25 +87,16 @@ return box;
 }
 function listening(){
 var box=node('div',null,'f111-audio');
-var label=node('strong','♪ Listening · Pista 2');
-var player=node('audio');player.controls=true;player.preload='metadata';player.id='b1Pc01Player';
-player.setAttribute('aria-label','Reproductor de Listening, pista 2');
-var uploadLabel=node('label','Seleccionar audio','track-pick');
-uploadLabel.htmlFor='b1Pc01AudioFile';
-var upload=node('input');upload.type='file';upload.id='b1Pc01AudioFile';
-upload.accept='audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/ogg,.mp3,.m4a,.wav,.ogg';
-var status=node('p','Pista pendiente','f111-audio-note');
-if(previewAudioUrl){player.src=previewAudioUrl;player.load();status.textContent='Pista lista para escuchar'}
-upload.addEventListener('change',function(){
- if(previewAudioUrl){URL.revokeObjectURL(previewAudioUrl);previewAudioUrl='';previewAudioName=''}
- var file=upload.files&&upload.files[0];
- if(!file){player.removeAttribute('src');player.load();status.textContent='Pista pendiente';return}
- var ext=/\.(mp3|m4a|wav|ogg)$/i.test(file.name||'');
- if(!ext||file.size>25*1024*1024){status.textContent='Elegí un audio válido de hasta 25 MB';upload.value='';return}
- previewAudioUrl=URL.createObjectURL(file);previewAudioName=file.name;player.src=previewAudioUrl;player.load();
- status.textContent='Pista lista para escuchar';
+var label=node('strong','♪ Listening');
+var player=node('audio');
+player.controls=true;player.preload='metadata';player.id='b1Pc01Player';
+player.src='../media/qz32/b1_pc01_listening_track01.mp3?v=20261022-wq1';
+player.setAttribute('aria-label','Listening del Quiz 1 de Básico I');
+var status=node('p','', 'f111-audio-note');
+player.addEventListener('error',function(){
+ status.textContent='El audio no se pudo reproducir. Recargá la página o avisá a tu profesor.';
 });
-box.append(label,player,uploadLabel,upload,status);
+box.append(label,player,status);
 return box;
 }
 function status(){var n=filled();byId('progress').textContent=n+' de '+total+' respuestas · '+Math.round(n/total*100)+' %';byId('fill').style.width=Math.round(n/total*100)+'%'}
@@ -123,7 +114,7 @@ Array.from(byId('tabs').children).forEach(function(x,i){x.setAttribute('aria-sel
 byId('prev').disabled=active===0;byId('next').hidden=active===sections.length-1;
 byId('submit').hidden=active!==sections.length-1||sent;byId('save').disabled=sent;status();
 }
-window.addEventListener('pagehide',function(){if(previewAudioUrl)URL.revokeObjectURL(previewAudioUrl)},{once:true});
+
 byId('prev').onclick=function(){if(active>0){active--;render();window.scrollTo(0,0)}};
 byId('next').onclick=function(){if(active<sections.length-1){active++;render();window.scrollTo(0,0)}};
 byId('save').onclick=function(){persist();byId('note').textContent='Respuestas guardadas en esta vista previa.'};
