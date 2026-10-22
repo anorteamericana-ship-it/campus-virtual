@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Progress Check 01 · Básico I · Academia Norteamericana</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#193958;background:#f3f7fc}*{box-sizing:border-box}
+body{margin:0}.wrap{max-width:1050px;margin:auto;padding:19px}.hero{background:#063c7a;color:white;border-radius:15px;padding:23px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.hero h1{margin:4px 0;font-size:clamp(24px,4vw,32px)}.hero p{font-size:13px;opacity:.85;margin:5px 0}.pill{background:#f4c53e;color:#57400a;padding:11px;border-radius:11px;font-size:12px;font-weight:800;align-self:flex-start}
+.note{background:#fff8e5;color:#74530a;border:1px solid #eedb9a;padding:13px 15px;border-radius:11px;margin:14px 0;font-size:12px;line-height:1.55}
+.tabs{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}.tabs button{background:white;border:1px solid #cfdae6;color:#25476d;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer}.tabs button[aria-selected=true]{background:#f4c53e;border-color:#dca828}
+.track{background:#dce6ef;border-radius:99px;height:8px;overflow:hidden;margin-bottom:14px}.fill{height:100%;width:0;background:#e8b52d}
+.card{background:white;border:1px solid #dce5f0;border-radius:14px;padding:22px;box-shadow:0 9px 27px #17395b09}.card h2{margin:0 0 8px;font-size:22px}.help{font-size:13px;color:#64748b;line-height:1.55}
+.question{background:#fafcff;border:1px solid #dde6ef;padding:14px 16px;border-radius:12px;margin:13px 0}
+.question strong{display:block;font-size:14px;margin-bottom:12px;line-height:1.55}.question label{display:flex;align-items:center;gap:10px;border:1px solid #d3deeb;background:white;border-radius:9px;padding:10px 12px;margin:7px 0;cursor:pointer;font-size:13px}
+.question label:has(input:checked){background:#e8f3ff;border-color:#2470b5}.question input[type=radio]{accent-color:#0d5aa9}
+.question input[type=text]{width:100%;max-width:560px;padding:12px;border-radius:9px;border:1px solid #bccbdd;font-size:15px}
+.foot{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:17px 0}.foot>div{display:flex;flex-wrap:wrap;gap:8px}
+button.action{border:none;background:#073b78;color:white;border-radius:9px;padding:12px 15px;font-weight:800;cursor:pointer}.action.secondary{background:#fff;color:#073b78;border:1px solid #b7cadf}.action:disabled{opacity:.4;cursor:default}
+.progress{font-size:12px;color:#4d6583;font-weight:700}.drawing{background:#ebf4fa;padding:13px;border:1px solid #d6e6f3;border-radius:12px}.drawing svg{width:100%;max-height:240px}.done{background:#e7f5e7;border:1px solid #b4d6ba;color:#256036;padding:12px;border-radius:10px;margin-bottom:12px;font-size:13px}
+@media(max-width:620px){.wrap{padding:8px}.card{padding:14px}.hero{padding:17px}}
+</style></head>
+<body><main class="wrap">
+<header class="hero"><div><small>ACADEMIA NORTEAMERICANA · PROGRESS CHECK</small><h1>Quiz 1 · Básico I</h1><p>Interchange Intro · Units 1–2 · Lección 4 · Grupo Diego B1-KJ18-C3-0826</p></div><span class="pill">PREVIEW DIGITAL · 25 PUNTOS</span></header>
+<div class="note" id="note" role="status">Evaluación digital para revisión de Superadmin: 6 secciones, 25 respuestas y sin visor PDF. Esta vista previa guarda solo en el navegador; no envía datos a Google Sheets ni modifica notas. Listening A requiere que el docente lea o reproduzca Track 2.</div>
+<nav class="tabs" id="tabs" role="tablist"></nav><div class="track"><div class="fill" id="fill"></div></div>
+<section id="page" class="card" aria-live="polite"></section>
+<footer class="foot"><span class="progress" id="progress"></span><div>
+<button type="button" class="action secondary" id="prev">Anterior</button>
+<button type="button" class="action secondary" id="save">Guardar preview</button>
+<button type="button" class="action" id="next">Siguiente sección</button>
+<button type="button" class="action" id="submit">Simular entrega</button>
+</div></footer>
+<p class="progress">Peso oficial de Progress Check: 0 % · Claves correctas privadas · Sin audio Cambridge generado artificialmente.</p>
+</main>
+<script>
+(function(){
+'use strict';
+var sections=[
+{id:'A',title:'Listening',help:'Listen to the conversations. Check the correct answers. El docente aplica la pista original 2.',items:[
+['A1',"The boy’s first name is _____.",['Z-A-C-K-A-R-Y','Z-A-C-H-A-R-Y','Z-A-C-H-E-R-Y']],
+['A2',"Sue’s phone number is _____.",['718-555-8781','718-555-8881','718-555-8871']],
+['A3',"The _____ is in Brendon’s bag.",['tablet','cell phone','camera']],
+['A4',"The man’s wallet is _____.",['under his desk','in his pocket','in his book bag']]]},
+{id:'B',title:'Possessive adjectives',help:'Complete the conversation with my, your, his or her.',items:[
+['B1','Jake: Rico, this is a new student. _____ name is Sandra Kinsley.',['my','your','his','her']],
+['B2','Jake: Sandra is in _____ English class.',['my','your','his','her']],
+['B3',"Rico: Nice to meet you. What’s _____ last name again?",['my','your','his','her']]]},
+{id:'C',title:'Complete the conversations',help:'Write the missing words; contractions and their full forms are reviewed by the teacher.',items:[
+['C1','A: Excuse me. _____ you Ms. Brown?',null],['C2','B: No, _____ not.',null],
+['C3','B: _____ over there. My name is Nicole Parker.',null],['C4',"A: Oh, I’m sorry. Well, _____ nice to meet you.",null]]},
+{id:'D',title:'Correct responses',help:'Check the correct response.',items:[
+['D1','Good-bye. Have a great weekend.',["I’m just fine. Thank you.","It’s nice to meet you.","Thanks. You, too."]],
+['D2','See you later.',["I’m OK. Thank you.","OK. Bye-bye.","I’m just fine. How are you?"]],
+['D3','Hi. How are you?',['Pretty good, thanks.','Good night.','Nice to meet you, too.']],
+['D4','Good evening, Beth.',['Hello. How are you, Mr. Smith?','Great. How about you, Mr. Smith?','Good night. See you tomorrow, Mr. Smith.']]]},
+{id:'E',title:'Correct words',help:'Circle the correct words. Two responses per conversation, six total.',items:[
+['E1a','1 · A: What are (_____) ?', ['it','this','these']],
+['E1b','1 · B: (_____) headphones.', ['This','They’re','It’s']],
+['E2a','2 · A: (_____) your sunglasses?', ['Is this','This is','Are these']],
+['E2b','2 · B: No, (_____) not.', ['is','it’s','they’re']],
+['E3a','3 · A: Is (_____) a tablet?', ['the','this','they']],
+['E3b',"3 · B: No, it isn’t. It’s (_____) laptop.", ['this','a','an']]]},
+{id:'F',title:'Prepositions of place',help:'Use the correct prepositions from the box: in front of, next to, on, under. Observá la ilustración.',items:[
+['F1',"1 · A: Where are the keys? B: They’re _____ the backpack.",['in front of','next to','on','under']],
+['F2',"2 · A: Is the cell phone behind the backpack? B: No, it’s not. It’s _____ the backpack.",['in front of','next to','on','under']],
+['F3',"3 · A: Where is the newspaper? B: It’s _____ the backpack.",['in front of','next to','on','under']],
+['F4',"4 · A: Are the books _____ the cell phone? B: Yes, they are.",['in front of','next to','on','under']]]}
+];
+var total=sections.reduce(function(n,s){return n+s.items.length},0);
+if(total!==25)throw new Error('Bank integrity: expected 25 responses');
+var storage='F111_B1_PC01_DIGITAL_PREVIEW_20261022';
+var saved;try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}
+var answers=saved.answers||{},sent=!!saved.sent,active=0;
+var byId=function(s){return document.getElementById(s)};
+var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
+var persist=function(){sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
+var filled=function(){return Object.keys(answers).filter(function(k){return String(answers[k]||'').trim()}).length};
+sections.forEach(function(s,i){var tab=node('button',s.id+' · '+s.items.length);tab.type='button';tab.setAttribute('role','tab');tab.addEventListener('click',function(){active=i;render()});byId('tabs').append(tab)});
+function diagram(){
+var box=node('div',null,'drawing');
+box.innerHTML='<svg viewBox="0 0 650 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustración esquemática de mochila, llaves, teléfono, periódico y libros sobre y alrededor de la mesa"><rect width="650" height="250" rx="18" fill="#e7f1f8"/><rect x="67" y="184" width="519" height="9" rx="4" fill="#8daec7"/><path d="M207 81Q207 44 244 44H309Q348 44 348 81V181H207Z" stroke="#255a7f" stroke-width="5" fill="#4f8fb6"/><rect x="224" y="121" width="105" height="50" rx="9" fill="#6fadd0" stroke="#255a7f" stroke-width="3"/><path d="M245 68V48Q245 24 277 24Q309 24 309 48V68" fill="none" stroke="#255a7f" stroke-width="7"/><circle cx="260" cy="93" r="7" fill="#e7b82e"/><path d="M260 99V121M260 115H272" stroke="#e7b82e" stroke-width="5"/><rect x="409" y="93" width="54" height="89" rx="10" fill="#1e3956"/><rect x="416" y="103" width="40" height="65" rx="3" fill="#8ad3e3"/><path d="M174 186H316L307 226H181Z" fill="#e6e9e6" stroke="#849baa" stroke-width="3"/><path d="M183 201H307M185 211H301M186 219H299" stroke="#a7bbc8"/><path d="M404 194H501L489 205H394Z" fill="#e28c59"/><path d="M396 207H493L481 218H386Z" fill="#6caeaa"/><path d="M404 219H502L492 233H398Z" fill="#efc761"/><g font-size="13" fill="#31516d" font-family="Arial"><text x="235" y="16">Keys</text><text x="219" y="244">Backpack</text><text x="400" y="84">Cell phone</text><text x="108" y="239">Newspaper</text><text x="516" y="225">Books</text></g></svg>';
+box.append(node('small','Ilustración reconstruida para evaluar este modelo; cotejo gráfico final pendiente.'));return box;
+}
+function status(){var n=filled();byId('progress').textContent=n+' de '+total+' respuestas · '+Math.round(n/total*100)+' %';byId('fill').style.width=Math.round(n/total*100)+'%'}
+function render(){
+var s=sections[active],page=byId('page');page.replaceChildren();
+page.append(node('h2',s.id+' · '+s.title+' · '+s.items.length+' puntos'),node('p',s.help,'help'));
+if(sent)page.append(node('p','Entrega de demostración completada. Sin escritura de notas o expedientes.','done'));
+if(s.id==='F')page.append(diagram());
+s.items.forEach(function(q){var card=node('div',null,'question');card.append(node('strong',q[0]+' · '+q[1]));
+if(q[2]===null){var t=node('input');t.type='text';t.value=answers[q[0]]||'';t.placeholder='Type your answer';t.autocomplete='off';t.disabled=sent;t.setAttribute('aria-label',q[1]);t.addEventListener('input',function(){answers[q[0]]=t.value;persist();status()});card.append(t)}
+else q[2].forEach(function(v){var label=node('label'),radio=node('input');radio.type='radio';radio.name=q[0];radio.value=v;radio.checked=answers[q[0]]===v;radio.disabled=sent;radio.addEventListener('change',function(){answers[q[0]]=v;persist();status()});label.append(radio,node('span',v));card.append(label)});
+page.append(card)});
+Array.from(byId('tabs').children).forEach(function(x,i){x.setAttribute('aria-selected',String(i===active))});
+byId('prev').disabled=active===0;byId('next').hidden=active===sections.length-1;
+byId('submit').hidden=active!==sections.length-1||sent;byId('save').disabled=sent;status();
+}
+byId('prev').onclick=function(){if(active>0){active--;render();window.scrollTo(0,0)}};
+byId('next').onclick=function(){if(active<sections.length-1){active++;render();window.scrollTo(0,0)}};
+byId('save').onclick=function(){persist();byId('note').textContent='Vista previa guardada exclusivamente en este navegador. No es una entrega oficial del Campus.'};
+byId('submit').onclick=function(){var missing=total-filled();if(!confirm('Simular entrega con '+missing+' respuestas pendientes? No se enviará a Google Sheets.'))return;sent=true;persist();render();byId('note').textContent='Entrega simulada para evaluación de diseño. Sin envío real ni modificación de notas.'};
+render();
+})();
+</script></body></html>
