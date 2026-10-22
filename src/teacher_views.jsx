@@ -1097,6 +1097,19 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             {!loading&&sessionCheck==='ok'&&<>
               {abierta&&esExamen&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
               <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
+              {rielLeccion==='curso'&&tvUpper(nivel)==='B1'&&Number(lesson?.leccion)===4&&
+               tvUpper(code)==='B1-KJ18-C3-0826'&&canOperateRail&&!closed&&!sesionCerrada&&
+                <button type="button" data-f111-lesson-quiz="B1-L4"
+                  title="Vista previa docente: no habilita entregas de estudiantes."
+                  className="btn" style={{background:'#F2C83D',border:'1px solid #D8AD28',color:'#173959',fontSize:12,fontWeight:900}}
+                  onClick={()=>{
+                    const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',window.location.href));
+                    url.searchParams.set('preview','1');
+                    url.searchParams.set('grupo',code);
+                    url.searchParams.set('rol','docente');
+                    window.open(url.href,'_blank','noopener,noreferrer');
+                  }}>ABRIR QUIZ · VISTA DOCENTE</button>}
+
               {!closed&&!sesionCerrada&&!abierta&&!otherGlobal&&(tvUpper(lesson?.estado)==='PROGRAMADA'||!lesson?.estado)&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
             </>}
           </div>
