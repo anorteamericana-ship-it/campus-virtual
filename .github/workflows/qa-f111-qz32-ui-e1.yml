@@ -11,6 +11,7 @@ on:
       - 'src/teacher_quiz_review_f111.js'
       - 'campus.html'
       - 'scripts/qa_f111_pc01_release_contract_e1.mjs'
+      - 'scripts/qa_f111_pc01_browser_e1.mjs'
       - 'modulos/quiz_progress_docente.html'
       - 'src/vista_docente.jsx'
       - 'src/app.jsx'
@@ -43,6 +44,8 @@ jobs:
         env:
           F111_QZ_BROWSER: '1'
         run: node scripts/qa_f111_qz32_ui_e1.mjs
+      - name: E1 Chromium B1 PC01 save and submit mocked (never GAS)
+        run: node scripts/qa_f111_pc01_browser_e1.mjs
       - name: Screenshots of QA preview (not live Campus)
         if: always()
         uses: actions/upload-artifact@v4
