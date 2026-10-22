@@ -1,5 +1,21 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 — INC-0826, suspensión retroactiva de Diego, L3 (21-oct-2026)
+
+**Caso:** B1-KJ18-C3-0826, lección 3 B1 del 15/10/2026. Captura real confirma que el botón «Suspender» sí abre el formulario, pero el backend rechaza la fecha pasada. Error localizado en `prod/12_Cronograma_Calendario.js`; la aprobación Superadmin vuelve a validar la fecha.
+
+**Limpieza LIVE confirmada:** se eliminaron 15 ausencias, 15 comentarios «c», borrador y sesión erróneos de L3. Calendario L3 restablecido a `PROGRAMADA` y asistencia `FALSE`. L1/L2 e I CAN intactos.
+
+**Solicitud excepcional LIVE, no aprobación:** `SOLICITUDES_CAMBIO_CLASE` fila 6, ID `CC-F111-0826-L3-EXCEPCION-20261021`, estado `PENDIENTE`, motivo lluvia fuerte/sin internet. Introducida por Administración en respuesta al reporte del docente; no atribuirle envío exitoso a Diego. Readback 1/1. No se cambió ninguna fecha del calendario.
+
+**Código:** frontend PR #563 y #564 fusionados; backend PR #80 fusionado (CI 2/2) para admitir futuras solicitudes retrospectivas, sin habilitar aprobación automática. **Deploy Apps Script PROD no verificado.**
+
+**Bloqueo académico:** L4 del 20/10/2026 sigue PROGRAMADA. Empujar L3 una sola sesión la dejaría en el 20/10, también pasado. Superadmin debe conciliar si L4 fue impartida y definir una secuencia futura que mantenga las 32 lecciones antes de aplicar. No forzar el motor ni falsificar ausencias.
+
+**Estado:** limpieza 100%; solicitud administrativa PENDIENTE 1/1; aprobación/aplicación 0/1; backend GAS LIVE 0/1 certificado.
+
+
+
 ## F111 · TABLERO EJECUTIVO DE CONTINUIDAD — 21-oct-2026 (lectura GitHub actualizada)
 
 **ÚNICA FUENTE DE ESTADO:** este archivo. Se añadió esta cabecera sin duplicar reportes; las secciones posteriores conservan evidencia histórica y deben interpretarse según su fecha. Una afirmación histórica de PR abierto puede haber sido superada por un MERGE posterior. No usar porcentajes antiguos del proyecto global como avance certificado.
