@@ -70,6 +70,7 @@ if(total!==25)throw new Error('Bank integrity: expected 25 responses');
 var storage='F111_B1_PC01_DIGITAL_PREVIEW_20261022';
 var saved;try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}
 var answers=saved.answers||{},sent=!!saved.sent,active=0;
+var previewAudioUrl='',previewAudioName='';
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
 var persist=function(){sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
@@ -94,17 +95,16 @@ var uploadLabel=node('label','Cargar grabación original MP3, M4A, WAV u OGG des
 uploadLabel.htmlFor='b1Pc01AudioFile';
 var upload=node('input');upload.type='file';upload.id='b1Pc01AudioFile';upload.accept='audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/ogg,.mp3,.m4a,.wav,.ogg';
 var status=node('p','Sin audio oficial cargado. La prueba permanece en vista previa.','f111-audio-note');
-var audioUrl='';
+if(previewAudioUrl){player.src=previewAudioUrl;player.load();status.textContent='Pista local lista: '+previewAudioName+'. No se sube al Campus.'}
 upload.addEventListener('change',function(){
- if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl=''}
+ if(previewAudioUrl){URL.revokeObjectURL(previewAudioUrl);previewAudioUrl='';previewAudioName=''}
  var file=upload.files&&upload.files[0];
  if(!file){player.removeAttribute('src');player.load();status.textContent='Sin audio cargado.';return}
  var ext=/\.(mp3|m4a|wav|ogg)$/i.test(file.name||'');
  if(!ext||file.size>25*1024*1024){status.textContent='Seleccioná un archivo de audio válido de hasta 25 MB.';upload.value='';return}
- audioUrl=URL.createObjectURL(file);player.src=audioUrl;player.load();
+ previewAudioUrl=URL.createObjectURL(file);previewAudioName=file.name;player.src=previewAudioUrl;player.load();
  status.textContent='Pista local lista para reproducirse: '+file.name+'. No se sube al Campus.';
 });
-window.addEventListener('pagehide',function(){if(audioUrl)URL.revokeObjectURL(audioUrl)},{once:true});
 box.append(label,info,player,uploadLabel,upload,status);
 return box;
 }
@@ -123,6 +123,7 @@ Array.from(byId('tabs').children).forEach(function(x,i){x.setAttribute('aria-sel
 byId('prev').disabled=active===0;byId('next').hidden=active===sections.length-1;
 byId('submit').hidden=active!==sections.length-1||sent;byId('save').disabled=sent;status();
 }
+window.addEventListener('pagehide',function(){if(previewAudioUrl)URL.revokeObjectURL(previewAudioUrl)},{once:true});
 byId('prev').onclick=function(){if(active>0){active--;render();window.scrollTo(0,0)}};
 byId('next').onclick=function(){if(active<sections.length-1){active++;render();window.scrollTo(0,0)}};
 byId('save').onclick=function(){persist();byId('note').textContent='Vista previa guardada exclusivamente en este navegador. No es una entrega oficial del Campus.'};
