@@ -6,6 +6,11 @@ on:
   pull_request:
     paths:
       - 'modulos/quiz_progress.html'
+      - 'modulos/qz_b1_pc01_digital.html'
+      - 'src/student_pc01_f111.js'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'campus.html'
+      - 'scripts/qa_f111_pc01_release_contract_e1.mjs'
       - 'modulos/quiz_progress_docente.html'
       - 'src/vista_docente.jsx'
       - 'src/app.jsx'
@@ -28,6 +33,8 @@ jobs:
         run: node scripts/qa_f111_qz32_ui_e1.mjs
       - name: QA E1 teacher review from class and Examenes
         run: node scripts/qa_f111_teacher_quiz_access_e1.mjs
+      - name: QA E1 B1 PC01 activation and two separate comments
+        run: node scripts/qa_f111_pc01_release_contract_e1.mjs
       - name: Install Chromium for QA previews only
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1

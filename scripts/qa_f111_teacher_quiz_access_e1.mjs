@@ -27,8 +27,13 @@ for(const source of [catalog,lesson]){
 assert.ok(quiz.includes('b1_pc01_listening_track01.mp3'),'audio original enlazado');
 assert.ok(quiz.includes('b1_pc01_original_photo.png'),'foto aprobada');
 assert.ok(audio.byteLength>100000,'asset MP3 binario existe');
-for(const operation of ['qzProgressSubmit','qzProgressSaveDraft','qzProgressTeacherReview','habilitarQuiz','registrarNota']){
- assert.ok(!catalog.includes(operation),'catálogo sin operaciones académicas '+operation);
+for(const operation of ['qzProgressSubmit','qzProgressSaveDraft','registrarNotaComponenteOficial','docenteCerrarClaseConAsistenciaF87']){
+ assert.ok(!catalog.includes(operation),'docente no entrega quiz del alumno ni altera asistencia: '+operation);
 }
-assert.ok(!catalog.includes('fetch('),'no requests de escritura ni lectura desde el complemento');
-console.log('PASS F111 QZ32 docente: accesos 2/2, catálogo 4x8, B1 L4 único activo, sin activar notas ni alumnos');
+assert.ok(catalog.includes("'qzProgressTeacherReview'"),'revisión con nota y comentario de PC');
+assert.ok(catalog.includes("'qzProgressTeacherSetAvailability'"),'apertura explícita por docente');
+assert.ok(catalog.includes('window.getSessionToken'),'acciones por sesión autenticada, sin token en URL');
+assert.ok(catalog.includes('comentario_progress_check:comment.value.trim()'),'comentario PC independiente de asistencia');
+assert.ok(catalog.includes("grade.min='0'")&&catalog.includes("grade.max='100'"),'nota por 100');
+assert.ok(catalog.includes("GUARDAR Y CERRAR CLASE"),'botón habilitador solo al iniciar lección');
+console.log('PASS F111 QZ32 docente: revisión previa, apertura clase, nota PC 0-100, comentario separado de asistencia');

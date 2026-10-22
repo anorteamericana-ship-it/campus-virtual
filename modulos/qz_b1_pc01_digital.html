@@ -68,12 +68,13 @@ var sections=[
 var total=sections.reduce(function(n,s){return n+s.items.length},0);
 if(total!==25)throw new Error('Bank integrity: expected 25 responses');
 var storage='F111_B1_PC01_DIGITAL_PREVIEW_20261022';
-var saved;try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}
+var liveMode=(new URLSearchParams(location.search)).get('live')==='1';
+var saved={};if(!liveMode){try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}}
 var answers=saved.answers||{},sent=!!saved.sent,active=0;
 
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
-var persist=function(){sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
+var persist=function(){if(!liveMode)sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
 var filled=function(){return Object.keys(answers).filter(function(k){return String(answers[k]||'').trim()}).length};
 sections.forEach(function(s,i){var tab=node('button',s.id+' · '+s.items.length);tab.type='button';tab.setAttribute('role','tab');tab.addEventListener('click',function(){active=i;render()});byId('tabs').append(tab)});
 function diagram(){
@@ -103,7 +104,7 @@ function status(){var n=filled();byId('progress').textContent=n+' de '+total+' r
 function render(){
 var s=sections[active],page=byId('page');page.replaceChildren();
 page.append(node('h2',s.id+' · '+s.title+' · '+s.items.length+' puntos'),node('p',s.help,'help'));
-if(sent)page.append(node('p','Vista previa finalizada.','done'));
+if(sent)page.append(node('p',liveMode?'Quiz entregado · Pendiente de revisión docente.':'Vista previa finalizada.','done'));
 if(s.id==='A')page.append(listening());
 if(s.id==='F')page.append(diagram());
 s.items.forEach(function(q){var card=node('div',null,'question');card.append(node('strong',q[0]+' · '+q[1]));
@@ -120,5 +121,107 @@ byId('next').onclick=function(){if(active<sections.length-1){active++;render();w
 byId('save').onclick=function(){persist();byId('note').textContent='Respuestas guardadas en esta vista previa.'};
 byId('submit').onclick=function(){var missing=total-filled();if(!confirm('Finalizar vista previa'+(missing?' con '+missing+' preguntas sin responder':'')+'?'))return;sent=true;persist();render();byId('note').textContent='Vista previa finalizada · Sin envío real.'};
 render();
+if(liveMode){
+ var group=String((new URLSearchParams(location.search)).get('grupo')||'').toUpperCase();
+ var context={cod_grupo:group,nivel:'B1',leccion:4},sessionToken='',apiBase='';
+ var liveBusy=false,liveUncertain=false,dirty=false,lastSaved='',saveTimer=null;
+ var statusEl=byId('note'),saveBtn=byId('save'),submitBtn=byId('submit');
+ var verifyBtn=node('button','Verificar entrega','action secondary');verifyBtn.type='button';verifyBtn.hidden=true;
+ submitBtn.after(verifyBtn);
+ function liveShow(message){statusEl.textContent=message;}
+ function liveLock(){
+  saveBtn.disabled=liveBusy||sent||liveUncertain;
+  submitBtn.disabled=liveBusy||sent||liveUncertain||filled()===0;
+  verifyBtn.hidden=!liveUncertain;
+  var els=byId('page').querySelectorAll('input');
+  els.forEach(function(el){el.disabled=sent||liveUncertain||liveBusy});
+ }
+ async function call(fn,body){
+  if(!apiBase||!sessionToken)throw Error('Sesión no disponible.');
+  var res=await fetch(apiBase+'?fn='+encodeURIComponent(fn),{
+   method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+   body:JSON.stringify(Object.assign({fn:fn,token:sessionToken},body||{}))
+  });
+  var data;try{data=await res.json()}catch(_){throw Error('No se recibió confirmación.')}
+  if(!res.ok||!data||data.ok!==true)throw Error((data&&(data.error||data.mensaje))||'Operación no disponible.');
+  return data;
+ }
+ async function saveLive(){
+  if(liveBusy||sent||liveUncertain||!dirty)return;
+  liveBusy=true;liveLock();
+  var snapshot=JSON.stringify(answers);
+  try{
+   var result=await call('qzProgressSaveDraft',Object.assign({},context,{respuestas:Object.assign({},answers)}));
+   if(result.estado==='ENTREGADO'||result.estado==='REVISADO'){sent=true;render();liveShow('Quiz ya entregado.');}
+   else if(snapshot===JSON.stringify(answers)){dirty=false;lastSaved=snapshot;liveShow('Avance guardado.')}
+   else{dirty=true;liveShow('Hay respuestas nuevas por guardar.')}
+  }catch(e){dirty=true;liveShow('No se pudo guardar: '+e.message);}
+  finally{liveBusy=false;liveLock();}
+ }
+ async function checkSubmission(){
+  if(liveBusy)return;
+  liveBusy=true;liveLock();
+  try{
+   var state=await call('qzProgressMyAttempt',context);
+   if(state.estado==='ENTREGADO'||state.estado==='REVISADO'){
+    sent=true;dirty=false;liveUncertain=false;render();
+    liveShow(state.estado==='REVISADO'?'Revisado · Nota '+state.nota+'/100 · '+(state.comentario_docente||''):'Entrega confirmada. El docente revisará tus respuestas.');
+   }else{liveShow('Entrega sin confirmar. Consultá a tu docente antes de reintentar.')}
+  }catch(e){liveShow('No se pudo verificar la entrega. Consultá a tu docente.')}
+  finally{liveBusy=false;liveLock();}
+ }
+ function validSession(){
+  try{
+   if(window.parent===window||window.parent.location.origin!==location.origin)throw Error();
+   apiBase=String(window.parent.APPS_SCRIPT_URL||'');
+   sessionToken=String(window.parent.getSessionToken?window.parent.getSessionToken():'');
+  }catch(_){apiBase='';sessionToken='';}
+  return !!apiBase&&!!sessionToken&&group==='B1-KJ18-C3-0826';
+ }
+ async function startLive(){
+  byId('save').textContent='Guardar avance';byId('submit').textContent='Entregar quiz';
+  document.querySelector('.pill').textContent='Evaluación de clase';
+  if(!validSession()){liveShow('Abrí el quiz desde Mi Campus con tu sesión de estudiante.');saveBtn.disabled=true;submitBtn.disabled=true;return}
+  liveBusy=true;liveLock();liveShow('Comprobando disponibilidad del quiz…');
+  try{
+   var q=await call('qzProgressGet',context);
+   if(q.quiz_id!=='IC5_B1_WQ01'||q.peso_oficial!==0||q.nivel!=='B1'||q.leccion!==4)
+    throw Error('El quiz no coincide con tu grupo.');
+   var allowed={};(q.secciones||[]).forEach(function(sec){
+    var ids=sec.items&&sec.items.length>1?sec.items:[null];
+    ids.forEach(function(item){allowed[sec.id+(item===null?'':item)]=true});
+   });
+   var expected=[];sections.forEach(function(sec){sec.items.forEach(function(item){expected.push(item[0])})});
+   if(expected.length!==25||Object.keys(allowed).length!==25||expected.some(function(x){return !allowed[x]}))
+    throw Error('Las 25 preguntas no coinciden con el banco académico.');
+   var prior=await call('qzProgressMyAttempt',context);
+   answers=prior.respuestas&&typeof prior.respuestas==='object'?prior.respuestas:{};
+   sent=prior.estado==='ENTREGADO'||prior.estado==='REVISADO';
+   lastSaved=JSON.stringify(answers);dirty=false;render();
+   liveShow(sent?(prior.estado==='REVISADO'?'Revisado · Nota '+prior.nota+'/100 · '+(prior.comentario_docente||''):'Ya entregaste este quiz. Pendiente de revisión.'):'Quiz habilitado por tu profesor. Respondé y guardá tu avance.');
+  }catch(e){sent=true;render();liveShow('Quiz no disponible: '+e.message);}
+  finally{liveBusy=false;liveLock();}
+ }
+ // Mantener los datos solo en memoria; en live nunca escribir a sessionStorage.
+ byId('page').addEventListener('input',function(){if(sent)return;dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLive,1300);});
+ byId('page').addEventListener('change',function(){if(sent)return;dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLive,900);});
+ // El input de respuestas se actualiza antes del evento que llega a page.
+ saveBtn.onclick=function(){dirty=true;clearTimeout(saveTimer);saveLive()};
+ submitBtn.onclick=async function(){
+  if(liveBusy||sent||liveUncertain||filled()===0)return;
+  clearTimeout(saveTimer);
+  if(!confirm('¿Entregar el Quiz 1 ahora? Luego no podrás modificar las respuestas.'))return;
+  liveBusy=true;liveLock();liveShow('Entregando…');
+  try{
+   var r=await call('qzProgressSubmit',Object.assign({},context,{respuestas:Object.assign({},answers)}));
+   if(r.estado==='ENTREGADO'||r.estado==='REVISADO'){sent=true;dirty=false;render();liveShow('Quiz entregado. Pendiente de revisión docente.');}
+   else throw Error('Sin confirmación.');
+  }catch(e){liveUncertain=true;liveShow('No se confirmó la entrega. Utilizá «Verificar entrega» antes de reintentar.');}
+  finally{liveBusy=false;liveLock();}
+ };
+ verifyBtn.onclick=checkSubmission;
+ startLive();
+}
+
 })();
 </script></body></html>
