@@ -90,5 +90,51 @@
   boot();
 })();
 </script>
+<script>
+/* F111 PC01: launcher del primer quiz digital exclusivamente en Centro Superadmin.
+   No modifica el paquete protegido de exámenes escritos ni sus autorizaciones. */
+(function(){
+'use strict';
+function mount(){
+ var center=document.querySelector('.d1-master');
+ if(!center)return;
+ var selected=center.querySelector('.d1-pc-selected');
+ if(!selected)return;
+ var title=selected.querySelector('b');
+ var isFirst=title&&/B1\s*[·-]\s*Progress Check\s*01\b/i.test(title.textContent||'');
+ if(!isFirst)return;
+ if(!selected.querySelector('#f111-pc01-digital-button')){
+  var link=document.createElement('a');
+  link.id='f111-pc01-digital-button';
+  link.href=new URL('qz_b1_pc01_digital.html?preview=1&grupo=B1-KJ18-C3-0826',location.href).href;
+  link.target='_blank';link.rel='noopener noreferrer';
+  link.textContent='Ver preview interactivo · B1 Lección 4 ↗';
+  link.setAttribute('aria-label','Abrir primera prueba digital completa de Básico I lección 4');
+  link.style.cssText='display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:12px 0;padding:12px 15px;background:#063c7a;border-radius:9px;color:white;font-weight:800;text-decoration:none;font-size:13px';
+  selected.appendChild(link);
+ }
+ if(!selected.querySelector('#f111-pc01-preview-note')){
+  var note=document.createElement('p');
+  note.id='f111-pc01-preview-note';
+  note.textContent='Primer banco digital: 25 respuestas A–F sin PDF. Vista de evaluación (sin envío a Google Sheets ni nota oficial). Grupo Diego 0826.';
+  note.style.cssText='font-size:12px;color:#56718c;margin:6px 0';
+  selected.appendChild(note);
+ }
+ var first=center.querySelector('.d1-pc-grid .d1-eval-card .d1-pc-pending');
+ if(first&&first.textContent==='Contenido Cambridge: por validar')
+  first.textContent='Digital: 25 respuestas · Preview';
+}
+var target=document.getElementById('root');
+if(!target)return;
+var scheduled=false;
+var observer=new MutationObserver(function(){
+ if(scheduled)return;
+ scheduled=true;
+ queueMicrotask(function(){scheduled=false;mount()});
+});
+observer.observe(target,{childList:true,subtree:true});
+mount();
+})();
+</script>
 </body>
 </html>
