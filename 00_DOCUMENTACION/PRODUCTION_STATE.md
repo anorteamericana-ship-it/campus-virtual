@@ -1,5 +1,19 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+
+## F111 — D4-CAL-SUSP0826 · Motor real de suspensión auditado (21-oct-2026)
+
+**ESTADO: NO APLICADO EN PRODUCCIÓN.** Se verificó de nuevo que CALENDARIO_LECCIONES B1-KJ18-C3-0826 B1 mantiene lección 3=15/10/2026 PROGRAMADA sin asistencia, lección 4=20/10/2026 PROGRAMADA, lección 32=28/01/2027 PROGRAMADA. La solicitud excepcional CC-F111-0826-L3-EXCEPCION-20261021 permanece PENDIENTE (fila 6); no existe registro nuevo del grupo en SUSPENSIONES. No confundir botón Aceptar con resolución aplicada.
+
+**CÓDIGO REAL, NO REINVENTAR:** `campus_backend/prod/11_Docentes_Clases.js` documenta la regla v4.21.8: las 32 lecciones se dan siempre, suspender empuja al siguiente turno. `prod/12_Cronograma_Calendario.js::suspenderLeccion` construye el mapa único 1–32, para cada L >=3 toma fecha/hora actuales de L+1; la L32 busca siguiente día regular con `_ccF85_nextRegularSlot_`, agrega fila de tipo LIBRE con lección 0 en el 15/10 y registra SUSPENSIONES. **No crea lección 33 ni otra L32; mueve la L32 existente.** No toca I CAN (riel `curso`). `prod/02_Auth_Sesiones_Usuarios.js::resolverSolicitudSuspension` solicita la aprobación y llama al motor real. No usar `regenerarCalendarioGrupo` (wipe completo, destruye cierres), ni `regenerarNivelGrupo` en niveles iniciados.
+
+**DELTA EXACTO SOLICITADO:** L3 15/10→20/10; L4 20/10→22/10; L5 22/10→27/10; L9 oral 05/11→10/11; L31 26/01/2027→28/01/2027; L32 escrito 28/01→02/02/2027; se mueven 30 lecciones (3–32), permanecen 32 lecciones y 16 I CAN sin cambios.
+
+**BLOQUEOS VALIDOS:** guard de fecha pasada en `_ccF84_contextoCalendario_` y de reprogramaciones aprobadas en `suspenderLeccion` (lecciones B1 14–24 con PLAN-09630E49..., aprobado 08/10). Además la fecha adicional 02/02/2027 choca con B2 L3 de este MISMO grupo de 18:00–21:00: B2 inicia 26/01/2027 (APOLLO.GRUPOS, estado Proyectado), cuando B1 L31 ya está 26/01 y L32 28/01. El verificador `_ccF85_validarChoqueSlot_` correctamente rechaza superposición por grupo incluso si docente difiere. No desactivar ese guard sin reparar traspaso B1→B2; replantear fechas futuras/proyectadas B2 y revisar cascada B2→I1 antes de aplicar suspensión. Priorizar salvaguarda de fechas aprobadas y trazabilidad.
+
+**SIGUIENTE PASO:** propuesta única del nuevo calendario con reconciliación de B2/proyectados, conservación 16 I CAN y 32 lecciones por nivel, antes de mutación. Luego aprobación autentificada + readback de CALENDARIO_LECCIONES, SUSPENSIONES y SOLICITUDES_CAMBIO_CLASE en PROD. NO decir “calendario listo” aún.
+
+
 ## F111 — INC-0826, suspensión retroactiva de Diego, L3 (21-oct-2026)
 
 **Caso:** B1-KJ18-C3-0826, lección 3 B1 del 15/10/2026. Captura real confirma que el botón «Suspender» sí abre el formulario, pero el backend rechaza la fecha pasada. Error localizado en `prod/12_Cronograma_Calendario.js`; la aprobación Superadmin vuelve a validar la fecha.
