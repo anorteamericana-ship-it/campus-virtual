@@ -1,7 +1,82 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
-## F111 — TRASPASO 23-OCT-2026 09:45 CR · LATENCIA AUTENTICADA E INA/ICAN (EN DESARROLLO)
+## F111 · TABLERO MAESTRO Y TRASPASO ÚNICO · 23-oct-2026 (CORTE RECONCILIADO)
+
+**REGLA DE PRECEDENCIA:** este tablero es la referencia ACTUAL del proyecto F111. Las secciones fechadas debajo son bitácora histórica: NO convertir un estado histórico @471 o PR en desarrollo en un rollback conceptual del estado actual @472. No crear nuevos documentos/ramas por cada traspaso; la fuente única permanece en este archivo.
+
+### 1. Estado productivo con evidencia
+
+- **Apps Script institucional estable: @472**, deployment institucional principal existente. Confirmado en readback por clasp, código inmutable @472 conciliado 33/33; no redirigir login al deployment del Quiz.
+- **Quiz B1 PC01 aislado: @467**, deployment independiente del mismo proyecto GAS. Frontend de Quiz B1 publicado vía PR #593; su existencia no certifica ABIERTO ni ninguna entrega real.
+- **Backend #98 MERGED**, implantó programa INA validado desde GRUPOS y una instantánea de asistencia por solicitud para notas ICAN y resumen del panel; CI PASS, 33 archivos, solo 3 distintos sobre @471, readback 33/33 y publicación @472. **Backend #99 CLOSED SIN MERGE** por duplicar #98; NO recrearlo ni seguir rama -resume salvo auditoría de código sin cambios.
+- **Frontend #596 MERGED y Pages publicado:** Mis grupos retiene el grupo de sesión activa si falla la consulta remota; no omite autorización de padrón.
+- **Doc anterior #600 MERGED:** prueba y despliegue @471 están ya archivados, superados por @472.
+- **Fuente académica verificada SOLO LECTURA:** B1-KJ18-C3-0826 de Diego, 15 códigos únicos B1/CA en ESTATUS y correspondencia 15/15 DATOS; 74 filas operativas de ASISTENCIA (44 curso + 30 I CAN). NO usar esa lectura como prueba de que Diego abrió correctamente el panel.
+- **Sin certificación:** login válido con latencia aceptable, recuperación de contraseña, carga autenticada end-to-end del panel, apertura docente PC01 como ABIERTO, primer SAVE/SUBMIT estudiantil y calificación docente real.
+
+### 2. Porcentaje maestro F111 — denominador fijo, no confundir con hitos técnicos
+
+**Último corte integral comparable documentado: 18-oct-2026, 56%**. Es una LÍNEA BASE de planificación que NO se ha recertificado al 23-oct; debe conservarse como histórico hasta auditar los cinco módulos con los mismos criterios. Media aritmética simple de cinco frentes, con idéntico peso (20% cada uno), no mide disponibilidad de producción:
+
+| Módulo F111 | Base % 18-oct | Evidencia y resultado | Para elevar % con sustento |
+|---|---:|---|---|
+| PR-D1 Centro de Exámenes Superadmin | 100% | Centro unificado frontend publicado (PR #518 y siguientes). No reabrir salvo regresión reproducida | No elevar; registrar incidencias como correctivos independientes |
+| PR-D2 Escritos de 4 niveles / 16 pruebas | 90% | Banco, UX y 49/49 + 39/39 QA escritos PASS; reglas INA L18/L32 reconocidas | Certificar circuito en GAS productivo, acceso/entrega/corrección real con alumnos y docente; no considerar QA sintética como entrega |
+| PR-D3 Motor y bancos orales 4 niveles | 30% | Flujo B2, accesos L9/L17/L25/L31 y frontend/CI parciales; subfase técnica oral tuvo un 85% histórico, **no equivale a D3 integral** | Conciliar bancos auténticos PDF de B1/B2/I1/I2, evidenciar aperturas y cierres orales con profesor y alumno |
+| PR-D4 Revisión, rúbricas y calificación docente | 40% | UI y contratos parciales disponibles, incluyendo revisión Quiz B1 | Confirmar docente auténtico, revisión, comentarios, nota 0–100 cuando corresponda, PDF/respaldo y permisos |
+| PR-D5 32 Progress Checks / quizzes | 20% | Catálogo de 32 posiciones planificado; PC01 B1 digitalizado y conectado a frontend + API aislada | Digitalizar banco auténtico completo para 32, abrir por docente, verificar entrega guardada y retroalimentación |
+| **Media base documentada** | **56%** | (100+90+30+40+20)/5 | NO incrementar automáticamente por hotfixes @468–@472 ni por crear un PR |
+
+**Notas de alcance:** 32 Progress Checks = 4 niveles × 8 posiciones por nivel (L4/L8/L13/L16/L21/L24/L28/L30). No son 32 quizzes auténticos ya terminados. El Quiz 1 B1 equivale a **1/32 bancos que sabemos digitalizado**, NO a completar D5 ni a una certificación de alumno real.
+
+### 3. Tablero operativo adicional — porcentajes POR PUERTAS, no globales
+
+| Subproyecto | Puertas verificadas | Avance acotado | Límite |
+|---|---|---:|---|
+| Latencia panel docente F80 — cinco optimizaciones técnicas | RETRO @468, CALENDARIO @469, GRUPOS @470, DATOS/ASISTENCIA @471, programa INA + lectura compartida @472 | **5/5 = 100% implantación del paquete** | **0/1 certificación autenticada de carga rápida** |
+| B1 PC01, lanzamiento real | Banco B1 con audio y visual, API QZ @467, UI docente/alumno publicada | **3/5 = 60% puertas del lanzamiento** | Pendiente: docente confirma ABIERTO (0/1), SAVE + SUBMIT real y readback del expediente (0/1) |
+| Integridad grupo Diego B1-KJ18-C3-0826 | 15/15 coincidencias CA ↔ DATOS, 74 filas de asistencia clasificadas | **2/2 = 100% verificaciones de fuente** | No certifica que el panel renderice esas filas en una sesión docente válida |
+| Login y recuperación | Servidor enruta/rechaza tokens falsos; no existe prueba certificada de login correcto rápido ni recuperación usable | **0/2 puertas de experiencia real** | Incidencias críticas ABIERTAS |
+| Escritos | 49/49 y 39/39 QA anterior PASS | **100% de esos controles sintéticos** | Evaluación escrita real y el resto de puertas productivas no certificados |
+
+Estos porcentajes NO se suman al 56%; medir implementación, CI, despliegue y certificación real por separado.
+
+### 4. Reglas académicas no negociables
+
+- INA: L9/L17/L25/L31 **orales 15% cada uno** (60%); L18/L32 **escritos 5% cada uno** (10%); Social **10%**; I CAN **20%**; total 100%. No cambiar pesos de grupos SIN INA por copiar reglas de INA: usar el esquema oficial que les corresponda.
+- Los 32 Progress Checks son **formativos, peso oficial 0%**; su retroalimentación NO debe alterar notas oficiales ni asistencia.
+- La apertura de Quiz PC01 la confirma un DOCENTE AUTORIZADO para grupo/lección; la invitación al estudiante se ve en Campus cuando el backend confirma disponibilidad; «VER QUIZ» o «VISTA PREVIA» NO significan abierto.
+- Una entrega auténtica exige **ABIERTO**, usuario CA vinculado al grupo, guardar borrador, cerrar/retomar recuperando estado, entregar, confirmar el registro en la hoja oficial y revisión docente. No inventar entrega, puntaje, notificación ni hora.
+- No suspender lecciones ni aplicar ausencias por fallas del sistema. Proteger sesiones, notas, expedientes, certificados, pagos y matrícula.
+
+### 5. Reglas obligatorias de trabajo, prueba, cierre y entrega
+
+1. **Siempre hacia adelante:** antes de cambiar algo, leer esta cabecera y comprobar HEAD main, PR/CI y deployment real. No recodificar PR #93–#98, #584/#590/#593/#596 ni volver a ejecutar QA ya PASS sin causa nueva. PR #99 es duplicado cerrado.
+2. **Una sola fuente de verdad:** actualizar ESTE archivo con la fecha y estado final. Preferir editar la cabecera vigente y dejar histórico abajo; no crear veinte informes o copias sueltas. Descartar rama obsoleta solo tras conciliar y comprobar merge; no eliminar respaldos inmutables necesarios para rollback.
+3. **Conservar seguridad académica:** cambios mínimos desde snapshot inmutable de producción; NO subir backend/main entero por diferencias históricas. Cifrado, roles, tokens, cookies, asistencia, pagos y notas quedan intactos salvo cambio aprobado y demostrado. Nunca compartir contraseñas o tokens del usuario.
+4. **Pruebas escalonadas:** test sintético → CI → PR merge → comparación de archivos → readback del editor → versión inmutable → deployment → readback institucional → UNA prueba autenticada real de la función. En informe separar cada puerta con PASS/PENDIENTE/FAIL; no equiparar sondeo con token inválido a carga de panel real.
+5. **No producir regresiones durante clase:** preferir un módulo por intervención, una prueba acotada y rollback a @471 documentado para @472. No repetir despliegues múltiples, canaries ni backups por inercia.
+6. **Medir sin falsas afirmaciones:** distinguir tiempo real de login + validarSesion + getDocenteGruposActuales + getDocenteGrupoPanelF80; no deducir latencia del panel a partir de un token inválido. Reportar cantidad de estudiantes, cronograma y lectura del estado de profesor como resultado observable, con datos personales omitidos.
+7. **Entrega al usuario siempre:** **ÚLTIMO PASO / RESULTADO / AVANCE (% y denominador) / PENDIENTES Y RIESGOS / SIGUIENTE PASO / CONTINUAMOS CON**. Decir qué se fusionó, qué se publicó y qué no. Si se genera artefacto, enlazarlo. No pedir de nuevo grupo, docente, políticas INA o accesos ya conocidos; no prometer trabajo posterior fuera del turno.
+8. **Revisión del examen:** cumplir la ponderación oficial y preguntas reales; prohibido sustituir transcripción de PDF por ejemplos. Tiempo/progreso de UI, guardado, reanudación, calificación 0–100 y observación separada de asistencia según examen; no permitir cierre/entrega silenciosa.
+9. **Protección frente a fallo:** si el Campus continúa con timeout, no forzar ingreso repetitivo ni redirigir estudiantes a despliegues de diagnóstico. Diagnosticar sesión válida y panel con herramientas autorizadas y respeto a datos; no suplantar cuentas para simular entrega real.
+
+### 6. Próximo ciclo concreto
+
+**PRIORIDAD P0:** verificar @472 principal y @467 Quiz por readback, medir una sesión docente REAL de Diego con los 15 B1/CA, 32 lecciones y los rieles curso/I CAN. Si persiste la lentitud, perfilar validarSesion, SESIONES, CacheService, _f984z6iTeacherGroupsForSession_ y operaciones de Sheets, sin repetir optimizaciones anteriores.
+
+**PRIORIDAD P1:** resolver recuperación de contraseña «endpoint_no_declarado» y ruta de login con timeout a 70 s. En el backend el PR #93 de fallo rápido para personal quedó MERGED pero no debe suponerse integrado al snapshot productivo @472 sin readback.
+
+**PRIORIDAD P2:** con sesión estable, permitir al docente activar B1 PC01 mediante @467, exigir ABIERTO y primera entrega guardada real; retomar módulos D2–D5 después del primer caso certificado.
+
+### 7. PROMPT DE CONTINUIDAD
+
+CONTINUAMOS CON F111 ACADEMIA NORTEAMERICANA — lee primero 00_DOCUMENTACION/PRODUCTION_STATE.md (cabecera vigente de 23-oct-2026), y verifica HEAD/PR/deploy antes de actuar. Producción principal Apps Script @472; Quiz B1 PC01 @467 separado; backend PR #98 MERGED, #99 duplicado CLOSED, frontend #593 y #596 publicados. No repetir los cinco hotfixes F80 @468–@472, no recrear bancos, no volver a empezar QA PASS. Grupo prioritario de Diego: B1-KJ18-C3-0826, B1/INA, 15 CA únicos con DATOS conciliados y 74 filas de ASISTENCIA. La prueba con token falso rechaza sesion_invalida y NO certifica rendimiento real. Pendiente: login docente válido dentro del plazo, panel completo con cronograma, recuperación contraseña; luego docente ABIERTO PC01, SAVE/SUBMIT real y revisión. Global F111 D1–D5: línea base 56% al 18-oct (D1 100, D2 90, D3 30, D4 40, D5 20), NO se ha recalculado con igual criterio. Optimización F80 5/5 desplegada, 0/1 certificación real; PC01 3/5 puertas publicadas, 2 pendientes. Respeta INA 15/15/5/15/15/5/Social10/ICAN20, Progress Checks 0%. Solo código mínimo sobre snapshot inmutable, lectura de regreso, despliegue reversible y prueba autenticada autorizada; nunca inventes resultados, ni modifiques asistencia/notas/matrículas. Documenta al final en el MISMO archivo y responde siempre: ÚLTIMO PASO, RESULTADO, % CON BASE, PENDIENTES/RIESGOS, SIGUIENTE PASO, CONTINUAMOS CON. Prioridad ahora: instrumentar y resolver latencia de sesión real sin rehacer panel ni Quiz.
+
+---
+
+## ARCHIVO HISTÓRICO (SUPERADO POR LA CABECERA @472): F111 — TRASPASO 23-OCT-2026 09:45 CR · LATENCIA AUTENTICADA E INA/ICAN (EN DESARROLLO)
 
 **FUENTE DE VERDAD:** la última publicación institucional verificada es Apps Script **@471**, motor Quiz B1 PC01 aislado **@467**; no afirmar que haya cambiado a @472 ni que Diego haya completado una carga autenticada. PR de documentación anterior [#600](https://github.com/anorteamericana-ship-it/campus-virtual/pull/600) fue fusionado y consolidó la optimización @471. PR frontend Mis grupos #596; hotfixes Apps Script publicados: RETRO @468, CALENDARIO compartido @469, GRUPOS permisos/ficha compartido @470, lecturas DATOS 36→5/ASISTENCIA 26→10 @471. Esas mejoras están cerradas **a nivel de implementación**, pero no certificar recuperación del rendimiento sin panel real.
 
