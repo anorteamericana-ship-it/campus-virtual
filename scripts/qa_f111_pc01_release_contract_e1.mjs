@@ -34,7 +34,8 @@ for(const fn of ['qzProgressTeacherAvailability','qzProgressTeacherSetAvailabili
  assert.ok(teacher.includes("'"+fn+"'"),'API docente '+fn);
 assert.ok(teacher.includes('Comentario de Progress Check (obligatorio, independiente de asistencia)'),'segundo comentario visible');
 assert.ok(teacher.includes('comentario_progress_check:comment.value.trim()'),'comentario obligatorio se envía aparte');
-assert.ok(teacher.includes("grade.min='0'")&&teacher.includes("grade.max='100'"),'nota 0–100 validada');
+assert.ok(teacher.includes("gradeInput.min='0'")&&teacher.includes("gradeInput.max='100'")&&
+ teacher.includes("score.percentage.toFixed(0)"),'equivalencia 0–100 calculada de la clave y 25 puntos');
 assert.ok(teacher.includes("result.comentario_asistencia_modificado!==false"),'respuesta confirma que asistencia no se tocó');
 assert.ok(!teacher.includes('docenteCerrarClaseConAsistenciaF87'),'revisión de quiz no escribe asistencia');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'),'quiz no afecta ponderación INA');
