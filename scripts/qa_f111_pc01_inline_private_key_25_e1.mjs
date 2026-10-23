@@ -19,4 +19,9 @@ assert.ok(teacher.includes("Number(saved.RESULTADO)!==savedScore.percentage"),'c
 assert.ok(teacher.includes("Ponderación oficial 0%"),'el docente siempre ve peso oficial');
 assert.ok(teacher.includes("comentario_progress_check:comment.value.trim()"),'comentario independiente de asistencia');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'),'no escribir notas INA oficiales');
+assert.ok(teacher.includes('PROMEDIO DEL GRUPO'),'existe promedio grupal visible');
+assert.ok(teacher.includes("String(r.ESTADO)==='REVISADO'"),'no promediar pruebas sin calificar');
+assert.ok(teacher.includes("r.RESULTADO!==null&&r.RESULTADO!==undefined"),'calificaciones de 0 cuentan legítimamente');
+assert.ok(teacher.includes('reviewed.reduce((sum,r)=>sum+Number(r.RESULTADO),0)/reviewed.length'),'promedio solo sobre entregas revisadas');
+assert.ok(teacher.includes('Pendientes no cuentan como cero'),'sin castigar pendientes ni peso oficial');
 console.log('PASS F111 PC01 private key UI: 25 answers per teacher, scores 0/0.5/1, percent, letter A, readback, official 0%');
