@@ -111,8 +111,8 @@ async function confirmGroupQuizInvitation(button,feedback,refresh){
   if(verify.estado!=='ABIERTO')throw Error('readback_no_confirmado');
   feedback.textContent='Quiz habilitado para el grupo. Los estudiantes elegibles verán el aviso al ingresar.';
   refresh();
- }catch(_){
-  feedback.textContent='Invitación no confirmada. Revisá clase abierta, lista y disponibilidad del servidor.';
+ }catch(err){
+  feedback.textContent='Invitación no confirmada: '+String(err.message||'No disponible')+'.';
   refresh();
  }
 }
@@ -123,7 +123,9 @@ function attachLessonAction(){
   const previewButton=drawer.querySelector('[data-f111-lesson-quiz="B1-L4"]');
   if(!previewButton||drawer.querySelector('[data-f111-quiz-activation]'))return;
   const text=drawer.textContent||'';
-  if(!text.includes('B1-KJ18-C3-0826')||!text.includes('GUARDAR Y CERRAR CLASE'))return;
+  // La vista previa B1-L4 solo se renderiza en JSX para el grupo Diego autorizado.
+  // El encabezado docente muestra horario/0826, no el codigo largo de grupo.
+  if(!text.includes('GUARDAR Y CERRAR CLASE'))return;
   const button=make('button','Consultando apertura del quiz…','f111-tqr-activate');
   button.type='button';button.dataset.f111QuizActivation='B1-L4';button.disabled=true;
   const feedback=make('small','','f111-tqr-feedback');
@@ -136,7 +138,7 @@ function attachLessonAction(){
     button.textContent=r.estado==='ABIERTO'?'Cerrar quiz para estudiantes':'Habilitar Quiz 1 para estudiantes';
     button.disabled=false;
     feedback.textContent=r.estado==='ABIERTO'?'Abierto: los estudiantes pueden guardar y entregar.':'Todavía no disponible para estudiantes.';
-   }).catch(()=>{button.disabled=true;button.textContent='Activación pendiente del servidor';feedback.textContent='La vista previa sigue disponible.'});
+   }).catch(err=>{button.disabled=true;button.textContent='Activación pendiente del servidor';feedback.textContent='Servidor: '+String(err.message||'No disponible')+'. La vista previa sigue disponible.';});
   };
   button.addEventListener('click',async()=>{
    const next=button.dataset.status==='ABIERTO'?'CERRADO':'ABIERTO';
@@ -175,10 +177,10 @@ function buildQuizOpenControls(){
    toggle.disabled=false;
    toggle.textContent=r.estado==='ABIERTO'?'CERRAR QUIZ 1':'ACTIVAR QUIZ 1 · INVITAR ESTUDIANTES';
    state.textContent=r.estado==='ABIERTO'?'Quiz abierto: continuará disponible después de cerrar la clase hasta que lo cerrés aquí.':'Sin habilitar: para activarlo, primero debe estar abierta la lección 4.';
-  }).catch(()=>{
+  }).catch(err=>{
    if(!wrapper.isConnected)return;
    toggle.disabled=true;
-   state.textContent='El servidor todavía no permite abrir o cerrar este quiz. La vista previa permanece disponible.';
+   state.textContent='Activación no disponible: '+String(err.message||'error del servidor')+'. La vista previa permanece disponible.';
   });
  };
  toggle.onclick=async()=>{
