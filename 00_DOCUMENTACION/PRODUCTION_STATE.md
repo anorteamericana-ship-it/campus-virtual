@@ -1,5 +1,18 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · B1 PC01 — FRONTEND EN PAGES + EXPORTACIÓN DEL EDITOR GAS · 22-oct-2026
+
+**ÚLTIMO PASO / RESULTADO VERIFICADO:**
+- [PR frontend #584](https://github.com/anorteamericana-ship-it/campus-virtual/pull/584) **MERGED**: commit `7f78e9ea0b218907a1217be47a5e9a88fdf78d5c`. Antes del merge se corrigió el sombreado de `preview` que rompía la vista docente. Sus 9 verificaciones automáticas en la rama terminaron **SUCCESS**; el merge disparó **GitHub Pages build and deployment SUCCESS** y auditoría LIVE-origin readonly SUCCESS. Publicado el flujo de invitación docente, anuncio condicional por autorización de servidor y tarjeta en Evaluaciones. **El frontend publicado no implica que el backend GAS haya habilitado entregas**.
+- Google Drive permitió exportar **en modo lectura** `CAMPUS VIRTUAL - Apps Script v4` como `application/vnd.google-apps.script+json`: **33 archivos (31 server_js + manifiesto + HTML)**. El código actual del editor **NO contiene** `qzProgressTeacherSetAvailability`, `qzProgressStudentActive`, `qzProgressSubmit`, `QUIZ_PROGRESS_ATTEMPTS` ni `QUIZ_PROGRESS_APERTURAS`. Esa exportación **NO** corresponde necesariamente a la versión inmutable desplegada @462. Drive rechaza revisión histórica del proyecto con `revisionsNotSupported`; no hay acceso Apps Script API `getContent(versionNumber=462)` ni a modificación/despliegue de este proyecto desde la conexión actual.
+- Apps Script PROD **@462** continúa respaldado por capturas del selector institucional; fuente inmutable SHA-256 **no certificada**. No se modificaron alumnos, asistencias, notas, grupos, hojas ni implementación vigente. No hubo entrega real ni notificaciones efectivas a estudiantes.
+
+**ESTADOS:** Frontend #584 **CERRADO + PUBLICADO**. Herramienta readback backend PR #88 **E1 PASS**. Snapshot inmutable @462 **PENDIENTE**. Adapter/guard productivo GAS independiente de QA **PENDIENTE**. Despliegue GAS con readback **PENDIENTE**. Primera activación Diego + SAVE→SUBMIT real **PENDIENTE**. Puertas de certificación académica **1/5**; publicación frontend no añade una puerta de backend.
+
+**CONTINUAMOS CON:** OAuth solo lectura de Apps Script o sesión browser/desktop conectada para `projects.deployments.get` y `projects.getContent(versionNumber=462)`, comparación del delta mínimo contra esa fuente, luego motor PROD exclusivo y despliegue institucional reversible. **NO activar `F111_QZ_QA_ENABLED` sobre datos reales; NO pedir otra captura @462 ni rehacer 25 preguntas, audio y fotografía.**
+
+---
+
 
 ## F111 · B1 PC01 — CERTIFICACIÓN GAS PROD: PUERTA INMUTABLE PREPARADA · 22-oct-2026
 
