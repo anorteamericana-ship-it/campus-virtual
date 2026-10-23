@@ -78,7 +78,7 @@ function openReviewWorkspace(){
  function displaySelection(){
   // Promedio solo de expedientes REVISADO con nota válida; pendientes no cuentan como 0.
   const reviewed=rows.filter(r=>String(r.ESTADO)==='REVISADO'&&
-   String(r.RESULTADO||'').trim()!==''&&Number.isFinite(Number(r.RESULTADO))&&
+   r.RESULTADO!==null&&r.RESULTADO!==undefined&&String(r.RESULTADO).trim()!==''&&Number.isFinite(Number(r.RESULTADO))&&
    Number(r.RESULTADO)>=0&&Number(r.RESULTADO)<=100);
   if(reviewed.length){
    const average=reviewed.reduce((sum,r)=>sum+Number(r.RESULTADO),0)/reviewed.length;
