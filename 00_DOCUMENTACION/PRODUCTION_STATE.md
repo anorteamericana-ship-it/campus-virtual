@@ -1,6 +1,22 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 B1 PC01 — LECTURA INMUTABLE / DELTA CONTROLADO · 22-oct-2026
+
+**ÚLTIMO PASO:** [Backend PR #91](https://github.com/anorteamericana-ship-it/campus_backend/pull/91) **MERGED**, SHA `6aca73c962b2a897c3ddbc21de22547ea18397ea`. Incluye `scripts/f111_pc01_prod_delta_preview.mjs`, prueba sintética y ejecución en **Backend E1 QA compartida: SUCCESS**. La herramienta es SOLO LECTURA: con OAuth readonly requerirá `deployments.get` del deployment institucional y `projects.getContent(versionNumber=462)` junto con el editor HEAD. Comprueba el proyecto y la versión @462, detecta discrepancias de editor y delimita **11 archivos existentes de módulos de quiz + dos inserciones en 01_Router** (12 archivos modificados en total). Nunca ejecuta push, deployments ni escritura a Sheets. `immutable-prod-readonly` quedó **SKIPPED** en CI normal, por diseño; **no hay lectura OAuth real**.
+
+**INCIDENCIA P2 ABIERTA DESPUÉS DEL MERGE:** revisión automatizada de #91 halló que el informe produce huellas SHA del snapshot y del editor, **pero no de la propuesta candidata que incorpora los 11 módulos locales**. Si el contenido local cambia, dos deltas diferentes podrían generar un mismo resumen. La corrección `proposed_delta_sha256` + huellas de archivos cambiados **NO está implementada**: intento de escritura rechazado por controles del conector. Incidencia registrada en [comentario de #91](https://github.com/anorteamericana-ship-it/campus_backend/pull/91). **No usar el informe como firma del paquete a desplegar** hasta cerrar esta observación.
+
+**ACCESO INSTITUCIONAL ACTUAL:** Browser requiere contexto de la extensión conectada, que no estuvo disponible; Desktop Commander `DESKTOP-9U2RJRG` sigue **OFFLINE**. La exportación Drive anterior contiene **HEAD actual del editor (33 archivos)**, no la versión inmutable @462; el HEAD no contiene rutas QZ. Sigue sin comprobarse el código exacto de @462. **No hay autorización para escribir ni desplegar**, y el README backend reserva `clasp push` / `clasp deploy` exclusivamente a Leonardo.
+
+**PRODUCCIÓN:** frontend PR #584/#586 **publicado**; backend #89/#90 **fusionado en GitHub, no desplegado**. **Primer Quiz 1 real: NO**, **alumnos invitados realmente: 0 verificados**, **entregas: 0 verificadas**, **escrituras sobre hojas/notas/asistencia: 0**. Puertas académicas: **1/5**; CI no equivale a E2E con alumno.
+
+**SIGUIENTE PASO SIN REPETIR:** cerrar P2 del hash del candidato; habilitar OAuth de SOLO LECTURA para inspección `@462` o acceder con navegador/desktop autorizado; conciliar editor y snapshot antes de generar delta y publicación con Leonardo, habilitación autenticada de Diego y primera entrega real. No pedir nueva captura @462, no repetir digitalización, no mover notas ni usar flags QA en PROD.
+
+---
+
+
+
 ## F111 B1 PC01 — MOTOR PROD PREPARADO, NO DESPLEGADO · 22-oct-2026
 
 **RESULTADO VERIFICADO DE ESTA PASADA:**
