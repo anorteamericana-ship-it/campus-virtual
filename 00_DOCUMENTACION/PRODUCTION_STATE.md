@@ -1,5 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 B1 PC01 — GAS PROD @464 PUBLICADO, PRIMERA ENTREGA NO CERTIFICADA · 22-oct-2026, 19:41 CR
+
+**ESTADO VERIFICADO CON DESKTOP COMMANDER EN WINDOWS:** script institucional `1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2`, deployment estable `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`. Clasp confirmó versión previa @462; `clasp pull --versionNumber 462` y `clasp pull` en carpetas separadas: 33 archivos cada uno, **5 divergencias entre editor y @462** en `01_Router`, `02_Auth_Sesiones_Usuarios`, `10_Estudiantes`, `51_Recuperacion_Acceso_Universal`, `61_F111_Login_Guard`. No reemplazar el editor con GitHub indiscriminadamente.
+
+**CAMBIO REAL EJECUTADO:** paquete temporal reconstruido desde el snapshot **@462**, más **11 módulos QZ** obtenidos de `campus_backend` main commit `4e2266a`, y **11 rutas POST** en el único `01_Router`; 32 archivos históricos preservados byte por byte. 44 archivos finales; `node --check` en módulos/rutas PASS, `clasp status` mostró solo 44 archivos. `clasp push --force` al editor institucional **SUCCESS** a las 19:41:28 CR; segundo `clasp pull` desde editor devolvió **44/44 archivos idénticos, DIFFS=0**. `clasp version` creó la versión inmutable **@464**; `clasp deploy -i <deployment estable> -V 464` **SUCCESS**; `clasp deployments --json` confirmó deployment estable **@464**. Huella del candidato temporal antes de upload: `e5ec77617f04a8977ea8947670c4c59330ef4cfe1361979bb4780a06ff89723a` (definición específica: SHA-256 concatenación nombre + hash de contenido, no confundir con el SHA del tool de GitHub). Contrato de rutas real consultado con HTTP POST al webapp público: **HTTP 200, `sesion_invalida` ante token ficticio**; el endpoint se reconoce y protege, pero eso no comprueba apertura de Quiz 1.
+
+**PENDIENTES CRÍTICOS:** configurar/comprobar las propiedades del motor `F111_QZ_PROD_ENABLED=YES`, `F111_QZ_PROD_GROUP=B1-KJ18-C3-0826`, IDs correctos de `OPERATIVO_ID` y `SHEET_ID`, `F111_QZ_QA_ENABLED` desactivada. `clasp run _f111WqEnv_` devolvió `Unable to run script function` por falta de permiso de ejecución remota; **NO constituye validación de flags**. La página de configuración institucional fue abierta en el navegador Windows. **Ningún estudiante ni docente fue suplantado:** apertura de Diego con readback `ABIERTO`, SAVE real, SUBMIT real y revisión docente aún **SIN CERTIFICAR**. No registrar `alumnos invitados`, `entregas` ni `notas` como completados. Regla segura: primero abrir desde Docente → Exámenes → B1/L4, confirmar apertura, primer estudiante real guarda una respuesta, luego habilitar todo el grupo.
+
+**Incidencia separada, no incluida en @464:** recuperación de contraseña muestra `endpoint_no_declarado`; frontend `src/recovery.jsx` usa `solicitarRecuperacionAccesoUniversal` y `restablecerAccesoUniversal`, funciones existentes en `51_Recuperacion_Acceso_Universal.js` pero **ausentes del mapa de permisos/rutas públicas en el enrutador @462**, conservado en el release. Requiere hotfix propio posterior sin debilitar la autorización de operaciones privadas.
+
+**CONTINUAMOS CON:** verificar flags en Apps Script → Diego abre grupo B1/L4 → guardar/entregar primer intento real y verificar en `QUIZ_PROGRESS_ATTEMPTS` → revisar sin afectar asistencia ni notas oficiales. Si bloqueo, capturar código de error real y corregir mínimo; rollback disponible a deployment @462 con el mismo ID, sin borrar expediente del quiz.
+
+---
+
+
 
 ## F111 B1 PC01 — LECTURA INMUTABLE / DELTA CONTROLADO · 22-oct-2026
 
