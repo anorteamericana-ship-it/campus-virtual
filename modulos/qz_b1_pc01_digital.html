@@ -173,7 +173,8 @@ if(liveMode){
  function validSession(){
   try{
    if(window.parent===window||window.parent.location.origin!==location.origin)throw Error();
-   apiBase=String(window.parent.APPS_SCRIPT_URL||'');
+   // API del Quiz B1 separada del login estable del Campus.
+   apiBase=String(window.parent.F111_QZ_API_URL||window.parent.APPS_SCRIPT_URL||'');
    sessionToken=String(window.parent.getSessionToken?window.parent.getSessionToken():'');
   }catch(_){apiBase='';sessionToken='';}
   return !!apiBase&&!!sessionToken&&group==='B1-KJ18-C3-0826';
