@@ -53,6 +53,8 @@ function openReviewWorkspace(){
  const columns=make('div',null,'f111-tqr-workspace-columns');
  const sidebar=make('aside',null,'f111-tqr-students');
  sidebar.append(make('h3','Estudiantes que entregaron'));
+ const groupAverage=make('div','PROMEDIO DEL GRUPO · Aún sin revisiones calificadas.','f111-tqr-group-average');
+ groupAverage.setAttribute('role','status');sidebar.append(groupAverage);
  const listBox=make('div',null,'f111-tqr-student-list');
  listBox.setAttribute('role','list');listBox.append(make('p','Consultando entregas…'));
  sidebar.append(listBox);
@@ -74,6 +76,18 @@ function openReviewWorkspace(){
   }catch(_){return {};}
  }
  function displaySelection(){
+  // Promedio solo de expedientes REVISADO con nota válida; pendientes no cuentan como 0.
+  const reviewed=rows.filter(r=>String(r.ESTADO)==='REVISADO'&&
+   String(r.RESULTADO||'').trim()!==''&&Number.isFinite(Number(r.RESULTADO))&&
+   Number(r.RESULTADO)>=0&&Number(r.RESULTADO)<=100);
+  if(reviewed.length){
+   const average=reviewed.reduce((sum,r)=>sum+Number(r.RESULTADO),0)/reviewed.length;
+   const rounded=Math.round(average*10)/10;
+   groupAverage.textContent='PROMEDIO DEL GRUPO · '+(rounded/4).toFixed(1)+
+    '/25 · '+rounded.toFixed(1)+'% · '+letterFor(average)+
+    ' · '+reviewed.length+' de '+rows.length+' entregas revisadas · peso oficial 0%';
+  }else groupAverage.textContent='PROMEDIO DEL GRUPO · 0 de '+rows.length+
+   ' entregas revisadas. Pendientes no cuentan como cero; peso oficial 0%.';
   listBox.replaceChildren();
   if(!rows.length){listBox.append(make('p','Todavía no hay pruebas entregadas.'));return;}
   rows.forEach(row=>{
@@ -414,6 +428,7 @@ function installStyle(){
  '.f111-tqr-workspace-columns{display:grid;grid-template-columns:minmax(230px,280px) minmax(0,1fr);min-height:0;flex:1}',
  '.f111-tqr-students{border-right:1px solid #d2e0ee;padding:17px;background:#fff;overflow-y:auto;min-width:0}',
  '.f111-tqr-students h3{font-size:14px;color:#163c62;margin:0 0 14px}',
+ '.f111-tqr-group-average{background:#eff5fc;border:1px solid #cbdbec;color:#143e65;border-radius:10px;padding:12px;margin-bottom:15px;font-size:12px;line-height:1.55;font-weight:800}',
  '.f111-tqr-student-list{display:grid;gap:8px}',
  '.f111-tqr-student-choice{text-align:left;display:grid;gap:4px;width:100%;padding:12px;border-radius:10px;border:1px solid #cfdaea;background:#f8fbfe;color:#174067;cursor:pointer}',
  '.f111-tqr-student-choice[aria-pressed=true]{background:#fff5d6;border:2px solid #ddb93a}',
