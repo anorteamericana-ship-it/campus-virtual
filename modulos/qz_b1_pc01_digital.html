@@ -85,7 +85,7 @@ var answers=saved.answers||{},sent=!!saved.sent||reviewMode,active=0;
 
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
-var persist=function(){if(!liveMode&&!reviewMode)sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
+var persist=function(){if(reviewMode)return;if(!liveMode)sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
 var filled=function(){return Object.keys(answers).filter(function(k){return String(answers[k]||'').trim()}).length};
 sections.forEach(function(s,i){var tab=node('button',s.id+' · '+s.items.length);tab.type='button';tab.setAttribute('role','tab');tab.addEventListener('click',function(){active=i;render()});byId('tabs').append(tab)});
 function diagram(){
