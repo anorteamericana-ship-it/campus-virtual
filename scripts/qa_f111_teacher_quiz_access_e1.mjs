@@ -10,6 +10,9 @@ const audio=readFileSync(new URL('../media/qz32/b1_pc01_listening_track01.mp3',i
 new Function(catalog);
 assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v='),'se carga en Campus independientemente del código de caché');
 assert.ok(catalog.includes('buildQuizOpenControls'),'cierre desde Exámenes al terminar clase');
+assert.ok(!catalog.includes("text.includes('B1-KJ18-C3-0826')"),'no exigir código largo ausente del encabezado');
+assert.ok(catalog.includes("drawer.querySelector('[data-f111-lesson-quiz=\"B1-L4\"]')"),'el botón autorizado en JSX delimita grupo real');
+assert.ok(catalog.includes('Servidor: '),'error explícito cuando la configuración bloquea la apertura');
 assert.ok(catalog.includes('Revisión de material de quizzes'),'existe la sección docente');
 assert.ok(catalog.includes('section[data-screen-label="Docente · Exámenes"]'),'solo se monta en Exámenes docente');
 for(const code of ['B1','B2','I1','I2'])assert.ok(catalog.includes("['"+code+"'"),'nivel '+code);
