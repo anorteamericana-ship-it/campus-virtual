@@ -16,6 +16,7 @@ on:
       - 'src/app.jsx'
       - 'src/teacher_views.jsx'
       - 'scripts/qa_f111_teacher_quiz_access_e1.mjs'
+      - 'scripts/qa_f111_teacher_session_fallback_e1.mjs'
       - 'scripts/qa_f111_qz32_ui_e1.mjs'
       - '.github/workflows/qa-f111-qz32-ui-e1.yml'
 permissions:
@@ -33,6 +34,8 @@ jobs:
         run: node scripts/qa_f111_qz32_ui_e1.mjs
       - name: QA E1 teacher review from class and Examenes
         run: node scripts/qa_f111_teacher_quiz_access_e1.mjs
+      - name: QA E1 Mis grupos resilient session fallback
+        run: node scripts/qa_f111_teacher_session_fallback_e1.mjs
       - name: QA E1 B1 PC01 activation and two separate comments
         run: node scripts/qa_f111_pc01_release_contract_e1.mjs
       - name: Install Chromium for QA previews only
