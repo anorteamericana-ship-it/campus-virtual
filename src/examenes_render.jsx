@@ -18,6 +18,12 @@ function evalQuestion(section, q, val) {
   const has = val != null && String(val).trim() !== '';
   if (!has) return { verdict:'empty', key: exKeyText(section, q) };
   const key = exKeyText(section, q);
+  // F111: una respuesta presentada SIN clave asociada no está "sin responder"
+  // y jamás debe auto-calificarse 0. Queda pendiente de revisión humana.
+  const keyAvailable = q.correct !== undefined && q.correct !== null &&
+    !(Array.isArray(q.correct) && q.correct.length === 0) &&
+    !(typeof q.correct === 'string' && q.correct.trim() === '');
+  if (!keyAvailable) return { verdict:'review', key:'', keyMissing:true };
   const accepts = exAccepted(section, q).map(exNorm);
   const match = accepts.includes(exNorm(val));
   if (section.needsReview) {
@@ -226,7 +232,8 @@ function SectionBody({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 
 // ── Review affordance (pregunta por pregunta) ─────────────────────────────
 function ReviewBar({ id, section, q, val, review }) {
-  const ev = q.correct !== undefined || q.opts ? evalQuestion(section, q, val) : { verdict:'empty', key:'' };
+  // La ausencia de clave no equivale a la ausencia de la respuesta del estudiante.
+  const ev = evalQuestion(section, q, val);
   const verdictMeta = {
     ok:    { t:'Auto: correcta',  c:'rev-ok'   },
     bad:   { t:'Auto: incorrecta',c:'rev-bad'  },
@@ -240,7 +247,7 @@ function ReviewBar({ id, section, q, val, review }) {
   return (
     <div className="exrev">
       <span className={`exrev-v ${verdictMeta.c}`}>{verdictMeta.t}</span>
-      <span className="exrev-key">Clave: <b>{ev.key || '—'}</b></span>
+      <span className="exrev-key">{ev.keyMissing ? 'Clave no disponible · revisión manual' : <>Clave: <b>{ev.key || '—'}</b></>}</span>
       <div className="exrev-pts">
         {[0, 0.5, 1].map(p => (
           <button key={p} disabled={!!review.locked} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
