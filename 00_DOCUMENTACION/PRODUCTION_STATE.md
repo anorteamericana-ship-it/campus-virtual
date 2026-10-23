@@ -1,6 +1,24 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 — LATENCIA PANEL DOCENTE: DATOS Y ASISTENCIA ACOTADAS · PROD @471 · 23-oct-2026
+
+**Último paso comprobado:** Apps Script institucional principal deployment `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` actualizado de @470 a **@471**, mediante `clasp deploy -i ... -V 471` y confirmación `Deployed ... @471`. Readback `clasp deployments --json`: principal @471, Quiz PC01 aislado @467, no cambiado. La versión inmutable anterior @470 queda disponible como rollback.
+
+**Cuello de botella trabajado:** función `_f80_studentsAndNotes_` en `10_Estudiantes.js` leía la hoja `DATOS` entera aunque solo usa `NUM_CEDULA`, `NOMBRE`, `CONVENIO` y `CODIGO`; metadata: DATOS 990 filas × 36 columnas, campos utilizados dentro de A:E. Esto implicaba incluir columnas ajenas al padrón, incluso posiciones que contienen credenciales. `_f80_attendance_` leía la hoja `ASISTENCIA` entera (949 filas × 26 columnas), pero solo utiliza las primeras 10 columnas. Se cambió a **1 fila completa de cabeceras** para encontrar columnas dinámicamente y luego **solo las columnas necesarias para las filas**: DATOS 36→5 y ASISTENCIA 26→10. ESTATUS 880 filas × 17 columnas **se mantiene completo** para preservar los componentes de notas. Si no hay alumnos CA no se solicita DATOS. No se crea caché compartida, no se escriben hojas, no cambia ponderación, duplicados, búsqueda de comentario ni reglas de asistencia.
+
+**Pruebas y repositorio:** [backend PR #97](https://github.com/anorteamericana-ship-it/campus_backend/pull/97) MERGED, commit `9e20c5aaebf9499bf23402f8254e8cef7eff5ebf`; suites `Backend E1 QA compartida` y `F111 N02 P0 E1 independiente` ambas SUCCESS. Caso sintético B1 con alumnos CA/PE, notas, nombre/cédula, asistencia duplicada por timestamp, riel curso/ICAN y porcentajes: PASS; verifica también que `DATOS` solo lea 5 columnas y no extraiga la columna de contraseñas para el panel. El código del login, permisos, CALENDARIO (@469), GRUPOS (@470), RETROALIMENTACION (@468), exámenes y cronograma **no se modificó**.
+
+**Conciliación de producción:** candidato `F111_PANEL_470_BOUNDED_ACADEMIC_20261023` creado desde carpeta `F111_PANEL_470_IMMUTABLE_READBACK_20261023`. 33 archivos; **solo `10_Estudiantes.js` distinto, 32 archivos byte a byte idénticos**, `node --check` PASS. Huella SHA256 derivada de los 33 nombres y hashes `3babf4dbdf0f795835bdd09a87e768d37b2639da658749885d66ff5f64db5357`. `clasp push --force` subió 33 archivos; `clasp pull` readback editable **33/33, cero diferencias**; versión inmutable @471 creada; deployment institucional actualizado; `clasp pull --versionNumber 471` readback inmutable **33/33, cero diferencias**.
+
+**Salud y limitaciones:** POST a `getDocenteGrupoPanelF80` en URL institucional usando token ficticio de QA respondió HTTP 200, `ok:false,error:sesion_invalida` en **9,1 segundos**. Esa consulta se rechaza ANTES de leer DATOS/ASISTENCIA, así que **no** es una medición del tiempo del panel con docente real. No afirmar que el inicio de sesión ni la carga del panel están totalmente resueltos: falta sesión docente auténtica de Diego que confirme 15 registros B1/CA y cronograma. Sin cambio de contraseñas, notas, asistencia ni matrículas. El Quiz 1 conserva @467 y su primera entrega real sigue sin certificarse.
+
+**Siguiente paso, sin repetir:** una sola comprobación de Diego en Campus actualizado, Mis grupos → grupo B1 0826, confirmar carga y tiempo total. Si persiste timeout, aislar `validarSesion` (SESIONES + CacheService), lectura de `ESTATUS`/notas y `DOCENTE_SESIONES_CLASE` mediante métricas internas seguras, no volver a optimizar DATOS/ASISTENCIA/CALENDARIO/GRUPOS/RETRO. Frente a regresión clara, revertir únicamente deployment principal a @470 con igual ID sin borrar registros.
+
+---
+
+
+
 ## F111 — LATENCIA PANEL DOCENTE: GRUPOS COMPARTIDOS EN PROD @470 · 23-oct-2026
 
 **ESTADO REAL:** implementación Apps Script institucional principal @470 confirmada mediante deploy y readback de versiones sobre ID estable AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ. Motor aislado Quiz B1 sigue @467. @469 es la reversión disponible. No se mezcló el backend completo GitHub con Apps Script de producción.
