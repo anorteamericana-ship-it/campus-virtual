@@ -287,17 +287,16 @@ function tvSessionGroups(usuario, activeGroupCode=''){
   return out;
 }
 function tvNowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
-function useTeacherSession() {
+function useTeacherSession(activeSessionGroup='') {
   const readSession = React.useCallback(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
     const nombre = usuario?.nombre || usuario?.nombre_completo || usuario?.usuario || '';
     const programa = usuario?.programa || '';
-    const grupoActivoRaw = (typeof window.getGrupoActivoDocente === 'function')
-      ? window.getGrupoActivoDocente()
-      : (usuario?.grupoActivo || usuario?.grupo || '');
+    const savedGroup = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : '';
+    const grupoActivoRaw = savedGroup || activeSessionGroup || usuario?.grupoActivo || usuario?.grupo || '';
     return { usuario, nombre, programa, grupoActivo:tvGroupCode(grupoActivoRaw) };
-  }, []);
+  }, [activeSessionGroup]);
 
   const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
   const [gruposMeta, setGruposMeta] = React.useState(() => tvSessionGroups(usuario, grupoActivo));
@@ -320,6 +319,8 @@ function useTeacherSession() {
   const [reloadTick, setReloadTick] = React.useState(0);
   const [reloadGroupsTick, setReloadGroupsTick] = React.useState(0);
 
+  // La sesión activa puede llegar después del montaje inicial del componente.
+  React.useEffect(() => setSesionLocal(readSession()), [readSession]);
   React.useEffect(() => {
     const onChange = () => setSesionLocal(readSession());
     window.addEventListener('an:session-changed', onChange);
@@ -1481,7 +1482,7 @@ function tvSelectContactTextF104(event){
   selection.addRange(range);
 }
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
-  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
+  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession(activeSession?.COD_GRUPO || activeSession?.cod_grupo || '');
   const lista=grupos||[];
   const [contactos,setContactos]=React.useState({});
   React.useEffect(()=>{
