@@ -1,6 +1,109 @@
 // CALGRUPO_F80_20260619_NORMALIZACION_SESION_DOCENTE_ESTABLE
 /* global window */
 
+// F111 P0 HTTP timing opt-in. Sin datos personales, credenciales, tokens ni envío remoto.
+// Activar en el mismo navegador: login.html?f111_diag=1 (persiste solo en la pestaña).
+(function f111HttpTimingOptIn() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const storageKey = 'an_f111_diag_http_v1';
+    const enabled = params.get('f111_diag') === '1' ||
+      window.sessionStorage.getItem(storageKey) === '1';
+    if (!enabled || typeof window.fetch !== 'function') return;
+    window.sessionStorage.setItem(storageKey, '1');
+    if (window.__f111TimingActive) return;
+    window.__f111TimingActive = true;
+
+    const watched = {
+      iniciarsesion:'iniciarSesion',
+      validarsesion:'validarSesion',
+      getdocentegruposactuales:'getDocenteGruposActuales',
+      getdocentegrupopanelf80:'getDocenteGrupoPanelF80'
+    };
+    const measurements = [];
+    let output = null;
+    function render() {
+      if (!document.body) return;
+      if (!output) {
+        const panel = document.createElement('aside');
+        panel.setAttribute('aria-label', 'Diagnóstico F111 de tiempos HTTP');
+        panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483600;' +
+          'max-width:min(410px,calc(100vw - 24px));min-width:270px;box-sizing:border-box;' +
+          'background:#12243b;color:white;border:1px solid #8ca8c8;border-radius:12px;' +
+          'box-shadow:0 8px 24px #0005;padding:12px;font:12px/1.45 system-ui,sans-serif;';
+        const heading = document.createElement('div');
+        heading.textContent = 'F111 · Tiempos HTTP (diagnóstico)';
+        heading.style.cssText = 'font-weight:700;margin-bottom:6px;';
+        output = document.createElement('pre');
+        output.style.cssText = 'white-space:pre-wrap;max-height:170px;overflow:auto;margin:4px 0 8px;';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Copiar tiempos sin datos personales';
+        button.style.cssText = 'padding:5px 8px;border-radius:6px;border:0;cursor:pointer;';
+        button.addEventListener('click', function () {
+          const safe = measurements.map(function (m) {
+            return m.name + ' | ' + m.ms + ' ms | ' + m.result;
+          }).join('\n');
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(safe).then(function () {
+              button.textContent = 'Tiempos copiados';
+            }).catch(function () { button.textContent = 'No se pudo copiar'; });
+          } else button.textContent = 'Portapapeles no disponible';
+        });
+        panel.appendChild(heading);
+        panel.appendChild(output);
+        panel.appendChild(button);
+        document.body.appendChild(panel);
+      }
+      output.textContent = measurements.length
+        ? measurements.map(function (m) {
+            return m.name + ' · ' + m.ms + ' ms · ' + m.result;
+          }).join('\n')
+        : 'Esperando llamadas de autenticación o panel…';
+    }
+    function record(fn, elapsed, result) {
+      measurements.push({name:watched[fn], ms:Math.round(elapsed), result:result});
+      if (measurements.length > 30) measurements.shift();
+      render();
+    }
+    const originalFetch = window.fetch;
+    window.fetch = function f111MeasuredFetch(resource, options) {
+      let fn = '';
+      try {
+        const body = options && typeof options.body === 'string'
+          ? JSON.parse(options.body) : {};
+        fn = String(body.fn || '').toLowerCase();
+      } catch (_) {}
+      if (!fn) {
+        try {
+          fn = String(new URL(String(resource), window.location.href)
+            .searchParams.get('fn') || '').toLowerCase();
+        } catch (_) {}
+      }
+      if (!watched[fn]) return originalFetch.apply(this, arguments);
+      const started = performance.now();
+      try {
+        return originalFetch.apply(this, arguments).then(
+          function (response) {
+            record(fn, performance.now() - started, 'HTTP ' + response.status);
+            return response;
+          },
+          function (error) {
+            record(fn, performance.now() - started, 'ERROR DE RED');
+            throw error;
+          }
+        );
+      } catch (error) {
+        record(fn, performance.now() - started, 'ERROR DE RED');
+        throw error;
+      }
+    };
+    render();
+  } catch (_) {
+    // Diagnóstico completamente opcional: jamás impedir el inicio de sesión.
+  }
+})();
+
 // ── Apps Script URL (compartida) ─────────────────────────────────────────
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec';
 // F98.4-Z6-PERF2: publicar la URL inmediatamente en window para evitar carreras de carga entre scripts Babel.
