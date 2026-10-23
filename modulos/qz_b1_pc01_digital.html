@@ -91,7 +91,7 @@ var reviewMode=params.get('review')==='1';
 var liveMode=params.get('live')==='1'&&!reviewMode;
 var saved={};if(!liveMode&&!reviewMode){try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}}
 var answers=saved.answers||{},sent=!!saved.sent||reviewMode,active=0;
-var reviewKey=null,reviewMarks={},reviewNonce='',reviewReady=false;
+var reviewKey=null,reviewMarks={},reviewNonce='',reviewReady=false,reviewLocked=false;
 function reviewNorm(value){return String(value==null?'':value).toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .replace(/[\u2018\u2019]/g,"'").replace(/\s+/g,' ').replace(/[.!?]+$/,'').trim();}
@@ -106,7 +106,7 @@ function reviewPoints(){
 }
 function reviewLetter(pct){return pct>=90?'A':pct>=87?'B+':pct>=80?'B':pct>=77?'C+':pct>=70?'C':pct>=60?'D':'F';}
 function reviewNotify(){
- if(!reviewMode||!reviewReady||!reviewKey)return;
+ if(!reviewMode||!reviewReady||!reviewKey||reviewLocked)return;
  var points=reviewPoints(),pct=points/25*100;
  if(window.parent!==window)window.parent.postMessage({
   type:'F111_PC01_TEACHER_GRADE',nonce:reviewNonce,points:points,total:25,
@@ -148,7 +148,7 @@ var s=sections[active],page=byId('page');page.replaceChildren();
 page.append(node('h2',s.id+' · '+s.title+' · '+s.items.length+' puntos'),node('p',s.help,'help'));
 if(sent)page.append(node('p',reviewMode?'Revisión docente · respuestas guardadas del estudiante.':liveMode?'PRUEBA ENTREGADA · Pendiente de revisión docente.':'Vista previa finalizada.','done'));
 if(reviewMode){
- var summary=node('div',reviewReady&&reviewKey?'Nota diagnóstica · '+reviewPoints()+'/25 · '+(reviewPoints()*4)+'% · '+reviewLetter(reviewPoints()*4):
+ var summary=node('div',reviewLocked?'Revisión cerrada · consultá la calificación final en el panel docente.':reviewReady&&reviewKey?'Nota diagnóstica · '+reviewPoints()+'/25 · '+(reviewPoints()*4)+'% · '+reviewLetter(reviewPoints()*4):
   'Cargando clave privada docente para evaluar los 25 puntos…','f111-review-score');
  summary.dataset.ready=String(!!(reviewReady&&reviewKey));page.append(summary);
 }
@@ -165,7 +165,7 @@ if(reviewMode){
   markBox.append(node('div','Respuesta correcta: '+reviewKey[answerId].join(' / '),'f111-correct'));
   var actionBox=node('div',null,'f111-mark-actions');
   actionBox.append(node('span','Puntos:'));
-  [0,0.5,1].forEach(function(pts){
+  if(!reviewLocked)[0,0.5,1].forEach(function(pts){
    var btn=node('button',String(pts));btn.type='button';
    btn.setAttribute('aria-pressed',String((Object.prototype.hasOwnProperty.call(reviewMarks,answerId)?reviewMarks[answerId]:reviewDefaultMark(answerId))===pts));
    btn.onclick=function(){reviewMarks[answerId]=pts;render();reviewNotify()};
@@ -211,6 +211,7 @@ if(reviewMode){
    });
   }
   reviewReady=Object.keys(allowedKeys).length===25;
+  reviewLocked=message.locked===true;
   reviewKey=reviewReady?allowedKeys:null;reviewNonce=String(message.nonce||'');
   reviewMarks={};answers=clean;sent=true;active=0;render();reviewNotify();
   byId('note').textContent=reviewReady?'Respuestas del estudiante y clave Cambridge. Calificá sobre 25 puntos (0, 0,5 o 1 por pregunta); peso oficial 0%.':
