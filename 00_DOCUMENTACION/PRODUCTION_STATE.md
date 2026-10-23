@@ -1,5 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+
+## F111 B1 PC01 — MOTOR PROD PREPARADO, NO DESPLEGADO · 22-oct-2026
+
+**RESULTADO VERIFICADO DE ESTA PASADA:**
+- [Backend PR #89](https://github.com/anorteamericana-ship-it/campus_backend/pull/89) **MERGED** SHA `cb33002245a8cd33af9c80a091516c6ebbcb4105`. Motor único, sin duplicar exámenes. Se añadió modo `PROD` con flag independiente `F111_QZ_PROD_ENABLED` (OFF por defecto), comprobación del Script ID institucional, IDs de ambos libros cotejados contra propiedades, grupo único `B1-KJ18-C3-0826` y rechazo de coexistencia QA+PROD. QA conserva sentinelas contra IDs productivos; 3/3 workflows del PR terminaron **SUCCESS**. No hubo `clasp push`, cambio de propiedades ni Sheets.
+- [Backend PR #90](https://github.com/anorteamericana-ship-it/campus_backend/pull/90) **MERGED** SHA `52f63569418de4ecf050db6ea192e468ab8f423c`. Solo en modo PROD: Diego puede habilitar Quiz 1 si llegó la fecha programada de L4 y no está suspendida/cancelada/anulada, sin reabrir clase/asistencia. Una vez abierto, queda disponible después de cerrar la sesión de asistencia, hasta que el docente cierre explícitamente el QUIZ. También puede cerrar el quiz días posteriores. QA conserva su condición histórica de clase ABIERTA. 3/3 workflows **SUCCESS**.
+- [Frontend PR #586](https://github.com/anorteamericana-ship-it/campus-virtual/pull/586) **MERGED** SHA `600552c8bcda3176eb616608d360aac1727c2bc0`. En **Docente → Exámenes → B1/L4** se añadió el control de abrir con invitación / cerrar posteriormente con readback autenticado. Si GAS no permite la operación, queda deshabilitada sin alterar el preview. Los principales checks del PR fueron SUCCESS; el despliegue Pages del merge **debe verificarse por su workflow**, no inferirse del merge. Conserva oral/escrito, asistencia, 25 reactivos, audio/foto y nota diagnóstica 0% oficial.
+
+**ESTADO DE PRODUCCIÓN ACADÉMICA:** frontend #584 ya publicado, backend PR #89/#90 solo está en GitHub; **Apps Script desplegado en institución sigue siendo @462** por captura del 22-oct. Su código inmutable **NO fue leído con OAuth**, y la exportación Drive corresponde al editor HEAD (no a @462). Las funciones QZ del repositorio **NO están instaladas ni habilitadas en GAS institucional**. Alumnos/invitaciones/entregas reales **0**, sin cambios en asistencias/notas/hojas. La certificación de entrega real sigue **1/5 puertas**, no contar CI ni Pages como SAVE real.
+
+**SIGUIENTE ACCIÓN SIN DUPLICAR:** acceder de forma autorizada al Apps Script institucional en navegador conectado o entregar OAuth readonly al environment de GitHub Actions ya preparado en backend PR #88; confirmar `projects.deployments.get.versionNumber=462` y hash por archivo de `projects.getContent(462)`. Aplicar exclusivamente delta de rutas F111 desde repositorio validado tras comparar con el snapshot, sin `clasp push` por agentes: despliegue PROD únicamente por propietario Leonardo con versión nueva y reversión. Ajustar y preparar únicamente `QUIZ_PROGRESS_APERTURAS` y `QUIZ_PROGRESS_ATTEMPTS`, activar flags PROD propios tras readback y verificación de estado, y confirmar una entrega real de alumno autorizado. **Nunca usar `F111_QZ_QA_ENABLED` en producción ni copiar toda la carpeta `prod/` sobre @462.**
+
+---
+
+
 ## F111 · B1 PC01 — FRONTEND EN PAGES + EXPORTACIÓN DEL EDITOR GAS · 22-oct-2026
 
 **ÚLTIMO PASO / RESULTADO VERIFICADO:**
