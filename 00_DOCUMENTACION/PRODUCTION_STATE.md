@@ -1,6 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · CIERRE PARA CAMBIO DE CHAT — SIN REHACER @472 · 23-oct-2026
+
+**ESTADO CONTRASTADO EN ESTA PASADA:** verificación nueva por `clasp deployments --json` sobre el mismo proyecto institucional: **principal @472** (un único deployment principal) y **Quiz B1 separado @467**. Esta sección **no es un segundo despliegue**. El detalle de @472 y su QA oficial se encuentra inmediatamente abajo, en esta misma fuente de verdad. [Backend PR #98](https://github.com/anorteamericana-ship-it/campus_backend/pull/98) ya estaba MERGED, commit `14cc870651187f226cccded493427db71277802a`, con `Backend E1 QA compartida`, `F111 N02 P0 E1 independiente` y rutina de limpieza de ramas con resultados SUCCESS. Se detectó una rama de desarrollo superpuesta y se evitó duplicar el mismo parche: [backend PR #99](https://github.com/anorteamericana-ship-it/campus_backend/pull/99) **CLOSED SIN MERGE** por redundancia; el único conflicto contra main correspondía a una segunda versión del mismo archivo de prueba.
+
+**QA adicional que no se debe perder:** desde el commit de #99 se ejecutó localmente por Node, en dispositivo autorizado, `tests/qa_f111_f80_ina_shared_attendance_e1.mjs`, con **15 códigos CA completamente sintéticos**. Resultado `PASS F111 15 CA`: programa INA comprobado mediante contrato con GRUPOS, I CAN sobre 20 puntos, duplicado de asistencia resuelto por el timestamp más reciente, una instantánea local compartida para las 15 notas más el resumen, caso SIN INA sin puntos I CAN y ruta histórica sin instantánea todavía funcional. Fixture temporal local: `C:\Users\leodr\Documents\anorteam\temporal\F111_F80_QA99\`. **Esto es QA sintética, NO prueba real de rendimiento con Diego**, y no se escribió ninguna fila institucional.
+
+**PENDIENTES ABIERTOS (NO REDESPLEGAR POR INERCIA):** certificar un inicio de sesión válido y la carga auténtica del panel de Diego para `B1-KJ18-C3-0826` (15 alumnos B1/CA, cronograma curso e I CAN), con medición de extremo a extremo y observabilidad diferenciando `validarSesion`, `_f80_studentsAndNotes_`, `_f80_attendance_`, `_f79_readRetroGrupo_` y sesiones de clase. La comprobación con token ficticio en @472 solo confirma rechazo de sesión inválida y no sirve como medición de panel autenticado. Tiempo excesivo de login (~70 s), recuperación de contraseña y primera entrega real Quiz 1 **siguen sin certificación de reparación**. No solicitar tokens o contraseñas al usuario, no usar datos estudiantiles reales para simulaciones y no reiniciar desde los módulos ya cerrados.
+
+**ÚLTIMO PASO:** @472 verificable, #98 integrado, #99 duplicado cerrado, QA adicional 15 CA PASS. **RESULTADO:** un solo backend integrado y una sola fuente documental. **SIGUIENTE PASO:** instrumentación/medición segura de sesión válida y panel real, sin cambiar notas, asistencia, certificados ni matrículas. **CONTINUAMOS CON:** F111 — certificar panel autenticado sobre @472 y resolver timeout de login/sesiones; después retomar apertura PC01 y primer SAVE/SUBMIT real en @467. Rollback del principal disponible a @471 si hubiera regresión demostrada.
+
+---
+
+
+
 ## F111 · PANEL DOCENTE: INA Y LECTURA ÚNICA DE ASISTENCIA · PROD @472 · 23-oct-2026
 
 **ESTADO VERIFICADO:** Apps Script institucional, deployment estable `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`, actualizado de **@471 a @472** por `clasp deploy -i`; `clasp deployments --json` posterior confirma **@472**. Motor independiente Quiz B1 PC01 **@467**, no modificado. Rollback institucional inmediato disponible a **@471**. El frontend PR #596 de Mis grupos, calendario @469, GRUPOS @470, DATOS/ASISTENCIA @471 y otros hotfixes se preservaron.
