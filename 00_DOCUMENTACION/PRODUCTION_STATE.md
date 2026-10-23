@@ -85,6 +85,20 @@ Estos porcentajes NO se suman al 56%; medir implementación, CI, despliegue y ce
 
 ---
 
+### 6B. P1 recuperación · discrepancia de router y seguridad verificada estáticamente · 23-oct-2026
+
+**Causa de enrutamiento detectada en snapshot @472:** `src/recovery.jsx` envía `solicitarRecuperacionAccesoUniversal` y `restablecerAccesoUniversal`. Las dos funciones existen en `51_Recuperacion_Acceso_Universal.js` de @472, pero `01_Router.js` de esa versión no las declara en `_an4406PublicPostEndpoint_` ni en `_an4406DispatchPublicPost_`; la política `_an4406AutorizarPost_` devuelve `endpoint_no_declarado` para funciones no declaradas. Esta es una causa estructural comprobada en el código, NO certificación de recuperación real.
+
+**No duplicar código ya resuelto:** `campus_backend/main` YA incluye ambos endpoints públicos y sus alias, además de una implementación PWREC2 más endurecida. Se detectó antes de editar; se eliminó la rama técnica vacía `fix/f111-pwrec2-public-dispatch-only-20261023` sin PR ni merge.
+
+**Bloqueante de seguridad para producción:** el snapshot @472 de `51_Recuperacion_Acceso_Universal.js` todavía escribe `nueva.clave` directamente con `setValue`, y su rate limiter tolera excepciones de caché; backend/main utiliza `_authHashClave_(nueva.clave)`, controles de OTP bajo lock y rate limit cerrado ante fallo persistente. Asimismo, en `getUsuario` de `02_Auth_Sesiones_Usuarios.js`, backend/main invoca `_authVerificarClave_`, distinto del comparador legacy presente en @472. Son diferencias **de código**, no afirmaciones sobre valores reales almacenados. **Prohibido activar solo las rutas públicas de @472:** podría exponer una ruta de restablecimiento desactualizada.
+
+**Siguiente operación P1 una vez aislado P0:** reconciliar el conjunto mínimo y coherente de router + recuperación + verificación de hash desde backend/main contra el inmutable @472; QA sintética para ruta pública, controles OTP, rate fail-closed, no texto plano, migración/compatibilidad, roles y acceso; comparar 33 archivos y solo después considerar un despliegue reversible y un flujo real autorizado. No importar backend/main completo ni alterar notas, asistencia, grupos, pagos o certificados.
+
+**Estado:** diagnóstico estático de P1 completado; reparación / QA específica / despliegue / prueba real siguen PENDIENTES. F80 5/5 implantado y 0/1 experiencia autenticada; PC01 3/5; F111 56% histórico, sin ajustes.
+
+---
+
 ### 7. PROMPT DE CONTINUIDAD
 
 CONTINUAMOS CON F111 ACADEMIA NORTEAMERICANA — lee primero 00_DOCUMENTACION/PRODUCTION_STATE.md (cabecera vigente de 23-oct-2026), y verifica HEAD/PR/deploy antes de actuar. Producción principal Apps Script @472; Quiz B1 PC01 @467 separado; backend PR #98 MERGED, #99 duplicado CLOSED, frontend #593 y #596 publicados. No repetir los cinco hotfixes F80 @468–@472, no recrear bancos, no volver a empezar QA PASS. Grupo prioritario de Diego: B1-KJ18-C3-0826, B1/INA, 15 CA únicos con DATOS conciliados y 74 filas de ASISTENCIA. La prueba con token falso rechaza sesion_invalida y NO certifica rendimiento real. Pendiente: login docente válido dentro del plazo, panel completo con cronograma, recuperación contraseña; luego docente ABIERTO PC01, SAVE/SUBMIT real y revisión. Global F111 D1–D5: línea base 56% al 18-oct (D1 100, D2 90, D3 30, D4 40, D5 20), NO se ha recalculado con igual criterio. Optimización F80 5/5 desplegada, 0/1 certificación real; PC01 3/5 puertas publicadas, 2 pendientes. Respeta INA 15/15/5/15/15/5/Social10/ICAN20, Progress Checks 0%. Solo código mínimo sobre snapshot inmutable, lectura de regreso, despliegue reversible y prueba autenticada autorizada; nunca inventes resultados, ni modifiques asistencia/notas/matrículas. Documenta al final en el MISMO archivo y responde siempre: ÚLTIMO PASO, RESULTADO, % CON BASE, PENDIENTES/RIESGOS, SIGUIENTE PASO, CONTINUAMOS CON. Prioridad ahora: instrumentar y resolver latencia de sesión real sin rehacer panel ni Quiz.
