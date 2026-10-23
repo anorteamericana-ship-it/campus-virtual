@@ -322,6 +322,11 @@ function useTeacherSession(activeSessionGroup='') {
   // La sesión activa puede llegar después del montaje inicial del componente.
   React.useEffect(() => setSesionLocal(readSession()), [readSession]);
   React.useEffect(() => {
+    if (!grupoActivo) return;
+    setGruposMeta(prev => prev.length ? prev : tvSessionGroups(usuario, grupoActivo));
+    setCodGrupo(prev => prev || grupoActivo);
+  }, [grupoActivo, usuario]);
+  React.useEffect(() => {
     const onChange = () => setSesionLocal(readSession());
     window.addEventListener('an:session-changed', onChange);
     return () => window.removeEventListener('an:session-changed', onChange);
