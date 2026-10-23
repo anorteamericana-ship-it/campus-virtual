@@ -120,14 +120,14 @@ async function confirmGroupQuizInvitation(button,feedback,refresh){
 function attachLessonAction(){
  const drawers=document.querySelectorAll('aside[data-teacher-level="B1"][data-teacher-lesson="4"][data-teacher-rail="curso"]');
  drawers.forEach(drawer=>{
-  const preview=drawer.querySelector('[data-f111-lesson-quiz="B1-L4"]');
-  if(!preview||drawer.querySelector('[data-f111-quiz-activation]'))return;
+  const previewButton=drawer.querySelector('[data-f111-lesson-quiz="B1-L4"]');
+  if(!previewButton||drawer.querySelector('[data-f111-quiz-activation]'))return;
   const text=drawer.textContent||'';
   if(!text.includes('B1-KJ18-C3-0826')||!text.includes('GUARDAR Y CERRAR CLASE'))return;
   const button=make('button','Consultando apertura del quiz…','f111-tqr-activate');
   button.type='button';button.dataset.f111QuizActivation='B1-L4';button.disabled=true;
   const feedback=make('small','','f111-tqr-feedback');
-  preview.parentNode.insertBefore(button,preview.nextSibling);
+  previewButton.parentNode.insertBefore(button,previewButton.nextSibling);
   button.after(feedback);
   const refresh=()=>{
    postQuiz('qzProgressTeacherAvailability',qzContext).then(r=>{
