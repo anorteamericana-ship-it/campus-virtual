@@ -50,8 +50,24 @@ assert.ok(student.includes("window.F111_QZ_API_URL||window.APPS_SCRIPT_URL"),'es
 assert.ok(quiz.includes('window.parent.F111_QZ_API_URL||window.parent.APPS_SCRIPT_URL'),'iframe SAVE y SUBMIT usan QZ B1');
 assert.ok(!login.includes('F111_QZ_API_URL'),'login independiente del motor de quiz');
 assert.ok(login.includes('fn: \'iniciarSesion\''),'login intacto en servidor original');
-assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01B1ISOLATED20261022'),'cache student actualizado');
-assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01B1ISOLATED20261022'),'cache teacher actualizado');
-assert.ok(student.includes("url.searchParams.set('v','F111QZB1ISOLATED20261022')"),'iframe estudiante evita versión antigua en caché');
+assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01DELIVERYREVIEW20261023'),'cache student actualizado');
+assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01DELIVERYREVIEW20261023'),'cache teacher actualizado');
+assert.ok(student.includes("url.searchParams.set('v','F111PC01DELIVERYREVIEW20261023')"),'iframe estudiante evita versión antigua en caché');
 
-console.log('PASS F111 PC01 E1: apertura por docente, matrícula por servidor, entrega autenticada, revisión 0–100 con comentario separado, preview conservado');
+// Regresión de UX exigida tras la primera entrega de estudiante real.
+assert.ok(quiz.includes("submit').textContent='ENTREGAR AHORA'"),'el alumno identifica claramente el envío final');
+assert.ok(quiz.includes('PRUEBA ENTREGADA'),'acuse persistente de entrega para el estudiante');
+assert.ok(quiz.includes("var confirmed=await call('qzProgressMyAttempt',context)"),'el acuse solo aparece después de leer el expediente real');
+assert.ok(quiz.includes('markDelivered(confirmed)')&&quiz.includes('showDeliveryReceipt()'),'respuesta confirmada muestra recibo visible');
+assert.ok(quiz.includes('liveUncertain=true')&&quiz.includes('Verificar entrega'),'corte de red nunca reenvía automáticamente una entrega incierta');
+assert.ok(quiz.includes("params.get('review')==='1'"),'mismo banco original en modo docente de solo lectura');
+assert.ok(quiz.includes("event.origin!==location.origin||event.source!==window.parent"),'mensajes de revisión solo desde la ventana Campus');
+assert.ok(quiz.includes("var persist=function(){if(reviewMode)return;"),'revisión docente jamás persiste borradores locales');
+assert.ok(teacher.includes('openReviewWorkspace'),'revisión amplia, no formulario incrustado en tarjeta estrecha');
+assert.ok(teacher.includes('f111-tqr-workspace-columns')&&teacher.includes('f111-tqr-student-list'),'listado de alumnos a la izquierda y examen a la derecha');
+assert.ok(teacher.includes("url.searchParams.set('review','1')"),'abrir banco de 25 preguntas del estudiante, sin duplicarlo');
+assert.ok(teacher.includes("frame.contentWindow.postMessage({type:'F111_PC01_TEACHER_REVIEW'"),'transferir respuestas al iframe sin URL ni almacenamiento');
+assert.ok(teacher.includes("'qzProgressTeacherMaterials'"),'profesor puede consultar clave PDF con autorización');
+assert.ok(teacher.includes("const verified=await postQuiz('qzProgressTeacherList'"),'revisión académica valida readback');
+assert.ok(!teacher.includes('buildReviewEditor(gradePanel)'),'no más formulario comprimido en tarjeta del catálogo');
+console.log('PASS F111 PC01 E1 UX: apertura por docente, matrícula por servidor, entrega autenticada, revisión 0–100 con comentario separado, preview conservado');
