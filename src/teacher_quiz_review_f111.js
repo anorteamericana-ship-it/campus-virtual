@@ -61,7 +61,7 @@ function openReviewWorkspace(){
  columns.append(sidebar,detail);layout.append(columns);backdrop.append(layout);document.body.append(backdrop);
  let rows=[],roster=new Map(),selectedCode='',keyBlobUrl=null;
  function cleanupKey(){if(keyBlobUrl){URL.revokeObjectURL(keyBlobUrl);keyBlobUrl=null;}}
- function dismiss(){cleanupKey();backdrop.remove();document.removeEventListener('keydown',onKey);if(previous&&previous.isConnected)previous.focus();}
+ function dismiss(){cleanupKey();backdrop.remove();document.removeEventListener('keydown',onKey);window.removeEventListener('message',onGradeMessage);if(previous&&previous.isConnected)previous.focus();}
  function onKey(event){if(event.key==='Escape'){event.preventDefault();dismiss();}}
  close.onclick=dismiss;
  backdrop.addEventListener('click',event=>{if(event.target===backdrop)dismiss();});
@@ -102,9 +102,8 @@ function openReviewWorkspace(){
   displaySelection();
  }
  let gradeReceiver=null,reviewSeq=0;
- window.addEventListener('message',function(event){
-  if(typeof gradeReceiver==='function'&&event.origin===location.origin)gradeReceiver(event);
- });
+ function onGradeMessage(event){if(typeof gradeReceiver==='function'&&event.origin===location.origin)gradeReceiver(event);}
+ window.addEventListener('message',onGradeMessage);
  function letterFor(percentage){
   const p=Number(percentage);
   return p>=90?'A':p>=87?'B+':p>=80?'B':p>=77?'C+':p>=70?'C':p>=60?'D':'F';
