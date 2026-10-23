@@ -149,6 +149,12 @@ function attachLessonAction(){
     refresh();
    }catch(err){feedback.textContent='No se confirmó el cambio: '+err.message;refresh();}
   });
+  window.f111PC01TeacherLaunch=()=>{
+   if(!button.isConnected||button.disabled||button.dataset.status==='ABIERTO'){preview();return;}
+   const invite=window.confirm('¿Querés enviar la invitación del Quiz 1 a los estudiantes del grupo? Aceptar: revisar lista y habilitar. Cancelar: abrir solo la vista docente.');
+   if(invite){void confirmGroupQuizInvitation(button,feedback,refresh);}
+   else preview();
+  };
   refresh();
  });
 }
