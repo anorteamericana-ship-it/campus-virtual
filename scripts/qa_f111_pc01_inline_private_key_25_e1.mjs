@@ -6,7 +6,7 @@ const teacher=fs.readFileSync(new URL('../src/teacher_quiz_review_f111.js',impor
 const source=html.match(/<script>([\s\S]*?)<\/script>/);
 assert.ok(source,'HTML contiene lógica PC01');new Function(source[1]);
 assert.ok(html.includes('var reviewKey=null'),'clave docente solo llega vía mensaje');
-assert.ok(!html.includes('718-555-8871') && !html.includes('under his desk'),'no distribuir respuestas correctas en código público');
+assert.ok(!html.includes('claves:{') && !html.includes('var reviewKey={A1:') && !html.includes('clave_items'),'la tabla de claves no existe en HTML público; opciones del alumno no son una tabla de corrección');
 assert.ok(html.includes("event.origin!==location.origin||event.source!==window.parent"),'solo padre del mismo origen');
 assert.ok(html.includes('reviewPoints()*4'),'25 puntos convertidos a escala 100');
 assert.ok(html.includes("pct>=90?'A'"),'25/25 = A');
