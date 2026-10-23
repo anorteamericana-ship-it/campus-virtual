@@ -7,7 +7,8 @@ const seen=new WeakSet();
 function e(tag,cl,txt){const x=document.createElement(tag);if(cl)x.className=cl;if(txt!==undefined)x.textContent=txt;return x}
 async function api(fn,body){
  const token=window.getSessionToken?window.getSessionToken():'';
- const url=String(window.APPS_SCRIPT_URL||'');
+ // Solo F111 PC01 usa el motor B1 aislado; las demás evaluaciones quedan en @462.
+ const url=String(window.F111_QZ_API_URL||window.APPS_SCRIPT_URL||'');
  if(!token||!url)throw Error('Sin sesión');
  const res=await fetch(url+'?fn='+encodeURIComponent(fn),{
   method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -29,6 +30,7 @@ function openQuiz(){
  bar.append(close);shell.append(bar);
  const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
  url.searchParams.set('live','1');
+ url.searchParams.set('v','F111QZB1ISOLATED20261022');
  url.searchParams.set('grupo',TARGET);
  const frame=e('iframe');frame.src=url.href;frame.title='Progress Check 01: respuesta y entrega';
  frame.setAttribute('referrerpolicy','same-origin');
