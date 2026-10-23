@@ -1,6 +1,24 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 — LATENCIA PANEL DOCENTE: GRUPOS COMPARTIDOS EN PROD @470 · 23-oct-2026
+
+**ESTADO REAL:** implementación Apps Script institucional principal @470 confirmada mediante deploy y readback de versiones sobre ID estable AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ. Motor aislado Quiz B1 sigue @467. @469 es la reversión disponible. No se mezcló el backend completo GitHub con Apps Script de producción.
+
+**PROBLEMA CORREGIDO:** getDocenteGrupoPanelF80 leía GRUPOS dos veces: primero para autorización docente mediante _f77_canGroup_ → _anF65_teacherCanGroupViaGrupos_ y otra vez para construir ficha mediante _f80_exactGroupMetaFast_. Cada lectura incluía getValues + getDisplayValues sobre ~974 filas × 39 columnas. Ahora una lectura local por solicitud sirve a ambas funciones, con parámetros opcionales; docentes 2 lecturas → 1, sin CacheService ni escrituras académicas. Ningún permiso de clase o I CAN cambió. [Backend PR #96](https://github.com/anorteamericana-ship-it/campus_backend/pull/96) fusionado; commit ebdf65670ba26c7eae816d5fcaaa2f86211cebc9; dos suites CI PASS.
+
+**CONTROL DE SEGURIDAD:** la revisión detectó inicialmente P2: precarga temprana de GRUPOS podía hacer fallar a administradores donde antes se toleraba un error de hoja. Corregido antes del merge: solo docentes precargan, admin y superadmin conservan bypass de autorización y metadatos opcionales con try/catch. QA sintética valida docente autorizado y rechazado, I CAN por separado, admin, nivel incorrecto y hoja fallida. La contraseña y validación de sesión no se alteraron.
+
+**CONCILIACIÓN DEL RELEASE:** base obtenida mediante clasp pull --versionNumber 469 y comparada 33/33 con copia local del release. Candidato aislado F111_PANEL_GROUPS_469_PLUS_20261023: 33 archivos; 2 modificados (02_Auth_Sesiones_Usuarios.js y 32_Utils_Shared.js), 31 idénticos. Permanecen sin cambios 10_Estudiantes.js (retroalimentación @468), 11_Docentes_Clases.js (calendario @469), 01_Router.js y appsscript.json. Node --check PASS. Huella combinada de nombres y hashes SHA-256: efec4fa76d475c4bebca1b176b3c4f3f0d29b68b3219a84b9f7ea6e741aeaffe. Clasp push aceptó 33 archivos; readback editor 33/33 DIFF=0; versión inmutable @470 creada y publicada; pull --versionNumber 470 confirmó 33/33 DIFF=0.
+
+**SALUD Y LO QUE FALTA:** la ruta pública getDocenteGrupoPanelF80 rechazó una sesión falsa con HTTP 200, error sesion_invalida, en 4,5 segundos. Esto solo confirma que existe la ruta y rechaza correctamente a un usuario no autenticado; NO ejecuta el padrón ni permite cuantificar la latencia del docente real frente a @469. PR frontend #596 Mis grupos ya publicado; los 15 registros CA de B1 estaban confirmados en ESTATUS por lectura independiente. Todavía no se certificó que Diego vea el panel, y el login con timeout y la recuperación de contraseña son incidencias separadas aún abiertas. Primera entrega Quiz PC01 no certificada.
+
+**CONTINUAMOS CON:** un único acceso real de Diego a Mis grupos tras recarga; comprobar padrón CA y cronograma. Si persiste demora, aislar validarSesion, ESTATUS/DATOS, ASISTENCIA y hoja de sesiones sin rehacer CALENDARIO, RETROALIMENTACION ni GRUPOS. Si ocurre regresión clara, revertir solo deployment institucional a @469, conservando su mismo ID. No modificar notas, asistencias ni matrículas.
+
+---
+
+
+
 ## F111 · LATENCIA PANEL DOCENTE F80 · CALENDARIO COMPARTIDO EN PROD @469 · 22-oct-2026 noche
 
 **ESTADO PRODUCTIVO COMPROBADO:** deployment principal institucional `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` en **@469** por `clasp deployments --json` y confirmación `Deployed ... @469`. El motor aislado del Quiz B1 conserva **@467** y NO se alteró. La versión @468 queda disponible para rollback sin cambiar URL del Campus. Este cambio aborda específicamente la segunda llamada `getDocenteGrupoPanelF80`, NO rehace el hotfix de UI [PR #596](https://github.com/anorteamericana-ship-it/campus-virtual/pull/596), ni recuperación de contraseña.
