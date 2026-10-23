@@ -1,5 +1,17 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+
+## INCIDENCIA ABIERTA · LOGIN TIMEOUT · GAS RESTAURADO @462 · 22-oct-2026
+
+**HECHOS VERIFICADOS DESDE DESKTOP COMMANDER:** después de la promoción de F111 B1 PC01 a Apps Script @464, el usuario reportó captura de Login con «El servidor tardó demasiado. Reintentá en unos segundos». El frontend `src/login.jsx` produce ese texto cuando `loginFetchJson` aborta por `timeout` (`70000` ms); por tanto la captura **NO prueba contraseña errónea**. El ID estable seguía en **@464** cuando se revisó. Se requirió **rollback de emergencia a @462**; una operación de despliegue remota desde conector fue bloqueada por los controles de seguridad, se entregó comando PowerShell al propietario. **READBACK POSTERIOR `clasp deployments --json` confirmó deployment estable en @462**; ninguna URL fue cambiada. La revisión posterior del endpoint público `validarSesion` con un token artificial (sin cuentas/credenciales) terminó **timeout de 30,2 segundos**; GET público del webapp también terminó timeout de 12 segundos. Por contraste, `https://anorteamerican.com/campus-virtual/login.html` respondió HTTP 200 en 1 segundo y `https://www.google.com/generate_204` HTTP 204 en 0,2 segundos. Por ello: **frontend disponible, backend público Apps Script sigue con lentitud extrema/no responde tras rollback**. No se ha confirmado un login exitoso de persona real después de la reversión; no declarar incidente resuelto.
+
+**RIESGOS Y CONTENCIÓN:** suspensión temporal de apertura del Quiz 1 y de nuevos envíos estudiantiles. El motor QZ @464 sigue conservado como versión inmutable, pero NO activo en el deployment estable. Evitar reintentos masivos de acceso que puedan empeorar presión/concurrencia. La exportación editor HEAD anterior @463 (33 archivos) existe aislada localmente `F111_PC01_EDITOR_HEAD_20261022`; el editor después del push @464 tiene los 44 módulos + un archivo temporal `82_F111_PC01_EDITOR_ONLY_ACTIVATION.js` para diagnóstico, pero **esto no equivale a la versión servida @462**. No borrar ni hacer otro `clasp push` inadvertido hasta reconciliar fuentes. `clasp logs` no estuvo disponible porque falta el GCP project ID. El servicio no fue alterado en Sheets ni se confirmaron entregas reales del quiz.
+
+**ESTADO ACTUAL AUTORIZADO:** webapp institucional = **@462**, editor HEAD diferente, primera entrega Quiz 1 = **NO CONFIRMADA**, acceso de usuarios = **INCIDENTE ABIERTO**. Próxima acción: comprobar ejecuciones/latencia de Apps Script y recuperar capacidad de iniciar sesión; solo después retomar la publicación del Quiz 1. El error separado `endpoint_no_declarado` de recuperación sigue pendiente, y no debe mezclarse en restauración de login.
+
+---
+
+
 ## F111 B1 PC01 — GAS PROD @464 PUBLICADO, PRIMERA ENTREGA NO CERTIFICADA · 22-oct-2026, 19:41 CR
 
 **ESTADO VERIFICADO CON DESKTOP COMMANDER EN WINDOWS:** script institucional `1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2`, deployment estable `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`. Clasp confirmó versión previa @462; `clasp pull --versionNumber 462` y `clasp pull` en carpetas separadas: 33 archivos cada uno, **5 divergencias entre editor y @462** en `01_Router`, `02_Auth_Sesiones_Usuarios`, `10_Estudiantes`, `51_Recuperacion_Acceso_Universal`, `61_F111_Login_Guard`. No reemplazar el editor con GitHub indiscriminadamente.
