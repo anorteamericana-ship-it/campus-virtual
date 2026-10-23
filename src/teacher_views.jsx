@@ -1103,6 +1103,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
                   title="Vista previa docente: no habilita entregas de estudiantes."
                   className="btn" style={{background:'#F2C83D',border:'1px solid #D8AD28',color:'#173959',fontSize:12,fontWeight:900}}
                   onClick={()=>{
+                    if(typeof window.f111PC01TeacherLaunch==='function')return window.f111PC01TeacherLaunch();
                     const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',window.location.href));
                     url.searchParams.set('preview','1');
                     url.searchParams.set('grupo',code);
