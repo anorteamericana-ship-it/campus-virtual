@@ -67,7 +67,7 @@ assert.ok(quiz.includes("var persist=function(){if(reviewMode)return;"),'revisi�
 assert.ok(teacher.includes('openReviewWorkspace'),'revisión amplia, no formulario incrustado en tarjeta estrecha');
 assert.ok(teacher.includes('f111-tqr-workspace-columns')&&teacher.includes('f111-tqr-student-list'),'listado de alumnos a la izquierda y examen a la derecha');
 assert.ok(teacher.includes("url.searchParams.set('review','1')"),'abrir banco de 25 preguntas del estudiante, sin duplicarlo');
-assert.ok(teacher.includes("frame.contentWindow.postMessage({type:'F111_PC01_TEACHER_REVIEW'"),'transferir respuestas al iframe sin URL ni almacenamiento');
+assert.ok(teacher.includes("frame.contentWindow.postMessage(payload,location.origin)")&&teacher.includes("type:'F111_PC01_TEACHER_REVIEW'")&&teacher.includes("answers:parseAnswers(row),keys,nonce"),'respuestas y clave privada al iframe desde profesor autenticado, sin URL ni almacenamiento');
 assert.ok(teacher.includes("'qzProgressTeacherMaterials'"),'profesor puede consultar clave PDF con autorización');
 assert.ok(teacher.includes("const verified=await postQuiz('qzProgressTeacherList'"),'revisión académica valida readback');
 assert.ok(!teacher.includes('buildReviewEditor(gradePanel)'),'no más formulario comprimido en tarjeta del catálogo');
