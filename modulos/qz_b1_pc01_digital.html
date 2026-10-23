@@ -16,6 +16,15 @@ body{margin:0}.wrap{max-width:1050px;margin:auto;padding:19px}.hero{background:#
 .foot{display:flex;gap:14px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:17px 0}.foot>div{display:flex;flex-wrap:wrap;gap:8px}
 button.action{border:none;background:#073b78;color:white;border-radius:9px;padding:12px 15px;font-weight:800;cursor:pointer}.action.secondary{background:#fff;color:#073b78;border:1px solid #b7cadf}.action:disabled{opacity:.4;cursor:default}
 .progress{font-size:12px;color:#4d6583;font-weight:700}.drawing{background:#ebf4fa;padding:13px;border:1px solid #d6e6f3;border-radius:12px}.drawing img{display:block;width:100%;height:auto;max-width:680px;margin:auto;border-radius:9px}.f111-audio{margin:8px 0 18px;padding:15px;border:1px solid #bdd4eb;background:#eff7ff;border-radius:12px}.f111-audio strong{display:block;color:#164e87;margin-bottom:7px}.f111-audio audio{width:100%;max-width:500px;margin:8px 0}.f111-audio-note{font-size:11px;color:#59708b;margin:7px 0 0}.f111-audio{padding:12px 14px}.done{background:#e7f5e7;border:1px solid #b4d6ba;color:#256036;padding:12px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.f111-delivery-receipt{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(7,28,57,.78);padding:20px}
+.f111-delivery-receipt[hidden]{display:none!important}
+.f111-delivery-sheet{width:min(520px,100%);background:white;border-radius:20px;border:2px solid #b5dcbd;padding:32px;box-shadow:0 22px 80px #09284b55;text-align:center}
+.f111-delivery-sheet .check{font-size:35px;color:#26734c;display:block;margin-bottom:8px}
+.f111-delivery-sheet h2{color:#175438;font-size:clamp(26px,5vw,36px);margin:0 0 12px}
+.f111-delivery-sheet p{color:#43637c;line-height:1.6;font-size:14px}
+.f111-delivery-sheet button{background:#073b78;color:white;border:0;border-radius:9px;padding:12px 20px;font-weight:800;cursor:pointer;margin-top:12px}
+body.f111-review-only .foot{display:none}body.f111-review-only .hero .pill{background:#dce9f9;color:#244b73}
+body.f111-review-only .note{background:#eaf2fc;border-color:#bdd4eb;color:#204e7c}
 @media(max-width:620px){.wrap{padding:8px}.card{padding:14px}.hero{padding:17px}}
 </style></head>
 <body><main class="wrap">
@@ -68,13 +77,15 @@ var sections=[
 var total=sections.reduce(function(n,s){return n+s.items.length},0);
 if(total!==25)throw new Error('Bank integrity: expected 25 responses');
 var storage='F111_B1_PC01_DIGITAL_PREVIEW_20261022';
-var liveMode=(new URLSearchParams(location.search)).get('live')==='1';
-var saved={};if(!liveMode){try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}}
-var answers=saved.answers||{},sent=!!saved.sent,active=0;
+var params=new URLSearchParams(location.search);
+var reviewMode=params.get('review')==='1';
+var liveMode=params.get('live')==='1'&&!reviewMode;
+var saved={};if(!liveMode&&!reviewMode){try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}}
+var answers=saved.answers||{},sent=!!saved.sent||reviewMode,active=0;
 
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
-var persist=function(){if(!liveMode)sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
+var persist=function(){if(!liveMode&&!reviewMode)sessionStorage.setItem(storage,JSON.stringify({answers:answers,sent:sent}))};
 var filled=function(){return Object.keys(answers).filter(function(k){return String(answers[k]||'').trim()}).length};
 sections.forEach(function(s,i){var tab=node('button',s.id+' · '+s.items.length);tab.type='button';tab.setAttribute('role','tab');tab.addEventListener('click',function(){active=i;render()});byId('tabs').append(tab)});
 function diagram(){
@@ -104,7 +115,7 @@ function status(){var n=filled();byId('progress').textContent=n+' de '+total+' r
 function render(){
 var s=sections[active],page=byId('page');page.replaceChildren();
 page.append(node('h2',s.id+' · '+s.title+' · '+s.items.length+' puntos'),node('p',s.help,'help'));
-if(sent)page.append(node('p',liveMode?'Quiz entregado · Pendiente de revisión docente.':'Vista previa finalizada.','done'));
+if(sent)page.append(node('p',reviewMode?'Revisión docente · respuestas guardadas del estudiante.':liveMode?'PRUEBA ENTREGADA · Pendiente de revisión docente.':'Vista previa finalizada.','done'));
 if(s.id==='A')page.append(listening());
 if(s.id==='F')page.append(diagram());
 s.items.forEach(function(q){var card=node('div',null,'question');card.append(node('strong',q[0]+' · '+q[1]));
@@ -121,6 +132,25 @@ byId('next').onclick=function(){if(active<sections.length-1){active++;render();w
 byId('save').onclick=function(){persist();byId('note').textContent='Respuestas guardadas en esta vista previa.'};
 byId('submit').onclick=function(){var missing=total-filled();if(!confirm('Finalizar vista previa'+(missing?' con '+missing+' preguntas sin responder':'')+'?'))return;sent=true;persist();render();byId('note').textContent='Vista previa finalizada · Sin envío real.'};
 render();
+if(reviewMode){
+ document.body.classList.add('f111-review-only');
+ byId('note').textContent='Revisión docente · Seleccioná un estudiante en la lista. Las respuestas están bloqueadas y no se modifica ninguna entrega.';
+ document.querySelector('.hero .pill').textContent='Solo lectura';
+ byId('page').replaceChildren(node('p','Seleccioná una entrega para visualizar las 25 preguntas y sus respuestas.','help'));
+ // Los datos solo se reciben del Campus padre, nunca de un parámetro URL.
+ window.addEventListener('message',function(event){
+  if(event.origin!==location.origin||event.source!==window.parent||window.parent===window)return;
+  var message=event.data;
+  if(!message||message.type!=='F111_PC01_TEACHER_REVIEW'||!message.answers||
+     typeof message.answers!=='object'||Array.isArray(message.answers))return;
+  var allowed={};sections.forEach(function(section){section.items.forEach(function(item){allowed[item[0]]=true})});
+  var clean={};Object.keys(message.answers).forEach(function(key){
+   if(allowed[key])clean[key]=String(message.answers[key]||'').slice(0,4000);
+  });
+  answers=clean;sent=true;active=0;render();
+  byId('note').textContent='Respuestas del estudiante · '+filled()+' de 25 registradas. Revisá cada sección y consultá la clave docente desde el panel.';
+ });
+}
 if(liveMode){
  var group=String((new URLSearchParams(location.search)).get('grupo')||'').toUpperCase();
  var context={cod_grupo:group,nivel:'B1',leccion:4},sessionToken='',apiBase='';
@@ -129,6 +159,28 @@ if(liveMode){
  var verifyBtn=node('button','Verificar entrega','action secondary');verifyBtn.type='button';verifyBtn.hidden=true;
  submitBtn.after(verifyBtn);
  function liveShow(message){statusEl.textContent=message;}
+ function showDeliveryReceipt(){
+  var overlay=byId('f111-delivery-receipt');
+  if(!overlay){
+   overlay=node('div',null,'f111-delivery-receipt');overlay.id='f111-delivery-receipt';
+   overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
+   overlay.setAttribute('aria-label','Prueba entregada');
+   var sheet=node('section',null,'f111-delivery-sheet');
+   sheet.append(node('strong','✓','check'),node('h2','PRUEBA ENTREGADA'),
+    node('p','Tu Quiz 1 se entregó correctamente y quedó registrado en el Campus. Ya no podés modificar las respuestas.'),
+    node('p','Tu profesor podrá revisar la prueba y registrar su comentario.'));
+   var done=node('button','VER MI PRUEBA');done.type='button';
+   done.onclick=function(){overlay.hidden=true;byId('note').focus();};
+   sheet.append(done);overlay.append(sheet);document.body.append(overlay);
+  }
+  overlay.hidden=false;
+  var focusTarget=overlay.querySelector('button');if(focusTarget)focusTarget.focus();
+ }
+ function markDelivered(state){
+  sent=true;dirty=false;liveUncertain=false;render();
+  liveShow(state.estado==='REVISADO'?'PRUEBA ENTREGADA · Revisada · Nota '+state.nota+'/100.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
+  showDeliveryReceipt();
+ }
  function liveLock(){
   saveBtn.disabled=liveBusy||sent||liveUncertain;
   submitBtn.disabled=liveBusy||sent||liveUncertain||filled()===0;
@@ -148,12 +200,12 @@ if(liveMode){
  }
  async function saveLive(){
   if(liveBusy||sent||liveUncertain||!dirty)return;
-  liveBusy=true;liveLock();
+  liveBusy=true;liveLock();liveShow('Guardando avance en el Campus…');
   var snapshot=JSON.stringify(answers);
   try{
    var result=await call('qzProgressSaveDraft',Object.assign({},context,{respuestas:Object.assign({},answers)}));
    if(result.estado==='ENTREGADO'||result.estado==='REVISADO'){sent=true;render();liveShow('Quiz ya entregado.');}
-   else if(snapshot===JSON.stringify(answers)){dirty=false;lastSaved=snapshot;liveShow('Avance guardado.')}
+   else if(snapshot===JSON.stringify(answers)){dirty=false;lastSaved=snapshot;liveShow('Avance guardado en el Campus. Podés continuar o volver después.')}
    else{dirty=true;liveShow('Hay respuestas nuevas por guardar.')}
   }catch(e){dirty=true;liveShow('No se pudo guardar: '+e.message);}
   finally{liveBusy=false;liveLock();}
@@ -164,8 +216,7 @@ if(liveMode){
   try{
    var state=await call('qzProgressMyAttempt',context);
    if(state.estado==='ENTREGADO'||state.estado==='REVISADO'){
-    sent=true;dirty=false;liveUncertain=false;render();
-    liveShow(state.estado==='REVISADO'?'Revisado · Nota '+state.nota+'/100 · '+(state.comentario_docente||''):'Entrega confirmada. El docente revisará tus respuestas.');
+    markDelivered(state);
    }else{liveShow('Entrega sin confirmar. Consultá a tu docente antes de reintentar.')}
   }catch(e){liveShow('No se pudo verificar la entrega. Consultá a tu docente.')}
   finally{liveBusy=false;liveLock();}
@@ -180,7 +231,7 @@ if(liveMode){
   return !!apiBase&&!!sessionToken&&group==='B1-KJ18-C3-0826';
  }
  async function startLive(){
-  byId('save').textContent='Guardar avance';byId('submit').textContent='Entregar quiz';
+  byId('save').textContent='Guardar avance';byId('submit').textContent='ENTREGAR AHORA';
   document.querySelector('.pill').textContent='Evaluación de clase';
   if(!validSession()){liveShow('Abrí el quiz desde Mi Campus con tu sesión de estudiante.');saveBtn.disabled=true;submitBtn.disabled=true;return}
   liveBusy=true;liveLock();liveShow('Comprobando disponibilidad del quiz…');
@@ -199,7 +250,8 @@ if(liveMode){
    answers=prior.respuestas&&typeof prior.respuestas==='object'?prior.respuestas:{};
    sent=prior.estado==='ENTREGADO'||prior.estado==='REVISADO';
    lastSaved=JSON.stringify(answers);dirty=false;render();
-   liveShow(sent?(prior.estado==='REVISADO'?'Revisado · Nota '+prior.nota+'/100 · '+(prior.comentario_docente||''):'Ya entregaste este quiz. Pendiente de revisión.'):'Quiz habilitado por tu profesor. Respondé y guardá tu avance.');
+   liveShow(sent?'PRUEBA ENTREGADA · Consultá tus respuestas; no se pueden modificar.':'Quiz habilitado por tu profesor. Respondé y guardá tu avance.');
+   if(sent)showDeliveryReceipt();
   }catch(e){sent=true;render();liveShow('Quiz no disponible: '+e.message);}
   finally{liveBusy=false;liveLock();}
  }
@@ -211,12 +263,15 @@ if(liveMode){
  submitBtn.onclick=async function(){
   if(liveBusy||sent||liveUncertain||filled()===0)return;
   clearTimeout(saveTimer);
-  if(!confirm('¿Entregar el Quiz 1 ahora? Luego no podrás modificar las respuestas.'))return;
+  if(!confirm('¿ENTREGAR AHORA el Quiz 1? Después de confirmar el envío no podrás cambiar las respuestas.'))return;
   liveBusy=true;liveLock();liveShow('Entregando…');
   try{
    var r=await call('qzProgressSubmit',Object.assign({},context,{respuestas:Object.assign({},answers)}));
-   if(r.estado==='ENTREGADO'||r.estado==='REVISADO'){sent=true;dirty=false;render();liveShow('Quiz entregado. Pendiente de revisión docente.');}
-   else throw Error('Sin confirmación.');
+   if(r.estado!=='ENTREGADO'&&r.estado!=='REVISADO')throw Error('Sin confirmación.');
+   // Certificar la escritura leyendo el expediente; no felicitar por un POST sin readback.
+   var confirmed=await call('qzProgressMyAttempt',context);
+   if(confirmed.estado!=='ENTREGADO'&&confirmed.estado!=='REVISADO')throw Error('Sin readback del expediente.');
+   markDelivered(confirmed);
   }catch(e){liveUncertain=true;liveShow('No se confirmó la entrega. Utilizá «Verificar entrega» antes de reintentar.');}
   finally{liveBusy=false;liveLock();}
  };
