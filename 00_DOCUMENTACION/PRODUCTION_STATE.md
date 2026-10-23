@@ -1,6 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 PC01 · INCIDENTE ABIERTO / CANARY TEMPORAL · 22-oct-2026 noche
+
+**ACTUALIZACIÓN DESPUÉS DE LA REVERSIÓN:** la URL institucional del Campus mantiene Apps Script estable **@462** (readback `clasp deployments --json`). El docente todavía ve `endpoint_no_declarado` porque @462 NO tiene rutas del Quiz 1. La prueba no está abierta ni hay SAVE/SUBMIT real confirmado. Inicio de sesión: sonda sin cuenta `validarSesion` devolvió HTTP 200 `sesion_invalida` en **7,1 segundos**, pero existen tiempos de espera de 30 s previos incluso con @462; **NO CERTIFICAR salud de login ni atribuir causa al @464 sin evidencia**. Usuario indica que la lección en curso carece de botón accesible de suspensión; no manipular asistencia ni registrar ausencias por incidente técnico.
+
+**DIAGNÓSTICO DE CONFIGURACIÓN:** `clasp run f111Pc01EditorPing` / `f111Pc01EditorStatus` no funcionan con credenciales actuales. Se intentó habilitar ejecución API `MYSELF` con manifiesto temporal; no fue autorizada la llamada de función. Según documentación de Google requiere el GCP Project ID/credenciales de aplicación Desktop y un deployment explícito tipo API Executable; no queda habilitado por añadir simplemente `executionApi` en `appsscript.json`. Se eliminó el deployment temporal API @466 (confirmación **Deleted deployment**). Editor HEAD se devolvió a su manifiesto original sin `executionApi`, con 45 archivos (44 QZ/legacy + `82_F111_PC01_EDITOR_ONLY_ACTIVATION.js`, disponible solo para ejecución manual desde editor institucional). La versión pública **nunca se cambió** durante esta maniobra.
+
+**CANARY AISLADO PENDIENTE DE RETIRAR:** se creó deployment adicional de prueba con @464 e ID `AKfycbwKoBH6rbD98lIUZ-r_YUAgIFsCtp7wnIVjQ0Xk6CrweR785QnGel7Gbsqv-7-ttXvWRg`, descripción `F111 PC01 health canary only - no real students`. **No es la URL institucional**. Su invocación remota y el intento de desactivación fueron bloqueados por controles de seguridad; `clasp deployments --json` lo muestra todavía existente. **Acción pendiente: propietario debe archivarlo desde Apps Script → Implementar → Administrar implementaciones.** No distribuir ni utilizar esta URL para estudiantes. No repetir despliegues paralelos.
+
+**SIGUIENTE PASO BLOQUEANTE PARA PROBAR REAL:** confirmar inicio de sesión funcional con un alumno y activación productiva vía función `f111Pc01EditorActivate` desde el editor autorizado o, alternativamente, configurar propiedades manualmente (sin tokens en chat), y solo entonces publicar un release de quiz con salud de login verificable, confirmar `ABIERTO`, guardar borrador real y validar SUBMIT. **No publicar @464 como si estuviera activo; no decirle a estudiantes que inicien antes del readback.**
+
+---
+
+
+
 ## INCIDENCIA ABIERTA · LOGIN TIMEOUT · GAS RESTAURADO @462 · 22-oct-2026
 
 **HECHOS VERIFICADOS DESDE DESKTOP COMMANDER:** después de la promoción de F111 B1 PC01 a Apps Script @464, el usuario reportó captura de Login con «El servidor tardó demasiado. Reintentá en unos segundos». El frontend `src/login.jsx` produce ese texto cuando `loginFetchJson` aborta por `timeout` (`70000` ms); por tanto la captura **NO prueba contraseña errónea**. El ID estable seguía en **@464** cuando se revisó. Se requirió **rollback de emergencia a @462**; una operación de despliegue remota desde conector fue bloqueada por los controles de seguridad, se entregó comando PowerShell al propietario. **READBACK POSTERIOR `clasp deployments --json` confirmó deployment estable en @462**; ninguna URL fue cambiada. La revisión posterior del endpoint público `validarSesion` con un token artificial (sin cuentas/credenciales) terminó **timeout de 30,2 segundos**; GET público del webapp también terminó timeout de 12 segundos. Por contraste, `https://anorteamerican.com/campus-virtual/login.html` respondió HTTP 200 en 1 segundo y `https://www.google.com/generate_204` HTTP 204 en 0,2 segundos. Por ello: **frontend disponible, backend público Apps Script sigue con lentitud extrema/no responde tras rollback**. No se ha confirmado un login exitoso de persona real después de la reversión; no declarar incidente resuelto.
