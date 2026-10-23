@@ -300,6 +300,10 @@ function useTeacherSession(activeSessionGroup='') {
 
   const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
   const [gruposMeta, setGruposMeta] = React.useState(() => tvSessionGroups(usuario, grupoActivo));
+  // La respuesta remota puede tardar más que la llegada de la sesión activa.
+  // Consultar el estado actual, no la lista capturada al iniciar la promesa.
+  const gruposMetaRef = React.useRef(gruposMeta);
+  gruposMetaRef.current = gruposMeta;
   const [codGrupo, setCodGrupo] = React.useState(grupoActivo || '');
   const [roster, setRoster] = React.useState([]);
   const [lecciones, setLecciones] = React.useState([]);
@@ -337,7 +341,7 @@ function useTeacherSession(activeSessionGroup='') {
     setLoadingGroups(true);
     setErrorGroups(null);
     // No bloquear por 30s el panel cuando ya existe un grupo de la sesión.
-    postTeacher('getDocenteGruposActuales', { docente:nombre }, gruposMeta.length ? 12000 : 30000)
+    postTeacher('getDocenteGruposActuales', { docente:nombre }, gruposMetaRef.current.length ? 12000 : 15000)
       .then(d => {
         if (cancel) return;
         if (!d?.ok) throw new Error(d?.error || d?.mensaje || 'No se pudieron cargar los grupos del docente.');
@@ -356,7 +360,7 @@ function useTeacherSession(activeSessionGroup='') {
         }
       })
       .catch(e => { if (!cancel) {
-        if (!gruposMeta.length) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos'));
+        if (!gruposMetaRef.current.length) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos'));
         // Si el servidor no respondió, NO borrar el grupo ya vinculado a la sesión.
         // La autorización del padrón se valida separadamente en cargarPanelDocenteF80.
       } })
