@@ -115,7 +115,7 @@ function openReviewWorkspace(){
   top.append(make('h3',studentLabel(code)),make('small','Quiz 1 · '+String(row.ESTADO||'ENTREGADO')+' · 25 preguntas · peso oficial 0%'));
   detail.append(top);
   detail.append(make('p','Cada pregunta muestra la respuesta del estudiante y la clave privada de Cambridge. Podés ajustar 0, 0,5 o 1 punto; el resultado es diagnóstico y no modifica las notas oficiales.','f111-tqr-info'));
-  const gradePanel=make('div','Cargando la clave privada del docente…','f111-tqr-score-banner');
+  const gradePanel=make('div',String(row.ESTADO)==='REVISADO'?'Revisión cerrada · el resultado definitivo aparece debajo.':'Cargando la clave privada del docente…','f111-tqr-score-banner');
   gradePanel.setAttribute('role','status');detail.append(gradePanel);
   const frame=make('iframe');frame.className='f111-tqr-exam-frame';frame.title='Examen del estudiante y corrección por pregunta';
   const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
@@ -130,7 +130,7 @@ function openReviewWorkspace(){
   frame.src=url.href;detail.append(frame);
   gradeReceiver=function(event){
    const data=event.data;
-   if(event.source!==frame.contentWindow||!data||data.type!=='F111_PC01_TEACHER_GRADE'||
+   if(String(row.ESTADO)==='REVISADO'||event.source!==frame.contentWindow||!data||data.type!=='F111_PC01_TEACHER_GRADE'||
       data.nonce!==nonce||data.weight_official!==0)return;
    if(typeof data.points!=='number'||data.points<0||data.points>25||
       !Number.isFinite(data.percentage)||Math.abs(data.percentage-data.points*4)>0.001)return;
@@ -147,7 +147,7 @@ function openReviewWorkspace(){
     const keys=result.claves;
     if(!result.solo_docente||Number(result.puntos_total)!==25||Number(result.peso_oficial)!==0||
        !keys||Object.keys(keys).length!==25)throw Error('Clave Cambridge incompleta');
-    payload={type:'F111_PC01_TEACHER_REVIEW',answers:parseAnswers(row),keys,nonce};
+    payload={type:'F111_PC01_TEACHER_REVIEW',answers:parseAnswers(row),keys,nonce,locked:String(row.ESTADO)==='REVISADO'};
     if(frameLoaded&&frame.contentWindow)frame.contentWindow.postMessage(payload,location.origin);
    })
    .catch(err=>{if(frame.isConnected){gradePanel.textContent='No se pudo verificar la clave privada: '+String(err.message||'Error')+'. No es posible cerrar una revisión sin su clave.';gradePanel.dataset.ready='false';}});
