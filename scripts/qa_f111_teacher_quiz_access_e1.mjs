@@ -38,6 +38,6 @@ assert.ok(catalog.includes("'qzProgressTeacherReview'"),'revisión con nota y co
 assert.ok(catalog.includes("'qzProgressTeacherSetAvailability'"),'apertura explícita por docente');
 assert.ok(catalog.includes('window.getSessionToken'),'acciones por sesión autenticada, sin token en URL');
 assert.ok(catalog.includes('comentario_progress_check:comment.value.trim()'),'comentario PC independiente de asistencia');
-assert.ok(catalog.includes("grade.min='0'")&&catalog.includes("grade.max='100'"),'nota por 100');
+assert.ok(catalog.includes("gradeInput.min='0'")&&catalog.includes("gradeInput.max='100'")&&catalog.includes("nota:savedScore.percentage"),'nota 0–100 calculada de 25 puntos, no digitada arbitrariamente');
 assert.ok(catalog.includes("GUARDAR Y CERRAR CLASE"),'botón habilitador solo al iniciar lección');
 console.log('PASS F111 QZ32 docente: revisión previa, apertura clase, nota PC 0-100, comentario separado de asistencia');

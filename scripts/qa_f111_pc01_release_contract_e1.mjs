@@ -34,7 +34,8 @@ for(const fn of ['qzProgressTeacherAvailability','qzProgressTeacherSetAvailabili
  assert.ok(teacher.includes("'"+fn+"'"),'API docente '+fn);
 assert.ok(teacher.includes('Comentario de Progress Check (obligatorio, independiente de asistencia)'),'segundo comentario visible');
 assert.ok(teacher.includes('comentario_progress_check:comment.value.trim()'),'comentario obligatorio se envía aparte');
-assert.ok(teacher.includes("grade.min='0'")&&teacher.includes("grade.max='100'"),'nota 0–100 validada');
+assert.ok(teacher.includes("gradeInput.min='0'")&&teacher.includes("gradeInput.max='100'")&&
+ teacher.includes("score.percentage.toFixed(0)"),'equivalencia 0–100 calculada de la clave y 25 puntos');
 assert.ok(teacher.includes("result.comentario_asistencia_modificado!==false"),'respuesta confirma que asistencia no se tocó');
 assert.ok(!teacher.includes('docenteCerrarClaseConAsistenciaF87'),'revisión de quiz no escribe asistencia');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'),'quiz no afecta ponderación INA');
@@ -50,9 +51,9 @@ assert.ok(student.includes("window.F111_QZ_API_URL||window.APPS_SCRIPT_URL"),'es
 assert.ok(quiz.includes('window.parent.F111_QZ_API_URL||window.parent.APPS_SCRIPT_URL'),'iframe SAVE y SUBMIT usan QZ B1');
 assert.ok(!login.includes('F111_QZ_API_URL'),'login independiente del motor de quiz');
 assert.ok(login.includes('fn: \'iniciarSesion\''),'login intacto en servidor original');
-assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01DELIVERYREVIEW20261023'),'cache student actualizado');
-assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01DELIVERYREVIEW20261023'),'cache teacher actualizado');
-assert.ok(student.includes("url.searchParams.set('v','F111PC01DELIVERYREVIEW20261023')"),'iframe estudiante evita versión antigua en caché');
+assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01INLINEKEY20261023'),'cache student actualizado');
+assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01INLINEKEY20261023'),'cache teacher actualizado');
+assert.ok(student.includes("url.searchParams.set('v','F111PC01INLINEKEY20261023')"),'iframe estudiante evita versión antigua en caché');
 
 // Regresión de UX exigida tras la primera entrega de estudiante real.
 assert.ok(quiz.includes("submit').textContent='ENTREGAR AHORA'"),'el alumno identifica claramente el envío final');
@@ -66,7 +67,7 @@ assert.ok(quiz.includes("var persist=function(){if(reviewMode)return;"),'revisi�
 assert.ok(teacher.includes('openReviewWorkspace'),'revisión amplia, no formulario incrustado en tarjeta estrecha');
 assert.ok(teacher.includes('f111-tqr-workspace-columns')&&teacher.includes('f111-tqr-student-list'),'listado de alumnos a la izquierda y examen a la derecha');
 assert.ok(teacher.includes("url.searchParams.set('review','1')"),'abrir banco de 25 preguntas del estudiante, sin duplicarlo');
-assert.ok(teacher.includes("frame.contentWindow.postMessage({type:'F111_PC01_TEACHER_REVIEW'"),'transferir respuestas al iframe sin URL ni almacenamiento');
+assert.ok(teacher.includes("frame.contentWindow.postMessage(payload,location.origin)")&&teacher.includes("type:'F111_PC01_TEACHER_REVIEW'")&&teacher.includes("answers:parseAnswers(row),keys,nonce"),'respuestas y clave privada al iframe desde profesor autenticado, sin URL ni almacenamiento');
 assert.ok(teacher.includes("'qzProgressTeacherMaterials'"),'profesor puede consultar clave PDF con autorización');
 assert.ok(teacher.includes("const verified=await postQuiz('qzProgressTeacherList'"),'revisión académica valida readback');
 assert.ok(!teacher.includes('buildReviewEditor(gradePanel)'),'no más formulario comprimido en tarjeta del catálogo');

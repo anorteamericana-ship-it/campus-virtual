@@ -25,6 +25,15 @@ button.action{border:none;background:#073b78;color:white;border-radius:9px;paddi
 .f111-delivery-sheet button{background:#073b78;color:white;border:0;border-radius:9px;padding:12px 20px;font-weight:800;cursor:pointer;margin-top:12px}
 body.f111-review-only .foot{display:none}body.f111-review-only .hero .pill{background:#dce9f9;color:#244b73}
 body.f111-review-only .note{background:#eaf2fc;border-color:#bdd4eb;color:#204e7c}
+.f111-mark{margin-top:12px;border:1px solid #cbdcec;border-radius:11px;padding:11px;background:#f1f7ff;display:grid;gap:8px}
+.f111-mark strong{margin:0!important;font-size:13px!important;color:#134571}
+.f111-mark .f111-student-answer{background:white;border-radius:7px;padding:9px 11px;border:1px solid #d8e6ef;color:#153c5d;overflow-wrap:anywhere}
+.f111-mark .f111-correct{background:#e8f6ec;border-radius:7px;padding:9px 11px;border-left:3px solid #27864c;color:#195236;overflow-wrap:anywhere}
+.f111-mark .f111-mark-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12px;color:#2c4e71}
+.f111-mark-actions button{border:1px solid #bfd0e1;padding:8px 12px;border-radius:8px;background:white;color:#21496d;cursor:pointer;font-weight:800}
+.f111-mark-actions button[aria-pressed=true]{background:#0d477e;color:white;border-color:#0d477e}
+.f111-review-score{margin:10px 0;padding:13px;border-radius:11px;background:#e6f2ff;border:1px solid #bbd7f0;color:#154773;font-size:15px;font-weight:800}
+.f111-review-score[data-ready=false]{background:#fff5e3;border-color:#ecd29b;color:#8a5515}
 @media(max-width:620px){.wrap{padding:8px}.card{padding:14px}.hero{padding:17px}}
 </style></head>
 <body><main class="wrap">
@@ -82,6 +91,28 @@ var reviewMode=params.get('review')==='1';
 var liveMode=params.get('live')==='1'&&!reviewMode;
 var saved={};if(!liveMode&&!reviewMode){try{saved=JSON.parse(sessionStorage.getItem(storage)||'{}')}catch(_){saved={}}}
 var answers=saved.answers||{},sent=!!saved.sent||reviewMode,active=0;
+var reviewKey=null,reviewMarks={},reviewNonce='',reviewReady=false,reviewLocked=false;
+function reviewNorm(value){return String(value==null?'':value).toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[\u2018\u2019]/g,"'").replace(/\s+/g,' ').replace(/[.!?]+$/,'').trim();}
+function reviewDefaultMark(id){
+ var value=reviewNorm(answers[id]),accepted=reviewKey&&reviewKey[id];
+ return value&&Array.isArray(accepted)&&accepted.some(function(k){return reviewNorm(k)===value})?1:0;
+}
+function reviewPoints(){
+ var out=0;sections.forEach(function(x){x.items.forEach(function(q){
+  out+=Object.prototype.hasOwnProperty.call(reviewMarks,q[0])?Number(reviewMarks[q[0]]):reviewDefaultMark(q[0]);
+ })});return Math.round(out*2)/2;
+}
+function reviewLetter(pct){return pct>=90?'A':pct>=87?'B+':pct>=80?'B':pct>=77?'C+':pct>=70?'C':pct>=60?'D':'F';}
+function reviewNotify(){
+ if(!reviewMode||!reviewReady||!reviewKey||reviewLocked)return;
+ var points=reviewPoints(),pct=points/25*100;
+ if(window.parent!==window)window.parent.postMessage({
+  type:'F111_PC01_TEACHER_GRADE',nonce:reviewNonce,points:points,total:25,
+  percentage:pct,letter:reviewLetter(pct),marks:reviewMarks,weight_official:0
+ },location.origin);
+}
 
 var byId=function(s){return document.getElementById(s)};
 var node=function(t,txt,cl){var x=document.createElement(t);if(txt!==null&&txt!==undefined)x.textContent=txt;if(cl)x.className=cl;return x};
@@ -116,11 +147,36 @@ function render(){
 var s=sections[active],page=byId('page');page.replaceChildren();
 page.append(node('h2',s.id+' · '+s.title+' · '+s.items.length+' puntos'),node('p',s.help,'help'));
 if(sent)page.append(node('p',reviewMode?'Revisión docente · respuestas guardadas del estudiante.':liveMode?'PRUEBA ENTREGADA · Pendiente de revisión docente.':'Vista previa finalizada.','done'));
+if(reviewMode){
+ var summary=node('div',reviewLocked?'Revisión cerrada · consultá la calificación final en el panel docente.':reviewReady&&reviewKey?'Nota diagnóstica · '+reviewPoints()+'/25 · '+(reviewPoints()*4)+'% · '+reviewLetter(reviewPoints()*4):
+  'Cargando clave privada docente para evaluar los 25 puntos…','f111-review-score');
+ summary.dataset.ready=String(!!(reviewReady&&reviewKey));page.append(summary);
+}
 if(s.id==='A')page.append(listening());
 if(s.id==='F')page.append(diagram());
 s.items.forEach(function(q){var card=node('div',null,'question');card.append(node('strong',q[0]+' · '+q[1]));
 if(q[2]===null){var t=node('input');t.type='text';t.value=answers[q[0]]||'';t.placeholder='Type your answer';t.autocomplete='off';t.disabled=sent;t.setAttribute('aria-label',q[1]);t.addEventListener('input',function(){answers[q[0]]=t.value;persist();status()});card.append(t)}
 else q[2].forEach(function(v){var label=node('label'),radio=node('input');radio.type='radio';radio.name=q[0];radio.value=v;radio.checked=answers[q[0]]===v;radio.disabled=sent;radio.addEventListener('change',function(){answers[q[0]]=v;persist();status()});label.append(radio,node('span',v));card.append(label)});
+if(reviewMode){
+ var answerId=q[0],markBox=node('div',null,'f111-mark');
+ markBox.append(node('strong','CORRECCIÓN DOCENTE · '+answerId),
+  node('div','Respuesta del estudiante: '+(String(answers[answerId]||'').trim()||'Sin responder'),'f111-student-answer'));
+ if(reviewReady&&reviewKey&&Array.isArray(reviewKey[answerId])){
+  markBox.append(node('div','Respuesta correcta: '+reviewKey[answerId].join(' / '),'f111-correct'));
+  var actionBox=node('div',null,'f111-mark-actions');
+  actionBox.append(node('span','Puntos:'));
+  if(!reviewLocked)[0,0.5,1].forEach(function(pts){
+   var btn=node('button',String(pts));btn.type='button';
+   btn.setAttribute('aria-pressed',String((Object.prototype.hasOwnProperty.call(reviewMarks,answerId)?reviewMarks[answerId]:reviewDefaultMark(answerId))===pts));
+   btn.onclick=function(){reviewMarks[answerId]=pts;render();reviewNotify()};
+   actionBox.append(btn);
+  });
+  markBox.append(actionBox);
+ }else{
+  markBox.append(node('p','Clave privada no disponible. No se puede calificar esta respuesta todavía.','help'));
+ }
+ card.append(markBox);
+}
 page.append(card)});
 Array.from(byId('tabs').children).forEach(function(x,i){x.setAttribute('aria-selected',String(i===active))});
 byId('prev').disabled=active===0;byId('next').hidden=active===sections.length-1;
@@ -147,8 +203,19 @@ if(reviewMode){
   var clean={};Object.keys(message.answers).forEach(function(key){
    if(allowed[key])clean[key]=String(message.answers[key]||'').slice(0,4000);
   });
-  answers=clean;sent=true;active=0;render();
-  byId('note').textContent='Respuestas del estudiante · '+filled()+' de 25 registradas. Revisá cada sección y consultá la clave docente desde el panel.';
+  var keys=message.keys,allowedKeys={};
+  if(keys&&typeof keys==='object'&&!Array.isArray(keys)&&Object.keys(keys).length===25){
+   Object.keys(allowed).forEach(function(id){
+    if(Array.isArray(keys[id])&&keys[id].length>0&&keys[id].every(function(v){return typeof v==='string'&&v.length<200}))
+     allowedKeys[id]=keys[id].slice();
+   });
+  }
+  reviewReady=Object.keys(allowedKeys).length===25;
+  reviewLocked=message.locked===true;
+  reviewKey=reviewReady?allowedKeys:null;reviewNonce=String(message.nonce||'');
+  reviewMarks={};answers=clean;sent=true;active=0;render();reviewNotify();
+  byId('note').textContent=reviewReady?'Respuestas del estudiante y clave Cambridge. Calificá sobre 25 puntos (0, 0,5 o 1 por pregunta); peso oficial 0%.':
+    'No se obtuvo la clave privada completa. La evaluación está bloqueada para evitar una nota incorrecta.';
  });
 }
 if(liveMode){
@@ -178,7 +245,7 @@ if(liveMode){
  }
  function markDelivered(state){
   sent=true;dirty=false;liveUncertain=false;render();
-  liveShow(state.estado==='REVISADO'?'PRUEBA ENTREGADA · Revisada · Nota '+state.nota+'/100.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
+  liveShow(state.estado==='REVISADO'&&Number.isFinite(Number(state.nota))?'PRUEBA ENTREGADA · Revisión diagnóstica '+(Number(state.nota)/4)+'/25 · '+state.nota+'% · '+reviewLetter(Number(state.nota))+' · peso oficial 0%.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
   showDeliveryReceipt();
  }
  function liveLock(){
