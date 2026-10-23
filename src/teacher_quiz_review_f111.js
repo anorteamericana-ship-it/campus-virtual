@@ -159,6 +159,50 @@ function attachLessonAction(){
  });
 }
 
+
+function buildQuizOpenControls(){
+ const wrapper=make('div',null,'f111-tqr-open-controls');
+ wrapper.dataset.f111QuizStatus='B1-L4';
+ const state=make('small','Consultando estado del Quiz 1…','f111-tqr-feedback');
+ state.setAttribute('role','status');
+ const toggle=make('button','Consultando disponibilidad…','f111-tqr-activate');
+ toggle.type='button';toggle.disabled=true;toggle.dataset.mode='DESCONOCIDO';
+ const refresh=()=>{
+  postQuiz('qzProgressTeacherAvailability',qzContext).then(r=>{
+   if(!wrapper.isConnected)return;
+   if(r.digital_disponible!==true)throw Error('no_disponible');
+   toggle.dataset.mode=r.estado;
+   toggle.disabled=false;
+   toggle.textContent=r.estado==='ABIERTO'?'CERRAR QUIZ 1':'ACTIVAR QUIZ 1 · INVITAR ESTUDIANTES';
+   state.textContent=r.estado==='ABIERTO'?'Quiz abierto: continuará disponible después de cerrar la clase hasta que lo cerrés aquí.':'Sin habilitar: para activarlo, primero debe estar abierta la lección 4.';
+  }).catch(()=>{
+   if(!wrapper.isConnected)return;
+   toggle.disabled=true;
+   state.textContent='El servidor todavía no permite abrir o cerrar este quiz. La vista previa permanece disponible.';
+  });
+ };
+ toggle.onclick=async()=>{
+  if(toggle.disabled)return;
+  if(toggle.dataset.mode!=='ABIERTO'){
+   await confirmGroupQuizInvitation(toggle,state,refresh);
+   return;
+  }
+  if(!window.confirm('¿Cerrar el Quiz 1 para el grupo? Los estudiantes ya no podrán enviar respuestas nuevas. Las entregas guardadas se conservan.'))return;
+  toggle.disabled=true;state.textContent='Cerrando y confirmando estado…';
+  try{
+   const response=await postQuiz('qzProgressTeacherSetAvailability',Object.assign({},qzContext,{estado:'CERRADO'}));
+   if(response.estado!=='CERRADO')throw Error('cierre_no_confirmado');
+   const verify=await postQuiz('qzProgressTeacherAvailability',qzContext);
+   if(verify.estado!=='CERRADO')throw Error('readback_no_confirmado');
+   state.textContent='Quiz cerrado. Las entregas existentes permanecen para revisión.';
+  }catch(_){
+   state.textContent='No se confirmó el cierre. Consultá de nuevo el estado antes de repetir la operación.';
+  }finally{refresh();}
+ };
+ wrapper.append(toggle,state);
+ refresh();
+ return wrapper;
+}
 function renderGrid(container,level){
  container.replaceChildren();
  LESSONS.forEach(([lesson,units],i)=>{
@@ -183,6 +227,7 @@ function renderGrid(container,level){
       if(!gradePanel.hidden)buildReviewEditor(gradePanel);
     });
     card.append(gradeBtn,gradePanel);
+    card.append(buildQuizOpenControls());
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
