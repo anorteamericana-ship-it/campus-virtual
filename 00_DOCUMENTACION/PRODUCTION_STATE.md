@@ -1,6 +1,24 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · LATENCIA PANEL DOCENTE F80 · CALENDARIO COMPARTIDO EN PROD @469 · 22-oct-2026 noche
+
+**ESTADO PRODUCTIVO COMPROBADO:** deployment principal institucional `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` en **@469** por `clasp deployments --json` y confirmación `Deployed ... @469`. El motor aislado del Quiz B1 conserva **@467** y NO se alteró. La versión @468 queda disponible para rollback sin cambiar URL del Campus. Este cambio aborda específicamente la segunda llamada `getDocenteGrupoPanelF80`, NO rehace el hotfix de UI [PR #596](https://github.com/anorteamericana-ship-it/campus-virtual/pull/596), ni recuperación de contraseña.
+
+**CAUSA ESTRUCTURAL VERIFICADA:** `getDocenteGrupoPanelF80` llamaba `getFechasGrupo(cod,nivel,'curso')` y `getFechasGrupo(cod,nivel,'ican')` consecutivamente. Cada llamada recargaba por separado `CALENDARIO_LECCIONES` (hoja ~**3465 filas × 26 columnas**) y el catálogo `GRUPOS` (hoja ~**974 filas × 39 columnas**, lecturas cruda y visual). Se identificaron duplicados de I/O en la misma solicitud. En otras fases también se lee ESTATUS, DATOS, ASISTENCIA, RETROALIMENTACION y DOCENTE_SESIONES_CLASE; el parche anterior @468 ya acotó RETROALIMENTACION de 220 a ~20 columnas.
+
+**CAMBIO ESPECÍFICO:** [backend PR #95](https://github.com/anorteamericana-ship-it/campus_backend/pull/95), MERGED `7d30728c47dcf6621ea0b905e11373c7a1751142`, dos suites de CI **PASS**, contrato con fixture sintética de curso e I CAN comparando misma salida/horarios, sin cache compartida. `getFechasGrupo` admite **cuarto argumento opcional** de lectura compartida; solo el panel F80 lo utiliza. El calendario y catálogo se leen una vez por petición y ambos rieles reutilizan datos sin persistencia global, conservando el comportamiento anterior para otros llamadores o si la precarga no resulta. **No modifica autenticación, asistencia, notas, matrículas ni la verificación del docente.**
+
+**PUBLICACIÓN CONCILIADA:** candidato separado `F111_PANEL_SHARED_CALENDAR_468_PLUS_20261022` creado desde snapshot inmutable @468, con **33 archivos, 2 cambiados** (`02_Auth_Sesiones_Usuarios.js` en la llamada F80; `11_Docentes_Clases.js` en `getFechasGrupo`), y **31 intactos**. El anterior `10_Estudiantes.js` de retroalimentación quedó idéntico. SHA-256 del conjunto (hash calculado sobre nombres y contenido): `c496275f2e1b72de33f882c5885533c1079ef00466e87bfb96a84fe631b4ab75`. `node --check` en ambos scripts PASS; `clasp push --force` aceptó 33 archivos; `clasp pull` a carpeta separada confirmó **33/33, cero diferencias**. `clasp version` creó **@469** y se publicó usando mismo ID institucional. Estado post-implementación: main **@469**, QZ B1 separado **@467**.
+
+**SONDA POSTDEPLOY SIN CUENTAS REALES:** POST no autenticado a `getDocenteGrupoPanelF80`, con token sintético falso y `B1-KJ18-C3-0826 / B1`, respondió HTTP 200, `ok:false, error:sesion_invalida` en **7,2 segundos**. Esto comprueba enrutamiento y rechazo de acceso indebido; **NO** ejecuta la carga del padrón ni cuantifica la latencia autenticada del panel. La prueba previa de @468 había agotado 25 segundos en una sonda de sesión, pero NO es una comparación controlada. **AÚN PENDIENTE**: docente Diego debe verificar una única carga de Mis grupos y si ve 15 estudiantes CA/cronograma con sesión válida. Si aún falla, estudiar autorización GRUPOS duplicada, `validarSesion`, lecturas de ESTATUS/DATOS/ASISTENCIA y límites de ejecución, sin repetir el cambio de calendario.
+
+**CONTINUAMOS CON:** confirmar lectura docente real y duración del panel; optimizar exclusivamente siguiente cuello de botella probado sin cambiar permisos ni publicar copias completas. No afirmar que el examen oral o Quiz 1 quedó entregado: primera entrega real continúa sin certificar.
+
+---
+
+
+
 ## F111 MIS GRUPOS 0826 — HOTFIX UI PR #596 · 22-oct-2026
 
 **HECHO VERIFICADO:** Pantalla real de Diego: franja roja `SESIÓN ACTIVA · PENDIENTE DE CIERRE` para grupo 0826, lección 04, pero `Mis grupos` muestra `No pudimos cargar tus grupos` luego de prolongada espera. Falla en la **primera** consulta `getDocenteGruposActuales` (plazo frontend anterior 30 segundos), no necesariamente en `getDocenteGrupoPanelF80` que se había optimizado en @468. Datos NO borrados: libro APOLLO_G3 en lectura solo confirmó GRUPOS B1 activo asignado a Diego y ESTATUS **15 registros B1/CA** del grupo `B1-KJ18-C3-0826`. No alterar matrícula, notas, asistencia ni cronograma por fallo de interfaz.
