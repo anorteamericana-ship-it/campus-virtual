@@ -263,8 +263,10 @@ function tvSessionToneF88(lesson,nowMs=Date.now(),session=null){
   if(remain<=30)return {bg:'#B77900',soft:'#FFF4D6',ink:'#704A00',label:'● SESIÓN ACTIVA · ÚLTIMOS 30 MINUTOS'};
   return green;
 }
-function tvSessionGroups(usuario){
-  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (usuario?.grupo ? [usuario.grupo] : []);
+function tvSessionGroups(usuario, activeGroupCode=''){
+  // En sesión de docente: se muestra el grupo previo mientras se confirma la lista;
+  // el backend conserva toda la autorización antes de devolver datos académicos.
+  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (activeGroupCode || usuario?.grupoActivo || usuario?.grupo ? [activeGroupCode || usuario?.grupoActivo || usuario?.grupo] : []);
   const out = [];
   const seen = new Set();
   raw.forEach((g) => {
@@ -298,7 +300,7 @@ function useTeacherSession() {
   }, []);
 
   const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
-  const [gruposMeta, setGruposMeta] = React.useState([]);
+  const [gruposMeta, setGruposMeta] = React.useState(() => tvSessionGroups(usuario, grupoActivo));
   const [codGrupo, setCodGrupo] = React.useState(grupoActivo || '');
   const [roster, setRoster] = React.useState([]);
   const [lecciones, setLecciones] = React.useState([]);
@@ -316,6 +318,7 @@ function useTeacherSession() {
   const [errorGroups, setErrorGroups] = React.useState(null);
   const [errorPanel, setErrorPanel] = React.useState(null);
   const [reloadTick, setReloadTick] = React.useState(0);
+  const [reloadGroupsTick, setReloadGroupsTick] = React.useState(0);
 
   React.useEffect(() => {
     const onChange = () => setSesionLocal(readSession());
@@ -327,7 +330,8 @@ function useTeacherSession() {
     let cancel = false;
     setLoadingGroups(true);
     setErrorGroups(null);
-    postTeacher('getDocenteGruposActuales', { docente:nombre }, 30000)
+    // No bloquear por 30s el panel cuando ya existe un grupo de la sesión.
+    postTeacher('getDocenteGruposActuales', { docente:nombre }, gruposMeta.length ? 12000 : 30000)
       .then(d => {
         if (cancel) return;
         if (!d?.ok) throw new Error(d?.error || d?.mensaje || 'No se pudieron cargar los grupos del docente.');
@@ -345,10 +349,14 @@ function useTeacherSession() {
           window.setGrupoActivoDocente(nuevo);
         }
       })
-      .catch(e => { if (!cancel) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos')); })
+      .catch(e => { if (!cancel) {
+        if (!gruposMeta.length) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos'));
+        // Si el servidor no respondió, NO borrar el grupo ya vinculado a la sesión.
+        // La autorización del padrón se valida separadamente en cargarPanelDocenteF80.
+      } })
       .finally(() => { if (!cancel) setLoadingGroups(false); });
     return () => { cancel = true; };
-  }, [nombre]);
+  }, [nombre, reloadGroupsTick]);
 
   React.useEffect(() => {
     if (!grupoActivo || !gruposMeta.length) return;
@@ -416,14 +424,14 @@ function useTeacherSession() {
     setCodGrupo(limpio);
     if (typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(limpio);
   }, [codGrupo]);
-  const recargarPanel = React.useCallback(() => setReloadTick(v => v + 1), []);
+  const recargarPanel = React.useCallback(() => { setReloadTick(v => v + 1); setReloadGroupsTick(v => v + 1); }, []);
 
   return {
     usuario, nombre, programa:panelPrograma || meta?.programa || programa,
     codGrupo, grupos:gruposMeta, meta, nivel, grupoInfo:meta,
     roster, lecciones, asistenciaGrupo, asistenciaDetalle, comentariosDetalle,
     notasGrupo, resumenGrupo, icanResumen, leccionHoy, sesionClase,
-    loading:loadingGroups || loadingPanel,
+    loading:(loadingGroups && !gruposMeta.length) || loadingPanel,
     loadingGroups, loadingPanel,
     error:errorGroups || errorPanel,
     cambiarGrupo, recargarPanel,
