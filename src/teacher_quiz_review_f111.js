@@ -89,6 +89,34 @@ function buildReviewEditor(container){
  }).catch(err=>{container.replaceChildren(make('p','No se pudieron consultar las entregas: '+err.message));})
  .finally(()=>{container.dataset.loading='0'});
 }
+async function confirmGroupQuizInvitation(button,feedback,refresh){
+ button.disabled=true;feedback.textContent='Consultando lista de estudiantes…';
+ try{
+  const r=await postQuiz('getEstudiantesParaCierre',{cod_grupo:QZ_GROUP,nivel:'B1'});
+  const students=Array.isArray(r.estudiantes)?r.estudiantes:[];
+  const list=[...new Map(students.map(s=>{
+   const code=String(s.code||s.codigo||s.CODIGO||'').trim();
+   const name=String(s.name||s.nombre||s.NOMBRE||'').trim();
+   return [code,name];
+  }).filter(pair=>pair[0])).entries()];
+  if(!list.length)throw Error('lista_no_disponible');
+  const message='¿Activar Quiz 1 y enviar la invitación interna a estos '+list.length+
+    ' estudiantes del grupo?'+String.fromCharCode(10,10)+
+    list.map(([code,name])=>(name||'Estudiante')+' · '+code).join(String.fromCharCode(10))+
+    String.fromCharCode(10,10)+'El aviso aparecerá cuando entren al Campus.';
+  if(!window.confirm(message)){refresh();return;}
+  const result=await postQuiz('qzProgressTeacherSetAvailability',Object.assign({},qzContext,{estado:'ABIERTO'}));
+  if(result.estado!=='ABIERTO')throw Error('apertura_no_confirmada');
+  const verify=await postQuiz('qzProgressTeacherAvailability',qzContext);
+  if(verify.estado!=='ABIERTO')throw Error('readback_no_confirmado');
+  feedback.textContent='Quiz habilitado para el grupo. Los estudiantes elegibles verán el aviso al ingresar.';
+  refresh();
+ }catch(_){
+  feedback.textContent='Invitación no confirmada. Revisá clase abierta, lista y disponibilidad del servidor.';
+  refresh();
+ }
+}
+
 function attachLessonAction(){
  const drawers=document.querySelectorAll('aside[data-teacher-level="B1"][data-teacher-lesson="4"][data-teacher-rail="curso"]');
  drawers.forEach(drawer=>{
@@ -112,7 +140,8 @@ function attachLessonAction(){
   };
   button.addEventListener('click',async()=>{
    const next=button.dataset.status==='ABIERTO'?'CERRADO':'ABIERTO';
-   if(!confirm(next==='ABIERTO'?'¿Habilitar el Quiz 1 para estudiantes de este grupo?':'¿Cerrar el Quiz 1? No podrán enviar nuevas respuestas.'))return;
+   if(next==='ABIERTO'){void confirmGroupQuizInvitation(button,feedback,refresh);return;}
+   if(!confirm('¿Cerrar el Quiz 1? No podrán enviar nuevas respuestas.'))return;
    button.disabled=true;feedback.textContent='Actualizando…';
    try{
     const r=await postQuiz('qzProgressTeacherSetAvailability',Object.assign({},qzContext,{estado:next}));
