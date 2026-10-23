@@ -39,4 +39,19 @@ assert.ok(teacher.includes("result.comentario_asistencia_modificado!==false"),'r
 assert.ok(!teacher.includes('docenteCerrarClaseConAsistenciaF87'),'revisión de quiz no escribe asistencia');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'),'quiz no afecta ponderación INA');
 assert.ok(!student.includes('registrarNotaComponenteOficial'),'alumno no escribe notas');
+// Isolation contract: login remains on stable institutional Apps Script @462.
+const login=read('src/login.jsx');
+const qzUrl='https://script.google.com/macros/s/AKfycbwT4nYpH2MqxgP-ydwndWW7OdSkDXRCiI-l4qxBdsqq0IXuTNSKIvogvpj-1PgtsNjZhw/exec';
+assert.ok(campus.includes("window.F111_QZ_API_URL='"+qzUrl+"'"),'sólo Campus define URL del Quiz B1 aislado');
+assert.equal((campus.match(/F111_QZ_API_URL/g)||[]).length,1,'una única URL de quiz en HTML');
+assert.ok(teacher.includes("isQuiz&&window.F111_QZ_API_URL"),'docente envía sólo qzProgress al QZ aislado');
+assert.ok(teacher.includes("window.APPS_SCRIPT_URL||''"),'padrón docente permanece en servidor institucional');
+assert.ok(student.includes("window.F111_QZ_API_URL||window.APPS_SCRIPT_URL"),'estudiante consulta apertura en QZ B1');
+assert.ok(quiz.includes('window.parent.F111_QZ_API_URL||window.parent.APPS_SCRIPT_URL'),'iframe SAVE y SUBMIT usan QZ B1');
+assert.ok(!login.includes('F111_QZ_API_URL'),'login independiente del motor de quiz');
+assert.ok(login.includes('fn: \'iniciarSesion\''),'login intacto en servidor original');
+assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01B1ISOLATED20261022'),'cache student actualizado');
+assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01B1ISOLATED20261022'),'cache teacher actualizado');
+assert.ok(student.includes("url.searchParams.set('v','F111QZB1ISOLATED20261022')"),'iframe estudiante evita versión antigua en caché');
+
 console.log('PASS F111 PC01 E1: apertura por docente, matrícula por servidor, entrega autenticada, revisión 0–100 con comentario separado, preview conservado');
