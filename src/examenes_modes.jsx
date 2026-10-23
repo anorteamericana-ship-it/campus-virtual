@@ -655,15 +655,29 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   useEffect(() => { load(); }, [load]);
 
   const exam = attempt ? ((window.EXAMS || {})[attempt.EXAM_ID] || null) : null;
-  const answers = useMemo(() => {
-    if (!attempt) return {};
-    return parseJsonMaybe(attempt.ANSWERS_JSON) || {};
+  // Si el expediente no trae respuestas legibles, NO convertir el error de
+  // recuperación de datos en una prueba con cero respuestas y nota 0.
+  const answerReadback = useMemo(() => {
+    const raw = attempt && attempt.ANSWERS_JSON;
+    if (raw == null || (typeof raw === 'string' && !raw.trim()))
+      return { values:{}, error:'El intento no contiene respuestas guardadas verificables.' };
+    const parsed = parseJsonMaybe(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      return { values:{}, error:'No se pudieron interpretar las respuestas guardadas del intento.' };
+    return { values:parsed, error:'' };
   }, [attempt && attempt.ANSWERS_JSON]);
+  const answers = answerReadback.values;
   const all = useMemo(() => exam ? examQuestions(exam) : [], [exam]);
   const autoRows = useMemo(() => all.map(({ section, q, kind }) => {
     const value = kind === 'match' ? getMatchVal(answers, q.n, section.letter) : answers[q.id];
     return { id:kind === 'match' ? section.letter + q.n : q.id, ev:evalQuestion(section, q, value) };
   }), [all, answers]);
+  const responseCount = autoRows.filter(x => x.ev.verdict !== 'empty').length;
+  const storedFields = Object.keys(answers).length;
+  const answerIntegrityError = answerReadback.error ||
+    (storedFields > 0 && responseCount === 0
+      ? 'Hay respuestas guardadas, pero ninguna coincide con las preguntas del banco publicado. Revisá la versión del examen.'
+      : '');
   const autoCorrect = autoRows.filter(x => x.ev.verdict === 'ok').length;
   const needManual = autoRows.filter(x => x.ev.verdict === 'review').length;
   const finalPoints = autoRows.reduce((sum, x) => {
@@ -702,6 +716,11 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   const closeAndPush = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || closed || busy) return;
+    if (answerIntegrityError) {
+      setMsg('');
+      setErr('Revisión detenida: las respuestas del estudiante no son verificables. No se enviará una nota potencialmente incorrecta.');
+      return;
+    }
     const feedback = String(studentFeedback || '').trim();
     if (!feedback) {
       setMsg('');
@@ -760,6 +779,10 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
           <div className="rev-meta"><span>Tiempo</span>{examTeacherDurationF940(attempt.TIME_SPENT_SEC)}</div>
         </div>
 
+        {answerIntegrityError && <div className="rev-live-err" role="alert">
+          ⚠ {answerIntegrityError} El expediente queda en consulta; no se permite cerrarlo ni asignarle una nota automáticamente.
+        </div>}
+        {!answerIntegrityError && <div className="rev-note">Respuestas reconocidas del intento: {responseCount}/{all.length}. Solo las respuestas con clave válida se autocorrigen; las demás requieren revisión humana.</div>}
         <div className="rev-prelim">
           <div className="rev-prelim-h">Cálculo de la revisión</div>
           <div className="rev-prelim-row"><span>Auto correctas</span><b>{autoCorrect}/{all.length}</b></div>
@@ -788,7 +811,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
         {msg && <div className="rev-live-ok">✓ {msg}</div>}
         {err && <div className="rev-live-err">⚠ {err}</div>}
-        {!closed && <button type="button" className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
+        {!closed && <button type="button" className="btn-close" disabled={!!busy || !!answerIntegrityError} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && !pushed && <button type="button" className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
       </aside>
