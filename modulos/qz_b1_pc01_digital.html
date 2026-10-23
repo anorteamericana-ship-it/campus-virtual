@@ -244,7 +244,7 @@ if(liveMode){
  }
  function markDelivered(state){
   sent=true;dirty=false;liveUncertain=false;render();
-  liveShow(state.estado==='REVISADO'?'PRUEBA ENTREGADA · Revisada · Nota '+state.nota+'/100.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
+  liveShow(state.estado==='REVISADO'&&Number.isFinite(Number(state.nota))?'PRUEBA ENTREGADA · Revisión diagnóstica '+(Number(state.nota)/4)+'/25 · '+state.nota+'% · '+reviewLetter(Number(state.nota))+' · peso oficial 0%.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
   showDeliveryReceipt();
  }
  function liveLock(){
