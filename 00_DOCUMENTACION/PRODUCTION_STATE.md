@@ -107,7 +107,29 @@ Estos porcentajes NO se suman al 56%; medir implementación, CI, despliegue y ce
 
 **Punto preciso para una medición legítima:** abrir `https://anorteamerican.com/campus-virtual/login.html?f111_diag=1` desde la pestaña que utilizará un docente autorizado para su sesión normal; tomar el resultado de los cuatro endpoints desde el panel de diagnóstico. No compartir credenciales, identificadores personales ni tokens. No suplantar cuentas ni iniciar un examen. Si las cuatro solicitudes aparecen con tiempos aceptables pero la pantalla sigue lenta, revisar render del panel por separado.
 
-**Estado de evidencia:** cambios de frontend sujetos a QA/CI y merge; no hay medición autenticada real de Diego y no se altera versión institucional @472 ni Quiz @467. F80 implantación 5/5, certificación final 0/1. El 56% D1–D5 permanece como línea base histórica.
+**Estado de evidencia:** frontend PR #607 MERGED, script de medición y referencias comprobados en el sitio institucional. Sigue sin existir una medición autenticada real de Diego; Apps Script institucional @472 y Quiz @467 no se alteraron. F80 implantación 5/5, certificación final 0/1. El 56% D1–D5 permanece como línea base histórica.
+
+---
+
+### 6D. PWREC2 472 aislado · 23-oct-2026 · preparado, NO publicable
+
+**P1 PRUEBA DIRECTA EN PRODUCCIÓN (sin cuenta ni efectos):** se envió únicamente `{"fn":"solicitarRecuperacionAccesoUniversal"}` al deployment institucional @472, sin identificador ni OTP. Respondió `ok:false,error:endpoint_no_declarado` en aproximadamente 5,48 s. Confirma la falta de ruta en el servidor productivo. Ese tiempo es un sondeo público SIN sesión y NO mide el panel docente.
+
+**UNA SOLA CANDIDATA TÉCNICA AISLADA:** `C:\Users\leodr\Documents\anorteam\temporal\F111_PWREC2_472_CANDIDATE_20261023\prod` contiene 33 archivos desde el snapshot @472 (28 inalterados, cinco tocados). El preparador reproducible está en `temporal\F111_PWREC2_472_STAGE_20261023.cjs`. La carpeta candidata no contiene `.clasp.json` y **NO se ha empujado al editor, creado una versión, actualizado el deployment ni escrito en Apollo/Operativo**. No generar otra candidata mientras exista esta.
+
+| Archivo candidato | Delta intencional |
+|---|---|
+| `01_Router.js` | Rutas públicas PWREC2 primarias y alias a funciones existentes, sin autorizar otras nuevas |
+| `02_Auth_Sesiones_Usuarios.js` | Verificador seguro y estado `cuenta_no_activada`, bloqueo de acceso DATOS+código, funciones PWREC1 legadas delegadas a PWREC2; alta sin contraseña predeterminada y sin guardar `PROSPECTOS.CLAVE` |
+| `10_Estudiantes.js` | Matrícula nueva deja clave vacía hasta activación OTP, en vez de usar código |
+| `51_Recuperacion_Acceso_Universal.js` | Código íntegro PWREC2 seguro ya integrado en backend/main: PBKDF2, pepper, límites y bloqueo OTP |
+| `61_F111_Login_Guard.js` | Guarda de intentos de backend/main; `cuenta_no_activada` solo se propaga con registro verificable |
+
+**VALIDACIONES SINTÉTICAS DEL CANDIDATO:** sintaxis JS de cinco modificados PASS por `vm.Script`; `qa_f111_463_password_code_e1` PASS; `qa_f111_463_pepper_failclosed_e1` PASS; `qa_f111_463_pepper_init_e1` PASS; `qa_f111_pwrec2_recovery_e1` PASS (22 checks). Prueba integral `qa_f111_login_unico_e1` ejecutó satisfactoriamente sus controles 1–27 y se detuvo en control 28: se esperaba que `superadminActivarEstudiante` rechazara vía sesión inválida, pero la ruta no está declarada en @472 (el guard `endpoint_no_declarado` deniega la operación antes de entrar). **El test integral NO es PASS**. No habilitar rutas de Superadmin fuera de alcance solo para pasar un control. Se necesita una puerta QA ajustada al alcance exacto y preservar denegación de acciones no declaradas.
+
+**P0 Y P2 SIN FALSOS CIERRES:** PR frontend #607 fusionado, medidor publicado, pero **0/1** prueba auténtica de Diego. PC01 @467 continúa en **3/5** puertas; ABIERTO + entrega real pendientes. El 56% integral D1–D5 es base histórica sin recertificación.
+
+**SIGUIENTE PASO:** concretar QA segura de las rutas PWREC2 dentro de @472, verificar que los endpoints administrativos no expuestos sigan denegados, cerrar pruebas de compatibilidad SIN INA/INA y recuperación con cuenta activa sintética antes de siquiera considerar un despliegue reversible. Para P0 obtener los tiempos desde `login.html?f111_diag=1` con una sesión auténtica autorizada de Diego. Nunca utilizar contraseña, token ni datos académicos del profesor para simular la prueba.
 
 ---
 
