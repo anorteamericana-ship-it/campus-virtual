@@ -70,6 +70,21 @@ Estos porcentajes NO se suman al 56%; medir implementación, CI, despliegue y ce
 
 **PRIORIDAD P2:** con sesión estable, permitir al docente activar B1 PC01 mediante @467, exigir ABIERTO y primera entrega guardada real; retomar módulos D2–D5 después del primer caso certificado.
 
+### 6A. Diagnóstico estático P0 · 23-oct-2026 (sin tocar producción)
+
+**Evidencia nueva:** revisión SOLO LECTURA del snapshot inmutable local `F111_PANEL_472_IMMUTABLE_AUDIT_20261023` en DESKTOP-9U2RJRG. Se cotejó además este tablero contra GitHub y PR backend #98 MERGED. No se hicieron cambios de Apps Script, asistencia, notas, credenciales ni matrículas. **No hay medición de sesión real**.
+
+- `02_Auth_Sesiones_Usuarios.js`: `iniciarSesion` autentica, consulta GRUPOS para normalizar al docente, espera `LockService.waitLock(15000)` y añade la sesión a `SESIONES`. `getUsuario` llama a `_f983ReadValues_` sobre `USUARIOS`.
+- `validarSesion`: consulta `CacheService` por hash del token. El TTL aplicado es **300 segundos**, aunque un comentario antiguo dice 60. En cache miss usa `_f983ReadValues_` para cargar la hoja `SESIONES` completa, busca la fila, puede actualizar `ULTIMA_ACTIVIDAD` cada cinco minutos y, para `teacher`, vuelve a consultar GRUPOS vía `_f984z6iTeacherGroupsForSession_`.
+- `32_Utils_Shared.js`: `_f983ReadValues_` ejecuta `getRange(1,1,lastRow,lastCol).getValues()` sin caché por defecto.
+- `11_Docentes_Clases.js`: `_anF65_readGrupos_` usa `getDataRange().getValues()` y `getDisplayValues()` sobre GRUPOS. `getDocenteGruposActuales` consulta GRUPOS nuevamente y obtiene conteos de alumnos.
+- **Hipótesis a medir, NO causa certificada:** lecturas completas en misses de sesión, consultas redundantes de GRUPOS, contención en LockService o escrituras de Sheets. No concluir que un hit de caché es lento sin observarlo.
+- **Decisión:** NO repetir mejoras @468–@472 ni publicar parche de rendimiento sin causa medida. Próxima puerta es UNA sesión docente legítima con tiempos diferenciados para `iniciarSesion`, `validarSesion`, `getDocenteGruposActuales` y `getDocenteGrupoPanelF80`, sin revelar tokens ni contraseñas.
+
+**Indicadores SIN CAMBIOS:** principal @472, Quiz @467; F80 implantación 5/5, certificación real 0/1; PC01 apertura/entrega 2 puertas pendientes de 5; base global F111 56% histórica 18-oct (NO recertificada). Este bloque añade diagnóstico y continuidad, no un despliegue ni una prueba de producción.
+
+---
+
 ### 7. PROMPT DE CONTINUIDAD
 
 CONTINUAMOS CON F111 ACADEMIA NORTEAMERICANA — lee primero 00_DOCUMENTACION/PRODUCTION_STATE.md (cabecera vigente de 23-oct-2026), y verifica HEAD/PR/deploy antes de actuar. Producción principal Apps Script @472; Quiz B1 PC01 @467 separado; backend PR #98 MERGED, #99 duplicado CLOSED, frontend #593 y #596 publicados. No repetir los cinco hotfixes F80 @468–@472, no recrear bancos, no volver a empezar QA PASS. Grupo prioritario de Diego: B1-KJ18-C3-0826, B1/INA, 15 CA únicos con DATOS conciliados y 74 filas de ASISTENCIA. La prueba con token falso rechaza sesion_invalida y NO certifica rendimiento real. Pendiente: login docente válido dentro del plazo, panel completo con cronograma, recuperación contraseña; luego docente ABIERTO PC01, SAVE/SUBMIT real y revisión. Global F111 D1–D5: línea base 56% al 18-oct (D1 100, D2 90, D3 30, D4 40, D5 20), NO se ha recalculado con igual criterio. Optimización F80 5/5 desplegada, 0/1 certificación real; PC01 3/5 puertas publicadas, 2 pendientes. Respeta INA 15/15/5/15/15/5/Social10/ICAN20, Progress Checks 0%. Solo código mínimo sobre snapshot inmutable, lectura de regreso, despliegue reversible y prueba autenticada autorizada; nunca inventes resultados, ni modifiques asistencia/notas/matrículas. Documenta al final en el MISMO archivo y responde siempre: ÚLTIMO PASO, RESULTADO, % CON BASE, PENDIENTES/RIESGOS, SIGUIENTE PASO, CONTINUAMOS CON. Prioridad ahora: instrumentar y resolver latencia de sesión real sin rehacer panel ni Quiz.
