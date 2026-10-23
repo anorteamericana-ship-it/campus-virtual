@@ -1,6 +1,20 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 MIS GRUPOS 0826 — HOTFIX UI PR #596 · 22-oct-2026
+
+**HECHO VERIFICADO:** Pantalla real de Diego: franja roja `SESIÓN ACTIVA · PENDIENTE DE CIERRE` para grupo 0826, lección 04, pero `Mis grupos` muestra `No pudimos cargar tus grupos` luego de prolongada espera. Falla en la **primera** consulta `getDocenteGruposActuales` (plazo frontend anterior 30 segundos), no necesariamente en `getDocenteGrupoPanelF80` que se había optimizado en @468. Datos NO borrados: libro APOLLO_G3 en lectura solo confirmó GRUPOS B1 activo asignado a Diego y ESTATUS **15 registros B1/CA** del grupo `B1-KJ18-C3-0826`. No alterar matrícula, notas, asistencia ni cronograma por fallo de interfaz.
+
+**IMPLEMENTACIÓN REAL EN GITHUB PAGES:** [PR frontend #596](https://github.com/anorteamericana-ship-it/campus-virtual/pull/596), squash merge `2560929b078a9cb54ac0fadd6975f5c7b0572309`. El helper `tvSessionGroups` ya existía pero estaba sin uso; `useTeacherSession` ahora inicializa grupo desde sesión del docente, también toma grupo de sesión de clase activa que llega después del montaje y NO borra el grupo si `getDocenteGruposActuales` da timeout. Se corrigió una carrera en el estado asíncrono usando `gruposMetaRef`: un error tardío no debe mostrar `No pudimos cargar tus grupos` si mientras tanto llegó la sesión de clase. Timeout lista acotado a **12s con grupo / 15s sin grupo**, carga del panel protegida continúa en paralelo. El backend **sigue verificando token, docente y permisos** antes de mostrar padrón; no se cachean registros académicos en almacenamiento del navegador. El reintento actualiza ambos. Archivo principal `src/app.jsx`, puente `att77_bridge.js` y `campus.html` preservados sin cambios, para mantener los controles institucionales de versiones de caché/superadmin. Requiere Ctrl+F5 para cargar el nuevo archivo bajo la URL estática antigua.
+
+**CERTIFICACIÓN:** CI Source Truth, Teacher Session Safe Errors, Teacher Action, Teacher User, QZ32 y Auditoría **SUCCESS**; Github Pages main **SUCCESS**, GET real `https://anorteamerican.com/campus-virtual/src/teacher_views.jsx?v=F104NEXTROSTER20261009` HTTP 200 en 1,9 s, detecta `tvSessionGroups(usuario, grupoActivo)` y `gruposMetaRef.current`. **No hay nueva respuesta autenticada de Diego** verificada por esta pasada, por lo que no declarar carga real de lecciones ni exámenes corregida. La lentitud de Apps Script @468 y del endpoint pesado de panel sigue **INCIDENCIA ABIERTA**: pruebas con tokens inválidos anteriores >25 segundos aun con @462. No repetir despliegue GAS sin identificar cuello de botella. Activación Quiz 1 y primera entrega real todavía sin certificado.
+
+**SIGUIENTE PASO:** un solo Ctrl+F5 del docente en Campus → Mis grupos y comprobar visibilidad del grupo 0826; si aparecen grupo pero no los 15 CA, el incidente es la **segunda llamada** `getDocenteGrupoPanelF80` y se debe investigar por separado, sin reinstalar scripts ni pedir contraseñas. No afirmar que carga real mejoró sin evidencia.
+
+---
+
+
+
 ## F111 — INCIDENCIA LOGIN 70s / RUTA CREDENCIALES · 22-oct-2026 noche
 
 **HECHOS MEDIDOS, SIN CREDENCIALES REALES:** el frontend `src/login.jsx` usa `loginFetchJson({fn:'iniciarSesion'})` y `AbortController` con límite **70 000 ms**; texto de la pantalla «El servidor tardó demasiado» corresponde exactamente al error `AbortError`. En Apps Script institucional público **@462**, el request `validarSesion` con token ficticio respondió HTTP 200, `sesion_invalida`, ~7,1–8,3 segundos. El request `iniciarSesion` con **cuenta y clave totalmente ficticias** siguió pendiente hasta agotar **85,1 segundos**; el timeout en login NO prueba que las credenciales del usuario real sean equivocadas. No se probaron ni expusieron contraseñas reales, ni se inició sesión con otra persona. Metadata y consulta acotada de `APOLLO_G3_LIMPIO_21-04-26 → USUARIOS`: la cuenta docente informada por usuario existe, está activa, y su credencial tiene formato legacy compatible con @462; no revelar identificador ni contraseña. `USUARIOS` contiene ~996 filas asignadas, `DATOS` ~990, `GRUPOS` ~974 y `SESIONES` ~1248.
