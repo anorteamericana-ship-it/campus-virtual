@@ -20,6 +20,9 @@ assert.ok(s.includes('React.useState(() => tvSessionGroups(usuario, grupoActivo)
 assert.ok(s.includes("gruposMeta.length ? 12000 : 30000"),'timeout de lista acotado cuando hay grupo en sesión');
 assert.ok(s.includes("if (!gruposMeta.length) setErrorGroups("),'fallo de lista no elimina grupo vinculado');
 assert.ok(s.includes("loading:(loadingGroups && !gruposMeta.length) || loadingPanel"),'listado lento no bloquea panel autenticado');
+assert.ok(s.includes("useTeacherSession(activeSession?.COD_GRUPO || activeSession?.cod_grupo || '')"),'la sesión activa permite recuperar el código del grupo');
+assert.ok(s.includes('setGruposMeta(prev => prev.length ? prev : tvSessionGroups(usuario, grupoActivo))'),'llegada tardía de sesión no deja lista vacía');
+assert.ok(s.includes("setGruposMeta(grupos);"),'respuesta real del servidor reemplaza el fallback');
 assert.ok(s.includes("const r = await postTeacher('getDocenteGrupoPanelF80'")||s.includes("postTeacher('getDocenteGrupoPanelF80'"),'el panel sigue exigiendo validación del backend');
 assert.ok(s.includes("if (!r?.ok) throw new Error("),'panel rechaza respuesta no autorizada');
 assert.ok(s.includes('const [reloadGroupsTick, setReloadGroupsTick] = React.useState(0);'),'reintento real de lista');
