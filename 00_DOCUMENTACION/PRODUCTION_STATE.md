@@ -99,6 +99,18 @@ Estos porcentajes NO se suman al 56%; medir implementación, CI, despliegue y ce
 
 ---
 
+### 6C. P0 medidor HTTP opt-in · 23-oct-2026
+
+**Implementación frontend de diagnóstico controlado (no es certificación):** `src/data.jsx` agrega exclusivamente bajo `?f111_diag=1` un cronómetro de red para `iniciarSesion`, `validarSesion`, `getDocenteGruposActuales` y `getDocenteGrupoPanelF80`. Se conserva el interruptor en `sessionStorage` de la misma pestaña para seguir el paso del login al Campus. Los archivos `login.html` y `campus.html` actualizan solamente el versionado del recurso `src/data.jsx` para evitar caché antigua. Los demás usuarios no activan el medidor.
+
+**Privacidad y alcance:** se muestran exclusivamente nombre fijo de endpoint, duración en milisegundos y código HTTP o fallo de red; el botón permite copiar esos tiempos, sin token, nombre, cédula, contraseña, respuesta académica, correo ni registro remoto. No modifica solicitudes/respuestas ni envía telemetría. La duración mide `fetch` hasta la respuesta HTTP, **no** desglosa tiempo interno de Google Sheets ni certifica el render total de la pantalla. Tampoco obliga a un docente a cerrar clases o registrar asistencias.
+
+**Punto preciso para una medición legítima:** abrir `https://anorteamerican.com/campus-virtual/login.html?f111_diag=1` desde la pestaña que utilizará un docente autorizado para su sesión normal; tomar el resultado de los cuatro endpoints desde el panel de diagnóstico. No compartir credenciales, identificadores personales ni tokens. No suplantar cuentas ni iniciar un examen. Si las cuatro solicitudes aparecen con tiempos aceptables pero la pantalla sigue lenta, revisar render del panel por separado.
+
+**Estado de evidencia:** cambios de frontend sujetos a QA/CI y merge; no hay medición autenticada real de Diego y no se altera versión institucional @472 ni Quiz @467. F80 implantación 5/5, certificación final 0/1. El 56% D1–D5 permanece como línea base histórica.
+
+---
+
 ### 7. PROMPT DE CONTINUIDAD
 
 CONTINUAMOS CON F111 ACADEMIA NORTEAMERICANA — lee primero 00_DOCUMENTACION/PRODUCTION_STATE.md (cabecera vigente de 23-oct-2026), y verifica HEAD/PR/deploy antes de actuar. Producción principal Apps Script @472; Quiz B1 PC01 @467 separado; backend PR #98 MERGED, #99 duplicado CLOSED, frontend #593 y #596 publicados. No repetir los cinco hotfixes F80 @468–@472, no recrear bancos, no volver a empezar QA PASS. Grupo prioritario de Diego: B1-KJ18-C3-0826, B1/INA, 15 CA únicos con DATOS conciliados y 74 filas de ASISTENCIA. La prueba con token falso rechaza sesion_invalida y NO certifica rendimiento real. Pendiente: login docente válido dentro del plazo, panel completo con cronograma, recuperación contraseña; luego docente ABIERTO PC01, SAVE/SUBMIT real y revisión. Global F111 D1–D5: línea base 56% al 18-oct (D1 100, D2 90, D3 30, D4 40, D5 20), NO se ha recalculado con igual criterio. Optimización F80 5/5 desplegada, 0/1 certificación real; PC01 3/5 puertas publicadas, 2 pendientes. Respeta INA 15/15/5/15/15/5/Social10/ICAN20, Progress Checks 0%. Solo código mínimo sobre snapshot inmutable, lectura de regreso, despliegue reversible y prueba autenticada autorizada; nunca inventes resultados, ni modifiques asistencia/notas/matrículas. Documenta al final en el MISMO archivo y responde siempre: ÚLTIMO PASO, RESULTADO, % CON BASE, PENDIENTES/RIESGOS, SIGUIENTE PASO, CONTINUAMOS CON. Prioridad ahora: instrumentar y resolver latencia de sesión real sin rehacer panel ni Quiz.
