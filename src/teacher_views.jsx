@@ -263,8 +263,10 @@ function tvSessionToneF88(lesson,nowMs=Date.now(),session=null){
   if(remain<=30)return {bg:'#B77900',soft:'#FFF4D6',ink:'#704A00',label:'● SESIÓN ACTIVA · ÚLTIMOS 30 MINUTOS'};
   return green;
 }
-function tvSessionGroups(usuario){
-  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (usuario?.grupo ? [usuario.grupo] : []);
+function tvSessionGroups(usuario, activeGroupCode=''){
+  // En sesión de docente: se muestra el grupo previo mientras se confirma la lista;
+  // el backend conserva toda la autorización antes de devolver datos académicos.
+  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (activeGroupCode || usuario?.grupoActivo || usuario?.grupo ? [activeGroupCode || usuario?.grupoActivo || usuario?.grupo] : []);
   const out = [];
   const seen = new Set();
   raw.forEach((g) => {
@@ -285,20 +287,23 @@ function tvSessionGroups(usuario){
   return out;
 }
 function tvNowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
-function useTeacherSession() {
+function useTeacherSession(activeSessionGroup='') {
   const readSession = React.useCallback(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
     const nombre = usuario?.nombre || usuario?.nombre_completo || usuario?.usuario || '';
     const programa = usuario?.programa || '';
-    const grupoActivoRaw = (typeof window.getGrupoActivoDocente === 'function')
-      ? window.getGrupoActivoDocente()
-      : (usuario?.grupoActivo || usuario?.grupo || '');
+    const savedGroup = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : '';
+    const grupoActivoRaw = savedGroup || activeSessionGroup || usuario?.grupoActivo || usuario?.grupo || '';
     return { usuario, nombre, programa, grupoActivo:tvGroupCode(grupoActivoRaw) };
-  }, []);
+  }, [activeSessionGroup]);
 
   const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
-  const [gruposMeta, setGruposMeta] = React.useState([]);
+  const [gruposMeta, setGruposMeta] = React.useState(() => tvSessionGroups(usuario, grupoActivo));
+  // La respuesta remota puede tardar más que la llegada de la sesión activa.
+  // Consultar el estado actual, no la lista capturada al iniciar la promesa.
+  const gruposMetaRef = React.useRef(gruposMeta);
+  gruposMetaRef.current = gruposMeta;
   const [codGrupo, setCodGrupo] = React.useState(grupoActivo || '');
   const [roster, setRoster] = React.useState([]);
   const [lecciones, setLecciones] = React.useState([]);
@@ -316,7 +321,15 @@ function useTeacherSession() {
   const [errorGroups, setErrorGroups] = React.useState(null);
   const [errorPanel, setErrorPanel] = React.useState(null);
   const [reloadTick, setReloadTick] = React.useState(0);
+  const [reloadGroupsTick, setReloadGroupsTick] = React.useState(0);
 
+  // La sesión activa puede llegar después del montaje inicial del componente.
+  React.useEffect(() => setSesionLocal(readSession()), [readSession]);
+  React.useEffect(() => {
+    if (!grupoActivo) return;
+    setGruposMeta(prev => prev.length ? prev : tvSessionGroups(usuario, grupoActivo));
+    setCodGrupo(prev => prev || grupoActivo);
+  }, [grupoActivo, usuario]);
   React.useEffect(() => {
     const onChange = () => setSesionLocal(readSession());
     window.addEventListener('an:session-changed', onChange);
@@ -327,7 +340,8 @@ function useTeacherSession() {
     let cancel = false;
     setLoadingGroups(true);
     setErrorGroups(null);
-    postTeacher('getDocenteGruposActuales', { docente:nombre }, 30000)
+    // No bloquear por 30s el panel cuando ya existe un grupo de la sesión.
+    postTeacher('getDocenteGruposActuales', { docente:nombre }, gruposMetaRef.current.length ? 12000 : 15000)
       .then(d => {
         if (cancel) return;
         if (!d?.ok) throw new Error(d?.error || d?.mensaje || 'No se pudieron cargar los grupos del docente.');
@@ -345,10 +359,14 @@ function useTeacherSession() {
           window.setGrupoActivoDocente(nuevo);
         }
       })
-      .catch(e => { if (!cancel) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos')); })
+      .catch(e => { if (!cancel) {
+        if (!gruposMetaRef.current.length) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos'));
+        // Si el servidor no respondió, NO borrar el grupo ya vinculado a la sesión.
+        // La autorización del padrón se valida separadamente en cargarPanelDocenteF80.
+      } })
       .finally(() => { if (!cancel) setLoadingGroups(false); });
     return () => { cancel = true; };
-  }, [nombre]);
+  }, [nombre, reloadGroupsTick]);
 
   React.useEffect(() => {
     if (!grupoActivo || !gruposMeta.length) return;
@@ -416,14 +434,14 @@ function useTeacherSession() {
     setCodGrupo(limpio);
     if (typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(limpio);
   }, [codGrupo]);
-  const recargarPanel = React.useCallback(() => setReloadTick(v => v + 1), []);
+  const recargarPanel = React.useCallback(() => { setReloadTick(v => v + 1); setReloadGroupsTick(v => v + 1); }, []);
 
   return {
     usuario, nombre, programa:panelPrograma || meta?.programa || programa,
     codGrupo, grupos:gruposMeta, meta, nivel, grupoInfo:meta,
     roster, lecciones, asistenciaGrupo, asistenciaDetalle, comentariosDetalle,
     notasGrupo, resumenGrupo, icanResumen, leccionHoy, sesionClase,
-    loading:loadingGroups || loadingPanel,
+    loading:(loadingGroups && !gruposMeta.length) || loadingPanel,
     loadingGroups, loadingPanel,
     error:errorGroups || errorPanel,
     cambiarGrupo, recargarPanel,
@@ -1473,7 +1491,7 @@ function tvSelectContactTextF104(event){
   selection.addRange(range);
 }
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
-  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
+  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession(activeSession?.COD_GRUPO || activeSession?.cod_grupo || '');
   const lista=grupos||[];
   const [contactos,setContactos]=React.useState({});
   React.useEffect(()=>{
