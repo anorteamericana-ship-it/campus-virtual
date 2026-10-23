@@ -8,12 +8,12 @@
 ### 1. Estado productivo con evidencia
 
 - **Apps Script institucional actual: @473, DEPLOYMENT ACTUALIZADO EL 23-oct-2026**, el mismo ID institucional principal; lectura de regreso `clasp deployments --json` confirma `versionNumber:473`. PWREC2 tiene verificación de claves heredadas/p2, pepper editor-only, migración `AUTH_MIGRAR=FALSE` y recuperación pública OFF. Versión @472 inmutable preservada como referencia anterior; no regresar a ella si aparecen hashes p2. **Se observó sesión docente autenticada y panel funcional; falta tiempo de iniciarSesion y certificación de rendimiento aceptable.**
-- **Quiz B1 PC01 aislado: @467**, deployment independiente del mismo proyecto GAS. Frontend de Quiz B1 publicado vía PR #593; su existencia no certifica ABIERTO ni ninguna entrega real.
+- **Quiz B1 PC01 aislado: @467**, deployment independiente del mismo proyecto GAS. **Docente confirmó `ABIERTO` en la UI tras el readback del botón «Cerrar quiz para estudiantes» (23-oct-2026)**. **Primera entrega estudiantil y readback de BORRADOR/ENTREGADO siguen pendientes.**
 - **Backend #98 MERGED**, implantó programa INA validado desde GRUPOS y una instantánea de asistencia por solicitud para notas ICAN y resumen del panel; CI PASS, 33 archivos, solo 3 distintos sobre @471, readback 33/33 y publicación @472. **Backend #99 CLOSED SIN MERGE** por duplicar #98; NO recrearlo ni seguir rama -resume salvo auditoría de código sin cambios.
 - **Frontend #596 MERGED y Pages publicado:** Mis grupos retiene el grupo de sesión activa si falla la consulta remota; no omite autorización de padrón.
 - **Doc anterior #600 MERGED:** prueba y despliegue @471 están ya archivados, superados por @472.
 - **Fuente académica verificada SOLO LECTURA:** B1-KJ18-C3-0826 de Diego, 15 códigos únicos B1/CA en ESTATUS y correspondencia 15/15 DATOS; 74 filas operativas de ASISTENCIA (44 curso + 30 I CAN). NO usar esa lectura como prueba de que Diego abrió correctamente el panel.
-- **Certificación parcial nueva (23-oct-2026):** el docente mostró sesión real activa, cronograma y panel de grupo; tres HTTP 200 midieron 5.643 ms `validarSesion`, 4.305 ms `getDocenteGruposActuales`, 5.665 ms `getDocenteGrupoPanelF80`. **No confundir panel funcional con panel rápido**; sin medición de `iniciarSesion`, ni certificación de recuperación, ABIERTO PC01, SAVE/SUBMIT estudiantil o revisión auténtica.
+- **Certificación parcial nueva (23-oct-2026):** el docente mostró sesión real activa, cronograma y panel de grupo; tres HTTP 200 midieron 5.643 ms `validarSesion`, 4.305 ms `getDocenteGruposActuales`, 5.665 ms `getDocenteGrupoPanelF80`. **No confundir panel funcional con panel rápido**; sin medición de `iniciarSesion` ni certificación de recuperación, SAVE/SUBMIT estudiantil o revisión auténtica. **La apertura PC01 sí fue observada y reportada por el docente después de esta medición.**
 
 ### 2. Porcentaje maestro F111 — denominador fijo, no confundir con hitos técnicos
 
@@ -35,7 +35,7 @@
 | Subproyecto | Puertas verificadas | Avance acotado | Límite |
 |---|---|---:|---|
 | Latencia panel docente F80 — cinco optimizaciones técnicas | RETRO @468, CALENDARIO @469, GRUPOS @470, DATOS/ASISTENCIA @471, programa INA + lectura compartida @472 | **5/5 = 100% implantación del paquete** | **0/1 certificación autenticada de carga rápida** |
-| B1 PC01, lanzamiento real | Banco B1 con audio y visual, API QZ @467, UI docente/alumno publicada | **3/5 = 60% puertas del lanzamiento** | Pendiente: docente confirma ABIERTO (0/1), SAVE + SUBMIT real y readback del expediente (0/1) |
+| B1 PC01, lanzamiento real | Banco B1 con audio y visual, API QZ @467, UI docente/alumno publicada, **docente confirma botón «Cerrar quiz para estudiantes» tras activación** | **4/5 = 80% puertas del lanzamiento** | **Pendiente solo puerta 5/5:** estudiante real BORRADOR → readback → ENTREGADO y readback; revisión docente posterior |
 | Integridad grupo Diego B1-KJ18-C3-0826 | 15/15 coincidencias CA ↔ DATOS, 74 filas de asistencia clasificadas | **2/2 = 100% verificaciones de fuente** | No certifica que el panel renderice esas filas en una sesión docente válida |
 | Login y recuperación | Servidor enruta/rechaza tokens falsos; no existe prueba certificada de login correcto rápido ni recuperación usable | **0/2 puertas de experiencia real** | Incidencias críticas ABIERTAS |
 | Escritos | 49/49 y 39/39 QA anterior PASS | **100% de esos controles sintéticos** | Evaluación escrita real y el resto de puertas productivas no certificados |
@@ -207,6 +207,20 @@ Estos porcentajes NO se suman al 56%; medir implementación, CI, despliegue y ce
 **Indicadores sin inflar:** F80 mejoras 5/5 publicadas; observación autenticada de panel **1/1 funcional pero no certificada rápida**; cronómetros 3/4; PC01 **3/5** puertas, el botón habilitado no es `ABIERTO`; F111 global sigue **56% histórico** hasta recertificación D1–D5. Publicación institucional @473, Quiz @467, recuperación PWREC2 pública OFF.
 
 **CONTINUAMOS CON:** docente confirmar `ABIERTO` desde la propia lección 04 → verificar readback y captura solo de estado, sin PII → estudiante autorizado `BORRADOR → ENTREGADO` con readback → medir `iniciarSesion` y analizar tiempos sin rehacer los cinco hotfixes.
+
+---
+
+### 6I. PC01 B1/L4 ACTIVADO POR DOCENTE · 23-oct-2026 · 4/5 puertas
+
+**EVIDENCIA NUEVA:** después de pulsar «Habilitar Quiz 1 para estudiantes», el usuario compartió captura de la confirmación de destinatarios de la UI del Campus. Se explicó que aceptar abre el quiz y el usuario informó explícitamente que ahora el botón dice **«Cerrar quiz para estudiantes»**. En el frontend `src/teacher_quiz_review_f111.js`, ese rótulo se obtiene al volver a consultar `qzProgressTeacherAvailability` de Quiz GAS @467 con `estado==='ABIERTO'`; si ocurre un error de servidor la UI deshabilita el botón y muestra error. Por eso la evidencia es consistente con **PC01 ABIERTO, puerta 4/5 validada por interfaz y readback de estado**. No hay prueba directa de una escritura en Sheets independiente de esa lectura de estado. Los destinatarios no se reproducen en la documentación.
+
+**ESTADO PRODUCTIVO CONSERVADO:** Campus institucional @473 (PWREC2 público OFF, migración OFF); Quiz separado @467; grupo docente Diego `B1-KJ18-C3-0826`, nivel B1, lección 04, quiz `IC5_B1_WQ01`; peso académico oficial **0%**. No se cerró la clase, no se registró asistencia nueva y no se modificaron notas oficiales por esta intervención. No volver a pulsar «Cerrar quiz para estudiantes» durante la prueba porque revocaría acceso.
+
+**PUERTA 5/5 PENDIENTE, NO FINGIR ENTREGA:** un estudiante auténtico activo CA de este mismo grupo debe abrir PC01 desde su propia sesión y responder, pulsar **Guardar borrador**, volver a entrar y verificar sus respuestas mediante `qzProgressMyAttempt`, luego **Entregar** y comprobar que el intento conste **ENTREGADO**, con readback posterior en consulta docente de entregas. No registrar nombres/cédulas ni contraseñas o tokens en el reporte. Después realizar revisión con comentario independiente del de asistencia. Si la prueba se hace con estudiante no autorizado o en otra lección, no considerarla válida.
+
+**INDICADORES:** PC01 ahora **4/5 = 80% de puertas de lanzamiento** (3 previas + apertura auténtica); 0/1 entrega certificada. F80 5/5 implementado, sesión docente auténtica funcional con tres tiempos HTTP pendientes de optimización; `iniciarSesion` sin medición. F111 integral **56% histórico**, no subir por abrir PC01.
+
+**CONTINUAMOS CON:** estudiante real B1/CA: BORRADOR → reabrir y comprobar readback → ENTREGADO → readback del docente; posteriormente revisión y comentario, sin tocar asistencia ni notas oficiales.
 
 ---
 
