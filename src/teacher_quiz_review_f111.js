@@ -21,7 +21,9 @@ const QZ_GROUP='B1-KJ18-C3-0826';
 const qzContext={cod_grupo:QZ_GROUP,nivel:'B1',leccion:4};
 async function postQuiz(fn,data){
  const token=window.getSessionToken?window.getSessionToken():'';
- const base=String(window.APPS_SCRIPT_URL||'');
+ // Las operaciones Progress Check usan @467; padrón docente y login siguen en @462.
+ const isQuiz=/^qzProgress[A-Za-z]+$/.test(String(fn||''));
+ const base=String((isQuiz&&window.F111_QZ_API_URL)||window.APPS_SCRIPT_URL||'');
  if(!token||!base)throw Error('Sesión docente no disponible');
  const res=await fetch(base+'?fn='+encodeURIComponent(fn),{
   method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
