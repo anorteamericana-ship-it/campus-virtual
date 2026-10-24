@@ -38,7 +38,7 @@ function openQuiz(){
 }
 // El backend decide quién está matriculado y si Diego abrió el quiz.
 // Una notificación nunca se fabrica desde el grupo visible ni desde la URL.
-let active=false, lastToken='', notifiedToken='', lastChecked=0, inFlight=false;
+let active=false, lastToken='', notifiedToken='', lastChecked=0, inFlight=false,attemptState='DESCONOCIDO';
 const CHECK_INTERVAL=15000;
 function currentToken(){return window.getSessionToken?String(window.getSessionToken()||''):''}
 function isAvailable(r){
@@ -55,7 +55,8 @@ function attach(){
  box.setAttribute('aria-label','Quizzes y Progress Check disponibles');
  box.append(e('small','','EVALUACIONES · PROGRESS CHECK'));
  box.append(e('strong','','Quiz 1 · Básico I'));
- box.append(e('p','','Lección 4 · Unidades 1–2 · 25 preguntas · Listening integrado'));
+ const status=e('p','f111-pc01-attempt-status','Lección 4 · Unidades 1–2 · 25 preguntas');
+ box.append(status);
  const btn=e('button','','INICIAR QUIZ 1');
  btn.type='button';btn.addEventListener('click',openQuiz);box.append(btn);
  const slot=screen.querySelector('[role="tablist"],[role="tabpanel"]');
@@ -63,10 +64,27 @@ function attach(){
 }
 function syncCard(){
  attach();
- document.querySelectorAll('[data-f111-student-pc01]').forEach(box=>{box.hidden=!active});
+ document.querySelectorAll('[data-f111-student-pc01]').forEach(box=>{
+  box.hidden=!active;
+  const btn=box.querySelector('button'),status=box.querySelector('.f111-pc01-attempt-status');
+  if(!btn||!status)return;
+  if(attemptState==='ENTREGADO'||attemptState==='REVISADO'){
+   btn.hidden=true;
+   status.textContent=attemptState==='REVISADO'?'Prueba entregada y revisada. Consultá el resultado y el comentario en Resumen Académico.':'Prueba entregada. Pendiente de revisión docente; no hace falta enviarla otra vez.';
+  }else if(attemptState==='BORRADOR'){
+   btn.hidden=false;btn.textContent='CONTINUAR QUIZ 1';
+   status.textContent='Tenés un avance guardado. Podés continuar mientras el docente mantenga el quiz abierto.';
+  }else if(attemptState==='SIN_INICIAR'){
+   btn.hidden=false;btn.textContent='INICIAR QUIZ 1';
+   status.textContent='Lección 4 · Unidades 1–2 · 25 preguntas · Disponible';
+  }else{
+   btn.hidden=true;status.textContent='Verificando tu entrega con el servidor…';
+  }
+ });
 }
 function showInvite(token){
- if(!active||!token||notifiedToken===token||document.querySelector('.f111-pc01-invite'))return;
+ // Solo una invitación para SIN_INICIAR confirmado por lectura del propio expediente.
+ if(!active||attemptState!=='SIN_INICIAR'||!token||notifiedToken===token||document.querySelector('.f111-pc01-invite'))return;
  // Una sola invitación en este ingreso. Cerrar el anuncio NO cierra el quiz.
  notifiedToken=token;
  const overlay=e('div','f111-pc01-invite');
@@ -90,7 +108,7 @@ function showInvite(token){
 }
 async function checkActive(force){
  const token=currentToken();
- if(!token){active=false;lastToken='';lastChecked=0;syncCard();return;}
+ if(!token){active=false;attemptState='DESCONOCIDO';lastToken='';lastChecked=0;document.querySelectorAll('.f111-pc01-invite').forEach(x=>x.remove());syncCard();return;}
  if(inFlight)return;
  const now=Date.now();
  if(!force&&token===lastToken&&now-lastChecked<CHECK_INTERVAL){syncCard();return;}
@@ -98,12 +116,25 @@ async function checkActive(force){
  try{
   const r=await api('qzProgressStudentActive',{});
   if(token!==currentToken())return;
-  active=isAvailable(r);syncCard();
-  if(active)showInvite(token);
+  active=isAvailable(r);
+  if(active){
+   // El mismo servidor devuelve el intento del estudiante autenticado.
+   // Nunca usar el anuncio de apertura como prueba de que sigue sin entregar.
+   try{
+    const own=await api('qzProgressMyAttempt',GROUP);
+    if(token!==currentToken())return;
+    attemptState=own.quiz_id==='IC5_B1_WQ01'&&
+     ['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(String(own.estado))?String(own.estado):'DESCONOCIDO';
+   }catch(_){attemptState='DESCONOCIDO'}
+  }else attemptState='DESCONOCIDO';
+  if(token!==currentToken())return;
+  if(attemptState==='ENTREGADO'||attemptState==='REVISADO')document.querySelectorAll('.f111-pc01-invite').forEach(x=>x.remove());
+  syncCard();
+  if(active&&attemptState==='SIN_INICIAR')showInvite(token);
  }catch(_){
   if(token!==currentToken())return;
   // Ante falta de autenticación o backend, no anunciar una evaluación inexistente.
-  active=false;syncCard();
+  active=false;attemptState='DESCONOCIDO';syncCard();
  }finally{inFlight=false}
 }
 function style(){
