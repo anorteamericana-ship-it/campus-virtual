@@ -37,7 +37,7 @@ footer{font-size:12px;color:#627a93;text-align:center;padding:18px;line-height:1
 <header><div><small>ACADEMIA NORTEAMERICANA · INTERCHANGE 5ª EDICIÓN</small>
 <h1>Progress Check 02 · Básico I</h1><p>Lección 08 · Unidades 3–4 · 25 puntos · ponderación oficial 0%</p></div>
 <div class="pill">VISTA PREVIA DOCENTE · NO PUBLICADO</div></header>
-<section class="notice" role="alert"><b>Pista de audio 3 pendiente de verificación.</b> La sección A corresponde al audio original Cambridge (4 puntos). El guion está localizado, pero la grabación autorizada no está disponible. No se permite presentar ni entregar este quiz como evaluación completa.</section>
+<section class="notice" role="alert"><b>Pista original 02 localizada en Drive institucional.</b> El audio de Unidades 3–4 está archivado junto al cuestionario, el guion y la clave. Esta página pública sigue siendo únicamente una vista previa local: para reproducir el MP3 protegido se requiere la sesión docente y el motor privado de Progress Check. No permite entregar ni calificar.</section>
 <section class="notice noticesub">Digitalización del material Cambridge original para control editorial. Podés inspeccionar las 25 respuestas previstas, pero <b>no existe guardado, envío ni calificación</b>, y no se consulta el servidor ni se abre el quiz para estudiantes. La clave original permanece fuera de esta página.</section>
 <nav id="nav" aria-label="Secciones de la prueba"></nav><div class="progress"><div id="progress" aria-hidden="true"></div></div>
 <section id="panel" class="panel" aria-live="polite"></section>
@@ -52,7 +52,7 @@ footer{font-size:12px;color:#627a93;text-align:center;padding:18px;line-height:1
 // E = 6. TOTAL = 25. No se incluye ningún mapa de claves en el frontend.
 const sections=[
 {id:'A',title:'Listen to the conversations',points:4,
- help:'Listen to the conversations. Check the correct answers. (4 POINTS). Track 3 is NOT yet available: this section is not answerable in preview.',
+ help:'Listen to the conversations. Check the correct answers. (4 POINTS). La pista original 02 está almacenada en Drive privado; esta vista pública no la reproduce.',
  type:'radio',locked:true,items:[
  ['A1','Where is Justine from?',["She's from Canada.","She's from France.","She's from Italy."]],
  ['A2','What is Mike like?',["He's serious, but not very quiet.","He's a little quiet, but very funny.","He's a little quiet and very serious."]],
@@ -102,7 +102,7 @@ function show(){
  nav.replaceChildren();
  sections.forEach((s,i)=>{const b=el('button',s.id+' · '+s.points+' puntos');b.type='button';b.setAttribute('aria-selected',String(active===i));b.onclick=()=>{active=i;show()};nav.append(b)});
  const s=sections[active];panel.replaceChildren(el('h2',s.id+' · '+s.title),el('p',s.help,'help'));
- if(s.locked)panel.append(el('span','Pista original 3 no disponible · no habilitado','badge'));
+ if(s.locked)panel.append(el('span','Pista original 02 · reproducción solo en Campus autenticado','badge'));
  s.items.forEach(q=>{
  const box=el('fieldset',null,'item'),legend=el('legend',q[0]+' · '+q[1]);box.append(legend);
  if(s.type==='radio'){q[2].forEach((opt,k)=>{
