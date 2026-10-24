@@ -174,12 +174,12 @@ if(process.env.F111_QZ_BROWSER==='1'){
           mime:'application/pdf',peso_oficial:0,pdf_base64:pdfFixture};break;
       case 'qzProgressSaveDraft':
         stats.draft++;
-        assert.ok(String(req.respuestas?.A||'').includes('Respuesta ficticia'),
+        assert.ok(Object.values(req.respuestas||{}).some(x=>String(x).includes('Respuesta ficticia')),
           'student sent expected synthetic answer');
         data={ok:true,estado:'BORRADOR',peso_oficial:0};break;
       case 'qzProgressSubmit':
         stats.submit++;
-        assert.ok(String(req.respuestas?.A||'').includes('Respuesta ficticia'));
+        assert.ok(Object.values(req.respuestas||{}).some(x=>String(x).includes('Respuesta ficticia')));
         data={ok:true,estado:'ENTREGADO',peso_oficial:0};break;
       case 'qzProgressTeacherList':
         stats.teacherList++;
@@ -215,9 +215,9 @@ if(process.env.F111_QZ_BROWSER==='1'){
       const uri=base+'/modulos/quiz_progress.html?grupo=QA-F111-E3&nivel='+nivel+'&leccion='+leccion;
       await live.goto(uri);
       await live.waitForFunction(()=>document.querySelector('#pdfBox iframe')?.title==='Cuestionario original');
-      assert.equal(await live.locator('#answers textarea').count(),5,
+      assert.equal(await live.locator('#answers textarea, #answers fieldset.f111-control').count(),5,
         'five editable sections rendered for '+expected);
-      await live.locator('[data-section="A"]').fill('Respuesta ficticia '+expected);
+      await live.locator('#answers textarea').first().fill('Respuesta ficticia '+expected);
       await live.locator('#saveBtn').click();
       await live.waitForFunction(()=>document.querySelector('#saveState')?.textContent.includes('Avance guardado'));
       await live.locator('#submitBtn').click();
