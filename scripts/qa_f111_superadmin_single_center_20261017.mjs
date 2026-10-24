@@ -91,8 +91,8 @@ if (mainBaseline.includes(newProfileScript)) {
   // Resumen Académico. Conciliar esos DOS paths exactos sin relajar el contrato D1.
   const studentNow='src/student_pc01_f111.js?v=F111PC01RECEIPT20261023';
   const menuNow='src/student_menu_academic_cs21a120.jsx?v=F111PC01RECEIPT20261023';
-  const studentPrev=(mainBaseline.match(/src\\/student_pc01_f111\\.js\\?v=[A-Za-z0-9_.-]+/)||[])[0];
-  const menuPrev=(mainBaseline.match(/src\\/student_menu_academic_cs21a120\\.jsx\\?v=[A-Za-z0-9_.-]+/)||[])[0];
+  const studentPrev=(mainBaseline.match(new RegExp('src/student_pc01_f111[.]js[?]v=[A-Za-z0-9_.-]+'))||[])[0];
+  const menuPrev=(mainBaseline.match(new RegExp('src/student_menu_academic_cs21a120[.]jsx[?]v=[A-Za-z0-9_.-]+'))||[])[0];
   assert(studentPrev&&menuPrev,'Fuentes estudiantiles previas preservadas en main');
   assert.equal(mainHtml.split(studentNow).length-1,1,'Solo un enlace a aviso PC01 actualizado');
   assert.equal(mainHtml.split(menuNow).length-1,1,'Solo un enlace al menú académico actualizado');
