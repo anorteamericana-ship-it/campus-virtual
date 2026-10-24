@@ -11,6 +11,12 @@ function make(tag,text,className){
  if(className)e.className=className;
  return e;
 }
+function previewPC02(){
+ // PC02 no está autorizado en GAS PROD; solo cuestionario de revisión editorial.
+ const url=new URL('modulos/qz_b1_pc02_preview.html',new URL('./',location.href));
+ url.searchParams.set('preview','1');
+ window.open(url.href,'_blank','noopener,noreferrer');
+}
 function preview(){
  const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
  url.searchParams.set('preview','1');
@@ -355,6 +361,15 @@ function renderGrid(container,level){
     gradeBtn.addEventListener('click',openReviewWorkspace);
     card.append(gradeBtn);
     card.append(buildQuizOpenControls());
+  }else if(level==='B1'&&lesson===8){
+    // Solo revisión del material: pista 3 no verificada y GAS PROD restringido a PC01.
+    card.append(make('em','25 preguntas digitalizadas · pendiente pista 3 de audio'));
+    const view=make('button','VISTA PREVIA DOCENTE ↗','f111-tqr-open');
+    view.type='button';
+    view.dataset.f111QuizPreview='B1-L8-QA-ONLY';
+    view.addEventListener('click',previewPC02);
+    card.append(view);
+    card.append(make('em','No habilitado para estudiantes · sin guardado, envío ni calificación'));
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
