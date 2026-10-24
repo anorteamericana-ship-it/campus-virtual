@@ -57,7 +57,7 @@ try{
  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
  const check=page.locator('fieldset[data-key=C1] input');
  assert.equal(await check.count(),4);
- await check.nth(0).check();await check.nth(1).check();await check.nth(2).check();
+ await check.nth(0).check();await check.nth(1).check();await check.nth(2).click();
  assert.equal(await check.nth(2).isChecked(),false,'third selection blocked in two-choice exercise');
  await page.locator('#saveBtn').click();
  await page.waitForFunction(()=>document.querySelector('#saveState').textContent.includes('guardado'));
