@@ -11,6 +11,46 @@ function make(tag,text,className){
  if(className)e.className=className;
  return e;
 }
+// B1 PC02–08: una sola vista de cuestionario PDF y audio MP3 originales,
+// servidos exclusivamente desde Apps Script con sesión de docente y grupo.
+// No hay claves ni binarios Cambridge en Pages, ni se habilita el quiz al mirar.
+function previewB1Protected(lesson){
+ const token=window.getSessionToken?String(window.getSessionToken()||''):'';
+ if(!token||!window.F111_QZ_API_URL){
+  window.alert('Abrí el Campus con tu sesión docente para consultar el material protegido.');
+  return;
+ }
+ if(document.querySelector('[data-f111-b1-private-preview]'))return;
+ const overlay=make('div',null,'f111-tqr-workspace-backdrop');
+ overlay.dataset.f111B1PrivatePreview='true';
+ overlay.setAttribute('role','dialog');
+ overlay.setAttribute('aria-modal','true');
+ overlay.setAttribute('aria-label','Vista previa privada de Progress Check');
+ const shell=make('section',null,'f111-tqr-workspace');
+ const header=make('header',null,'f111-tqr-workspace-header');
+ const ttl=make('div');
+ ttl.append(make('small','PROGRESS CHECK · BÁSICO I · ACCESO DOCENTE'),
+   make('h2','Vista previa del Quiz '+(LESSONS.findIndex(x=>x[0]===lesson)+1)),
+   make('p','Cuestionario y MP3 originales · sin guardado, entrega ni activación de estudiantes'));
+ const close=make('button','CERRAR','f111-tqr-close');close.type='button';
+ header.append(ttl,close);
+ const frame=make('iframe');frame.className='f111-tqr-exam-frame';
+ frame.style.cssText='flex:1;min-height:0;max-height:none;height:100%;width:100%;border:0';
+ frame.title='Progress Check B1 · vista privada docente';
+ const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
+ url.searchParams.set('teacher_preview','1');
+ url.searchParams.set('grupo',QZ_GROUP);
+ url.searchParams.set('nivel','B1');
+ url.searchParams.set('leccion',String(lesson));
+ frame.src=url.href;
+ function dismiss(){overlay.remove();document.removeEventListener('keydown',onKey);}
+ function onKey(e){if(e.key==='Escape'){e.preventDefault();dismiss();}}
+ close.onclick=dismiss;
+ overlay.onclick=e=>{if(e.target===overlay)dismiss();};
+ document.addEventListener('keydown',onKey);
+ shell.append(header,frame);overlay.append(shell);document.body.append(overlay);
+ close.focus();
+}
 function previewPC02(){
  // PC02 no está autorizado en GAS PROD; solo cuestionario de revisión editorial.
  const url=new URL('modulos/qz_b1_pc02_preview.html',new URL('./',location.href));
@@ -361,15 +401,19 @@ function renderGrid(container,level){
     gradeBtn.addEventListener('click',openReviewWorkspace);
     card.append(gradeBtn);
     card.append(buildQuizOpenControls());
-  }else if(level==='B1'&&lesson===8){
-    // Solo revisión del material: pista 3 no verificada y GAS PROD restringido a PC01.
-    card.append(make('em','25 preguntas digitalizadas · pendiente pista 3 de audio'));
-    const view=make('button','VISTA PREVIA DOCENTE ↗','f111-tqr-open');
-    view.type='button';
-    view.dataset.f111QuizPreview='B1-L8-QA-ONLY';
-    view.addEventListener('click',previewPC02);
-    card.append(view);
-    card.append(make('em','No habilitado para estudiantes · sin guardado, envío ni calificación'));
+  }else if(level==='B1'){
+    const track=String(i+1).padStart(2,'0');
+    card.append(make('em','Cuestionario Cambridge 25 puntos · MP3 original '+track+' localizado en Drive privado'));
+    if(lesson===8){
+      const editorial=make('button','VISTA EDITORIAL PC02 ↗','f111-tqr-open');
+      editorial.type='button';editorial.dataset.f111QuizPreview='B1-L8-EDITORIAL';
+      editorial.addEventListener('click',previewPC02);card.append(editorial);
+    }
+    const secure=make('button','VER PDF + AUDIO · PREVIA PROTEGIDA','f111-tqr-open');
+    secure.type='button';secure.dataset.f111B1ProtectedPreview='L'+lesson;
+    secure.addEventListener('click',()=>previewB1Protected(lesson));
+    card.append(secure);
+    card.append(make('em','Solo sesión docente; PC02–PC08 todavía no abiertos a estudiantes de producción.'));
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
