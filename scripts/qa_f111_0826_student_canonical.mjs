@@ -69,7 +69,7 @@ assert(studentRoute.includes('const grupoCanon=String(niveles[nivelCA]?.grupo'))
 assert(studentRoute.includes("postCronoGrupo('getGrupoInfo',{cod_grupo:grupoCanon})"));
 assert(!studentRoute.includes('rawGroups.push(usr.grupo)'));
 assert(calendar.includes('if(vigente && codGrupo!==vigente)setCodGrupo(vigente)'),'Selector debe invalidar React tras traslado');
-assert(menu.includes('student_academic_summary_dom_cs21a113.js?v=F111PC01RECEIPT20261023'),'El resumen invalida caché 0826 y PC01 para leer comentarios del Quiz con estado REVISADO');
+assert(menu.includes('student_academic_summary_dom_cs21a113.js?v=F111PC01G1EVAL20261023'),'El resumen invalida caché 0826 y PC01 para leer comentarios del Quiz con estado REVISADO');
 assert.equal(app.split("'src/cronograma_grupo.jsx?v=F111ATTEND20261021'").length-1,3,'Tres rutas académicas usan el cronograma vigente con edición de asistencia');
 assert(html.includes('src/app.jsx?v=F111ATTROSTER20261021'),'El Campus actualiza entrypoint de lista de asistencia, preservando la ruta académica');
 assert(html.includes('src/sidebar.jsx?v=F111ATTEND20261021'),'El Campus invalida caché de menú');
