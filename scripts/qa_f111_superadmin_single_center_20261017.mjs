@@ -90,7 +90,7 @@ if (mainBaseline.includes(newProfileScript)) {
   // El hotfix estudiantil solo cambia caché del aviso PC01 y el menú de
   // Resumen Académico. Conciliar esos DOS paths exactos sin relajar el contrato D1.
   const studentNow='src/student_pc01_f111.js?v=F111PC01G1EVAL20261023';
-  const menuNow='src/student_menu_academic_cs21a120.jsx?v=F111PC01RECEIPT20261023';
+  const menuNow='src/student_menu_academic_cs21a120.jsx?v=F111PC01G1EVAL20261023';
   const studentPrev=(mainBaseline.match(new RegExp('src/student_pc01_f111[.]js[?]v=[A-Za-z0-9_.-]+'))||[])[0];
   const menuPrev=(mainBaseline.match(new RegExp('src/student_menu_academic_cs21a120[.]jsx[?]v=[A-Za-z0-9_.-]+'))||[])[0];
   assert(studentPrev&&menuPrev,'Fuentes estudiantiles previas preservadas en main');
