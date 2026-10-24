@@ -96,7 +96,14 @@ function build(secciones){
  if(!fields.length)throw Error('El quiz no tiene esquema de respuestas verificado.');
  update();
 }
-function sessionToken(){try{const s=JSON.parse(sessionStorage.getItem('an_usuario')||'{}');return s.token||''}catch(_){return ''}}
+function sessionToken(){
+ try{
+  if(window.parent&&window.parent!==window&&typeof window.parent.getSessionToken==='function'){
+   const token=String(window.parent.getSessionToken()||'');if(token)return token;
+  }
+ }catch(_){}
+ try{const s=JSON.parse(sessionStorage.getItem('an_usuario')||'{}');return s.token||''}catch(_){return ''}
+}
 function context(){return {cod_grupo:group,nivel:level,leccion:lesson};}
 async function api(fn,payload={}){
  if(!apiUrl)throw Error('Este entorno no tiene configurado el servicio QA de quizzes.');
@@ -188,7 +195,9 @@ async function start(){
  update();
  if(!units){setError('La lección no corresponde a un Progress Check.');return}
  if(preview){build([{id:'A',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3,4]},{id:'B',tipo_respuesta:'TEXTO_GUIADO',items:[]},{id:'C',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3]}]);$('badge').textContent='Vista previa QA';setStatus('Diseño de muestra: sin datos ni guardado.');$('pdfInfo').textContent='Vista previa: el PDF original se entrega desde el servidor protegido en la fecha autorizada.';return;}
- apiUrl=String(window.F111_QZ_QA_API_URL||'').trim();token=sessionToken();
+ // QA URL explícita, o la API ya configurada en el Campus que hospeda el iframe.
+ let parentApi='';try{if(window.parent&&window.parent!==window)parentApi=String(window.parent.F111_QZ_API_URL||'')}catch(_){}
+ apiUrl=String(window.F111_QZ_QA_API_URL||parentApi||'').trim();token=sessionToken();
  if(!apiUrl||!token||!group){setError('Vista QA todavía no habilitada: falta sesión, grupo o configuración del backend aislado.');return;}
  try{
   const meta=await api('qzProgressGet',context());
