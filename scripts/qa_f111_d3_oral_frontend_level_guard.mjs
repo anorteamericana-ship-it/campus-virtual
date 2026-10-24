@@ -22,7 +22,7 @@ function extract(name){
  const b=html.indexOf('{',a);let depth=0;
  for(let i=b;i<html.length;i++){
   if(html[i]==='{')depth++;
-  else if(html[i]==='}'&&--depth===0)return html.slice(a,i+1);
+  else if(html[i]==='}'&&--depth===0)return html.slice(html.slice(a-6,a)==='async '?a-6:a,i+1);
  }
  throw Error('No cierra '+name);
 }
