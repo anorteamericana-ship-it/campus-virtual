@@ -1,6 +1,37 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · D3/D4 R14 · RECURSOS QA DEDICADOS PREPARADOS Y VERIFICADOS (24-oct-2026) · NO-GO EJECUCIÓN
+
+**MANDATO Y LÍMITES:** continuar desde R13, en los mismos PR existentes; NO repetir E1, E2 ni R10; no tomar ni modificar materiales QA históricos, estudiantes, notas o producción. Este corte creó solamente **recursos Drive nuevos de QA**, sin script API o despliegues. No fusionar #511/#55/#65, no usar `clasp push` ni `clasp deploy` productivo.
+
+**EVIDENCIA INICIAL (SOLO LECTURA):** PR #511 en `7cbc5033`, backend #55 `ae2f268`, #65 `e4cdaacf` (todos OPEN/DRAFT/no fusionados). Búsqueda por nombres exactos futuros `F111_R12_QA_ORALES_D3D4_20261024`, `F111_R12_QA_APOLLO_ORALES`, `F111_R12_QA_OPERATIVO_ORALES`: **0 hallazgos previos**, sin reutilizar `CAMPUS_QA_CS21A211_ISOLATED_RESOURCES`, `APOLLO_QA_NUEVA`, `CAMPUS_OPERATIVO_QA` ni hojas QZ32. Se confirmó en el turno anterior que QA Apps Script no estaba acreditado.
+
+**CREACIONES LIMITADAS A DRIVE / IDENTIDADES NUEVAS (VERIFICADAS POR READBACK):**
+- Carpeta exclusiva [`F111_R12_QA_ORALES_D3D4_20261024`](https://drive.google.com/drive/folders/1M5FdRI0youXWtcgPYuCEUgPW5-eofXVb), ID `1M5FdRI0youXWtcgPYuCEUgPW5-eofXVb`. El prefijo cumple `F111_R12_QA_`. Es candidata a carpeta de documentos QA, NO equivale a configuración `DOCUMENTOS_FOLDER_ID` del script.
+- [Apollo QA nuevo](https://docs.google.com/spreadsheets/d/1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4/edit), ID `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4`, título `F111_R12_QA_APOLLO_ORALES_D3D4_20261024`.
+- [Operativo QA nuevo](https://docs.google.com/spreadsheets/d/12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc/edit), ID `12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc`, título `F111_R12_QA_OPERATIVO_ORALES_D3D4_20261024`.
+- **Readback por Google Drive list_folder:** la carpeta contiene exactamente **2/2 hojas nuevas**, con distintos IDs; sus metadatos de padres muestran ambos IDs bajo la carpeta exclusiva. **Readback Google Sheets:** ambas incluyen pestañas `F111_R12_CONTROL` y `F111_R12_FIXTURES_PLAN`; `F111_R12_CONTROL!A1` de ambos libros es exactamente `F111_R12_QA_ISOLATED`: **2/2 sellos válidos**.
+- En Apollo se planificaron **4 identificadores de alumnos ficticios (B1/B2/I1/I2)**, más docente QA previsto, docente ajeno QA previsto y prueba de rol estudiante. En Operativo hay **4 grupos QA propuestos** `QA-R12-{B1,B2,I1,I2}-L09`, un caso L9 por nivel. Las filas se marcaron **PENDIENTE_ALTA_QA**, **PENDIENTE_CALENDARIO_QA**, **NO_EJECUTAR_E2E**. **Son un manifiesto de fixtures, NO registros académicos de hojas `ESTATUS`/`DATOS`, no matrículas CA, no `CALENDARIO_LECCIONES` real, no cuentas del login y NO tokens.** No se crearon notas, PDF ni acciones académicas.
+
+**COMPUERTA DE AISLAMIENTO AÚN BLOQUEADA:** no se encontró entre las acciones conectadas una función para crear/ejecutar un proyecto **Google Apps Script QA** de forma comprobable. El conector Drive crea archivos Docs/Sheets/Slides, no proyectos Apps Script. No hay `ScriptApp.getScriptId()` de QA, `F111_R12_QA_ENABLE` ni `F111_R12_QA_*`/ `F111_R12_PROD_*` configuradas, ni globals `OPERATIVO_ID`/`SHEET_ID`/`DOCUMENTOS_FOLDER_ID` readback desde un proyecto nuevo. Tampoco existe sesión `teacher` de grupo/lección QA ni usuarios autenticables; no se acreditaron las funciones en un runtime GAS aislado. **NO ejecutar siquiera la llamada docente de banco** hasta superar preflight real. Los recursos Drive creados NO autorizan pruebas de notas ni PDF por sí mismos. No afirmar que un ID nuevo reemplaza a la identidad QA del script.
+
+**MÉTRICAS CON DENOMINADOR R14 (DIFERENCIAR PREPARACIÓN DE EJECUCIÓN):**
+- Carpeta exclusiva creada y verificada: **1/1 (100% preparación Drive)**.
+- Hojas nuevas separadas verificadas: **2/2 (100% preparación Drive)**; sello exacto en A1 **2/2 (100%)**.
+- Plan de cuatro casos QA documentado: **4/4 niveles (100% PLAN, 0 matriculados)**.
+- Proyecto Apps Script QA creado/identificado y readback: **0/1 (0%)**.
+- Cuentas/tokens ficticios autenticados: **0/3 roles mínimos (0%)**.
+- Script Properties, globals y rutas privadas instalados/verificados: **0/1 entorno GAS (0%)**.
+- Banco/denegaciones auténticas GAS: **0/4 niveles (0%)**.
+- Borrador+cierre+nota 15%+PDF+respaldo verificados GAS: **0/4 expedientes (0%)**.
+- Código F111 modificado en R14: **0 archivos del motor**, QA histórico repetido: **0**, PR fusionados: **0/3**, despliegues: **0**, registros/alumnos/nota/PDF productivos tocados: **0**.
+- F111 global **56% histórico**; no aumenta por crear recursos QA incompletos.
+
+**SIGUIENTE PUERTA ÚNICA:** obtener acceso autorizado a la creación o ID de un **único Apps Script QA autónomo** (sin afectar `@473`); sólo allí configurar las Script Properties que concilian exactamente los tres IDs nuevos frente a los IDs institucionales, con `F111_R12_QA_ENABLE` habilitado *solo* tras verificación de su propio ID. Leer fuente QA y conciliar delta #55+#65 sin reemplazar proyecto productivo; instalar esquema `ESTATUS/DATOS`, `GRUPOS`, `CALENDARIO_LECCIONES` únicamente con datos ficticios en los libros nuevos, registrar cuentas/tokens `teacher`, `teacher` ajeno y `student` en auth aislada y sesión de clase QA en riel curso; ejecutar `F111_R12_QA_PREFLIGHT` read-only, luego cuatro lecturas/negaciones de banco y solo entonces **una evaluación por nivel**, sin reintento de cierre incierto, conciliar notas y PDF+backup. Validar rollback QA. Mantener 0 escritura a Campus @473, Quiz @477, Pages y estudiantes.
+
+---
+
 ## F111 · D3/D4 R13 · AISLAMIENTO QA NO ACREDITADO — BLOQUEO SEGURO (24-oct-2026)
 
 **PROPÓSITO:** verificar que haya un proyecto Apps Script QA auténtico y recursos independientes ANTES de usar el ejecutor `tests/qa_f111_r12_appsscript_editor_only.js`; no repetir E1, E2, D5 R10 ni alterar alumnos.
