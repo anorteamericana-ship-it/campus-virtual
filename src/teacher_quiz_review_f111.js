@@ -20,6 +20,7 @@ function previewB1Protected(lesson){
   window.alert('Abrí el Campus con tu sesión docente para consultar el material protegido.');
   return;
  }
+ if(!selectedB1Group){window.alert('Seleccioná el grupo B1 antes de abrir materiales protegidos.');return;}
  if(document.querySelector('[data-f111-b1-private-preview]'))return;
  const overlay=make('div',null,'f111-tqr-workspace-backdrop');
  overlay.dataset.f111B1PrivatePreview='true';
@@ -39,7 +40,7 @@ function previewB1Protected(lesson){
  frame.title='Progress Check B1 · vista privada docente';
  const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
  url.searchParams.set('teacher_preview','1');
- url.searchParams.set('grupo',QZ_GROUP);
+ url.searchParams.set('grupo',selectedB1Group);
  url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(lesson));
  frame.src=url.href;
@@ -63,7 +64,8 @@ function preview(){
  url.searchParams.set('rol','docente');
  window.open(url.href,'_blank','noopener,noreferrer');
 }
-const QZ_GROUP='B1-KJ18-C3-0826';
+const QZ_GROUP='B1-KJ18-C3-0826'; // PC01 histórico, no cambiar.
+let selectedB1Group='',r9Groups=[],r9Loaded=false,r9Loading=false;
 const qzContext={cod_grupo:QZ_GROUP,nivel:'B1',leccion:4};
 async function postQuiz(fn,data){
  const token=window.getSessionToken?window.getSessionToken():'';
@@ -78,6 +80,65 @@ async function postQuiz(fn,data){
  let j;try{j=await res.json()}catch(_){throw Error('Sin respuesta del servidor')}
  if(!res.ok||!j||j.ok!==true)throw Error(j&&j.error||'Operación no disponible');
  return j;
+}
+// R9: grupos B1 autorizados, definidos por el servidor y no por parámetros de URL.
+async function loadR9Groups(done){
+ if(r9Loaded||r9Loading)return;
+ r9Loading=true;
+ try{
+  const r=await postQuiz('qzProgressTeacherB1Groups',{});
+  r9Groups=(Array.isArray(r.grupos)?r.grupos:[]).filter(g=>
+   g.nivel==='B1'&&/^[A-Z0-9-]{5,65}$/.test(String(g.cod_grupo||'')));
+  r9Loaded=true;
+ }catch(_){r9Groups=[];r9Loaded=false;}
+ finally{r9Loading=false;if(done)done();}
+}
+function r9OpenControls(lesson){
+ const wrap=make('div',null,'f111-tqr-r9-controls'),
+       status=make('small','Seleccioná un grupo B1 para consultar la apertura.','f111-tqr-feedback'),
+       button=make('button','CONSULTANDO…','f111-tqr-activate');
+ button.type='button';button.disabled=true;wrap.append(button,status);
+ const ctx=()=>({cod_grupo:selectedB1Group,nivel:'B1',leccion:lesson});
+ async function refresh(){
+  button.disabled=true;
+  if(!selectedB1Group){status.textContent='Elegí el grupo autorizado.';return;}
+  const group=selectedB1Group;
+  status.textContent='Consultando calendario y apertura…';
+  try{
+   const r=await postQuiz('qzProgressTeacherAvailability',ctx());
+   if(!wrap.isConnected||group!==selectedB1Group)return;
+   if(r.digital_disponible!==true)throw Error('quiz_no_digitalizado');
+   const opened=r.estado==='ABIERTO';
+   button.dataset.r9State=r.estado;
+   button.textContent=opened?'CERRAR QUIZ':'ACTIVAR QUIZ PARA EL GRUPO';
+   button.disabled=!opened&&r.puede_abrir!==true;
+   status.textContent=opened?'Abierto: acceso solo para estudiantes matriculados.'
+      :r.puede_abrir===true?'La fecha programada ya llegó; requiere tu confirmación.':
+       'No se puede abrir todavía: fecha futura, clase suspendida o rol no autorizado.';
+  }catch(e){
+   if(!wrap.isConnected||group!==selectedB1Group)return;
+   button.disabled=true;status.textContent='No disponible: '+String(e.message||'error');
+  }
+ }
+ button.onclick=async()=>{
+  if(button.disabled||!selectedB1Group)return;
+  const group=selectedB1Group,opened=button.dataset.r9State==='ABIERTO',
+        newState=opened?'CERRADO':'ABIERTO',index=LESSONS.findIndex(([l])=>l===lesson)+1;
+  if(!window.confirm('¿'+(opened?'Cerrar':'Habilitar')+' Quiz '+index+' · Lección '+lesson+' para '+group+'?'+
+      (opened?' Las entregas existentes se conservarán.':' Solo matrícula CA. Peso oficial 0%.')))return;
+  button.disabled=true;status.textContent='Actualizando y leyendo estado…';
+  try{
+   const payload={cod_grupo:group,nivel:'B1',leccion:lesson,estado:newState};
+   const r=await postQuiz('qzProgressTeacherSetAvailability',payload);
+   if(r.estado!==newState)throw Error('operacion_no_confirmada');
+   const verify=await postQuiz('qzProgressTeacherAvailability',payload);
+   if(verify.estado!==newState)throw Error('lectura_no_confirmada');
+   status.textContent=newState==='ABIERTO'?'Quiz habilitado.':'Quiz cerrado.';
+  }catch(e){status.textContent='No se confirmó: '+String(e.message||'error');}
+  finally{void refresh();}
+ };
+ queueMicrotask(()=>void refresh());
+ return wrap;
 }
 // Revisión ampliada: listado primero, luego examen REAL en vista de solo lectura.
 // No crea exámenes ni reescribe notas oficiales o comentarios de asistencia.
@@ -383,6 +444,22 @@ function buildQuizOpenControls(){
 }
 function renderGrid(container,level){
  container.replaceChildren();
+ if(level==='B1'){
+   const groupLabel=make('label',null,'f111-tqr-r9-select');
+   groupLabel.append(make('strong','Grupo B1 · PC02–PC08'));
+   const picker=make('select');picker.setAttribute('aria-label','Grupo B1 autorizado');
+   const none=make('option','Elegí el grupo B1…');none.value='';picker.append(none);
+   for(const g of r9Groups){const o=make('option',g.cod_grupo);o.value=g.cod_grupo;picker.append(o);}
+   picker.value=selectedB1Group;
+   picker.disabled=!r9Loaded||!r9Groups.length;
+   picker.onchange=()=>{selectedB1Group=picker.value;renderGrid(container,level);};
+   groupLabel.append(picker);
+   if(!r9Loaded){
+     groupLabel.append(make('small',r9Loading?'Consultando grupos…':'Cargando grupos autorizados…'));
+     if(!r9Loading)void loadR9Groups(()=>{if(container.isConnected)renderGrid(container,level)});
+   }
+   container.append(groupLabel);
+ }
  LESSONS.forEach(([lesson,units],i)=>{
   const ready=level==='B1'&&lesson===4;
   const card=make('div',null,'f111-tqr-card'+(ready?' is-ready':''));
@@ -413,7 +490,8 @@ function renderGrid(container,level){
     secure.type='button';secure.dataset.f111B1ProtectedPreview='L'+lesson;
     secure.addEventListener('click',()=>previewB1Protected(lesson));
     card.append(secure);
-    card.append(make('em','Solo sesión docente; PC02–PC08 todavía no abiertos a estudiantes de producción.'));
+    card.append(r9OpenControls(lesson));
+    card.append(make('em','La apertura es individual por lección y docente. Consultar material no activa la prueba.'));
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
@@ -471,6 +549,11 @@ function installStyle(){
  '.f111-tqr-level[aria-pressed=true]{border:2px solid var(--f111-level-color);background:#F5F9FE}',
  '.f111-tqr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}',
  '.f111-tqr-card{border:1px solid #DAE3ED;background:#F9FBFD;border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px}',
+ '.f111-tqr-r9-select{grid-column:1/-1;display:grid;gap:7px;padding:12px;background:#edf6ff;border:1px solid #b7d1ea;border-radius:10px}',
+ '.f111-tqr-r9-select strong{color:#153c62;font-size:12px}',
+ '.f111-tqr-r9-select select{padding:10px;max-width:450px;width:100%;background:white;border:1px solid #b5cee3;border-radius:8px;color:#143b63;font:inherit}',
+ '.f111-tqr-r9-select small{color:#5a7995;font-size:10px}',
+ '.f111-tqr-r9-controls{display:grid;gap:8px;margin-top:8px}',
  '.f111-tqr-card.is-ready{background:#FFFCED;border-color:#E0C271}',
  '.f111-tqr-card small{font-size:9px;color:#657A91;font-weight:900;letter-spacing:.04em}',
  '.f111-tqr-card strong{font-size:14px;font-weight:900;color:#143C63}',
