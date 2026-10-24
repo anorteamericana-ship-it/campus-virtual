@@ -19,7 +19,7 @@ try{
  page.on('dialog',async dlg=>dlg.accept());
  page.on('pageerror',err=>console.error('R9_SYNTH_BROWSER_PAGEERROR '+String(err.message||err)));
  page.on('console',message=>{if(message.type()==='error')console.error('R9_SYNTH_BROWSER_CONSOLE '+message.text());});
- await page.route(host+'/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<html><head></head><body><div id="root"><section data-screen-label="Docente · Exámenes"><h1>EXÁMENES DEL DOCENTE</h1></section></div></body></html>'}));
+ await page.route(host+'/**',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:'<html><head></head><body><div id="root"><section data-screen-label="Docente · Exámenes"><h1>EXÁMENES DEL DOCENTE</h1></section></div></body></html>'}));
  await page.route(api+'**',route=>{
   const fn=new URL(route.request().url()).searchParams.get('fn');
   const body=JSON.parse(route.request().postData()||'{}');
@@ -59,7 +59,7 @@ try{
  assert.equal(teacherCalls.includes('qzProgressTeacherB1Groups'),true);
  await page.close();
  const pupil=await browser.newPage({viewport:{width:390,height:844}});
- await pupil.route(host+'/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<html><head></head><body><div id="root"><section data-screen-label="Estudiante · Evaluaciones"><h1>Evaluaciones</h1></section></div></body></html>'}));
+ await pupil.route(host+'/**',route=>route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:'<html><head></head><body><div id="root"><section data-screen-label="Estudiante · Evaluaciones"><h1>Evaluaciones</h1></section></div></body></html>'}));
  let listActive=true;
  await pupil.route(api+'**',route=>{
   const fn=new URL(route.request().url()).searchParams.get('fn');
