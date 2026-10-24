@@ -24,6 +24,7 @@
       if(!res.ok||v?.ok!==true||v.quiz_id!=='IC5_B1_WQ01'||Number(v.peso_oficial)!==0)return null;
       if(!['ENTREGADO','REVISADO'].includes(String(v.estado)))return null;
       return {estado:v.estado,nota:v.estado==='REVISADO'&&v.nota!=null&&
+        typeof v.nota!=='boolean'&&String(v.nota).trim()!==''&&
         Number.isFinite(Number(v.nota))&&Number(v.nota)>=0&&Number(v.nota)<=100?Number(v.nota):null,
         comentario:v.estado==='REVISADO'?String(v.comentario_docente||'').trim():'',
         entregado_at:String(v.entregado_at||'')};
