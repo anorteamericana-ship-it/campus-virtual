@@ -444,6 +444,22 @@ function buildQuizOpenControls(){
 }
 function renderGrid(container,level){
  container.replaceChildren();
+ if(level==='B1'){
+   const groupLabel=make('label',null,'f111-tqr-r9-select');
+   groupLabel.append(make('strong','Grupo B1 · PC02–PC08'));
+   const picker=make('select');picker.setAttribute('aria-label','Grupo B1 autorizado');
+   const none=make('option','Elegí el grupo B1…');none.value='';picker.append(none);
+   for(const g of r9Groups){const o=make('option',g.cod_grupo);o.value=g.cod_grupo;picker.append(o);}
+   picker.value=selectedB1Group;
+   picker.disabled=!r9Loaded||!r9Groups.length;
+   picker.onchange=()=>{selectedB1Group=picker.value;renderGrid(container,level);};
+   groupLabel.append(picker);
+   if(!r9Loaded){
+     groupLabel.append(make('small',r9Loading?'Consultando grupos…':'Cargando grupos autorizados…'));
+     if(!r9Loading)void loadR9Groups(()=>{if(container.isConnected)renderGrid(container,level)});
+   }
+   container.append(groupLabel);
+ }
  LESSONS.forEach(([lesson,units],i)=>{
   const ready=level==='B1'&&lesson===4;
   const card=make('div',null,'f111-tqr-card'+(ready?' is-ready':''));
@@ -474,7 +490,8 @@ function renderGrid(container,level){
     secure.type='button';secure.dataset.f111B1ProtectedPreview='L'+lesson;
     secure.addEventListener('click',()=>previewB1Protected(lesson));
     card.append(secure);
-    card.append(make('em','Solo sesión docente; PC02–PC08 todavía no abiertos a estudiantes de producción.'));
+    card.append(r9OpenControls(lesson));
+    card.append(make('em','La apertura es individual por lección y docente. Consultar material no activa la prueba.'));
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
@@ -532,6 +549,11 @@ function installStyle(){
  '.f111-tqr-level[aria-pressed=true]{border:2px solid var(--f111-level-color);background:#F5F9FE}',
  '.f111-tqr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}',
  '.f111-tqr-card{border:1px solid #DAE3ED;background:#F9FBFD;border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px}',
+ '.f111-tqr-r9-select{grid-column:1/-1;display:grid;gap:7px;padding:12px;background:#edf6ff;border:1px solid #b7d1ea;border-radius:10px}',
+ '.f111-tqr-r9-select strong{color:#153c62;font-size:12px}',
+ '.f111-tqr-r9-select select{padding:10px;max-width:450px;width:100%;background:white;border:1px solid #b5cee3;border-radius:8px;color:#143b63;font:inherit}',
+ '.f111-tqr-r9-select small{color:#5a7995;font-size:10px}',
+ '.f111-tqr-r9-controls{display:grid;gap:8px;margin-top:8px}',
  '.f111-tqr-card.is-ready{background:#FFFCED;border-color:#E0C271}',
  '.f111-tqr-card small{font-size:9px;color:#657A91;font-weight:900;letter-spacing:.04em}',
  '.f111-tqr-card strong{font-size:14px;font-weight:900;color:#143C63}',
