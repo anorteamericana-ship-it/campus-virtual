@@ -24,6 +24,6 @@ assert(teacher.includes("}else if(level==='B1'){"),'all B1 PC02-08 have protecte
 assert(teacher.includes("editorial.dataset.f111QuizPreview='B1-L8-EDITORIAL'"),'PC02 preserves editorial mock');
 assert(teacher.includes('previewPC02'),'teacher preview opens correct non-live page');
 assert(!teacher.includes("qzProgressTeacherSetAvailability',Object.assign({},qzContext,{leccion:8"),'never activate L8 via current PC01 context');
-assert(campus.includes('teacher_quiz_review_f111.js?v=F111B1R10ROUTING20261024'),'teacher asset cache updated');
+assert(campus.includes('teacher_quiz_review_f111.js?v=F111B1R10GROUPONCE20261024'),'teacher asset cache updated');
 assert(teacher.includes('previewB1Protected'),'all 8 quiz material accessible only through authenticated teacher route');
 console.log('PASS F111 PC02 E1: authentic units 3-4 B1 L8, sections 4+5+5+5+6=25, original track 02, protected preview, no student writes');

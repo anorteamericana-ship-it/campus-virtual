@@ -51,6 +51,17 @@ function previewB1Protected(lesson,authorizedGroup){
  shell.append(header,frame);overlay.append(shell);document.body.append(overlay);
  close.focus();
 }
+// R10: one groups lookup per session, shared by PC02–08 (not seven Drive reads).
+// Reset on account switch; failed requests are retryable. No mutable server state.
+let b1GroupsCacheToken='',b1GroupsCache=null;
+function authorizedB1Groups(){
+ const token=window.getSessionToken?String(window.getSessionToken()||''):'';
+ if(token!==b1GroupsCacheToken){b1GroupsCacheToken=token;b1GroupsCache=null;}
+ if(!b1GroupsCache)b1GroupsCache=postQuiz('qzProgressTeacherB1Groups',{}).catch(error=>{
+  b1GroupsCache=null;throw error;
+ });
+ return b1GroupsCache;
+}
 // R9: the assigned teacher explicitly selects a B1 group; no automatic opening.
 // Only the backend decides if the lesson/date/role permits activation.
 function buildB1TeacherOpenControls(lesson){
@@ -98,7 +109,7 @@ function buildB1TeacherOpenControls(lesson){
   }catch(e){status.textContent='Cambio no confirmado: '+String(e.message||e);}
   finally{busy=false;select.disabled=false;void refresh();}
  });
- postQuiz('qzProgressTeacherB1Groups',{}).then(data=>{
+ authorizedB1Groups().then(data=>{
   if(!wrap.isConnected)return;
   const groups=(Array.isArray(data.grupos)?data.grupos:[])
    .filter(x=>x.nivel==='B1'&&typeof x.cod_grupo==='string');
