@@ -76,6 +76,12 @@ try{
   await page.waitForTimeout(250);
   const after=await page.evaluate(()=>window.__rootCallbacks);
   assert.ok(after-initial<15,state+': unbounded observer callbacks: '+(after-initial));
+  // React may remove an injected child without replacing its enclosing DIV.
+  // The observer must restore the card without producing duplicates or new API calls.
+  await card.evaluate(node=>node.remove());
+  await page.waitForFunction(()=>!!document.querySelector('[data-f111-student-pc01]'));
+  assert.equal(await card.count(),1,state+': card should recover after React child replacement');
+  assert.equal(await card.isVisible(),true,state+': recovered card remains visible');
   assert.deepEqual(await page.evaluate(()=>window.__apiCalls),
    ['qzProgressStudentActive','qzProgressMyAttempt'],state+': no repeated polling');
   count++;
