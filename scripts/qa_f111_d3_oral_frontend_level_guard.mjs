@@ -46,7 +46,7 @@ const ctx=vm.createContext({
   return {solo_docente:true,version:'SIM',nivel:body.nivel,leccion:body.leccion,banco:bank};
  },
  document:{getElementById:()=>field},
- oralLockedF111:()=>false,toast:x=>notifications.push(x),
+ oralLockedF111:ev=>['CERRADO','PDF_GENERADO'].includes(String(ev?.ESTADO||'').toUpperCase()),toast:x=>notifications.push(x),
  String,Number,Object,Array
 });
 for(const name of ['loadPrivateBankF111','questionBankForLevelF111','originalBankF111',
