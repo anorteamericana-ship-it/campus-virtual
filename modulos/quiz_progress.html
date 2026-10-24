@@ -10,6 +10,11 @@
 .f111-original-audio{margin-top:12px;background:#eaf3fe;border:1px solid #bad3ef;padding:15px;border-radius:12px;color:#154678}
 .f111-original-audio strong{display:block;font-size:13px;margin-bottom:8px}
 .f111-original-audio audio{display:block;width:100%;max-width:520px}
+.f111-control{border:0;padding:0;margin:0;display:grid;gap:5px}
+.f111-control legend{font-size:12px;font-weight:800;color:#3B5778;padding:4px 0}
+.f111-control label{display:flex;align-items:center;gap:9px;border:1px solid #d5dfed;border-radius:8px;padding:9px;font-size:12px;cursor:pointer}
+.f111-control label:has(input:checked){background:#fff5d5;border-color:#d7b351}
+.f111-control input{accent-color:#0b4ea2}.f111-control input:disabled{cursor:not-allowed}
 :root[data-level=B1]{--accent:#E4BB39;--accent-soft:#FFF6DA}:root[data-level=B2]{--accent:#DE4840;--accent-soft:#FFF0EF}:root[data-level=I1]{--accent:#386FDA;--accent-soft:#EDF3FF}:root[data-level=I2]{--accent:#27915A;--accent-soft:#EBFAF0}
 @media(max-width:870px){.grid{grid-template-columns:1fr}.pdfBox{height:56vh;min-height:320px}.answers{max-height:none}.intro{display:block}.intro>.chip{margin-top:14px}.footer{align-items:flex-start;flex-direction:column}.footer .status{max-width:none}.wrap{padding:8px}.top{border-radius:12px}.card{border-radius:13px}}
 </style></head><body>
@@ -62,6 +67,52 @@ function update(){
  $('verifyBtn').hidden=!uncertainSubmit;
  $('verifyBtn').disabled=busy;
  document.querySelectorAll('#answers textarea').forEach(el=>{el.readOnly=submitted||uncertainSubmit||expired;});
+ document.querySelectorAll('#answers fieldset.f111-control input').forEach(el=>{el.disabled=submitted||uncertainSubmit||expired||preview||teacherPreview;});
+}
+// D5-R3: controles por apartado B1, sin claves ni preguntas Cambridge en Pages.
+const B1_CONTROL_MODES={
+ 8:{A:'o3',B:'o3',C:'l5'},13:{C:'m4x2',E:'l7'},
+ 16:{A:'o3',E:'o3',G:'m6x3'},21:{F:'m4x2'},
+ 24:{A:'o3',B:'l6'},28:{A:'o3',C:'o2',D:'l5'},
+ 30:{A:'o3',E:'o3'}
+};
+function decorateB1(root){
+ if(level!=='B1'||!B1_CONTROL_MODES[lesson])return;
+ const config=B1_CONTROL_MODES[lesson];
+ for(const ta of Array.from(root.querySelectorAll('textarea[data-section]'))){
+  const key=ta.dataset.section,mode=config[key[0]];
+  if(!mode||(lesson===30&&key==='E4'))continue;
+  const multi=mode[0]==='m',size=Number(mode[1]),
+        max=multi?Number(mode.split('x')[1]):1;
+  if(!size||size>8||!max||max>size)continue;
+  const fieldset=document.createElement('fieldset');
+  fieldset.className='f111-control';fieldset.dataset.key=key;
+  const legend=document.createElement('legend');legend.textContent=ta.getAttribute('aria-label')||key;
+  fieldset.appendChild(legend);
+  for(let i=0;i<size;i++){
+   const val=mode[0]==='l'?String.fromCharCode(97+i):String(i+1);
+   const label=document.createElement('label'),input=document.createElement('input');
+   input.type=multi?'checkbox':'radio';input.name='f111-'+key;input.value=val;
+   const caption=document.createElement('span');
+   caption.textContent=mode[0]==='l'?'Respuesta '+val+' del PDF':'Opción '+val+' del PDF';
+   label.append(input,caption);fieldset.append(label);
+   input.addEventListener('change',()=>{
+    const chosen=Array.from(fieldset.querySelectorAll('input:checked')).map(el=>el.value);
+    if(multi&&chosen.length>max){input.checked=false;return;}
+    response[key]=multi?chosen.join(','):(chosen[0]||'');
+    dirty=true;setStatus('Cambios por guardar…');update();
+    clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);
+   });
+  }
+  ta.replaceWith(fieldset);
+ }
+ restoreB1();
+}
+function restoreB1(){
+ document.querySelectorAll('#answers fieldset.f111-control').forEach(set=>{
+  const chosen=String(response[set.dataset.key]||'').split(',').map(x=>x.trim());
+  set.querySelectorAll('input').forEach(input=>{input.checked=chosen.includes(input.value);});
+ });
 }
 function build(secciones){
  const root=$('answers'),frag=document.createDocumentFragment();root.replaceChildren();fields=[];
@@ -93,6 +144,7 @@ function build(secciones){
   frag.appendChild(box);
  }
  root.appendChild(frag);
+ decorateB1(root);
  if(!fields.length)throw Error('El quiz no tiene esquema de respuestas verificado.');
  update();
 }
@@ -222,6 +274,7 @@ async function start(){
     const past=await api('qzProgressMyAttempt',context());
     for(const field of fields){if(past.respuestas?.[field.key])response[field.key]=String(past.respuestas[field.key]);}
     document.querySelectorAll('[data-section]').forEach(el=>{el.value=response[el.dataset.section]||''});
+     restoreB1();
     submitted=['ENTREGADO','REVISADO'].includes(past.estado);
     expired=!meta.disponible_hoy;
     if(submitted){setStatus(past.estado==='REVISADO'?'Revisado · '+(past.resultado||'')+' · '+(past.comentario_docente||''):'Entregado · pendiente de revisión');$('badge').textContent='Entregado';}
