@@ -6,6 +6,9 @@ on:
   pull_request:
     paths:
       - 'modulos/quiz_progress.html'
+      - 'modulos/qz_b1_pc02_preview.html'
+      - 'scripts/qa_f111_b1_audio_ui_e1.mjs'
+      - 'scripts/qa_f111_b1_pc02_preview_e1.mjs'
       - 'modulos/qz_b1_pc01_digital.html'
       - 'src/student_pc01_f111.js'
       - 'src/student_academic_summary_dom_cs21a113.js'
@@ -56,6 +59,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: PC01 real Evaluaciones DOM contract, five synthetic states
         run: node scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs
+      - name: B1 original audio 8 tracks in Chromium with synthetic protected API
+        run: node scripts/qa_f111_b1_audio_ui_e1.mjs
+      - name: PC02 editorial source and private-preview safety
+        run: node scripts/qa_f111_b1_pc02_preview_e1.mjs
       - name: Render 32 student + 32 teacher quiz previews offline
         env:
           F111_QZ_BROWSER: '1'
