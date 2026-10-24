@@ -39,7 +39,7 @@ async function wire(page,type){
   ?'<section data-screen-label="Docente · Exámenes"><h2>EXÁMENES DEL DOCENTE</h2></section>'
   :'<section data-screen-label="Estudiante · Evaluaciones"><h2>Evaluaciones del estudiante</h2></section>';
  const body='<!doctype html><html lang="es"><head><meta charset="utf-8"></head><body>'+
-  '<div id="root">'+section+'</div><script>window.getSessionToken=()=>window.__r10Token||"SYNTHETIC_R10_TOKEN";window.F111_QZ_API_URL="'+API+'";</script>'+
+  '<div id="root">'+section+'</div><script>window.getSessionToken=()=>window.__r10Token===undefined?"SYNTHETIC_R10_TOKEN":window.__r10Token;window.F111_QZ_API_URL="'+API+'";</script>'+
   '<script src="'+ROOT+'/src/'+type+'.js"></script></body></html>';
  await page.route(ROOT+'/'+type,r=>r.fulfill({status:200,contentType:'text/html',body}));
 }
