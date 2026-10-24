@@ -26,18 +26,18 @@ assert(academic.includes("pc01Points(score)"),'25-point conversion');
 assert(academic.includes('Ponderación oficial 0%'),'explicit formative weight');
 assert(academic.includes("return null;} //".split(' //')[0]),'backend failure is never treated as successful review');
 assert(academic.includes('esc(q.comentario'),'teacher comments HTML escaped');
-assert(campus.includes('student_pc01_f111.js?v=F111PC01RECEIPT20261023'),'student cache bust');
-assert(campus.includes('student_menu_academic_cs21a120.jsx?v=F111PC01RECEIPT20261023'),'menu cache bust');
-assert(menu.includes('student_academic_summary_dom_cs21a113.js?v=F111PC01RECEIPT20261023'),'summary cache bust');
+assert(campus.includes('student_pc01_f111.js?v=F111PC01G1EVAL20261023'),'student cache bust');
+assert(campus.includes('student_menu_academic_cs21a120.jsx?v=F111PC01G1EVAL20261023'),'menu cache bust');
+assert(menu.includes('student_academic_summary_dom_cs21a113.js?v=F111PC01G1EVAL20261023'),'summary cache bust');
 assert(!student.includes('localStorage')&&!student.includes('sessionStorage'),'no locally forged state');
 const begin=academic.indexOf('  async function ownPc01(portal){');
 const end=academic.indexOf('  function read(codigo){',begin);
 assert(begin>0&&end>begin,'isolated own review readback');
-async function mock(state,group='B1-KJ18-C3-0826'){
+async function mock(state,group='B1-KJ18-C3-0826',note=24){
  const calls=[];
  const ctx={pc01Target:'B1-KJ18-C3-0826',window:{getSessionToken:()=> 'SYNTHETIC_TOKEN',F111_QZ_API_URL:'https://qa.invalid/qz'},fetch:async(url,opt)=>{
   calls.push(JSON.parse(opt.body));
-  return {ok:true,json:async()=>({ok:true,quiz_id:'IC5_B1_WQ01',estado:state,nota:24,comentario_docente:'Improve questions one through four',peso_oficial:0})};
+  return {ok:true,json:async()=>({ok:true,quiz_id:'IC5_B1_WQ01',estado:state,nota:note,comentario_docente:'Improve questions one through four',peso_oficial:0})};
  }};
  vm.createContext(ctx);vm.runInContext(academic.slice(begin,end)+'\nthis.fn=ownPc01;',ctx);
  const data=await ctx.fn({cod_grupo:group});
@@ -47,4 +47,12 @@ let x=await mock('REVISADO');assert.equal(x.data.nota,24);assert.equal(x.data.co
 x=await mock('ENTREGADO');assert.equal(x.data.nota,null);assert.equal(x.data.comentario,'');
 x=await mock('SIN_INICIAR');assert.equal(x.data,null);
 x=await mock('REVISADO','B1-OTHER');assert.equal(x.data,null);assert.equal(x.calls.length,0);
+for(const missing of ['', '   ', false, null, undefined, 'invalid', 101, -1]){
+  const invalid=await mock('REVISADO','B1-KJ18-C3-0826',missing);
+  assert.equal(invalid.data.nota,null,'No inventar 0% con nota vacía/inválida: '+String(missing));
+}
+for(const valid of [0,'0',' 0 ',24,100]){
+  const result=await mock('REVISADO','B1-KJ18-C3-0826',valid);
+  assert.equal(result.data.nota,Number(valid),'Nota válida, incluyendo 0 real');
+}
 console.log('PASS F111 PC01 student receipt: personal authenticated state, no reinvite, 24% F only after review, teacher comment in summary, official 0%, no writes');
