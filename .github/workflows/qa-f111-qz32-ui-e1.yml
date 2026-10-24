@@ -8,6 +8,12 @@ on:
       - 'modulos/quiz_progress.html'
       - 'modulos/qz_b1_pc01_digital.html'
       - 'src/student_pc01_f111.js'
+      - 'src/student_academic_summary_dom_cs21a113.js'
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'scripts/qa_f111_pc01_student_receipt_summary_e1.mjs'
+      - 'scripts/qa_f111_pc01_review_colors_e1.mjs'
+      - 'scripts/qa_f111_pc01_inline_private_key_25_e1.mjs'
+      - 'scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs'
       - 'src/teacher_quiz_review_f111.js'
       - 'campus.html'
       - 'scripts/qa_f111_pc01_release_contract_e1.mjs'
@@ -38,10 +44,18 @@ jobs:
         run: node scripts/qa_f111_teacher_session_fallback_e1.mjs
       - name: QA E1 B1 PC01 activation and two separate comments
         run: node scripts/qa_f111_pc01_release_contract_e1.mjs
+      - name: PC01 student receipt and invalid-grade regressions
+        run: node scripts/qa_f111_pc01_student_receipt_summary_e1.mjs
+      - name: PC01 review colors
+        run: node scripts/qa_f111_pc01_review_colors_e1.mjs
+      - name: PC01 private key stays out of public HTML
+        run: node scripts/qa_f111_pc01_inline_private_key_25_e1.mjs
       - name: Install Chromium for QA previews only
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: PC01 real Evaluaciones DOM contract, five synthetic states
+        run: node scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs
       - name: Render 32 student + 32 teacher quiz previews offline
         env:
           F111_QZ_BROWSER: '1'
