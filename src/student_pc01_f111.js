@@ -5,6 +5,8 @@ const TARGET='B1-KJ18-C3-0826';
 const GROUP={cod_grupo:TARGET,nivel:'B1',leccion:4};
 const seen=new WeakSet();
 function e(tag,cl,txt){const x=document.createElement(tag);if(cl)x.className=cl;if(txt!==undefined)x.textContent=txt;return x}
+function setTextIfChanged(node,txt){if(node&&node.textContent!==txt)node.textContent=txt}
+function setHiddenIfChanged(node,value){if(node&&node.hidden!==value)node.hidden=value}
 async function api(fn,body){
  const token=window.getSessionToken?window.getSessionToken():'';
  // Solo F111 PC01 usa el motor B1 aislado; las demás evaluaciones quedan en @462.
@@ -46,7 +48,7 @@ function isAvailable(r){
  r.grupo===TARGET&&r.nivel==='B1'&&Number(r.leccion)===4&&Number(r.peso_oficial)===0;
 }
 function attach(){
- const screen=document.querySelector('section[data-screen-label="Estudiante · Evaluaciones"]');
+ const screen=document.querySelector('[data-screen-label="Estudiante · Evaluaciones"]');
  if(!screen||seen.has(screen))return;
  seen.add(screen);
  const box=e('section','f111-pc01-student');
@@ -65,20 +67,20 @@ function attach(){
 function syncCard(){
  attach();
  document.querySelectorAll('[data-f111-student-pc01]').forEach(box=>{
-  box.hidden=!active;
+  setHiddenIfChanged(box,!active);
   const btn=box.querySelector('button'),status=box.querySelector('.f111-pc01-attempt-status');
   if(!btn||!status)return;
   if(attemptState==='ENTREGADO'||attemptState==='REVISADO'){
-   btn.hidden=true;
-   status.textContent=attemptState==='REVISADO'?'Prueba entregada y revisada. Consultá el resultado y el comentario en Resumen Académico.':'Prueba entregada. Pendiente de revisión docente; no hace falta enviarla otra vez.';
+   setHiddenIfChanged(btn,true);
+   setTextIfChanged(status,attemptState==='REVISADO'?'Prueba entregada y revisada. Consultá el resultado y el comentario en Resumen Académico.':'Prueba entregada. Pendiente de revisión docente; no hace falta enviarla otra vez.');
   }else if(attemptState==='BORRADOR'){
-   btn.hidden=false;btn.textContent='CONTINUAR QUIZ 1';
-   status.textContent='Tenés un avance guardado. Podés continuar mientras el docente mantenga el quiz abierto.';
+   setHiddenIfChanged(btn,false);setTextIfChanged(btn,'CONTINUAR QUIZ 1');
+   setTextIfChanged(status,'Tenés un avance guardado. Podés continuar mientras el docente mantenga el quiz abierto.');
   }else if(attemptState==='SIN_INICIAR'){
-   btn.hidden=false;btn.textContent='INICIAR QUIZ 1';
-   status.textContent='Lección 4 · Unidades 1–2 · 25 preguntas · Disponible';
+   setHiddenIfChanged(btn,false);setTextIfChanged(btn,'INICIAR QUIZ 1');
+   setTextIfChanged(status,'Lección 4 · Unidades 1–2 · 25 preguntas · Disponible');
   }else{
-   btn.hidden=true;status.textContent='Verificando tu entrega con el servidor…';
+   setHiddenIfChanged(btn,true);setTextIfChanged(status,'Verificando tu entrega con el servidor…');
   }
  });
 }
