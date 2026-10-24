@@ -269,7 +269,8 @@ if(liveMode){
  }
  function markDelivered(state){
   sent=true;dirty=false;liveUncertain=false;render();
-  liveShow(state.estado==='REVISADO'&&Number.isFinite(Number(state.nota))?'PRUEBA ENTREGADA · Revisión diagnóstica '+(Number(state.nota)/4)+'/25 · '+state.nota+'% · '+reviewLetter(Number(state.nota))+' · peso oficial 0%.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
+  var hasReviewNote=state.estado==='REVISADO'&&state.nota!=null&&typeof state.nota!=='boolean'&&String(state.nota).trim()!==''&&Number.isFinite(Number(state.nota))&&Number(state.nota)>=0&&Number(state.nota)<=100;
+  liveShow(hasReviewNote?'PRUEBA ENTREGADA · Revisión diagnóstica '+(Number(state.nota)/4)+'/25 · '+Number(state.nota)+'% · '+reviewLetter(Number(state.nota))+' · peso oficial 0%.':'PRUEBA ENTREGADA · Guardada y confirmada por el Campus.');
   showDeliveryReceipt();
  }
  function liveLock(){
