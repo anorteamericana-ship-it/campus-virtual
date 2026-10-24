@@ -12,6 +12,8 @@ on:
       - 'scripts/qa_f111_b1_pc02_preview_e1.mjs'
       - 'modulos/qz_b1_pc01_digital.html'
       - 'src/student_pc01_f111.js'
+      - 'src/student_b1_pc02_08_f111.js'
+      - 'scripts/qa_f111_r9_b1_student_teacher_e1.mjs'
       - 'src/student_academic_summary_dom_cs21a113.js'
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'scripts/qa_f111_pc01_student_receipt_summary_e1.mjs'
@@ -58,6 +60,8 @@ jobs:
         run: |
           npm install --no-save --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: R9 teacher group and student B1 discovery Chromium synthetic
+        run: node scripts/qa_f111_r9_b1_student_teacher_e1.mjs
       - name: PC01 real Evaluaciones DOM contract, five synthetic states
         run: node scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs
       - name: B1 original audio 8 tracks in Chromium with synthetic protected API
