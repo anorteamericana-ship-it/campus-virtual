@@ -431,43 +431,47 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     }
 
     if (esStudent) {
-      const rawGroups = [];
-      if (usr?.grupo) rawGroups.push(usr.grupo);
-      if (usr?.grupoActivo) rawGroups.push(usr.grupoActivo);
-      if (usr?.cod_grupo) rawGroups.push(usr.cod_grupo);
-      if (Array.isArray(usr?.grupos)) {
-        usr.grupos.forEach(g => rawGroups.push(typeof g === 'string' ? g : (g?.grupo || g?.cod_grupo || g?.codigo || g?.code || '')));
-      }
-      const propios = [...new Set(rawGroups.map(g => String(g || '').trim()).filter(Boolean))];
-      if (!propios.length) {
-        setErrorGrupos('No se pudo cargar el calendario del grupo. Contactá a la administración.');
+      // F111-0826: la sesión puede conservar un grupo anterior al traslado.
+      // Resolver siempre desde matrícula vigente con autorización del estudiante.
+      const codigoAlumno=String(usr?.codigo||usr?.rec_m||'').trim();
+      if(!codigoAlumno){
+        setGruposReales([]);
+        setErrorGrupos('No se pudo identificar tu matrícula vigente. Cerrá sesión e ingresá nuevamente.');
         setLoadingGrupos(false);
         return Promise.resolve();
       }
-      return Promise.all(propios.map(miGrupo =>
-        postCronoGrupo('getGrupoInfo', { cod_grupo: miGrupo })
-          .then(d => {
-            if (!d?.ok) return { code: miGrupo, error: d?.error || 'no_disponible' };
-            const nivelId = String(d.nivelId || d.levelId || usr?.nivel_activo || 'B1').toUpperCase();
-            return {
-              code: miGrupo,
-              nivelId,
-              nivel: NIVEL_LABEL_CG[nivelId] || nivelId,
-              docente: d.docente || d.teacherName || usr?.nombre || '—',
-              dias: d.dias || '',
-              hora: d.hora || '',
-              hora_i: d.hora_i || d.hora_inicio || '',
-              hora_f: d.hora_f || d.hora_fin || '',
-              programa: d.programa || usr?.programa || 'SIN_INA',
-              lecciones: Array.isArray(d.lecciones) ? d.lecciones : [],
-            };
-          })
-          .catch(() => ({ code: miGrupo, error: 'conexion' }))
-      )).then(items => {
-        const okItems = items.filter(x => x && !x.error);
-        if (okItems.length) setGruposReales(okItems);
-        else setErrorGrupos('No pudimos cargar el calendario de tu grupo. Intentá de nuevo o contactá a la administración.');
-      }).finally(() => setLoadingGrupos(false));
+      return postCronoGrupo('getEstudiante',{codigo:codigoAlumno})
+        .then(ficha=>{
+          if(!ficha?.ok)throw new Error('ficha_no_disponible');
+          const niveles=ficha.niveles||{};
+          const nivelCA=String(ficha.nivel_activo||
+            ['B1','B2','I1','I2'].find(n=>String(niveles[n]?.estatus||'').toUpperCase()==='CA')||'B1').toUpperCase();
+          const grupoCanon=String(niveles[nivelCA]?.grupo||
+            ficha.estudiante?.GRUPO||ficha.cod_grupo||'').trim();
+          if(!grupoCanon)throw new Error('grupo_canonico_no_disponible');
+          return postCronoGrupo('getGrupoInfo',{cod_grupo:grupoCanon}).then(g=>{
+            if(!g?.ok)throw new Error('grupo_sin_info');
+            return [{
+              code:grupoCanon,
+              nivelId:nivelCA,
+              nivel:NIVEL_LABEL_CG[nivelCA]||nivelCA,
+              docente:g.docente||g.teacherName||'—',
+              dias:g.dias||'',
+              hora:g.hora||'',
+              hora_i:g.hora_i||g.hora_inicio||'',
+              hora_f:g.hora_f||g.hora_fin||'',
+              programa:g.programa||ficha.grupo?.PROGRAMA||'SIN_INA',
+              lecciones:Array.isArray(g.lecciones)?g.lecciones:[]
+            }];
+          });
+        })
+        .then(items=>{setGruposReales(items);setErrorGrupos(null);})
+        .catch(()=>{
+          // No regresar al grupo de la sesión: puede ser una matrícula antigua.
+          setGruposReales([]);
+          setErrorGrupos('No pudimos confirmar tu grupo vigente. Cerrá sesión e ingresá nuevamente.');
+        })
+        .finally(()=>setLoadingGrupos(false));
     }
 
     const cacheVigente = CG_GRUPOS_CACHE_AN.data && (Date.now() - CG_GRUPOS_CACHE_AN.at < 60000);
@@ -504,10 +508,16 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
       if (!codGrupo) setCodGrupo(TODOS_GRUPOS);
       return;
     }
+    // Cambios de grupo: invalidar el selector React que conserva el grupo LM.
+    if (esStudent && gruposReales.length) {
+      const vigente=gruposReales[0].code;
+      if(vigente && codGrupo!==vigente)setCodGrupo(vigente);
+      return;
+    }
     if (codGrupo || !gruposReales.length) return;
     const usrGrupoOk = !esTeacher && usr?.grupo && gruposReales.some(g => g.code === usr.grupo);
     setCodGrupo(usrGrupoOk ? usr.grupo : gruposReales[0].code);
-  }, [gruposReales, codGrupo, esAdmin, usr]);
+  }, [gruposReales, codGrupo, esAdmin, esStudent, usr]);
 
   const esTodosGrupos = codGrupo === TODOS_GRUPOS;
 
@@ -3788,6 +3798,7 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
   const [confirmar, setConfirmar]   = React.useState(false);
   const [enviando, setEnviando]     = React.useState(false);
   const [errEnvio, setErrEnvio]     = React.useState('');
+  const [justificacion, setJustificacion] = React.useState('');
 
   // Cargar estudiantes + intentar precargar valores actuales
   React.useEffect(() => {
@@ -3939,6 +3950,7 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
           leccion: leccionNum,
           asistencias: cambios.cambioAsist,
           notas:       cambios.cambioNota,
+          justificacion: justificacion.trim(),
           editado_por: superadminNombre,
         }).then(r => {
           if (!r?.ok) throw new Error(r?.error || 'Error guardando asistencia/notas.');
@@ -4147,6 +4159,23 @@ function ModalEditarCerrada({ selLec, codGrupo, nivel, superadminNombre, onCerra
             </ul>
           )}
         </div>
+
+        {cambios.cambioAsist.some(a => a.presente === false) && (
+          <div style={{padding:'10px 22px 14px',background:'var(--surface)',borderTop:'1px solid var(--line)'}}>
+            <label htmlFor="cg-motivo-ausencia" style={{display:'block',fontSize:12,fontWeight:700,marginBottom:6}}>
+              Motivo de corrección de asistencia
+            </label>
+            <input id="cg-motivo-ausencia" type="text" value={justificacion}
+              onChange={e => setJustificacion(e.target.value)} disabled={enviando}
+              placeholder="Ej.: ingreso tardío del estudiante; ausencia en lección anterior"
+              maxLength={300}
+              style={{width:'100%',boxSizing:'border-box',padding:'9px 11px',border:'1px solid var(--line)',borderRadius:8,fontSize:12}}
+            />
+            <div style={{fontSize:11,color:'var(--ink-3)',marginTop:5}}>
+              Necesario para crear una ausencia faltante en lección cerrada.
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{

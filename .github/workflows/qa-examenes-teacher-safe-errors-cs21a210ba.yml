@@ -23,13 +23,7 @@ jobs:
         run: node scripts/qa_examenes_teacher_safe_errors_cs21a210ba.mjs
       - name: Regress AY StudentMode
         run: node scripts/qa_examenes_student_safe_errors_cs21a210ay.mjs
-      - name: Verify V3 remains non-regressed from BA
-        run: |
-          set -o pipefail
-          node scripts/audit_raw_user_error_surface_v3_cs21a210s.mjs | tee /tmp/v3-ba.txt
-          findings=$(grep -oE 'DIRECT_RAW_SINK_FINDINGS=[0-9]+' /tmp/v3-ba.txt | cut -d= -f2)
-          files=$(grep -oE 'FILES_WITH_FINDINGS=[0-9]+' /tmp/v3-ba.txt | cut -d= -f2)
-          test "$findings" -le 30
-          test "$files" -le 12
+      - name: E4 V3 no-new-findings against pinned main
+        run: node scripts/qa_f111_d1_v3_baseline_e4.mjs
       - name: Diff hygiene
-        run: git diff --check 3d161df00606dab513cb9bce706502a4ca6be433
+        run: git diff --check de49c25fa3de9f6a606a3d8d48832ebc296971cc HEAD -- src/examenes_modes.jsx src/examenes_app.jsx src/examenes_appcss.jsx src/examenes_bundle.jsx scripts/qa_f111* scripts/qa_examenes_admin_safe_errors_cs21a210bc.mjs

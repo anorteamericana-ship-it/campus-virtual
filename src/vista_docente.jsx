@@ -1794,8 +1794,10 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
       .then(([cal, pend]) => {
         if (!cal?.ok) throw new Error(cal?.error || 'No se pudo cargar el calendario.');
         if (!pend?.ok) throw new Error(pend?.error || 'No se pudieron cargar los pendientes.');
-        setCalendario(cal);
-        setPendientes(pend);
+        // F111: filtrar SOLO visibilidad del panel, no alterar registros.
+        const policy = window.ANTeacherCyclePolicyF111;
+        setCalendario(policy ? policy.filterCalendar(cal) : cal);
+        setPendientes(policy ? policy.filterPending(pend) : pend);
       })
       .catch(e => setError(vistaDocenteSafeUserError(e && e.message, 'No pudimos cargar tus pendientes. Intentá nuevamente.', 'refetch_docente')))
       .finally(() => setLoading(false));
@@ -1813,7 +1815,9 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         if (cancel) return;
         if (!cal?.ok) throw new Error(cal?.error || 'No se pudo cargar el calendario.');
         if (!pend?.ok) throw new Error(pend?.error || 'No se pudieron cargar los pendientes.');
-        setCalendario(cal); setPendientes(pend);
+        const policy = window.ANTeacherCyclePolicyF111;
+        setCalendario(policy ? policy.filterCalendar(cal) : cal);
+        setPendientes(policy ? policy.filterPending(pend) : pend);
       })
       .catch(e => {
         if (cancel) return;

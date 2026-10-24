@@ -66,45 +66,46 @@ function LazyRoute({ title, component, files, ...props }) {
   return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
 }
 const F96_LAZY = {
-  student_dashboard: ['src/student_dashboard.jsx?v=F1064CERTIFICATE20261010'],
+  student_dashboard: ['src/student_dashboard.jsx?v=F1110826DOCT20261020'],
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F108GRADES20261010'],
-  syllabus_views: ['src/syllabus_views.jsx?v=F98.4Z6G'],
-  teacher_views: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/teacher_views.jsx?v=F104NEXTROSTER20261009','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F111PROFILECANONICAL20261020'],
+  syllabus_views: ['src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023'],
+  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/teacher_views.jsx?v=F104NEXTROSTER20261009','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL'],
   english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20H'],
-  vista_docente: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009'],
+  vista_docente: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R-HOTFIX-DATES-SUPER'],
   admin_master: ['src/conape_bridge_config_c3_6.js?v=V4.2.9','src/conape_bridge_client_c3_6.js?v=V3.1.0','src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94C'],
-  admin_students: ['src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008'],
+  admin_students: ['src/admin_students.jsx?v=F111I2PROJECTED20261020'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009','src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/calendario_grupo.jsx?v=F98.4Z6CM'],
-  docente_operativo: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/teacher_views.jsx?v=F104NEXTROSTER20261009','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
-  buscador: ['src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008','src/buscador.jsx?v=F98.4Z6AS'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021','src/admin_students.jsx?v=F111I2PROJECTED20261020','src/calendario_grupo.jsx?v=F98.4Z6CM'],
+  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/teacher_views.jsx?v=F104NEXTROSTER20261009','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
+  buscador: ['src/admin_students.jsx?v=F111I2PROJECTED20261020','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
-  supervision: ['src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/panel_admin_supervision.jsx?v=F96.5G'],
-  auditoria: ['src/auditoria_academica.jsx?v=F96.5G'],
+  supervision: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/panel_admin_supervision.jsx?v=F96.5G'],
+  auditoria: ['src/auditoria_academica.jsx?v=F111ATTEND20261021'],
+  asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'],
   diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6BD'],
   permisos: ['src/permisos_roles.jsx?v=F96.5G'],
   reportes: ['src/reportes_admin.jsx?v=F96.5G'],
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F104NEXTROSTER20261009','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F1062ICANPROGRESS20261009',
-    'src/syllabus_views.jsx?v=F98.4Z6G','src/student_experience.jsx?v=F98.4N'
+    'src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F111ATTEND20261021',
+    'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023','src/student_experience.jsx?v=F98.4N'
   ],
   student_evaluations: [
     'src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F108GRADES20261010','src/student_experience.jsx?v=F98.4N'
+    'src/student_modules.jsx?v=F111PROFILECANONICAL20261020','src/student_experience.jsx?v=F98.4N'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F98.4Z6G','src/student_modules.jsx?v=F108GRADES20261010','src/student_experience.jsx?v=F98.4N'
+    'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023','src/student_modules.jsx?v=F111PROFILECANONICAL20261020','src/student_experience.jsx?v=F98.4N'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
@@ -236,6 +237,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
   React.useEffect(()=>{const id=setInterval(()=>setClock(Date.now()),30000);return()=>clearInterval(id);},[]);
   React.useEffect(()=>setHidden(false),[viewKey,s?.SESION_ID,s?.sesion_id]);
   if (!s || String(s.ESTADO||s.estado||'').toUpperCase()!=='ABIERTA') return null;
+  if (window.ANTeacherCyclePolicyF111?.isLegacyLesson(s)) return null;
   const tone=appSessionReminderF89(s,l,clock);
   if(!tone||hidden)return null;
   const lec=Number(s.LECCION||s.leccion||0), grupo=s.COD_GRUPO||s.cod_grupo||'';
@@ -358,6 +360,17 @@ function ExamenesAdminPanel() {
   const [leccion,setLeccion]=React.useState(9);
   const ses=typeof getSesion==='function'?getSesion():{};
   const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';
+  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del
+  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.
+  // Este último conserva su componente y sus datos fuera de esta vista.
+  if (superadmin) {
+    return <ExamenesIframePanel
+      hideHeader
+      view="admin"
+      screenLabel="Superadmin · Centro de exámenes"
+      iframeTitle="Centro de exámenes · Escritos, Orales y Progress Check"
+    />;
+  }
   const oralSrc=`modulos/examen_oral.html?preview=1&nivel=${encodeURIComponent(nivel)}&leccion=${leccion}&v=F92.6`;
   return <section data-screen-label="Admin · Exámenes" style={{display:'flex',flexDirection:'column',gap:14}}>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}>
@@ -887,7 +900,10 @@ function App() {
         const r=await postAppF87('getDocenteSesionActivaF87',{},30000);
         if(!live)return;
         if(!r?.ok)throw Error(r?.error||'Consulta de sesión no disponible');
-        setActiveTeacherState(r.sesion?r:null);
+        // F111: el ciclo < 09/2026 queda fuera del panel operativo
+        // sin alterar la sesión académica ni sus filas en Sheets.
+        const legacy = !!(r.sesion && window.ANTeacherCyclePolicyF111?.isLegacyLesson(r.sesion));
+        setActiveTeacherState(r.sesion && !legacy ? r : null);
         setActiveTeacherCheck({ready:true,error:false});
         if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}
       }catch(_){
@@ -986,7 +1002,8 @@ function App() {
       materiales:  <LazyRoute title="Biblioteca del Programa" component="MaterialesView" files={F96_LAZY.syllabus_views} onNavigate={navigateTo} />,
       ican:        <LazyRoute title="Club I CAN" component="ClubICANDocenteView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       mensajes:    <LazyRoute title="Comunicados" component="MensajesView" files={F96_LAZY.student_modules} />,
-      perfil:      <LazyRoute title="Mi Perfil" component="PerfilView" files={F96_LAZY.student_modules} />,
+      // F111: eliminar la ficha de estudiante del rol docente, no envolverla.
+      perfil:      <LazyRoute title="Mi Perfil profesional" component="TeacherProfileCS21A76" files={[]} />,
       academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
       english_lab_live: <LazyRoute title="English LAB Live" component="EnglishLabLiveTeacherView" files={F96_LAZY.english_lab_live} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
     };
@@ -1003,6 +1020,7 @@ function App() {
       dashboard:    <LazyRoute title="Panel Maestro" component="AdminMasterDashboard" files={F96_LAZY.admin_master} onNavigate={navigateTo} />,
       supervision:  <LazyRoute title="Supervisión" component="PanelAdminSupervision" files={F96_LAZY.supervision} />,
       calendario_grupo: <LazyRoute title="Calendario académico" component="CalendarioGrupoOperativo" files={F96_LAZY.calendario_grupo} rol={rolReal} onNavigate={navigateTo} grupoInicial={pendingGrupo} seguimientoInicial={pendingSeguimiento} />,
+      asistencia_grupos: <LazyRoute title="Asistencia de grupos" component="AttendanceGroupsSuperadminView" files={F96_LAZY.asistencia_grupos} />,
       auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />,
       // CALGRUPO_F33_20260617_DIAGNOSTICO_INTERNO_ROUTER
       diagnostico_interno: rolReal === 'superadmin'

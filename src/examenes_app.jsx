@@ -290,6 +290,35 @@ function StudentLiveStatusCard({ title, badge='Examen no disponible', children, 
     </div>
   );
 }
+// F111 PR-D2 E1 · contrato estricto para el payload oficial del estudiante.
+// No revela claves; el servidor mantiene la autorización, asignación y calificación.
+const F111_EX04_FORBIDDEN_PUBLIC_KEYS = new Set([
+  'correct','accepted','answer','answers','answerkey','answerkeys','key',
+  'audioscript','transcript','solution','solutions','markscheme',
+  'privatekey','secret','gradingkey','teacherkey','correctanswer'
+]);
+function f111ExamPublicContractSafe(publicExam, activation) {
+  if (!publicExam || typeof publicExam !== 'object' || Array.isArray(publicExam)) return false;
+  const id = String(activation && activation.EXAM_ID || '').trim().toUpperCase();
+  const payloadId = String(publicExam.exam_id || publicExam.id || '').trim().toUpperCase();
+  if (!id || !payloadId || payloadId !== id) return false;
+  if (publicExam.id && publicExam.exam_id && String(publicExam.id).trim().toUpperCase() !== String(publicExam.exam_id).trim().toUpperCase()) return false;
+  if (publicExam.payload_scope !== 'student_public_no_keys' || publicExam.public_payload_version !== 'V10H') return false;
+  if (!Array.isArray(publicExam.sections) || !publicExam.sections.length) return false;
+  const visited = new WeakSet();
+  const scan = value => {
+    if (!value || typeof value !== 'object') return true;
+    if (visited.has(value)) return false;
+    visited.add(value);
+    if (Array.isArray(value)) return value.every(scan);
+    return Object.keys(value).every(k => {
+      const normalized = k.toLowerCase().replace(/[\s_-]/g, '');
+      return !F111_EX04_FORBIDDEN_PUBLIC_KEYS.has(normalized) && scan(value[k]);
+    });
+  };
+  return scan(publicExam);
+}
+
 function StudentLiveExamApp() {
   const [live, setLive] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -387,6 +416,11 @@ function StudentLiveExamApp() {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
     return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'No hay una sesión docente abierta de la lección 18 o 32 para tu matrícula activa.'}</StudentLiveStatusCard>;
   }
+  if (!f111ExamPublicContractSafe(publicExam, activation)) {
+    return <StudentLiveStatusCard title="Contenido de examen no disponible" badge="Protección de examen" tone="red" onRefresh={load}>
+      El servidor no entregó un cuestionario oficial seguro para esta activación. No se mostrará ningún banco de respaldo ni se iniciará el intento. Contactá a la Academia.
+    </StudentLiveStatusCard>;
+  }
   return <StudentMode
     shell="premium" density="comfy"
     nivel={cfg.nivel} test={cfg.test} opcion={cfg.opcion} plan={cfg.plan}
@@ -446,19 +480,51 @@ function App() {
   const [opcion, setOpcion] = React.useState('A');
   const [shell, setShell] = React.useState('premium');
   const [density, setDensity] = React.useState('comfy');
-  const [previewKey, setPreviewKey] = React.useState(true);
+  const [previewKey, setPreviewKey] = React.useState(false);
   const [previewExam, setPreviewExam] = React.useState(null);
-  const [plan, setPlan] = React.useState('ambos'); // ambos | con_ina | sin_ina
+  const [privateExam, setPrivateExam] = React.useState(null);
+  const [privateBusy, setPrivateBusy] = React.useState(false);
+  const [privateError, setPrivateError] = React.useState('');
+  const previewIdRef = React.useRef('');
+  const [plan, setPlan] = React.useState('con_ina'); // valor de preview; la ponderación real la define el servidor
 
   const canEnter = (target) => INITIAL_VIEW_CONFIG.allowedViews.includes(target);
   const setView = (target) => {
     if (!canEnter(target)) return;
     setViewRaw(target);
   };
-  const goPreview = (entry) => {
+  const requestPrivatePreview = async (entry) => {
+    const id = entry && entry.id || '';
+    if (!id || INITIAL_VIEW_CONFIG.role !== 'admin') return;
+    setPrivateBusy(true);
+    setPrivateError('');
+    try {
+      const result = await examPostLive('examGetPrivatePreviewF111', { exam_id:id });
+      if (previewIdRef.current !== id) return;
+      if (!result || result.ok !== true || result.exam_id !== id || result.access !== 'superadmin_private_preview' || !result.private_exam || result.private_exam.id !== id) {
+        setPreviewKey(false);
+        setPrivateError('Backend privado no disponible o permiso insuficiente');
+        return;
+      }
+      setPrivateExam(result.private_exam);
+      setPreviewKey(true);
+    } catch (_) {
+      if (previewIdRef.current === id) { setPreviewKey(false); setPrivateError('No se pudo verificar la sesión con Apps Script'); }
+    } finally { setPrivateBusy(false); }
+  };
+  const goPreview = (entry, showKey = false) => {
     if (!canEnter('preview')) return;
+    previewIdRef.current = entry && entry.id || '';
+    setPreviewKey(false);
+    setPrivateExam(null);
+    setPrivateError('');
     setPreviewExam(entry);
     setViewRaw('preview');
+    if (showKey) requestPrivatePreview(entry);
+  };
+  const togglePrivatePreview = () => {
+    if (previewKey) { setPreviewKey(false); setPrivateError(''); return; }
+    requestPrivatePreview(previewExam);
   };
 
   if (!INITIAL_VIEW_CONFIG.authorized) {
@@ -496,12 +562,12 @@ function App() {
         <ControlBar {...{
           view, setView, allowedViews: INITIAL_VIEW_CONFIG.allowedViews,
           nivel, setNivel, test, setTest, opcion, setOpcion,
-          shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan
+          shell, setShell, density, setDensity, previewKey, onPrivateToggle:togglePrivatePreview, privateBusy, privateError, plan, setPlan
         }} />
       )}
       <main className="exmain">
         {view==='admin'   && <AdminMode shell={shell} density={density} onPreview={goPreview} />}
-        {view==='preview' && <PreviewMode shell={shell} density={density} nivel={nivel} test={test} opcion={opcion} showKey={previewKey} entry={previewExam} plan={plan} />}
+        {view==='preview' && <PreviewMode shell={shell} density={density} nivel={nivel} test={test} opcion={opcion} showKey={previewKey} entry={previewExam} plan={plan} privateExam={privateExam} />}
       </main>
     </div>
   );
@@ -573,103 +639,43 @@ function StudentNoAssignmentView() {
 }
 
 
-function ControlBar({ view, setView, allowedViews, nivel, setNivel, test, setTest, opcion, setOpcion, shell, setShell, density, setDensity, previewKey, setPreviewKey, plan, setPlan }) {
-  const showKeyToggle = view==='preview';
+function ControlBar({ view, setView, allowedViews, previewKey, onPrivateToggle, privateBusy, privateError }) {
   return (
-    <div className="cbar">
-      <div className="cbar-banner">
-        <span className="cbar-eye">●</span>
-        Exámenes institucionales · <b>Academia Norteamericana</b>
-        <button type="button" onClick={()=>window.print()} style={{marginLeft:'auto',border:'1px solid currentColor',background:'#fff',color:'#073B7A',borderRadius:8,padding:'6px 10px',fontWeight:800,cursor:'pointer'}}>Imprimir / Guardar PDF</button>
-      </div>
-      <div className="cbar-row">
-      <div className="cbar-brand">
-        <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
-        <div>
-          <div className="cbar-t">Exámenes · Sistema maestro</div>
-          <div className="cbar-s">Catálogo administrativo · EXAM-MASTER-001</div>
+    <div className="cbar d1-cbar">
+      <div className="cbar-row d1-cbar-row">
+        <div className="cbar-brand">
+          <img className="cbar-logo" src="../assets/logo_circular.jpg" alt="Academia Norteamericana" />
+          <div><div className="cbar-t">Exámenes · Sistema Maestro</div><div className="cbar-s">Evaluación universitaria · Academia Norteamericana</div></div>
+        </div>
+        <div className="d1-top-actions">
+          {view==='preview' && <>
+            <button type="button" className="d1-cbar-control" onClick={()=>setView('admin')}>← Catálogo</button>
+            <button type="button" disabled={!!privateBusy} className={'d1-cbar-control'+(previewKey?' warning':'')} aria-pressed={!!previewKey} onClick={onPrivateToggle}>{privateBusy?'Verificando permisos…':previewKey?'Ocultar respuestas':'Mostrar respuestas (personal autorizado)'}</button>
+            <button type="button" className="d1-cbar-control" onClick={()=>window.print()}>Imprimir</button>
+          </>}
         </div>
       </div>
-
-      <div className="cbar-group">
-        <label>Vista</label>
-        <div className="seg">
-          {VIEWS.filter(v => allowedViews.includes(v.k)).map(v => (
-            <button key={v.k} className={view===v.k?'on':''} onClick={()=>setView(v.k)}>{v.t}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Prueba (test)</label>
-        <div className="seg seg-sm">
-          {[["TEST1","Prueba 1"],["TEST2","Prueba 2"]].map(([k,l]) =>
-            <button key={k} className={test===k?'on':''} onClick={()=>setTest(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Opción asignada (examen)</label>
-        <div className="seg seg-sm">
-          {['A','B'].map(o => <button key={o} className={opcion===o?'on':''} onClick={()=>setOpcion(o)}>{o}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Plan académico</label>
-        <div className="seg seg-sm">
-          {[["ambos","Ambos"],["con_ina","CON INA"],["sin_ina","SIN INA"]].map(([k,l]) =>
-            <button key={k} className={plan===k?'on':''} onClick={()=>setPlan(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Tema por nivel</label>
-        <div className="lvlswatches">
-          {Object.keys(NIVEL_TEMA).map(k => (
-            <button key={k} className={`lvlsw${nivel===k?' on':''}`} title={NIVEL_TEMA[k].nombre}
-                    style={{ background:NIVEL_TEMA[k].color }} onClick={()=>setNivel(k)}>{nivel===k?NIVEL_TEMA[k].code:''}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Formato</label>
-        <div className="seg seg-sm">
-          {[["premium","Premium"],["compact","Compacto"],["sheet","Hoja"]].map(([k,l]) =>
-            <button key={k} className={shell===k?'on':''} onClick={()=>setShell(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className="cbar-group">
-        <label>Densidad</label>
-        <div className="seg seg-sm">
-          {[["comfy","Cómoda"],["compact","Compacta"]].map(([k,l]) =>
-            <button key={k} className={density===k?'on':''} onClick={()=>setDensity(k)}>{l}</button>)}
-        </div>
-      </div>
-
-      <div className={`cbar-group${showKeyToggle?'':' dim'}`}>
-        <label>Clave / preliminar</label>
-        <button className={`tgl${previewKey?' on':''}`} disabled={!showKeyToggle} onClick={()=>setPreviewKey(v=>!v)}>
-          <span className="tgl-dot" />{previewKey?'Visible':'Oculta'}
-        </button>
-      </div>
-      </div>
+      {view==='preview' && previewKey && <div className="d1-cbar-warning" role="alert">Respuestas visibles tras validación del backend. No proyectés esta pantalla.</div>}
+      {view==='preview' && privateError && <div className="d1-cbar-warning" role="status">No se pudo mostrar la clave privada: {privateError}. El examen continúa sin respuestas.</div>}
     </div>
   );
 }
 
 // Preview/admin: el examen con o sin clave, tema por nivel
-function PreviewMode({ shell, density, nivel, test='TEST1', opcion, showKey, entry, plan }) {
+function PreviewMode({ shell, density, nivel, test='TEST1', opcion, showKey, entry, plan, privateExam }) {
   const [scriptSec, setScriptSec] = React.useState(null);
+  const [interactive, setInteractive] = React.useState(false);
+  const [practiceAnswers, setPracticeAnswers] = React.useState({});
+  React.useEffect(() => { setInteractive(false); setPracticeAnswers({}); setScriptSec(null); }, [entry && entry.id]);
   // Si viene una entrada del catálogo, usa su nivel/test/opción; si no, los
   // controles de auditoría.
   const eNivel = entry ? entry.nivel : nivel;
   const eTest  = entry ? (entry.leccion === 18 ? 'TEST1' : 'TEST2') : test;
   const eOpcion = entry ? entry.opcion : opcion;
   const tema = NIVEL_TEMA[eNivel];
-  const exam = window.getExam ? window.getExam(eNivel, eTest, eOpcion) : null;
+  const publicExam = window.getExam ? window.getExam(eNivel, eTest, eOpcion) : null;
+  const requestedId = entry ? entry.id : window.examIdDe(eNivel, eTest, eOpcion);
+  const exam = showKey && privateExam && privateExam.id === requestedId ? privateExam : publicExam;
   const esReal = !!exam;
   const esDemoTema = eNivel !== 'I2' && eNivel !== 'I1' && eNivel !== 'B2' && eNivel !== 'B1'; // tema visual de otro nivel
   const SAMPLES = {
@@ -711,9 +717,13 @@ function PreviewMode({ shell, density, nivel, test='TEST1', opcion, showKey, ent
           Los 16 exámenes escritos ya tienen contenido real: B1/B2/I1/I2 · Prueba 1/2 · Opción A/B.
         </div>
       )}
+      {esReal && !showKey && <div className="d1-practice-bar" style={{margin:'12px 0',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',padding:'10px 14px',background:'#fff',border:'1px solid #DDE6EF',borderRadius:10}}>
+        <button type="button" className="d1-primary" onClick={()=>{setInteractive(x=>!x);setPracticeAnswers({});}}>{interactive?'Salir de práctica':'Practicar este examen (sin guardar)'}</button>
+        <span style={{fontSize:12,color:'#50627A'}}>{interactive?'Simulación interactiva · respuestas locales · 0 calificaciones oficiales':'Vista sin respuestas; podés practicar cada pregunta sin crear un intento.'}</span>
+      </div>}
       {esReal
         ? <>
-            <ExamShell exam={exam} answers={showKey ? sample : {}} mode="preview" showKey={showKey}
+            <ExamShell exam={exam} answers={showKey ? sample : interactive ? practiceAnswers : {}} mode={interactive&&!showKey?'student':'preview'} onAnswer={interactive&&!showKey?(id,v)=>setPracticeAnswers(a=>({...a,[id]:v})):undefined} showKey={showKey}
                        shell={shell} density={density} plan={plan}
                        onOpenScript={setScriptSec}
                        meta={{ nombre:'— muestra —', fecha:'preview', grupo:'I2-LM-0625', opcion:eOpcion, scoreLabel:`muestra` }} />
@@ -731,7 +741,7 @@ function PreviewMode({ shell, density, nivel, test='TEST1', opcion, showKey, ent
 }
 function PvScript({ section, exam, onClose }) {
   if (!section) return null;
-  const lines = exam.audioScript[section] || [];
+  const lines = exam && exam.audioScript && exam.audioScript[section] || [];
   return (
     <div className="exov" onClick={onClose}>
       <div className="exov-card" onClick={e=>e.stopPropagation()}>

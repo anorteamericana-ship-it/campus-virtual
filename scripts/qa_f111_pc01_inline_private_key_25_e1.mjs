@@ -1,0 +1,27 @@
+// Regresión PC01: clave nunca en Pages; nota diagnóstica con escala 25 y letra.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const html=fs.readFileSync(new URL('../modulos/qz_b1_pc01_digital.html',import.meta.url),'utf8');
+const teacher=fs.readFileSync(new URL('../src/teacher_quiz_review_f111.js',import.meta.url),'utf8');
+const source=html.match(/<script>([\s\S]*?)<\/script>/);
+assert.ok(source,'HTML contiene lógica PC01');new Function(source[1]);
+assert.ok(html.includes('var reviewKey=null'),'clave docente solo llega vía mensaje');
+assert.ok(!html.includes('claves:{') && !html.includes('var reviewKey={A1:') && !html.includes('clave_items'),'la tabla de claves no existe en HTML público; opciones del alumno no son una tabla de corrección');
+assert.ok(html.includes("event.origin!==location.origin||event.source!==window.parent"),'solo padre del mismo origen');
+assert.ok(html.includes('reviewPoints()*4'),'25 puntos convertidos a escala 100');
+assert.ok(html.includes("pct>=90?'A'"),'25/25 = A');
+assert.ok(html.includes('[0,0.5,1].forEach'),'puntuación manual granular');
+assert.ok(html.includes("Respuesta correcta: "),'respuesta correcta junto al ítem');
+assert.ok(teacher.includes("material:'clave_items'"),'clave exclusivamente por endpoint privado de docente');
+assert.ok(teacher.includes("Object.keys(keys).length!==25"),'clave completa obligatoria');
+assert.ok(teacher.includes("Number(result.peso_oficial)!==0"),'cerrar sin tocar peso oficial');
+assert.ok(teacher.includes("Number(saved.RESULTADO)!==savedScore.percentage"),'calificación certificada por readback');
+assert.ok(teacher.includes("Ponderación oficial 0%"),'el docente siempre ve peso oficial');
+assert.ok(teacher.includes("comentario_progress_check:comment.value.trim()"),'comentario independiente de asistencia');
+assert.ok(!teacher.includes('registrarNotaComponenteOficial'),'no escribir notas INA oficiales');
+assert.ok(teacher.includes('PROMEDIO DEL GRUPO'),'existe promedio grupal visible');
+assert.ok(teacher.includes("String(r.ESTADO)==='REVISADO'"),'no promediar pruebas sin calificar');
+assert.ok(teacher.includes("r.RESULTADO!==null&&r.RESULTADO!==undefined"),'calificaciones de 0 cuentan legítimamente');
+assert.ok(teacher.includes('reviewed.reduce((sum,r)=>sum+Number(r.RESULTADO),0)/reviewed.length'),'promedio solo sobre entregas revisadas');
+assert.ok(teacher.includes('Pendientes no cuentan como cero'),'sin castigar pendientes ni peso oficial');
+console.log('PASS F111 PC01 private key UI: 25 answers per teacher, scores 0/0.5/1, percent, letter A, readback, official 0%');

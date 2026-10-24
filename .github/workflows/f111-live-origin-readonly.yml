@@ -1,0 +1,33 @@
+name: F111 Official LIVE Origin Read-only Audit
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/qa_f111_live_origin_readonly.mjs'
+      - '.github/workflows/f111-live-origin-readonly.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'campus.html'
+      - 'src/app.jsx'
+      - 'src/admin_attendance_roster.jsx'
+      - 'scripts/qa_f111_live_origin_readonly.mjs'
+      - '.github/workflows/f111-live-origin-readonly.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-origin-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Testar contrato de auditoría sin red
+        run: node scripts/qa_f111_live_origin_readonly.mjs --selftest
+      - name: Consultar solamente archivos públicos del dominio oficial
+        run: node scripts/qa_f111_live_origin_readonly.mjs

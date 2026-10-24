@@ -519,6 +519,10 @@
     @media(max-width:650px){.tp76-heading{align-items:flex-start}.tp76-heading h1{font-size:34px}.tp76-version{display:none}.tp76-cover{height:150px}.tp76-cover-brand{left:20px;top:22px}.tp76-identity{grid-template-columns:1fr;text-align:center;justify-items:center;margin-top:-58px;padding:0 18px 18px}.tp76-name-block{padding:0}.tp76-photo-button{margin:0}.tp76-info-strip{grid-template-columns:1fr}.tp76-info-item{border-right:0;border-bottom:1px solid var(--line,#e4ddd3)!important}.tp76-info-item:last-child{border-bottom:0!important}.tp76-form-row{grid-template-columns:1fr}.tp76-doc-card{align-items:flex-start}.tp76-doc-topline{flex-direction:column}}
   `;
 
+  // F111: ruta docente definitiva. No depende de un wrapper cargado después.
+  // Mi Perfil docente nunca debe montar PerfilView de estudiantes.
+  window.TeacherProfileCS21A76 = TeacherProfileCS21A76;
+
   function install() {
     const Current = window.PerfilView || (typeof PerfilView === 'function' ? PerfilView : null);
     if (!Current) return false;

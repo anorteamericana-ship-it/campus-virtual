@@ -1,0 +1,84 @@
+name: F111 QZ32 Frontend E1 QA
+on:
+  push:
+    branches:
+      - feat/f111-qz32-vista-estudiante-qa-20261016
+  pull_request:
+    paths:
+      - 'modulos/quiz_progress.html'
+      - 'modulos/qz_b1_pc02_preview.html'
+      - 'scripts/qa_f111_b1_audio_ui_e1.mjs'
+      - 'scripts/qa_f111_b1_interactive_r3_e1.mjs'
+      - 'scripts/qa_f111_b1_pc02_preview_e1.mjs'
+      - 'modulos/qz_b1_pc01_digital.html'
+      - 'src/student_pc01_f111.js'
+      - 'src/student_b1_progress_f111.js'
+      - 'scripts/qa_f111_r10_teacher_student_e1.mjs'
+      - 'src/student_academic_summary_dom_cs21a113.js'
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'scripts/qa_f111_pc01_student_receipt_summary_e1.mjs'
+      - 'scripts/qa_f111_pc01_review_colors_e1.mjs'
+      - 'scripts/qa_f111_pc01_inline_private_key_25_e1.mjs'
+      - 'scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'campus.html'
+      - 'scripts/qa_f111_pc01_release_contract_e1.mjs'
+      - 'modulos/quiz_progress_docente.html'
+      - 'src/vista_docente.jsx'
+      - 'src/app.jsx'
+      - 'src/teacher_views.jsx'
+      - 'scripts/qa_f111_teacher_quiz_access_e1.mjs'
+      - 'scripts/qa_f111_teacher_session_fallback_e1.mjs'
+      - 'scripts/qa_f111_qz32_ui_e1.mjs'
+      - '.github/workflows/qa-f111-qz32-ui-e1.yml'
+permissions:
+  contents: read
+jobs:
+  qz-ui-e1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: QA E1 quiz student/teacher source and safety
+        run: node scripts/qa_f111_qz32_ui_e1.mjs
+      - name: QA E1 teacher review from class and Examenes
+        run: node scripts/qa_f111_teacher_quiz_access_e1.mjs
+      - name: QA E1 Mis grupos resilient session fallback
+        run: node scripts/qa_f111_teacher_session_fallback_e1.mjs
+      - name: QA E1 B1 PC01 activation and two separate comments
+        run: node scripts/qa_f111_pc01_release_contract_e1.mjs
+      - name: PC01 student receipt and invalid-grade regressions
+        run: node scripts/qa_f111_pc01_student_receipt_summary_e1.mjs
+      - name: PC01 review colors
+        run: node scripts/qa_f111_pc01_review_colors_e1.mjs
+      - name: PC01 private key stays out of public HTML
+        run: node scripts/qa_f111_pc01_inline_private_key_25_e1.mjs
+      - name: Install Chromium for QA previews only
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: PC01 real Evaluaciones DOM contract, five synthetic states
+        run: node scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs
+      - name: R10 live-DOM-equivalent teacher and student B1 authorization UI (synthetic only)
+        run: node scripts/qa_f111_r10_teacher_student_e1.mjs
+      - name: B1 original audio 8 tracks in Chromium with synthetic protected API
+        run: node scripts/qa_f111_b1_audio_ui_e1.mjs
+      - name: B1 interactive 148 response fields and draft lifecycle in Chromium
+        run: node scripts/qa_f111_b1_interactive_r3_e1.mjs
+      - name: PC02 editorial source and private-preview safety
+        run: node scripts/qa_f111_b1_pc02_preview_e1.mjs
+      - name: Render 32 student + 32 teacher quiz previews offline
+        env:
+          F111_QZ_BROWSER: '1'
+        run: node scripts/qa_f111_qz32_ui_e1.mjs
+      - name: Screenshots of QA preview (not live Campus)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f111-qz32-preview
+          path: qa-capturas/QZ32_*.png
+          if-no-files-found: warn
+          retention-days: 7

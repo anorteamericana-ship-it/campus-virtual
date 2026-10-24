@@ -263,8 +263,10 @@ function tvSessionToneF88(lesson,nowMs=Date.now(),session=null){
   if(remain<=30)return {bg:'#B77900',soft:'#FFF4D6',ink:'#704A00',label:'● SESIÓN ACTIVA · ÚLTIMOS 30 MINUTOS'};
   return green;
 }
-function tvSessionGroups(usuario){
-  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (usuario?.grupo ? [usuario.grupo] : []);
+function tvSessionGroups(usuario, activeGroupCode=''){
+  // En sesión de docente: se muestra el grupo previo mientras se confirma la lista;
+  // el backend conserva toda la autorización antes de devolver datos académicos.
+  const raw = Array.isArray(usuario?.grupos) && usuario.grupos.length ? usuario.grupos : (activeGroupCode || usuario?.grupoActivo || usuario?.grupo ? [activeGroupCode || usuario?.grupoActivo || usuario?.grupo] : []);
   const out = [];
   const seen = new Set();
   raw.forEach((g) => {
@@ -285,20 +287,23 @@ function tvSessionGroups(usuario){
   return out;
 }
 function tvNowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
-function useTeacherSession() {
+function useTeacherSession(activeSessionGroup='') {
   const readSession = React.useCallback(() => {
     let usuario = null;
     try { usuario = JSON.parse(sessionStorage.getItem('an_usuario') || 'null'); } catch(_) {}
     const nombre = usuario?.nombre || usuario?.nombre_completo || usuario?.usuario || '';
     const programa = usuario?.programa || '';
-    const grupoActivoRaw = (typeof window.getGrupoActivoDocente === 'function')
-      ? window.getGrupoActivoDocente()
-      : (usuario?.grupoActivo || usuario?.grupo || '');
+    const savedGroup = (typeof window.getGrupoActivoDocente === 'function') ? window.getGrupoActivoDocente() : '';
+    const grupoActivoRaw = savedGroup || activeSessionGroup || usuario?.grupoActivo || usuario?.grupo || '';
     return { usuario, nombre, programa, grupoActivo:tvGroupCode(grupoActivoRaw) };
-  }, []);
+  }, [activeSessionGroup]);
 
   const [{ usuario, nombre, programa, grupoActivo }, setSesionLocal] = React.useState(readSession);
-  const [gruposMeta, setGruposMeta] = React.useState([]);
+  const [gruposMeta, setGruposMeta] = React.useState(() => tvSessionGroups(usuario, grupoActivo));
+  // La respuesta remota puede tardar más que la llegada de la sesión activa.
+  // Consultar el estado actual, no la lista capturada al iniciar la promesa.
+  const gruposMetaRef = React.useRef(gruposMeta);
+  gruposMetaRef.current = gruposMeta;
   const [codGrupo, setCodGrupo] = React.useState(grupoActivo || '');
   const [roster, setRoster] = React.useState([]);
   const [lecciones, setLecciones] = React.useState([]);
@@ -316,7 +321,15 @@ function useTeacherSession() {
   const [errorGroups, setErrorGroups] = React.useState(null);
   const [errorPanel, setErrorPanel] = React.useState(null);
   const [reloadTick, setReloadTick] = React.useState(0);
+  const [reloadGroupsTick, setReloadGroupsTick] = React.useState(0);
 
+  // La sesión activa puede llegar después del montaje inicial del componente.
+  React.useEffect(() => setSesionLocal(readSession()), [readSession]);
+  React.useEffect(() => {
+    if (!grupoActivo) return;
+    setGruposMeta(prev => prev.length ? prev : tvSessionGroups(usuario, grupoActivo));
+    setCodGrupo(prev => prev || grupoActivo);
+  }, [grupoActivo, usuario]);
   React.useEffect(() => {
     const onChange = () => setSesionLocal(readSession());
     window.addEventListener('an:session-changed', onChange);
@@ -327,7 +340,8 @@ function useTeacherSession() {
     let cancel = false;
     setLoadingGroups(true);
     setErrorGroups(null);
-    postTeacher('getDocenteGruposActuales', { docente:nombre }, 30000)
+    // No bloquear por 30s el panel cuando ya existe un grupo de la sesión.
+    postTeacher('getDocenteGruposActuales', { docente:nombre }, gruposMetaRef.current.length ? 12000 : 15000)
       .then(d => {
         if (cancel) return;
         if (!d?.ok) throw new Error(d?.error || d?.mensaje || 'No se pudieron cargar los grupos del docente.');
@@ -345,10 +359,14 @@ function useTeacherSession() {
           window.setGrupoActivoDocente(nuevo);
         }
       })
-      .catch(e => { if (!cancel) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos')); })
+      .catch(e => { if (!cancel) {
+        if (!gruposMetaRef.current.length) setErrorGroups(teacherSessionSafeUserError(e?.message || String(e), 'No pudimos cargar tus grupos. Intentá de nuevo.', 'cargar_grupos'));
+        // Si el servidor no respondió, NO borrar el grupo ya vinculado a la sesión.
+        // La autorización del padrón se valida separadamente en cargarPanelDocenteF80.
+      } })
       .finally(() => { if (!cancel) setLoadingGroups(false); });
     return () => { cancel = true; };
-  }, [nombre]);
+  }, [nombre, reloadGroupsTick]);
 
   React.useEffect(() => {
     if (!grupoActivo || !gruposMeta.length) return;
@@ -416,14 +434,14 @@ function useTeacherSession() {
     setCodGrupo(limpio);
     if (typeof window.setGrupoActivoDocente === 'function') window.setGrupoActivoDocente(limpio);
   }, [codGrupo]);
-  const recargarPanel = React.useCallback(() => setReloadTick(v => v + 1), []);
+  const recargarPanel = React.useCallback(() => { setReloadTick(v => v + 1); setReloadGroupsTick(v => v + 1); }, []);
 
   return {
     usuario, nombre, programa:panelPrograma || meta?.programa || programa,
     codGrupo, grupos:gruposMeta, meta, nivel, grupoInfo:meta,
     roster, lecciones, asistenciaGrupo, asistenciaDetalle, comentariosDetalle,
     notasGrupo, resumenGrupo, icanResumen, leccionHoy, sesionClase,
-    loading:loadingGroups || loadingPanel,
+    loading:(loadingGroups && !gruposMeta.length) || loadingPanel,
     loadingGroups, loadingPanel,
     error:errorGroups || errorPanel,
     cambiarGrupo, recargarPanel,
@@ -915,7 +933,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
   const rielLeccion=tvIsIcanEventF96(lesson)?'ican':'curso';
   const railPermissions=meta?.permisos_riel||{};
   const canOperateRail=railPermissions[rielLeccion] !== false;
-  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=rielLeccion==='curso'&&tipoLeccion==='EVAL_ORAL';
+  const tipoLeccion=tvUpper(lesson?.tipo), closed=tvUpper(lesson?.estado)==='CERRADA', esOral=rielLeccion==='curso'&&(tipoLeccion==='EVAL_ORAL'||[9,17,25,31].includes(Number(lesson?.leccion||0)));
   const esEscrito=rielLeccion==='curso'&&(tipoLeccion==='EVAL_ESCRITO'||[18,32].includes(Number(lesson?.leccion||0)));
   const esExamen=rielLeccion==='curso'&&(esOral||esEscrito||[9,17,18,25,31,32].includes(Number(lesson?.leccion||0)));
   const estadoSesion=tvUpper(sesion?.ESTADO||sesion?.estado);
@@ -1097,7 +1115,21 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             {!loading&&sessionCheck==='ok'&&<>
               {abierta&&esExamen&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
               <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
-              {!closed&&String(lesson?.fecha||'')>=today&&!abierta&&!otherGlobal&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
+              {rielLeccion==='curso'&&tvUpper(nivel)==='B1'&&Number(lesson?.leccion)===4&&
+               tvUpper(code)==='B1-KJ18-C3-0826'&&canOperateRail&&!closed&&!sesionCerrada&&
+                <button type="button" data-f111-lesson-quiz="B1-L4"
+                  title="Vista previa docente: no habilita entregas de estudiantes."
+                  className="btn" style={{background:'#F2C83D',border:'1px solid #D8AD28',color:'#173959',fontSize:12,fontWeight:900}}
+                  onClick={()=>{
+                    if(typeof window.f111PC01TeacherLaunch==='function')return window.f111PC01TeacherLaunch();
+                    const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',window.location.href));
+                    url.searchParams.set('preview','1');
+                    url.searchParams.set('grupo',code);
+                    url.searchParams.set('rol','docente');
+                    window.open(url.href,'_blank','noopener,noreferrer');
+                  }}>ABRIR QUIZ · VISTA DOCENTE</button>}
+
+              {!closed&&!sesionCerrada&&!abierta&&!otherGlobal&&(tvUpper(lesson?.estado)==='PROGRAMADA'||!lesson?.estado)&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
             </>}
           </div>
           {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:oralListoParaCerrar?'#E8F5E9':'#EAF8EF',color:'#166534',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.{!oralListoParaCerrar?' Aplicá el examen antes de cerrar la clase.':''}</div>}
@@ -1459,7 +1491,7 @@ function tvSelectContactTextF104(event){
   selection.addRange(range);
 }
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
-  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession();
+  const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession(activeSession?.COD_GRUPO || activeSession?.cod_grupo || '');
   const lista=grupos||[];
   const [contactos,setContactos]=React.useState({});
   React.useEffect(()=>{
@@ -1626,7 +1658,7 @@ function tvPlanSuspenderF52(draft, base, target, feriados=[]) {
   return {ok:true,cambios,riel,leccion:target.leccion,fechaLiberada:target.fecha,
     nuevoFinal,afectadas:tail.length};
 }
-function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDragStart, onDragEnd, onDropDay, onEmptyDay }) {
+function TeacherAgendaMonthF82({ month, events, onSelect, onQuickSuspend, planMode=false, onDragStart, onDragEnd, onDropDay, onEmptyDay }) {
   const y=month.getFullYear(),m=month.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,
     days=new Date(y,m+1,0).getDate(),cells=[];
   for(let i=0;i<first;i++)cells.push(null);
@@ -1659,7 +1691,9 @@ function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDrag
               const tone=tvAgendaToneF96(e,e.meta),draggable=planMode&&tvPlanSafeF52(e);
               const text=tvIsIcanEventF96(e)?'I CAN '+String(e.leccion).padStart(2,'0'):
                   e.progress_check?'PC '+String(e.leccion).padStart(2,'0'):'Lec '+String(e.leccion).padStart(2,'0');
-              return <button key={`${e.cod_grupo||''}-${e.riel||''}-${e.leccion||''}-${j}`}
+              const canQuickSuspend=!planMode&&(tvUpper(e.estado)==='PROGRAMADA'||!e.estado)&&
+                e.meta?.permisos_riel?.[tvLessonRielF97(e)]!==false;
+              return <div key={`${e.cod_grupo||''}-${e.riel||''}-${e.leccion||''}-${j}`} style={{display:'grid',gap:2,minWidth:0}}><button
                 type="button" onClick={()=>onSelect(e)} draggable={draggable}
                 onDragStart={draggable?x=>onDragStart(x,e):undefined}
                 onDragEnd={draggable?onDragEnd:undefined}
@@ -1669,7 +1703,9 @@ function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDrag
                   borderRadius:4,padding:'3px 4px',fontSize:9,fontWeight:900,textAlign:'left',
                   cursor:draggable?'grab':'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                 {text}
-              </button>;
+              </button>
+                {canQuickSuspend&&<button type="button" aria-label={`Solicitar suspensión de lección ${e.leccion}`} title="Solicitar suspensión sin iniciar clase" onClick={()=>onQuickSuspend&&onQuickSuspend(e)} style={{border:'1px solid #C68B38',borderRadius:4,background:'#FFF7E8',color:'#80500A',padding:'3px 2px',fontSize:9,fontWeight:900,lineHeight:1.3,cursor:'pointer'}}>Suspender</button>}
+              </div>;
             })}
           </div>
           {addable&&<div style={{display:'grid',gap:3,marginTop:4}}>
@@ -1698,6 +1734,7 @@ function TeacherAgendaMonthF82({ month, events, onSelect, planMode=false, onDrag
 function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false, onlyIcan=false }) {
   const {grupos,meta,codGrupo,cambiarGrupo,roster,asistenciaDetalle,comentariosDetalle,recargarPanel,loading,error}=useTeacherSession();
   const [events,setEvents]=React.useState([]),[loadingAgenda,setLoadingAgenda]=React.useState(true),[monthCount,setMonthCount]=React.useState(2),[selected,setSelected]=React.useState(null),[monthOffset,setMonthOffset]=React.useState(0);
+  const [quickSuspend,setQuickSuspend]=React.useState(null),[quickFeedback,setQuickFeedback]=React.useState(''),[agendaReload,setAgendaReload]=React.useState(0);
   const groupKey=JSON.stringify((grupos||[]).map(g=>[tvGroupCode(g),tvNivelId(g),String(g?.programa||'')]));
   const [planMode,setPlanMode]=React.useState(false);
   const [planFeedback,setPlanFeedback]=React.useState('');
@@ -1746,7 +1783,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       setEvents(filtered);
     }).finally(()=>live&&setLoadingAgenda(false));
     return()=>{live=false;};
-  },[groupKey,onlyIcan]);
+  },[groupKey,onlyIcan,agendaReload]);
   React.useEffect(()=>{setMonthOffset(0);},[codGrupo,onlyIcan]);
   const startBase=React.useMemo(()=>{
     const selectedEvents=events.filter(e=>String(e.cod_grupo||'')===String(codGrupo||''));
@@ -1910,7 +1947,7 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
       {[[1,'1 mes'],[2,'2 meses'],[periodMonthCount,'Cuatrimestre']].map(([n,l])=><button key={`${n}-${l}`} className={monthCount===n?'btn btn-primary':'btn btn-ghost'} onClick={()=>setMonthCount(n)}>{l}</button>)}
       <button className="btn btn-ghost" onClick={recargarPanel}>Actualizar</button>
     </div></div>
-    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode){abrirSuspensionPlan(e);return;}if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}}/>)}</div>}
+    {(loading||loadingAgenda)?<LoadingState title={onlyIcan?'Cargando Club I CAN…':'Cargando cronograma…'} subtitle="Consultando el calendario real de tus grupos"/>:error?<ErrorState message={error} onRetry={recargarPanel}/>:!events.length?<ErrorState message={onlyIcan?'No hay sesiones de Club I CAN asignadas a tus grupos actuales.':'No hay actividades visibles en el cronograma docente.'} onRetry={recargarPanel}/>:<div style={{display:'grid',gridTemplateColumns:monthCount===1?'1fr':'repeat(2,minmax(0,1fr))',gap:12}}>{months.map((m,i)=><TeacherAgendaMonthF82 key={i} month={m} events={draftCalendario} planMode={planMode} onDragStart={dragPlanStart} onDragEnd={()=>{planDrag.current=null;}} onDropDay={dropPlanDia} onEmptyDay={insertarPlanDia} onSelect={e=>{if(planMode){abrirSuspensionPlan(e);return;}if(e.cod_grupo!==codGrupo)cambiarGrupo(e.cod_grupo);setSelected(e);}} onQuickSuspend={e=>{setQuickFeedback('');setQuickSuspend(e);}}/>)}</div>}
     {suspenderTarget&&planMode&&<div role="presentation"
       onMouseDown={e=>{if(e.target===e.currentTarget)setSuspenderTarget(null);}}
       style={{position:'fixed',inset:0,zIndex:2500,background:'rgba(8,25,50,.63)',display:'grid',placeItems:'center',padding:12}}>
@@ -1968,6 +2005,15 @@ function CronogramaDocenteSeguroF82({ onNavigate, activeSession, activeSessionRe
         </div>
       </div>
     </div>}
+    {quickFeedback&&<div role="status" style={{padding:'10px 14px',margin:'12px 0',border:'1px solid #C8DAD2',borderRadius:9,background:'#EFF9F3',color:'#166534',fontSize:12,fontWeight:800}}>{quickFeedback}</div>}
+    {quickSuspend&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension
+      lec={{cod_grupo:quickSuspend.cod_grupo,nivel:quickSuspend.nivel,leccion:quickSuspend.leccion,
+        fecha:quickSuspend.fecha,turno:quickSuspend.turno,tipo:quickSuspend.tipo,estado:quickSuspend.estado,
+        hora_inicio:quickSuspend.hora_inicio,hora_fin:quickSuspend.hora_fin,
+        horario_label:tvGrupoLabel(quickSuspend.meta||meta).full,riel:tvLessonRielF97(quickSuspend)}}
+      solicitante={quickSuspend.meta?.docente||meta?.docente||''}
+      onCerrar={()=>setQuickSuspend(null)}
+      onEnviada={message=>{setQuickSuspend(null);setQuickFeedback(String(message||'Solicitud enviada a Administración.'));setAgendaReload(x=>x+1);recargarPanel();}}/>}
     {selected&&<LessonDrawerF82 lesson={selected} meta={selected.meta||meta} roster={selected.cod_grupo===codGrupo?roster:[]} asistenciaDetalle={selected.cod_grupo===codGrupo?asistenciaDetalle:{}} comentariosDetalle={selected.cod_grupo===codGrupo?comentariosDetalle:{}} onClose={()=>setSelected(null)} onChanged={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>}</div>;
 }
 function ClubICANDocenteView(props) {

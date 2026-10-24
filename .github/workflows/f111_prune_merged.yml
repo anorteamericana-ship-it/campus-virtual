@@ -1,0 +1,90 @@
+name: F111 - Retirar ramas integradas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/f111_prune_merged.yml
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  limpiar:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Eliminar solo refs cerradas, verificadas y de este repositorio
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KIND: ${{ github.event_name }}
+          PR_EVENT: ${{ github.event.pull_request.number || '0' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prune() {
+            local pr="$1" archive="$2" data state merged headrepo ref headsha actual
+            data="$(gh api "repos/$REPO/pulls/$pr")"
+            state="$(jq -r '.state' <<< "$data")"
+            merged="$(jq -r '.merged' <<< "$data")"
+            headrepo="$(jq -r '.head.repo.full_name // ""' <<< "$data")"
+            ref="$(jq -r '.head.ref // ""' <<< "$data")"
+            headsha="$(jq -r '.head.sha // ""' <<< "$data")"
+            if [[ "$state" != "closed" || "$headrepo" != "$REPO" ]]; then return 0; fi
+            if [[ "$merged" != "true" && "$archive" != "yes" ]]; then return 0; fi
+            if [[ ! "$ref" =~ ^[a-zA-Z0-9_./-]+$ || "$ref" == main || "$ref" == release/* || "$ref" == prod-* ]]; then
+              echo "Skip protected/invalid ref for PR $pr"; return 0
+            fi
+            actual="$(gh api "repos/$REPO/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
+            if [[ -z "$actual" ]]; then echo "Already absent: PR $pr"; return 0; fi
+            if [[ "$actual" != "$headsha" ]]; then echo "Skip advanced branch PR $pr"; return 0; fi
+            if gh api -X DELETE "repos/$REPO/git/refs/heads/$ref" >/dev/null; then
+              echo "DELETED PR $pr: $ref"
+            else
+              echo "Could not delete PR $pr: $ref"
+            fi
+          }
+          if [[ "$KIND" == "push" ]]; then
+            # Ronda L1 cerrada: QA/documentacion archivada y hotfixes ya integrados.
+            prune 501 yes
+            prune 519 yes
+            prune 520 yes
+            prune 521 no
+            prune 523 no
+            prune 524 no
+            prune 525 no
+            prune 526 no
+            prune 527 no
+            prune 528 no
+            # Borrado conservador de otras ramas ya fusionadas.
+            temp="$(mktemp -d)"
+            trap 'rm -rf "$temp"' EXIT
+            gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv' > "$temp/branches"
+            gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[] | .head.ref' > "$temp/open"
+            gh api --paginate "repos/$REPO/pulls?state=closed&per_page=100" --jq '.[] | select(.merged_at != null) | [.number, .head.ref, .head.sha, (.head.repo.full_name // "")] | @tsv' > "$temp/merged"
+            declare -A heads=() active=()
+            while IFS=$'\t' read -r ref sha; do heads["$ref"]="$sha"; done < "$temp/branches"
+            while IFS= read -r ref; do active["$ref"]=1; done < "$temp/open"
+            swept=0
+            while IFS=$'\t' read -r pr ref sha source; do
+              if [[ "$source" != "$REPO" || "$ref" == main || "$ref" == release/* || "$ref" == prod-* ]]; then continue; fi
+              if [[ ! "$ref" =~ ^[a-zA-Z0-9_./-]+$ ]]; then continue; fi
+              if [[ -n "${active[$ref]:-}" || -z "${heads[$ref]:-}" || "${heads[$ref]}" != "$sha" ]]; then continue; fi
+              if gh api -X DELETE "repos/$REPO/git/refs/heads/$ref" >/dev/null; then
+                echo "MERGED_SWEEP_DELETED PR $pr: $ref"
+                swept=$((swept+1))
+                unset 'heads[$ref]'
+              else
+                echo "MERGED_SWEEP_BLOCKED PR $pr: $ref"
+              fi
+            done < "$temp/merged"
+            echo "MERGED_SWEEP_TOTAL=$swept"
+          elif [[ "$PR_EVENT" =~ ^[0-9]+$ && "$PR_EVENT" -gt 0 ]]; then
+            # Próximos PR: solo ramas del repositorio cuya fusión ya fue confirmada.
+            prune "$PR_EVENT" no
+          fi
