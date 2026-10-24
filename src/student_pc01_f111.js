@@ -3,7 +3,6 @@
 'use strict';
 const TARGET='B1-KJ18-C3-0826';
 const GROUP={cod_grupo:TARGET,nivel:'B1',leccion:4};
-const seen=new WeakSet();
 function e(tag,cl,txt){const x=document.createElement(tag);if(cl)x.className=cl;if(txt!==undefined)x.textContent=txt;return x}
 function setTextIfChanged(node,txt){if(node&&node.textContent!==txt)node.textContent=txt}
 function setHiddenIfChanged(node,value){if(node&&node.hidden!==value)node.hidden=value}
@@ -49,8 +48,7 @@ function isAvailable(r){
 }
 function attach(){
  const screen=document.querySelector('[data-screen-label="Estudiante · Evaluaciones"]');
- if(!screen||seen.has(screen))return;
- seen.add(screen);
+ if(!screen||screen.querySelector('[data-f111-student-pc01]'))return;
  const box=e('section','f111-pc01-student');
  box.hidden=!active;
  box.dataset.f111StudentPc01='true';
