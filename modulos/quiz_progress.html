@@ -106,7 +106,7 @@ async function api(fn,payload={}){
  return j;
 }
 async function save(showToast){
- if(preview||submitted||uncertainSubmit||expired||busy||!dirty)return;
+ if(preview||teacherPreview||submitted||uncertainSubmit||expired||busy||!dirty)return;
  busy=true;update();
  try{
   const snapshot=JSON.stringify(response);
@@ -120,7 +120,7 @@ async function save(showToast){
 }
 async function submit(){
  clearTimeout(saveTimer);
- if(!fields.some(x=>String(response[x.key]||'').trim())||submitted||uncertainSubmit||expired||busy)return;
+ if(!fields.some(x=>String(response[x.key]||'').trim())||preview||teacherPreview||submitted||uncertainSubmit||expired||busy||(audioRequired&&!audioReady))return;
  if(!confirm('¿Entregar el quiz ahora? Luego no podrás editar tus respuestas.'))return;
  busy=true;update();setError('');
  try{
