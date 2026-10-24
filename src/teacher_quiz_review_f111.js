@@ -81,6 +81,65 @@ async function postQuiz(fn,data){
  if(!res.ok||!j||j.ok!==true)throw Error(j&&j.error||'Operación no disponible');
  return j;
 }
+// R9: grupos B1 autorizados, definidos por el servidor y no por parámetros de URL.
+async function loadR9Groups(done){
+ if(r9Loaded||r9Loading)return;
+ r9Loading=true;
+ try{
+  const r=await postQuiz('qzProgressTeacherB1Groups',{});
+  r9Groups=(Array.isArray(r.grupos)?r.grupos:[]).filter(g=>
+   g.nivel==='B1'&&/^[A-Z0-9-]{5,65}$/.test(String(g.cod_grupo||'')));
+  r9Loaded=true;
+ }catch(_){r9Groups=[];r9Loaded=false;}
+ finally{r9Loading=false;if(done)done();}
+}
+function r9OpenControls(lesson){
+ const wrap=make('div',null,'f111-tqr-r9-controls'),
+       status=make('small','Seleccioná un grupo B1 para consultar la apertura.','f111-tqr-feedback'),
+       button=make('button','CONSULTANDO…','f111-tqr-activate');
+ button.type='button';button.disabled=true;wrap.append(button,status);
+ const ctx=()=>({cod_grupo:selectedB1Group,nivel:'B1',leccion:lesson});
+ async function refresh(){
+  button.disabled=true;
+  if(!selectedB1Group){status.textContent='Elegí el grupo autorizado.';return;}
+  const group=selectedB1Group;
+  status.textContent='Consultando calendario y apertura…';
+  try{
+   const r=await postQuiz('qzProgressTeacherAvailability',ctx());
+   if(!wrap.isConnected||group!==selectedB1Group)return;
+   if(r.digital_disponible!==true)throw Error('quiz_no_digitalizado');
+   const opened=r.estado==='ABIERTO';
+   button.dataset.r9State=r.estado;
+   button.textContent=opened?'CERRAR QUIZ':'ACTIVAR QUIZ PARA EL GRUPO';
+   button.disabled=!opened&&r.puede_abrir!==true;
+   status.textContent=opened?'Abierto: acceso solo para estudiantes matriculados.'
+      :r.puede_abrir===true?'La fecha programada ya llegó; requiere tu confirmación.':
+       'No se puede abrir todavía: fecha futura, clase suspendida o rol no autorizado.';
+  }catch(e){
+   if(!wrap.isConnected||group!==selectedB1Group)return;
+   button.disabled=true;status.textContent='No disponible: '+String(e.message||'error');
+  }
+ }
+ button.onclick=async()=>{
+  if(button.disabled||!selectedB1Group)return;
+  const group=selectedB1Group,opened=button.dataset.r9State==='ABIERTO',
+        newState=opened?'CERRADO':'ABIERTO',index=LESSONS.findIndex(([l])=>l===lesson)+1;
+  if(!window.confirm('¿'+(opened?'Cerrar':'Habilitar')+' Quiz '+index+' · Lección '+lesson+' para '+group+'?'+
+      (opened?' Las entregas existentes se conservarán.':' Solo matrícula CA. Peso oficial 0%.')))return;
+  button.disabled=true;status.textContent='Actualizando y leyendo estado…';
+  try{
+   const payload={cod_grupo:group,nivel:'B1',leccion:lesson,estado:newState};
+   const r=await postQuiz('qzProgressTeacherSetAvailability',payload);
+   if(r.estado!==newState)throw Error('operacion_no_confirmada');
+   const verify=await postQuiz('qzProgressTeacherAvailability',payload);
+   if(verify.estado!==newState)throw Error('lectura_no_confirmada');
+   status.textContent=newState==='ABIERTO'?'Quiz habilitado.':'Quiz cerrado.';
+  }catch(e){status.textContent='No se confirmó: '+String(e.message||'error');}
+  finally{void refresh();}
+ };
+ queueMicrotask(()=>void refresh());
+ return wrap;
+}
 // Revisión ampliada: listado primero, luego examen REAL en vista de solo lectura.
 // No crea exámenes ni reescribe notas oficiales o comentarios de asistencia.
 function openReviewWorkspace(){
