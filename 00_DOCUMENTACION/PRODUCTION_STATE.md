@@ -1,6 +1,24 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · D3/D4 R13 · AISLAMIENTO QA NO ACREDITADO — BLOQUEO SEGURO (24-oct-2026)
+
+**PROPÓSITO:** verificar que haya un proyecto Apps Script QA auténtico y recursos independientes ANTES de usar el ejecutor `tests/qa_f111_r12_appsscript_editor_only.js`; no repetir E1, E2, D5 R10 ni alterar alumnos.
+
+**EVIDENCIA LEÍDA (SIN ESCRIBIR):** metadatos de Google Drive accesibles desde la cuenta conectada. Búsquedas por `F111_R12_QA`, `ORAL_QA`, `F111_R12_QA_` (carpetas), proyectos `application/vnd.google-apps.script` con nombre F111/QA: **0 coincidencias pertinentes**. Se encontró la carpeta existente `CAMPUS_QA_CS21A211_ISOLATED_RESOURCES` y, dentro, el par antiguo de Google Sheets `APOLLO_QA_NUEVA_2026-09-18` (**56 pestañas**) y `CAMPUS_OPERATIVO_QA_2026-09-19` (**45 pestañas**, incluyen `ORAL_EVALUACIONES`, `ORAL_PREGUNTAS_APLICADAS`, `ORAL_AUDIT_LOG` y `CALENDARIO_LECCIONES`). Se revisó exclusivamente METADATA de pestañas; en **0/2** libros apareció el sello obligatorio `F111_R12_CONTROL`. La carpeta es QA histórica, **no cumple** el prefijo exacto `F111_R12_QA_`, y no se debe renombrar ni reaprovechar automáticamente.
+
+**OTROS CANDIDATOS DESCARTADOS:** Google Drive también devuelve hojas `F111_QZ32_SYNTH_APOLLO_E3` y `F111_QZ32_SYNTH_OPERATIVO_E3`, aisladas para los quizzes D5, no para el ensayo oral D3/D4. También hay recursos QA anteriores y staging obsoleto; no confundir etiquetas QA con certificación R13. La conexión de escritorio disponible tiene acceso permitido a otro proyecto, no al directorio autorizado de CAMPUS F111; no se usó terminal ni se leyeron secretos de `clasp`. La ausencia de resultados en Drive visible **NO prueba** que Apps Script QA no exista fuera del alcance del conector.
+
+**PREFLIGHT FAIL-CLOSED:** no se pudo verificar el ID de proyecto QA usando `ScriptApp.getScriptId()`, las cuatro propiedades `F111_R12_QA_*` frente a `F111_R12_PROD_*`, la coincidencia de `OPERATIVO_ID` y `SHEET_ID` con las dos hojas exclusivas, los sellos `F111_R12_CONTROL!A1`, la carpeta documental con prefijo `F111_R12_QA_`, ni los tres tokens sintéticos de rol. Consecuencia obligatoria: **NO invocar `F111_R12_QA_EJECUTAR`**, ni siquiera su variante de lectura por API, hasta acreditar el preflight en un proyecto específico de QA con los tres recursos aislados. No se invocó `oralSaveDraft`, `oralCloseEvaluacion`, `oralGeneratePdf`, endpoints productivos, ni ningún `clasp push/deploy`.
+
+**CÓDIGO Y CI:** repositorios y PR sin cambios de código en R13: [frontend #511](https://github.com/anorteamericana-ship-it/campus-virtual/pull/511) SHA `212c9e8`, [backend #55](https://github.com/anorteamericana-ship-it/campus_backend/pull/55) SHA `ae2f268` y [backend #65](https://github.com/anorteamericana-ship-it/campus_backend/pull/65) SHA `e4cdaacf`. Los tres siguen **OPEN/DRAFT, MERGED=FALSE**. Las pruebas sintéticas reportadas PASS en R12 NO se ejecutaron de nuevo; su evidencia histórica permanece válida solo para los SHA documentados. R13 solo leyó contexto y verificó metadatos.
+
+**MÉTRICAS POR DENOMINADOR:** verificación de metadatos de hojas candidatas **2/2 (100% inspeccionadas)**; sellos R12 válidos **0/2 (0%)**; proyecto Apps Script aislado verificado **0/1 (0%)**; carpeta documental R12 acreditada **0/1 (0%)**; roles QA auténticos probados **0/3 (0%)**; matriz bancos/permisos con Apps Script autenticado **0/4 niveles (0%)**; E2E ficticio borrador/cierre/nota/PDF/respaldo **0/4 expedientes (0%)**. Cambios alumnos reales **0**, escrituras Google **0**, cierres/notas/PDF reales **0**, merges **0/3** y deploys R13 **0**. F111 global **56% LÍNEA BASE HISTÓRICA** sin nuevo cálculo.
+
+**SIGUIENTE ÚNICA PUERTA:** identificar de manera comprobable el proyecto Apps Script QA dedicado (no el deployment de producción), asegurar dos Sheets y carpeta Drive **exclusivamente QA** con sellos y diferencias de IDs verificados, instalar allí *solo* los deltas de #55/#65 y el ejecutor QA tras readback de su fuente; correr en ese QA el preflight primero en solo lectura, luego los cuatro niveles con usuarios ficticios, nota oficial 15% y PDF+backup idempotente, registrar resultado y rollback QA. Si no hay recursos R12, se requiere prepararlos como recursos nuevos expresamente aislados, **sin modificar ni reciclar los QA históricos de otros módulos**. No fusionar ni desplegar producción Campus @473, Quiz @477 o Pages antes de la aceptación E2E y readback exacto.
+
+---
+
 ## F111 · D3/D4 R12 · CONTRATOS Y QA AISLADO (24-oct-2026) · NO PROD
 
 **ORDEN Y REGISTRO:** continuación exacta de R11 en los mismos PR, **sin ramas nuevas, sin fusiones, sin despliegues ni cambios a estudiantes reales**. No se repitió R10. Fuente de verdad: este Plan Maestro y comentarios de los PR; Campus Apps Script **@473** y Quiz **@477** siguen como últimas referencias documentadas, **no nueva lectura clasp ni escritura R12**.
