@@ -19,7 +19,7 @@ async function api(fn,body){
  return result;
 }
 function openQuiz(){
- if(!active)return;
+ if(!active||attemptState==='ENTREGADO'||attemptState==='REVISADO'||attemptState==='DESCONOCIDO')return;
  document.querySelectorAll('.f111-pc01-invite').forEach(x=>x.remove());
  const modal=e('div','f111-pc01-modal');modal.setAttribute('role','dialog');
  modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Quiz 1 Básico I');
