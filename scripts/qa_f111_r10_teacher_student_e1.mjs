@@ -8,7 +8,7 @@ const campus=fs.readFileSync(new URL('../campus.html',import.meta.url),'utf8');
 new Function(teacher);new Function(student);
 assert.match(teacher,/\^qzProgress\[A-Za-z0-9\]\+\$/,'B1 numeric endpoints must use dedicated Quiz API');
 assert.match(campus,/student_b1_progress_f111\.js\?v=F111B1R10STUDENT20261024/);
-assert.match(campus,/teacher_quiz_review_f111\.js\?v=F111B1R10ROUTING20261024/);
+assert.match(campus,/teacher_quiz_review_f111\.js\?v=F111B1R10GROUPONCE20261024/);
 const ROOT='https://f111-r10-synthetic.invalid',API=ROOT+'/api';
 const browser=await chromium.launch({headless:true});
 const requests=[],states=new Map(),errors=[];
@@ -52,6 +52,7 @@ try {
  assert.equal(await page.locator('.f111-tqr-card').count(),8);
  assert.equal(await page.locator('.f111-tqr-r9-controls').count(),7);
  await page.waitForFunction(()=>document.querySelectorAll('.f111-tqr-r9-group option').length===14);
+ assert.equal(requests.filter(x=>x.fn==='qzProgressTeacherB1Groups').length,1,'seven cards share one authenticated B1 groups lookup');
  const controls=page.locator('.f111-tqr-r9-controls');
  const first=controls.first();
  assert.equal(await first.locator('.f111-tqr-activate').isDisabled(),true,'no group auto selected');
