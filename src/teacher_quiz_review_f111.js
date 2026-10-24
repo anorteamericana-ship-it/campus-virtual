@@ -125,7 +125,7 @@ const qzContext={cod_grupo:QZ_GROUP,nivel:'B1',leccion:4};
 async function postQuiz(fn,data){
  const token=window.getSessionToken?window.getSessionToken():'';
  // Las operaciones Progress Check usan @467; padrón docente y login siguen en @462.
- const isQuiz=/^qzProgress[A-Za-z]+$/.test(String(fn||''));
+ const isQuiz=/^qzProgress[A-Za-z0-9]+$/.test(String(fn||'')); // R10: B1 endpoints must use Quiz @477
  const base=String((isQuiz&&window.F111_QZ_API_URL)||window.APPS_SCRIPT_URL||'');
  if(!token||!base)throw Error('Sesión docente no disponible');
  const res=await fetch(base+'?fn='+encodeURIComponent(fn),{
