@@ -34,8 +34,9 @@ for(const fn of ['qzProgressTeacherAvailability','qzProgressTeacherSetAvailabili
  assert.ok(teacher.includes("'"+fn+"'"),'API docente '+fn);
 assert.ok(teacher.includes('Comentario de Progress Check (obligatorio, independiente de asistencia)'),'segundo comentario visible');
 assert.ok(teacher.includes('comentario_progress_check:comment.value.trim()'),'comentario obligatorio se envía aparte');
-assert.ok(teacher.includes("gradeInput.min='0'")&&teacher.includes("gradeInput.max='100'")&&
- teacher.includes("score.percentage.toFixed(0)"),'equivalencia 0–100 calculada de la clave y 25 puntos');
+assert.ok(teacher.includes("gradeInput.type='text'")&&teacher.includes("gradeInput.readOnly=true")&&
+ teacher.includes("score.points+'/25 · '+score.percentage.toFixed(0)+'% · '+score.letter")&&
+ teacher.includes("Number(result.nota)!==savedScore.percentage"),'equivalencia /25, porcentaje y letra visibles, nota validada en servidor 0–100');
 assert.ok(teacher.includes("result.comentario_asistencia_modificado!==false"),'respuesta confirma que asistencia no se tocó');
 assert.ok(!teacher.includes('docenteCerrarClaseConAsistenciaF87'),'revisión de quiz no escribe asistencia');
 assert.ok(!teacher.includes('registrarNotaComponenteOficial'),'quiz no afecta ponderación INA');
@@ -51,9 +52,9 @@ assert.ok(student.includes("window.F111_QZ_API_URL||window.APPS_SCRIPT_URL"),'es
 assert.ok(quiz.includes('window.parent.F111_QZ_API_URL||window.parent.APPS_SCRIPT_URL'),'iframe SAVE y SUBMIT usan QZ B1');
 assert.ok(!login.includes('F111_QZ_API_URL'),'login independiente del motor de quiz');
 assert.ok(login.includes('fn: \'iniciarSesion\''),'login intacto en servidor original');
-assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01INLINEKEY20261023'),'cache student actualizado');
-assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01GROUPAVG20261023'),'cache teacher actualizado');
-assert.ok(student.includes("url.searchParams.set('v','F111PC01INLINEKEY20261023')"),'iframe estudiante evita versión antigua en caché');
+assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01REVIEWCOLORS20261024'),'cache student actualizado');
+assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01REVIEWCOLORS20261024'),'cache teacher actualizado');
+assert.ok(student.includes("url.searchParams.set('v','F111PC01REVIEWCOLORS20261024')"),'iframe estudiante evita versión antigua en caché');
 
 // Regresión de UX exigida tras la primera entrega de estudiante real.
 assert.ok(quiz.includes("submit').textContent='ENTREGAR AHORA'"),'el alumno identifica claramente el envío final');

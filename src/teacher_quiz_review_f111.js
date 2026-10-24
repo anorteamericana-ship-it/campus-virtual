@@ -134,7 +134,7 @@ function openReviewWorkspace(){
   const frame=make('iframe');frame.className='f111-tqr-exam-frame';frame.title='Examen del estudiante y corrección por pregunta';
   const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
   url.searchParams.set('review','1');
-  url.searchParams.set('v','F111PC01INLINEKEY20261023');
+  url.searchParams.set('v','F111PC01REVIEWCOLORS20261024');
   let frameLoaded=false,payload=null,score=null;
   frame.addEventListener('load',()=>{
    frameLoaded=true;
@@ -151,7 +151,7 @@ function openReviewWorkspace(){
    score=data;
    gradePanel.textContent='RESULTADO DIAGNÓSTICO · '+score.points+'/25 · '+score.percentage.toFixed(0)+'% · '+score.letter+' · Ponderación oficial 0%';
    gradePanel.dataset.ready='true';
-   if(gradeInput)gradeInput.value=score.percentage.toFixed(0);
+   if(gradeInput){gradeInput.value=score.points+'/25 · '+score.percentage.toFixed(0)+'% · '+score.letter+' · Ponderación oficial 0%';gradeInput.dataset.gradeBand=score.percentage>=90?'alta':score.percentage>=70?'media':'baja';}
    if(gradeSubmit)gradeSubmit.disabled=false;
   };
   // La clave NO existe en Pages; qzProgressTeacherMaterials exige sesión docente válida.
@@ -175,10 +175,11 @@ function openReviewWorkspace(){
    return;
   }
   const form=make('form',null,'f111-tqr-grade-form');
-  const label=make('label','Resultado diagnóstico (escala equivalente 0–100)');
-  gradeInput=make('input');gradeInput.type='number';gradeInput.readOnly=true;gradeInput.required=true;
-  gradeInput.min='0';gradeInput.max='100';gradeInput.step='1';
-  gradeInput.placeholder='Se calcula desde 25 preguntas';
+  const label=make('label','Resultado diagnóstico · puntos /25 · porcentaje · letra (ponderación oficial 0%)');
+  gradeInput=make('input');gradeInput.type='text';gradeInput.className='f111-tqr-grade-result';
+  gradeInput.readOnly=true;gradeInput.required=true;
+  gradeInput.placeholder='Se calcula desde las 25 respuestas';
+  gradeInput.setAttribute('aria-label','Nota diagnóstica en puntos, porcentaje y letra; peso oficial cero');
   label.append(gradeInput);
   const commentLabel=make('label','Comentario de Progress Check (obligatorio, independiente de asistencia)');
   const comment=make('textarea');comment.required=true;comment.minLength=5;comment.maxLength=1500;comment.rows=4;
@@ -447,6 +448,9 @@ function installStyle(){
  '.f111-tqr-score-banner[data-ready=true]{background:#e8f5eb;border-color:#9ed1ad;color:#17513a}',
  '.f111-tqr-grade-form{display:grid;gap:13px;background:#fff;padding:17px;border-radius:12px;border:1px solid #d9e4ee;margin:18px 0}',
  '.f111-tqr-grade-form label{display:grid;gap:5px;font-size:12px;font-weight:800;color:#1c476e}',
+ '.f111-tqr-grade-form .f111-tqr-grade-result{font-size:16px;line-height:1.4;font-weight:900;color:#174c32;background:#eaf7ed;border:1px solid #95c9a6;min-height:48px}',
+ '.f111-tqr-grade-form .f111-tqr-grade-result[data-grade-band=baja]{background:#fff0ee;border-color:#dba5a0;color:#a52b27}',
+ '.f111-tqr-grade-form .f111-tqr-grade-result[data-grade-band=media]{background:#fff7e5;border-color:#e9c68e;color:#855b1e}',
  '.f111-tqr-grade-form input,.f111-tqr-grade-form textarea{font:inherit;border-radius:8px;border:1px solid #bdcfdf;padding:11px;width:100%}',
  '.f111-tqr-reviewed{background:#e9f8ed;border:1px solid #b9dcc4;padding:14px;border-radius:9px;color:#225b39;font-weight:800}',
  '@media(max-width:760px){.f111-tqr-workspace-backdrop{padding:4px}.f111-tqr-workspace{height:99vh}.f111-tqr-workspace-header{padding:12px;align-items:flex-start}.f111-tqr-workspace-header h2{font-size:17px}.f111-tqr-workspace-columns{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}.f111-tqr-students{max-height:150px;border-right:0;border-bottom:1px solid #d2e0ee;padding:10px}.f111-tqr-student-list{display:flex;overflow-x:auto}.f111-tqr-student-choice{min-width:145px}.f111-tqr-detail{padding:10px}.f111-tqr-exam-frame{height:480px}}',

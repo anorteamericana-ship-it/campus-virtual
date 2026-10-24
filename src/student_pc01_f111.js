@@ -30,7 +30,7 @@ function openQuiz(){
  bar.append(close);shell.append(bar);
  const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
  url.searchParams.set('live','1');
- url.searchParams.set('v','F111PC01INLINEKEY20261023');
+ url.searchParams.set('v','F111PC01REVIEWCOLORS20261024');
  url.searchParams.set('grupo',TARGET);
  const frame=e('iframe');frame.src=url.href;frame.title='Progress Check 01: respuesta y entrega';
  frame.setAttribute('referrerpolicy','same-origin');

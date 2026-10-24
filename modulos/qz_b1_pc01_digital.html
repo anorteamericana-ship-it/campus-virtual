@@ -27,7 +27,17 @@ body.f111-review-only .foot{display:none}body.f111-review-only .hero .pill{backg
 body.f111-review-only .note{background:#eaf2fc;border-color:#bdd4eb;color:#204e7c}
 .f111-mark{margin-top:12px;border:1px solid #cbdcec;border-radius:11px;padding:11px;background:#f1f7ff;display:grid;gap:8px}
 .f111-mark strong{margin:0!important;font-size:13px!important;color:#134571}
-.f111-mark .f111-student-answer{background:white;border-radius:7px;padding:9px 11px;border:1px solid #d8e6ef;color:#153c5d;overflow-wrap:anywhere}
+.f111-mark .f111-student-answer{background:white;border-radius:7px;padding:9px 11px;border:1px solid #d8e6ef;color:#153c5d;overflow-wrap:anywhere;font-weight:700}
+body.f111-review-only .f111-mark[data-review-state="incorrecta"] .f111-student-answer{background:#fff0ef;border-color:#e6a6a0;border-left:4px solid #bf302b;color:#982420}
+body.f111-review-only .f111-mark[data-review-state="correcta"] .f111-student-answer{background:#e8f7ed;border-color:#a2d6b2;border-left:4px solid #24814a;color:#155a32}
+body.f111-review-only .f111-mark[data-review-state="parcial"] .f111-student-answer{background:#fff6df;border-color:#ecd093;border-left:4px solid #c48c20;color:#835814}
+body.f111-review-only .f111-mark[data-review-state="sin-responder"] .f111-student-answer{background:#f1f4f8;border-color:#cbd5df;color:#5e6d7e}
+body.f111-review-only .question[data-review-state="incorrecta"] label:has(input:checked){background:#fff0ef;border:2px solid #bf302b;color:#982420}
+body.f111-review-only .question[data-review-state="correcta"] label:has(input:checked){background:#e8f7ed;border:2px solid #24814a;color:#155a32}
+body.f111-review-only .question[data-review-state="parcial"] label:has(input:checked){background:#fff6df;border:2px solid #c48c20;color:#835814}
+body.f111-review-only .question[data-review-state="incorrecta"] input[type=radio]{accent-color:#bf302b}
+body.f111-review-only .question[data-review-state="correcta"] input[type=radio]{accent-color:#24814a}
+body.f111-review-only .question[data-review-state="parcial"] input[type=radio]{accent-color:#b77e10}
 .f111-mark .f111-correct{background:#e8f6ec;border-radius:7px;padding:9px 11px;border-left:3px solid #27864c;color:#195236;overflow-wrap:anywhere}
 .f111-mark .f111-mark-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12px;color:#2c4e71}
 .f111-mark-actions button{border:1px solid #bfd0e1;padding:8px 12px;border-radius:8px;background:white;color:#21496d;cursor:pointer;font-weight:800}
@@ -159,15 +169,29 @@ if(q[2]===null){var t=node('input');t.type='text';t.value=answers[q[0]]||'';t.pl
 else q[2].forEach(function(v){var label=node('label'),radio=node('input');radio.type='radio';radio.name=q[0];radio.value=v;radio.checked=answers[q[0]]===v;radio.disabled=sent;radio.addEventListener('change',function(){answers[q[0]]=v;persist();status()});label.append(radio,node('span',v));card.append(label)});
 if(reviewMode){
  var answerId=q[0],markBox=node('div',null,'f111-mark');
+ var studentAnswer=String(answers[answerId]||'').trim();
+ var hasKey=reviewReady&&reviewKey&&Array.isArray(reviewKey[answerId]);
+ var assignedPoints=hasKey?(Object.prototype.hasOwnProperty.call(reviewMarks,answerId)?
+  reviewMarks[answerId]:reviewDefaultMark(answerId)):null;
+ // Colores exclusivos de la vista docente. La nota ya cerrada no implica
+ // recuperar ajustes granulares que el backend todavía no almacena.
+ var reviewState=!hasKey?'sin-clave':!studentAnswer?'sin-responder':
+  assignedPoints===1?'correcta':assignedPoints===0.5?'parcial':'incorrecta';
+ var reviewMessage=reviewState==='correcta'?'✓ Respuesta correcta · 1/1':
+  reviewState==='parcial'?'◐ Crédito parcial · 0,5/1':
+  reviewState==='incorrecta'?'✗ Respuesta incorrecta · 0/1':
+  reviewState==='sin-responder'?'— Sin responder · 0/1':'Pendiente de clave privada';
+ markBox.dataset.reviewState=reviewState;
+ card.dataset.reviewState=reviewState;
  markBox.append(node('strong','CORRECCIÓN DOCENTE · '+answerId),
-  node('div','Respuesta del estudiante: '+(String(answers[answerId]||'').trim()||'Sin responder'),'f111-student-answer'));
- if(reviewReady&&reviewKey&&Array.isArray(reviewKey[answerId])){
-  markBox.append(node('div','Respuesta correcta: '+reviewKey[answerId].join(' / '),'f111-correct'));
+  node('div',reviewMessage+' · Respuesta del estudiante: '+(studentAnswer||'Sin responder'),'f111-student-answer'));
+ if(hasKey){
+  markBox.append(node('div','✓ Respuesta correcta: '+reviewKey[answerId].join(' / '),'f111-correct'));
   var actionBox=node('div',null,'f111-mark-actions');
   actionBox.append(node('span','Puntos:'));
   if(!reviewLocked)[0,0.5,1].forEach(function(pts){
    var btn=node('button',String(pts));btn.type='button';
-   btn.setAttribute('aria-pressed',String((Object.prototype.hasOwnProperty.call(reviewMarks,answerId)?reviewMarks[answerId]:reviewDefaultMark(answerId))===pts));
+   btn.setAttribute('aria-pressed',String(assignedPoints===pts));
    btn.onclick=function(){reviewMarks[answerId]=pts;render();reviewNotify()};
    actionBox.append(btn);
   });
