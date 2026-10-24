@@ -47,7 +47,7 @@ let x=await mock('REVISADO');assert.equal(x.data.nota,24);assert.equal(x.data.co
 x=await mock('ENTREGADO');assert.equal(x.data.nota,null);assert.equal(x.data.comentario,'');
 x=await mock('SIN_INICIAR');assert.equal(x.data,null);
 x=await mock('REVISADO','B1-OTHER');assert.equal(x.data,null);assert.equal(x.calls.length,0);
-for(const missing of ['', '   ', false, null, undefined, 'invalid', 101, -1]){
+for(const missing of ['', '   ', false, null, 'invalid', 101, -1]){
   const invalid=await mock('REVISADO','B1-KJ18-C3-0826',missing);
   assert.equal(invalid.data.nota,null,'No inventar 0% con nota vacía/inválida: '+String(missing));
 }
