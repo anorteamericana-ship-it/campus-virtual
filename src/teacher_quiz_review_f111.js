@@ -14,7 +14,7 @@ function make(tag,text,className){
 // B1 PC02–08: una sola vista de cuestionario PDF y audio MP3 originales,
 // servidos exclusivamente desde Apps Script con sesión de docente y grupo.
 // No hay claves ni binarios Cambridge en Pages, ni se habilita el quiz al mirar.
-function previewB1Protected(lesson){
+function previewB1Protected(lesson,authorizedGroup){
  const token=window.getSessionToken?String(window.getSessionToken()||''):'';
  if(!token||!window.F111_QZ_API_URL){
   window.alert('Abrí el Campus con tu sesión docente para consultar el material protegido.');
@@ -39,7 +39,7 @@ function previewB1Protected(lesson){
  frame.title='Progress Check B1 · vista privada docente';
  const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
  url.searchParams.set('teacher_preview','1');
- url.searchParams.set('grupo',QZ_GROUP);
+ url.searchParams.set('grupo',authorizedGroup||QZ_GROUP);
  url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(lesson));
  frame.src=url.href;
@@ -50,6 +50,63 @@ function previewB1Protected(lesson){
  document.addEventListener('keydown',onKey);
  shell.append(header,frame);overlay.append(shell);document.body.append(overlay);
  close.focus();
+}
+// R9: the assigned teacher explicitly selects a B1 group; no automatic opening.
+// Only the backend decides if the lesson/date/role permits activation.
+function buildB1TeacherOpenControls(lesson){
+ const wrap=make('div',null,'f111-tqr-r9-controls');
+ const select=make('select',null,'f111-tqr-r9-group');
+ select.setAttribute('aria-label','Grupo B1 autorizado');
+ const status=make('small','Consultando grupos docentes…','f111-tqr-feedback');
+ status.setAttribute('role','status');
+ const previewBtn=make('button','VER PDF + AUDIO DEL GRUPO','f111-tqr-open');
+ const toggle=make('button','CONSULTANDO…','f111-tqr-activate');
+ for(const b of [previewBtn,toggle]){b.type='button';b.disabled=true;}
+ wrap.append(select,previewBtn,toggle,status);
+ let info=null,busy=false;
+ const context=()=>({cod_grupo:select.value,nivel:'B1',leccion:lesson});
+ async function refresh(){
+  toggle.disabled=true;info=null;
+  if(!select.value){status.textContent='Seleccioná un grupo autorizado.';return;}
+  try{
+   const data=await postQuiz('qzProgressTeacherAvailability',context());
+   if(data.grupo!==select.value||Number(data.leccion)!==lesson||data.digital_disponible!==true)
+    throw Error('Grupo o lección no habilitados');
+   info=data;
+   toggle.textContent=data.estado==='ABIERTO'?'CERRAR QUIZ PARA ESTUDIANTES':'ACTIVAR QUIZ PARA ESTUDIANTES';
+   toggle.disabled=busy||(data.estado!=='ABIERTO'&&data.puede_abrir!==true);
+   status.textContent='Quiz '+String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' · '+
+    (data.estado==='ABIERTO'?'Abierto por docente':data.puede_abrir?'Cerrado; requiere activación expresa':'No elegible según fecha, clase o permisos');
+  }catch(e){status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;}
+ }
+ select.addEventListener('change',()=>{previewBtn.disabled=!select.value;void refresh();});
+ previewBtn.addEventListener('click',()=>{if(select.value)previewB1Protected(lesson,select.value);});
+ toggle.addEventListener('click',async()=>{
+  if(busy||!info||!select.value)return;
+  const next=info.estado==='ABIERTO'?'CERRADO':'ABIERTO';
+  if(next==='ABIERTO'&&info.puede_abrir!==true)return;
+  if(!window.confirm((next==='ABIERTO'?'¿ACTIVAR':'¿CERRAR')+' el Quiz '+
+      String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' del grupo '+select.value+
+      '? Esta acción afecta la disponibilidad para estudiantes reales.'))return;
+  busy=true;toggle.disabled=true;select.disabled=true;status.textContent='Verificando cambio…';
+  try{
+   const data=await postQuiz('qzProgressTeacherSetAvailability',{...context(),estado:next});
+   if(data.estado!==next)throw Error('Servidor no confirmó el estado');
+   const readback=await postQuiz('qzProgressTeacherAvailability',context());
+   if(readback.estado!==next)throw Error('La lectura posterior no coincide');
+   status.textContent='Confirmado: '+next;
+  }catch(e){status.textContent='Cambio no confirmado: '+String(e.message||e);}
+  finally{busy=false;select.disabled=false;void refresh();}
+ });
+ postQuiz('qzProgressTeacherB1Groups',{}).then(data=>{
+  if(!wrap.isConnected)return;
+  const groups=(Array.isArray(data.grupos)?data.grupos:[])
+   .filter(x=>x.nivel==='B1'&&typeof x.cod_grupo==='string');
+  const empty=make('option','Seleccioná tu grupo B1');empty.value='';select.append(empty);
+  for(const group of groups){const option=make('option',group.cod_grupo);option.value=group.cod_grupo;select.append(option);}
+  status.textContent=groups.length?'Elegí el grupo de la lección.':'No hay grupos B1 asignados.';
+ }).catch(e=>{status.textContent='Grupos no disponibles: '+String(e.message||e);});
+ return wrap;
 }
 function previewPC02(){
  // PC02 no está autorizado en GAS PROD; solo cuestionario de revisión editorial.
@@ -413,7 +470,8 @@ function renderGrid(container,level){
     secure.type='button';secure.dataset.f111B1ProtectedPreview='L'+lesson;
     secure.addEventListener('click',()=>previewB1Protected(lesson));
     card.append(secure);
-    card.append(make('em','Solo sesión docente; PC02–PC08 todavía no abiertos a estudiantes de producción.'));
+    card.append(buildB1TeacherOpenControls(lesson));
+    card.append(make('em','Activación por grupo, fecha elegible y confirmación expresa del docente; no se abre al visitar esta pantalla.'));
   }else{
     card.append(make('em','Pendiente de digitalizar'));
   }
@@ -469,7 +527,9 @@ function installStyle(){
  '.f111-tqr-levels{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px}',
  '.f111-tqr-level{border:1px solid #D2DCE7;border-radius:9px;background:white;padding:8px 11px;color:#193F65;font-weight:800;font-size:11px;cursor:pointer}',
  '.f111-tqr-level[aria-pressed=true]{border:2px solid var(--f111-level-color);background:#F5F9FE}',
- '.f111-tqr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}',
+ '.f111-tqr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:9px}',
+ '.f111-tqr-r9-controls{display:flex;flex-direction:column;gap:7px;margin-top:8px}',
+ '.f111-tqr-r9-group{width:100%;max-width:100%;padding:8px;border:1px solid #c9d7e6;border-radius:7px;color:#173959;background:#fff}',
  '.f111-tqr-card{border:1px solid #DAE3ED;background:#F9FBFD;border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px}',
  '.f111-tqr-card.is-ready{background:#FFFCED;border-color:#E0C271}',
  '.f111-tqr-card small{font-size:9px;color:#657A91;font-weight:900;letter-spacing:.04em}',
