@@ -134,7 +134,7 @@ function openReviewWorkspace(){
   const frame=make('iframe');frame.className='f111-tqr-exam-frame';frame.title='Examen del estudiante y corrección por pregunta';
   const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
   url.searchParams.set('review','1');
-  url.searchParams.set('v','F111PC01INLINEKEY20261023');
+  url.searchParams.set('v','F111PC01REVIEWCOLORS20261024');
   let frameLoaded=false,payload=null,score=null;
   frame.addEventListener('load',()=>{
    frameLoaded=true;
