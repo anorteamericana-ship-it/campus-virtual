@@ -51,9 +51,9 @@ assert.ok(student.includes("window.F111_QZ_API_URL||window.APPS_SCRIPT_URL"),'es
 assert.ok(quiz.includes('window.parent.F111_QZ_API_URL||window.parent.APPS_SCRIPT_URL'),'iframe SAVE y SUBMIT usan QZ B1');
 assert.ok(!login.includes('F111_QZ_API_URL'),'login independiente del motor de quiz');
 assert.ok(login.includes('fn: \'iniciarSesion\''),'login intacto en servidor original');
-assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01INLINEKEY20261023'),'cache student actualizado');
-assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01GROUPAVG20261023'),'cache teacher actualizado');
-assert.ok(student.includes("url.searchParams.set('v','F111PC01INLINEKEY20261023')"),'iframe estudiante evita versión antigua en caché');
+assert.ok(campus.includes('src/student_pc01_f111.js?v=F111PC01REVIEWCOLORS20261024'),'cache student actualizado');
+assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v=F111PC01REVIEWCOLORS20261024'),'cache teacher actualizado');
+assert.ok(student.includes("url.searchParams.set('v','F111PC01REVIEWCOLORS20261024')"),'iframe estudiante evita versión antigua en caché');
 
 // Regresión de UX exigida tras la primera entrega de estudiante real.
 assert.ok(quiz.includes("submit').textContent='ENTREGAR AHORA'"),'el alumno identifica claramente el envío final');
