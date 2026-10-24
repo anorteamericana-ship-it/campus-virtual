@@ -54,7 +54,7 @@ try{
  await pupil.route(host+'/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<html><head></head><body><div id="root"><section data-screen-label="Estudiante · Evaluaciones"><h1>Evaluaciones</h1></section></div></body></html>'}));
  let listActive=true;
  await pupil.route(api+'**',route=>{
-  const fn=new URL(route.request().url).searchParams.get('fn');
+  const fn=new URL(route.request().url()).searchParams.get('fn');
   const body=JSON.parse(route.request().postData()||'{}');
   assert.equal(body.token,'SYNTHETIC');
   const out=fn==='qzProgressStudentB1Active'?{ok:true,quizzes:listActive?[{
