@@ -201,10 +201,10 @@ function renderStudents(){const box=document.getElementById('students');const ev
 function loadEvaluationIntoForm(ev){state.scores={COMPREHENSION:ev.COMPREHENSION??null,FLUENCY:ev.FLUENCY??null,GRAMMAR:ev.GRAMMAR??null,VOCABULARY:ev.VOCABULARY??null,PRONUNCIATION:ev.PRONUNCIATION??null};try{state.questions=JSON.parse(ev.PREGUNTAS_JSON||'{}')||{};}catch(_){state.questions={};}try{state.otherByUnit=JSON.parse(ev.OTRAS_PREGUNTAS_JSON||'{}')||{};}catch(_){state.otherByUnit={};}document.getElementById('comentarios').value=ev.COMENTARIOS||'';document.getElementById('sugerencias').value=ev.SUGERENCIAS||'';document.getElementById('otras-global').value=ev.OTRAS_PREGUNTAS||'';state.dirty=false;renderScores();renderQBank();}
 function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');if(!interno&&state.dirty&&state.selected&&!confirm('Hay cambios sin guardar. ¿Descartarlos y recargar la ficha seleccionada?'))return;const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();const cerrado=!!state.panel?.es_reposicion||oralLockedF111(ev)||!!state.uncertainCloseCodes?.[s.codigo];document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=cerrado||state.busy||!!state.panel?.preview;const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.textContent=state.panel?.es_reposicion?'Reposición pendiente de habilitación':ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'Cerrar examen y generar PDF';pdfBtn.disabled=!!state.panel?.es_reposicion||oralNeedsReviewF111(ev)||!!state.panel?.preview||!!state.uncertainCloseCodes?.[s.codigo];}}
 
-// F111: bancos originales de B2, I1 e I2: única fuente transcrita de PDFs docentes.
+// F111 R12: bancos originales B1/B2/I1/I2 son privados; texto visible solo después de autorización docente.
 function originalBankF111(){
   const nivel=String(state.panel?.nivel||'').toUpperCase();
-  return (nivel==='I1'||nivel==='I2')&&state.bankReady===true&&state.bank?.aprobado===true?state.bank.unidades:null;
+  return ['B1','B2','I1','I2'].includes(nivel)&&state.bankReady===true&&state.bank?.aprobado===true?state.bank.unidades:null;
 }
 function originalQuestionEntryF111(unit,idx,question){
   return 'U'+unit+' P'+(Number(idx)+1)+': '+question;
@@ -229,7 +229,7 @@ function setOriginalQuestionF111(unit,idx,checked){
   return true;
 }
 
-function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return (n==='B1'||n==='B2')&&state.bankReady===true&&state.bank?.aprobado===true&&state.bank?.version&&state.bank?.unidades?state.bank.unidades:{};}
+function questionBankForLevelF111(){return {}; /* R12: índice oficial B1/B2 NO corresponde al banco privado. Registro trazable de texto aplicado para los 4 niveles; no enviar índices equivocados a la nota. */}
 function renderQBank(){
   const p=state.panel||{},lec=Number(p.leccion||0),meta=LECCIONES[lec]||{units:[]};
   document.getElementById('qb-label').textContent=meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
