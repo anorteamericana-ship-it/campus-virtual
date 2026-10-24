@@ -35,7 +35,7 @@ const end=academic.indexOf('  function read(codigo){',begin);
 assert(begin>0&&end>begin,'isolated own review readback');
 async function mock(state,group='B1-KJ18-C3-0826'){
  const calls=[];
- const ctx={window:{getSessionToken:()=> 'SYNTHETIC_TOKEN',F111_QZ_API_URL:'https://qa.invalid/qz'},fetch:async(url,opt)=>{
+ const ctx={pc01Target:'B1-KJ18-C3-0826',window:{getSessionToken:()=> 'SYNTHETIC_TOKEN',F111_QZ_API_URL:'https://qa.invalid/qz'},fetch:async(url,opt)=>{
   calls.push(JSON.parse(opt.body));
   return {ok:true,json:async()=>({ok:true,quiz_id:'IC5_B1_WQ01',estado:state,nota:24,comentario_docente:'Improve questions one through four',peso_oficial:0})};
  }};
