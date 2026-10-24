@@ -1,6 +1,18 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · D3/D4 R11 · CANDIDATOS PRIVADOS Y GUARDIAS (24-oct-2026) · NO PROD
+
+**TRABAJO REAL REGISTRADO, SIN MERGE NI DEPLOY:** se reutilizaron tres PR originales en lugar de abrir ramas/copies nuevas. Frontend [#511](https://github.com/anorteamericana-ship-it/campus-virtual/pull/511) en commit `db9e0b8` (3/3 workflows SUCCESS): actualizado desde main, sin preguntas B1 incrustadas ni `modulos/oral_bancos_ic5.js` en árbol candidato; banco de los cuatro niveles solo por POST docente `oralGetBancoPreguntasDocente`, verificación de grupo/nivel/lección/cuatro unidades, guardias de NO GUARDAR/NO CERRAR/NO PDF ante falta de banco y conservación de contrato de borradores y conciliación de notas. **No está fusionado**, por lo tanto el archivo público aún puede existir en main/Pages e historia.
+
+**BACKEND PRIVADO:** [#55](https://github.com/anorteamericana-ship-it/campus_backend/pull/55) pasó de base release antigua a `main`, commit `385dd818`, diff 4 archivos (router ACL+dispatcher, banco privado `70`, test E1, workflow); fuente estructural 64/64 unidades, 16 por nivel B1/B2/I1/I2. El repositorio backend se verificó **PRIVADO**. Suite E1 del SHA R11 NO certificada por GitHub todavía; no inventar CI PASS. [#65](https://github.com/anorteamericana-ship-it/campus_backend/pull/65) actualizado a main en commit `fc22b873`, diff 3 archivos (únicamente Auth `02`, test de precedencia, workflow) y 2/2 CI compartida SUCCESS: auth antes de demos orales y de acceso/creación de hojas de revisión; revisión huérfana denegada. EX04 y las notas escritas de #69/#522 permanecen circuitos separados, SIN merge.
+
+**PRODUCCIÓN/QA REAL:** Campus institucional Apps Script **@473** y Quiz B1 **@477** son las últimas versiones documentadas, **sin push, deploy, notas, PDFs, aperturas ni cambios a alumnos en R11**. El ciclo B1 R10 y sus 12 entregas históricas PC01 NO se reauditaron ni alteraron. Frontend main/Pages actual no incluye estos candidatos. El QA estático/sintético GitHub **no equivale** a sesión autorizada Apps Script. D3/D4 **NO-GO PROD**: endpoint #55 aún no está servido en @473; publicar solo #511 bloquearía el oral. No está acreditada nueva sesión QA que incluya la ruta privada, ni un E2E docente/ficticio de L8→L9→borrador→cierre/note→PDF/backup.
+
+**SIGUIENTE PUERTA ÚNICA:** certificar E1 #55 y comprobar rutas/roles sobre Apps Script QA 100% aislado; preparar delta exacto a partir del readback real @473 integrando **solo** router y banco privado de #55, guardias #65, y la interfaz #511, sin copiar backend/main entero ni exponer banco en Pages. Repetir solo las pruebas nuevas de auth/banco y un E2E sintético oral, verificar nota/archivo en QA y rollback mismo deployment; publicar el backend institucional antes de frontend #511 solo tras autorización y QA. Conservar 56% global F111 como **línea base histórica**; no elevar por PR no desplegados.
+
+---
+
 ## F111 · TABLERO MAESTRO Y TRASPASO ÚNICO · 23-oct-2026 (CORTE RECONCILIADO)
 
 
