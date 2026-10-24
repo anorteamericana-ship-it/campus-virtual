@@ -25,9 +25,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-save --ignore-scripts playwright@1.58.2
       - run: npx playwright install --with-deps chromium
-      - run: node --check scripts/qa_student_dashboard_menu.cjs
-      - run: node scripts/qa_student_dashboard_menu.cjs
       - run: node --check scripts/qa_f111_welcome_mobile_e1.mjs
       - run: node scripts/qa_f111_welcome_mobile_e1.mjs
+      - run: node --check scripts/qa_student_dashboard_menu.cjs
+      - run: node scripts/qa_student_dashboard_menu.cjs
         env:
           QA_BROWSER_CHANNEL: chromium
