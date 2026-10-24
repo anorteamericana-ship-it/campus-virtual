@@ -12,11 +12,11 @@ assert.match(campus,/teacher_quiz_review_f111\.js\?v=F111B1R10ROUTING20261024/);
 const ROOT='https://f111-r10-synthetic.invalid',API=ROOT+'/api';
 const browser=await chromium.launch({headless:true});
 const requests=[],states=new Map(),errors=[];
-function wire(page,type){
+async function wire(page,type){
  page.on('pageerror',e=>errors.push(e.message));
- page.route(ROOT+'/src/'+type+'.js',r=>r.fulfill({status:200,contentType:'text/javascript',body:type==='teacher'?teacher:student}));
- page.route(ROOT+'/modulos/quiz_progress.html*',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><p>R10 iframe placeholder · no real evaluation</p>'}));
- page.route(API+'**',route=>{
+ await page.route(ROOT+'/src/'+type+'.js',r=>r.fulfill({status:200,contentType:'text/javascript',body:type==='teacher'?teacher:student}));
+ await page.route(ROOT+'/modulos/quiz_progress.html*',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><p>R10 iframe placeholder · no real evaluation</p>'}));
+ await page.route(API+'**',route=>{
   const fn=new URL(route.request().url()).searchParams.get('fn');
   const body=JSON.parse(route.request().postData()||'{}');
   assert.equal(body.token,'SYNTHETIC_R10_TOKEN');
@@ -41,11 +41,11 @@ function wire(page,type){
  const body='<!doctype html><html lang="es"><head><meta charset="utf-8"></head><body>'+
   '<div id="root">'+section+'</div><script>window.getSessionToken=()=>window.__r10Token||"SYNTHETIC_R10_TOKEN";window.F111_QZ_API_URL="'+API+'";</script>'+
   '<script src="'+ROOT+'/src/'+type+'.js"></script></body></html>';
- page.route(ROOT+'/'+type,r=>r.fulfill({status:200,contentType:'text/html',body}));
+ await page.route(ROOT+'/'+type,r=>r.fulfill({status:200,contentType:'text/html',body}));
 }
 try {
  const page=await browser.newPage({viewport:{width:1366,height:768}});
- wire(page,'teacher');
+ await wire(page,'teacher');
  page.on('dialog',d=>d.dismiss());
  await page.goto(ROOT+'/teacher');
  await page.waitForSelector('[data-f111-teacher-quizzes]');
@@ -81,7 +81,7 @@ try {
  fs.mkdirSync(new URL('../qa-capturas/',import.meta.url),{recursive:true});
  await page.screenshot({path:new URL('../qa-capturas/QZ32_R10_TEACHER_DESKTOP.png',import.meta.url).pathname,fullPage:true});
  const studentPage=await browser.newPage({viewport:{width:390,height:844}});
- wire(studentPage,'student');
+ await wire(studentPage,'student');
  await studentPage.goto(ROOT+'/student');
  await studentPage.waitForFunction(()=>document.querySelectorAll('.f111-b1-extra-card').length===2);
  assert.equal(await studentPage.locator('.f111-b1-extra-card button').count(),1,'delivered quiz cannot restart');
