@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Progress Check 02 · Básico I · Vista previa docente</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;background:#f3f7fc;color:#193a5b}
+*{box-sizing:border-box}body{margin:0}.wrap{width:min(1080px,100%);margin:auto;padding:20px}
+header{background:#073b77;border-radius:16px;color:white;padding:24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header small{color:#ffe19b;font-weight:900;letter-spacing:.1em}h1{margin:7px 0;font-size:clamp(24px,4vw,35px)}
+header p{margin:0;color:#d9e9f8;font-size:14px}.pill{background:#ffdfa1;color:#6b4804;padding:12px;border-radius:11px;font-size:12px;font-weight:900;align-self:flex-start}
+.notice{margin:15px 0;background:#fff5df;border:1px solid #ebcb83;border-left:4px solid #c8871b;color:#654c1b;border-radius:10px;padding:15px;line-height:1.55;font-size:13px}
+.noticesub{background:#e8f3fd;border-color:#c6ddf2;border-left-color:#2677b2;color:#2c536e}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0 11px}nav button{padding:11px 14px;border-radius:9px;border:1px solid #ccdae9;background:white;color:#22486c;font-weight:800;cursor:pointer}nav button[aria-selected=true]{background:#f7c940;border-color:#daa81a;color:#5a4207}
+.progress{height:8px;background:#d6e3ef;border-radius:99px;overflow:hidden;margin:11px 0 17px}.progress>div{height:100%;background:#f0bf32;width:0;transition:width .2s}
+.panel{background:white;border:1px solid #dbe4f0;border-radius:15px;padding:20px;box-shadow:0 7px 25px #143d5a0b}
+.panel h2{margin:0;color:#143f6b;font-size:21px}.help{font-size:13px;color:#65788d;line-height:1.6;margin:8px 0 16px}
+.item{background:#f9fbfe;border:1px solid #dbe5f1;border-radius:11px;padding:15px;margin:10px 0}
+.item legend{padding:0 5px;font-size:13px;font-weight:850;line-height:1.5;color:#143e6b}
+.item label{display:block;background:white;border:1px solid #d8e3ee;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;cursor:pointer}
+.item label:has(input:checked){background:#fff5d5;border-color:#d7b351}
+.item input[type=radio]{accent-color:#0b4c85;margin-right:10px}
+.item input[type=text],.item select{margin:9px 0 0;width:min(620px,100%);padding:12px;border:1px solid #bdcedf;border-radius:8px;color:#224766;font:inherit;background:white}
+.item input:disabled{background:#edf1f6;cursor:not-allowed}
+.item[disabled]{opacity:.75}.badge{display:inline-block;background:#f6dfb0;color:#715217;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:850;margin:8px 0}
+.actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:space-between;margin-top:15px}
+.actions button{border:1px solid #becfe0;background:#fff;color:#14416d;border-radius:9px;padding:11px 15px;cursor:pointer;font-weight:850}
+.actions button.primary{background:#f6c638;border-color:#e1b125;color:#3e330f}
+.actions button:disabled{opacity:.4;cursor:default}
+#state{font-size:12px;color:#687f94}
+footer{font-size:12px;color:#627a93;text-align:center;padding:18px;line-height:1.6}
+@media(max-width:650px){.wrap{padding:10px}.panel{padding:13px}.item{padding:11px}}
+</style>
+</head>
+<body><main class="wrap">
+<header><div><small>ACADEMIA NORTEAMERICANA · INTERCHANGE 5ª EDICIÓN</small>
+<h1>Progress Check 02 · Básico I</h1><p>Lección 08 · Unidades 3–4 · 25 puntos · ponderación oficial 0%</p></div>
+<div class="pill">VISTA PREVIA DOCENTE · NO PUBLICADO</div></header>
+<section class="notice" role="alert"><b>Pista de audio 3 pendiente de verificación.</b> La sección A corresponde al audio original Cambridge (4 puntos). El guion está localizado, pero la grabación autorizada no está disponible. No se permite presentar ni entregar este quiz como evaluación completa.</section>
+<section class="notice noticesub">Digitalización del material Cambridge original para control editorial. Podés inspeccionar las 25 respuestas previstas, pero <b>no existe guardado, envío ni calificación</b>, y no se consulta el servidor ni se abre el quiz para estudiantes. La clave original permanece fuera de esta página.</section>
+<nav id="nav" aria-label="Secciones de la prueba"></nav><div class="progress"><div id="progress" aria-hidden="true"></div></div>
+<section id="panel" class="panel" aria-live="polite"></section>
+<div class="actions"><button type="button" id="prev">← Anterior</button><span id="state">0 de 25 campos completados en esta vista local</span>
+<button type="button" id="next" class="primary">Siguiente →</button></div>
+<footer>PROGRESS CHECK 02 · Solo vista previa de material docente. No incorpora respuestas correctas, credenciales, notas ni sesiones. No se registra información de estudiantes.</footer>
+</main>
+<script>
+'use strict';
+// Transcripción de trabajo desde ic5_intro_wq_u3to4.pdf, clave y script en
+// Drive privado. A = 4, B = 5, C = 5, D = 5 (4 preguntas, una con 2 espacios),
+// E = 6. TOTAL = 25. No se incluye ningún mapa de claves en el frontend.
+const sections=[
+{id:'A',title:'Listen to the conversations',points:4,
+ help:'Listen to the conversations. Check the correct answers. (4 POINTS). Track 3 is NOT yet available: this section is not answerable in preview.',
+ type:'radio',locked:true,items:[
+ ['A1','Where is Justine from?',["She's from Canada.","She's from France.","She's from Italy."]],
+ ['A2','What is Mike like?',["He's serious, but not very quiet.","He's a little quiet, but very funny.","He's a little quiet and very serious."]],
+ ['A3',"What's the weather like?",["It's very warm and sunny.","It's raining, but it's warm.","It's very sunny, but it's cool."]],
+ ['A4','Is Sue wearing a blue dress?',["Yes, she is.","No, she's not. She's wearing a swimsuit.","No, she's not. She's wearing a suit."]]
+]},
+{id:'B',title:'Circle the correct words',points:5,
+ help:'Circle the correct words. (5 POINTS)',
+ type:'radio',items:[
+ ['B1',"Lucas isn't serious. He's ____.",['heavy','pretty','funny']],
+ ['B2',"Maria is a really good student. She's very ____.",['friendly','smart','thin']],
+ ['B3',"Dan isn't very talkative. He's ____.",['funny','good-looking','quiet']],
+ ['B4',"My sister isn't short. She's ____.",['pretty','tall','heavy']],
+ ['B5',"My brother is good-looking. He's ____.",['interesting','pretty','handsome']]
+]},
+{id:'C',title:'Match the questions with the answers',points:5,
+ help:"Match each question with one letter. (5 POINTS). Choices: a. Maybe they're Annie's. · b. No, they aren't theirs. They're ours! · c. I think it's yours. · d. No, it's not hers. It's mine. · e. Yes, they're hers.",
+ type:'select',items:[
+ ['C1',"Is this Sue's scarf?"],['C2','Whose boots are these?'],['C3',"Are these Lisa's gloves?"],
+ ['C4','Whose hat is this?'],['C5',"Are these Peter's and Kathy's coats?"]
+]},
+{id:'D',title:'Complete the conversations',points:5,
+ help:'Use the correct present continuous form of the verb in parentheses. (5 POINTS)',
+ type:'text',items:[
+ ['D1',"A: Are you wearing high heels? B: No, I ____ (wear) sneakers."],
+ ['D2',"A: Is Mr. Martinez wearing a cap? B: No, he ____ (not wear) a cap."],
+ ['D3',"A: Are Carl and Tonya wearing coats? B: No, they're not. It's very hot. They ____ (wear) shorts and T-shirts."],
+ ['D4a',"A: It ____ (not rain)."],
+ ['D4b',"B: You're right. It ____ (snow)."]
+]},
+{id:'E',title:'Read the answers. Then write the questions',points:6,
+ help:"Write the question that matches each answer. (6 POINTS). Examples: 'Are they in Peru?' / 'What's your name?'",
+ type:'text',items:[
+ ['E1',"B: No, they're not from Australia. They're from New Zealand."],
+ ['E2',"B: We're from Miami."],['E3',"B: I think she's twenty-five."],
+ ['E4',"B: No, my first language isn't Spanish. It's Portuguese."],
+ ['E5',"B: Yes, I'm Chinese. I'm from Shanghai."],
+ ['E6',"B: He's shy and very quiet."]
+]}
+];
+const answers=Object.create(null);
+let active=0;
+const nav=document.getElementById('nav'),panel=document.getElementById('panel'),state=document.getElementById('state');
+function el(tag,text,cls){const x=document.createElement(tag);if(text!==undefined&&text!==null)x.textContent=text;if(cls)x.className=cls;return x;}
+function counts(){let n=0;sections.forEach(s=>s.items.forEach(q=>{if(String(answers[q[0]]||'').trim())n++}));return n;}
+function show(){
+ nav.replaceChildren();
+ sections.forEach((s,i)=>{const b=el('button',s.id+' · '+s.points+' puntos');b.type='button';b.setAttribute('aria-selected',String(active===i));b.onclick=()=>{active=i;show()};nav.append(b)});
+ const s=sections[active];panel.replaceChildren(el('h2',s.id+' · '+s.title),el('p',s.help,'help'));
+ if(s.locked)panel.append(el('span','Pista original 3 no disponible · no habilitado','badge'));
+ s.items.forEach(q=>{
+ const box=el('fieldset',null,'item'),legend=el('legend',q[0]+' · '+q[1]);box.append(legend);
+ if(s.type==='radio'){q[2].forEach((opt,k)=>{
+  const label=el('label'),input=el('input');
+  input.type='radio';input.name=q[0];input.value=String(k);input.checked=answers[q[0]]===String(k);input.disabled=!!s.locked;
+  input.onchange=()=>{answers[q[0]]=input.value;refresh()};label.append(input,document.createTextNode(opt));box.append(label);
+ });}
+ else if(s.type==='select'){
+  const sel=el('select');sel.setAttribute('aria-label',q[0]);const blank=el('option','Elegir la letra…');blank.value='';sel.append(blank);
+  ['a','b','c','d','e'].forEach(x=>{const o=el('option',x);o.value=x;sel.append(o)});
+  sel.value=answers[q[0]]||'';sel.onchange=()=>{answers[q[0]]=sel.value;refresh()};box.append(sel);
+ } else {
+  const input=el('input');input.type='text';input.autocomplete='off';input.maxLength=240;input.placeholder='Respuesta para revisar el diseño';
+  input.setAttribute('aria-label',q[0]);input.value=answers[q[0]]||'';
+  input.oninput=()=>{answers[q[0]]=input.value;refresh()};box.append(input);
+ }
+ panel.append(box);
+ });
+ document.getElementById('prev').disabled=active===0;
+ document.getElementById('next').disabled=active===sections.length-1;
+ refresh();
+}
+function refresh(){const completed=counts();state.textContent=completed+' de 25 campos completados en esta vista local (sin guardar ni enviar)';
+ document.getElementById('progress').style.width=(completed/25*100)+'%';
+}
+document.getElementById('prev').onclick=()=>{if(active>0){active--;show()}};
+document.getElementById('next').onclick=()=>{if(active<sections.length-1){active++;show()}};
+show();
+</script></body></html>
