@@ -124,7 +124,12 @@ function install(){
  const root=document.getElementById('root');if(!root)return;
  installStyles();getPanel();void check(true);
  let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;
-  queueMicrotask(()=>{queued=false;getPanel();draw();void check(false);});
+  queueMicrotask(()=>{
+   queued=false;
+   const screen=document.querySelector('[data-screen-label="Estudiante · Evaluaciones"]');
+   if(screen&&!screen.querySelector('['+TAG+']')){getPanel();draw();}
+   void check(false);
+  });
  }).observe(root,{subtree:true,childList:true});
  window.addEventListener('an:session-changed',()=>{generation++;entries=[];lastChecked=0;draw();void check(true);});
  window.addEventListener('focus',()=>void check(false));
