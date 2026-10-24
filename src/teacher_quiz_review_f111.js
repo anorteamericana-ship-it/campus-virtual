@@ -20,6 +20,7 @@ function previewB1Protected(lesson){
   window.alert('Abrí el Campus con tu sesión docente para consultar el material protegido.');
   return;
  }
+ if(!selectedB1Group){window.alert('Seleccioná el grupo B1 antes de abrir materiales protegidos.');return;}
  if(document.querySelector('[data-f111-b1-private-preview]'))return;
  const overlay=make('div',null,'f111-tqr-workspace-backdrop');
  overlay.dataset.f111B1PrivatePreview='true';
@@ -39,7 +40,7 @@ function previewB1Protected(lesson){
  frame.title='Progress Check B1 · vista privada docente';
  const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
  url.searchParams.set('teacher_preview','1');
- url.searchParams.set('grupo',QZ_GROUP);
+ url.searchParams.set('grupo',selectedB1Group);
  url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(lesson));
  frame.src=url.href;
@@ -63,7 +64,8 @@ function preview(){
  url.searchParams.set('rol','docente');
  window.open(url.href,'_blank','noopener,noreferrer');
 }
-const QZ_GROUP='B1-KJ18-C3-0826';
+const QZ_GROUP='B1-KJ18-C3-0826'; // PC01 histórico, no cambiar.
+let selectedB1Group='',r9Groups=[],r9Loaded=false,r9Loading=false;
 const qzContext={cod_grupo:QZ_GROUP,nivel:'B1',leccion:4};
 async function postQuiz(fn,data){
  const token=window.getSessionToken?window.getSessionToken():'';
