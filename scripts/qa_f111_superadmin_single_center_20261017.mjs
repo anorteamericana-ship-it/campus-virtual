@@ -26,6 +26,7 @@ function revertTeacher(now,before,occ,msg){
 }
 // F111 0826 cambia solo versión de caché del Dashboard; revertirla
 // expresamente en la verificación byte-a-byte sin relajar el motor de exámenes.
+revertTeacher("'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023'","'src/syllabus_views.jsx?v=F98.4Z6G'",3,'caché bienvenida móvil');
 revertTeacher("'src/student_dashboard.jsx?v=F1110826DOCT20261020'","'src/student_dashboard.jsx?v=F1064CERTIFICATE20261010'",1,'caché dashboard 0826');
 revertTeacher("'src/cronograma_grupo.jsx?v=F111ATTEND20261021'","'src/cronograma_grupo.jsx?v=F1110826CANON20261020'",3,'caché corregida asistencia Superadmin');
 revertTeacher("'src/auditoria_academica.jsx?v=F111ATTEND20261021'","'src/auditoria_academica.jsx?v=F96.5G'",1,'caché editor auditoría Superadmin');
@@ -96,9 +97,13 @@ if (mainBaseline.includes(newProfileScript)) {
   assert(studentPrev&&menuPrev,'Fuentes estudiantiles previas preservadas en main');
   assert.equal(mainHtml.split(studentNow).length-1,1,'Solo un enlace a aviso PC01 actualizado');
   assert.equal(mainHtml.split(menuNow).length-1,1,'Solo un enlace al menú académico actualizado');
+  const currentWelcomeCss='styles/campus.css?v=F111WELCOMEMOBILE20261023';
+  const baselineWelcomeCss=(mainBaseline.match(/styles[/]campus[.]css[?]v=[A-Za-z0-9_.-]+/)||[])[0];
+  assert(baselineWelcomeCss&&mainHtml.includes(currentWelcomeCss),'caché del modal responsive exacta');
   const d1Normalized=mainHtml.replace(currentAppSrc,baselineAppSrc)
     .replace(currentSidebarSrc,baselineSidebarSrc)
-    .replace(studentNow,studentPrev).replace(menuNow,menuPrev);
+    .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
+    .replace(currentWelcomeCss,baselineWelcomeCss);
   assert.equal(d1Normalized,mainBaseline,'D1 preservado; únicamente caché estudiantil y de menú académico actualizada');
 } else {
   // En el PR original, origin/main todavía no incluía el cambio.
