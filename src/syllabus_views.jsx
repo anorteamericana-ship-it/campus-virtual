@@ -1623,19 +1623,16 @@ function WelcomeBanner({ onClose }) {
     ['Grupo', u?.grupo || u?.grupoActivo || 'Verificar en Mi Campus'],
     ['Nivel', u?.nivel_activo || u?.nivel || 'Verificar en Mi Campus'],
   ];
-  return (
-    <div style={{
-      position:'fixed', inset:0, background:'rgba(20,18,30,0.68)',
-      display:'flex', alignItems:'center', justifyContent:'center',
-      zIndex:200, padding:20,
-    }}>
-      <div style={{
+  // Portal al body: evita que el shell estudiante (isolation:isolate)
+  // deje el modal DETRÁS de la barra móvil fija (z-index 1300).
+  return ReactDOM.createPortal((
+    <div className="f111-welcome-overlay" role="dialog" aria-modal="true"
+      aria-label="Bienvenida y material obligatorio del Campus">
+      <div className="f111-welcome-panel" style={{
         background:'var(--surface)', borderRadius:'var(--r-lg)',
-        maxWidth:760, width:'100%', overflow:'hidden',
         boxShadow:'0 22px 70px rgba(0,0,0,0.34)', border:'1px solid rgba(255,255,255,.25)'
       }}>
-        <div style={{
-          padding:'30px 32px 22px',
+        <div className="f111-welcome-hero" style={{
           background:'linear-gradient(135deg, var(--an-granate) 0%, var(--an-red) 55%, #7A1E2C 100%)',
           color:'white', position:'relative', overflow:'hidden'
         }}>
@@ -1643,7 +1640,7 @@ function WelcomeBanner({ onClose }) {
           <div style={{ fontSize:10, fontWeight:900, letterSpacing:'0.18em', textTransform:'uppercase', opacity:0.86 }}>
             Academia Norteamericana · Campus Virtual
           </div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:36, fontWeight:500, letterSpacing:'-0.03em', marginTop:5, lineHeight:1.05 }}>
+          <div className="f111-welcome-title" style={{ fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.03em', marginTop:5, lineHeight:1.05 }}>
             Bienvenido{primerNombre ? `, ${primerNombre}` : ''}.
           </div>
           <div style={{ fontSize:13.5, opacity:0.92, marginTop:9, lineHeight:1.55, maxWidth:590 }}>
@@ -1651,8 +1648,8 @@ function WelcomeBanner({ onClose }) {
           </div>
         </div>
 
-        <div style={{ padding:'20px 30px 26px', display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(260px,.8fr)', gap:18 }}>
-          <div>
+        <div className="f111-welcome-body">
+          <div className="f111-welcome-materials">
             <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'0.13em', textTransform:'uppercase', color:'var(--an-granate)', marginBottom:10 }}>
               Material obligatorio antes de empezar
             </div>
@@ -1672,7 +1669,7 @@ function WelcomeBanner({ onClose }) {
             ))}
           </div>
 
-          <div style={{ border:'1px solid var(--line)', borderRadius:14, overflow:'hidden', background:'#fff' }}>
+          <div className="f111-welcome-data" style={{ border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>
             <div style={{ padding:'13px 14px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 8%, white), #fff)', borderBottom:'1px solid var(--line)' }}>
               <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--an-navy)' }}>Tus datos</div>
               <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Verificalos en Mi Campus.</div>
@@ -1681,20 +1678,20 @@ function WelcomeBanner({ onClose }) {
               {datos.map(([label,value]) => (
                 <div key={label} style={{ padding:'9px 14px', borderBottom:'1px solid var(--line)' }}>
                   <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
-                  <div style={{ fontSize:12.5, fontWeight:800, color:'var(--ink)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
+                  <div className="f111-welcome-value" style={{ fontSize:12.5, fontWeight:800, color:'var(--ink)', marginTop:2 }}>{value}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ gridColumn:'1 / -1', display:'flex', gap:10, marginTop:2, justifyContent:'flex-end', flexWrap:'wrap' }}>
-            <button onClick={onClose} className="btn btn-ghost">Entrar a Mi Campus</button>
-            <button onClick={onClose} className="btn btn-primary">Entendido, revisaré el material →</button>
-          </div>
+        </div>
+        <div className="f111-welcome-actions">
+          <button type="button" onClick={onClose} className="btn btn-ghost">Entrar a Mi Campus</button>
+          <button type="button" onClick={onClose} className="btn btn-primary">Entendido, revisaré el material →</button>
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
