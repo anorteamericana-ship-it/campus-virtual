@@ -17,6 +17,8 @@ const api='https://quiz.synthetic.invalid/exec';
 try{
  const page=await browser.newPage({viewport:{width:1100,height:900}});
  page.on('dialog',async dlg=>dlg.accept());
+ page.on('pageerror',err=>console.error('R9_SYNTH_BROWSER_PAGEERROR '+String(err.message||err)));
+ page.on('console',message=>{if(message.type()==='error')console.error('R9_SYNTH_BROWSER_CONSOLE '+message.text());});
  await page.route(host+'/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<html><head></head><body><div id="root"><section data-screen-label="Docente · Exámenes"><h1>EXÁMENES DEL DOCENTE</h1></section></div></body></html>'}));
  await page.route(api+'**',route=>{
   const fn=new URL(route.request().url()).searchParams.get('fn');
@@ -37,8 +39,14 @@ try{
  await page.goto(host+'/campus.html');
  await page.evaluate(u=>{window.F111_QZ_API_URL=u;window.APPS_SCRIPT_URL=u;window.getSessionToken=()=> 'SYNTHETIC';},api);
  await page.addScriptTag({content:teacher});
+ console.log('R9_SYNTH_TEACHER_DOM '+JSON.stringify(await page.evaluate(()=>({
+  teacherScreen:!!document.querySelector('section[data-screen-label="Docente · Exámenes"]'),
+  dashboard:!!document.querySelector('[data-f111-teacher-quizzes]'),
+  picker:!!document.querySelector('select[aria-label="Grupo B1 autorizado"]'),
+  cards:document.querySelectorAll('.f111-tqr-card').length
+ }))));
  const picker=page.locator('select[aria-label="Grupo B1 autorizado"]');
- await picker.waitFor();await page.waitForFunction(()=>document.querySelector('select[aria-label="Grupo B1 autorizado"]')?.options.length===2);
+ await picker.waitFor({timeout:7000});await page.waitForFunction(()=>document.querySelector('select[aria-label="Grupo B1 autorizado"]')?.options.length===2);
  await picker.selectOption('B1-QA-TEST');
  const l8=page.locator('.f111-tqr-card').nth(1);
  const l13=page.locator('.f111-tqr-card').nth(2);
