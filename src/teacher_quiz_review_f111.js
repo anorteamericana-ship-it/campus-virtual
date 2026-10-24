@@ -466,10 +466,8 @@ function renderGrid(container,level){
       editorial.type='button';editorial.dataset.f111QuizPreview='B1-L8-EDITORIAL';
       editorial.addEventListener('click',previewPC02);card.append(editorial);
     }
-    const secure=make('button','VER PDF + AUDIO · PREVIA PROTEGIDA','f111-tqr-open');
-    secure.type='button';secure.dataset.f111B1ProtectedPreview='L'+lesson;
-    secure.addEventListener('click',()=>previewB1Protected(lesson));
-    card.append(secure);
+    // R9: group must be selected from a list verified by the backend.
+    // No fallback to historic PC01's hardcoded group for PC02–PC08.
     card.append(buildB1TeacherOpenControls(lesson));
     card.append(make('em','Activación por grupo, fecha elegible y confirmación expresa del docente; no se abre al visitar esta pantalla.'));
   }else{
