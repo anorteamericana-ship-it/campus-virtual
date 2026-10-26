@@ -407,11 +407,11 @@ function App() {
               </div>
             </form>
 
-            {activationNeeded && <div className="forgot">
-              <a aria-label="Activar cuenta con cédula registrada" href={'recovery.html?cedula=' + encodeURIComponent(String(usuario || '').trim().toLowerCase())}>
-                Activar cuenta
+            <div className="forgot">
+              <a aria-label="Activar cuenta y crear mi contraseña personal" href={'recovery.html?cedula=' + encodeURIComponent(String(usuario || '').trim().toLowerCase())}>
+                Activar cuenta · Crear mi contraseña
               </a>
-            </div>}
+            </div>
             <div className="forgot"><a href="recovery.html">¿Olvidaste tu contraseña?</a></div>
           </div>
         </section>
