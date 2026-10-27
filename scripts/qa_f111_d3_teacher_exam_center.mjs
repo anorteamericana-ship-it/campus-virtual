@@ -13,6 +13,24 @@ for(const name of ['f111TeacherExamModal','f111ExamPageUrl','f111TeacherGroups',
  assert(source.includes(name),name);n++;
 }
 assert(source.includes("postQuiz('oralListEvaluacionesDocente'"));n++;
+// R17: historial docente NO depende de USUARIOS.grupo ni de la sesión de clase.
+assert(source.includes("postQuiz('getDocenteGruposActuales',{})"));n++;
+assert(source.includes('void loadAuthorizedGroups()'));n++;
+assert(!source.includes("const groups=f111TeacherGroups(),select=make('select')"));n++;
+const begin=source.indexOf('function f111AuthorizedCourseGroups(data)');
+const end=source.indexOf('function buildTeacherExamsF111(){',begin);
+assert(begin>=0&&end>begin,'Extractor de grupos autorizado presente');n++;
+const getAuthorized=vm.runInNewContext(source.slice(begin,end)+';f111AuthorizedCourseGroups');
+const course=getAuthorized({todos:[
+ {code:'B1-LM69-C2-0526',puede_curso:true,permisos_riel:{curso:true}},
+ {code:'B1-LM69-C2-0526',puede_curso:true},
+ {code:'QA-ICAN',puede_curso:false,permisos_riel:{curso:false}},
+ {code:'QA-OTHER',puede_curso:true}
+]});
+assert.deepEqual(Array.from(course),['B1-LM69-C2-0526','QA-OTHER']);n++;
+assert.deepEqual(Array.from(getAuthorized({grupos:[{cod_grupo:'QA-CURRENT',puede_curso:true}]})),['QA-CURRENT']);n++;
+assert.deepEqual(Array.from(getAuthorized({todos:[]})),[]);n++;
+
 assert(source.includes("historial:1,grupo,nivel:row.nivel,leccion:row.lec"));n++;
 assert(source.includes('No reabrir sesión')||source.includes('NO reabrir sesión'));n++;
 assert(source.includes("view:'teacher_preview'"));n++;
