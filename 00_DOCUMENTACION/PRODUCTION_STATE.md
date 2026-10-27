@@ -1,5 +1,40 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · D3-INTEGRACIÓN R17 · DESCUBRIMIENTO DE GRUPOS DOCENTES Y PREFLIGHT CA (27-oct-2026)
+
+**FASE Y OBJETIVO:** reparar el acceso al historial docente sin depender de que el grupo persista en `USUARIOS.grupo` o en el objeto local de sesión. Resolver la regresión silenciosa que podía dejar el selector oral vacío aunque APOLLO.GRUPOS contenga la asignación vigente. No repetir pruebas superadas por R16; preservar todas las notas, asistencias y evaluaciones reales.
+
+**IMPLEMENTACIÓN FRONTEND:** PR #511, rama preexistente `feat/f111-ex01-orales-cambridge-qa-20261016`. `src/teacher_quiz_review_f111.js` consulta el endpoint existente `getDocenteGruposActuales` con sesión autenticada y **sin enviar nombre de docente ni suplantación desde parámetros cliente**; toma `todos` del backend (no únicamente `grupos`, restringido a `COMENTARIO=En curso`) para incluir expediente histórico autorizado; excluye explícitamente grupos solo I CAN (`puede_curso=false`), deduplica los códigos de los niveles y sustituye el selector únicamente tras confirmar la respuesta. Si falla la consulta, el selector permanece vacío y no se consulta ningún expediente; cambiar de grupo o solicitar refresco consulta únicamente grupos autorizados. La autorización final del historial `oralListEvaluacionesDocente` sigue en el backend y no se confía en los parámetros URL. Los borradores no se cierran al consultar. **Commit ejecutable R17 `15a24ba0626fcec0649c6edfb0dee25ce23afea9`.**
+
+**PRUEBA NUEVA:** `scripts/qa_f111_d3_teacher_exam_center.mjs` incorpora verificación dinámica aislada de función de selección: grupo 0526 duplicado, grupo ajeno de riel I CAN excluido, dos grupos curso autorizados deduplicados, fallback `grupos` y lista vacía; prueba que la carga inicial consulta el backend sin confiar en sesión. **Commit test `d3c687e56138254538555a84f7713e6a162442e5`.** GitHub Actions de este HEAD **8/8 PASS**, incluido `F111 D3 - oral frontend level and rubric guard` run `40598592497`; la operación certifica código y escenarios aislados, **NO** autenticación real Apps Script.
+
+**PREFLIGHT ACADÉMICO READ-ONLY, NUEVO R17:** comparados `APOLLO_G3_LIMPIO_21-04-26` pestaña `ESTATUS` (A2:Q880) y `GRUPOS` B2 del código `B1-LM69-C2-0526`, contra `CAMPUS_OPERATIVO.ORAL_EVALUACIONES` filas 9–25. Grupo B2 tiene `PROGRAMA=SIN_INA`, DOCENTE=KEYLOR LEIVA MIRANDA, ACTIVO=TRUE, COMENTARIO=En curso. `ESTATUS` tiene **23 matrículas CA en B2**. Los **17/17 códigos únicos** de exámenes orales B2 L09 están asociados **exactamente a una fila CA** de ese grupo/nivel; 0 sin matrícula, 0 duplicados. Verificación es de matrículas, no demuestra envío oficial ni que la aplicación viva cargue el expediente. No compartir identificadores estudiantiles en reportes públicos.
+
+**ESTADO DE ENTREGA R17:** PR #65 backend integrado `6c17230060e4b993b219a3b9bfada06ee664aaf3`, **4/4 CI PASS** heredados R16, sin edición backend nueva R17. Frontend nuevo HEAD `d3c687e5` **8/8 CI PASS**. PR #55 todavía es fuente original del banco que ya se incorporó al #65; NO fusionar duplicado. Candidato **NO fusionado a main, NO desplegado**. Falta QA Apps Script con proyecto exclusivo R12 y validación auténtica de cierre / nota / PDF. No se han escrito notas, asistencias, evaluaciones reales ni PDFs en esta pasada.
+
+**TABLA DE PORCENTAJES (MISMO DENOMINADOR QUE R16, SIN INFLAR POR CORRECCIÓN DE UN HITO YA CONTADO):**
+
+| Módulo | Cerradas | Total | Avance % | Pendiente que impide cierre |
+|---|---:|---:|---:|---|
+| Historial orales | 2 | 4 | 50% | QA GAS autenticado, acceso LIVE |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | QA GAS con grupos INA y SIN INA, LIVE |
+| Envío y notas oficiales | 2 | 4 | 50% | Cierre QA auténtico, piloto nota real |
+| PDF y respaldo | 2 | 4 | 50% | Generación QA y readback de dos archivos reales |
+| Historial escritos | 1 | 4 | 25% | Historial completo, autorizaciones, LIVE |
+| Previews | 3 | 5 | 60% | Proyección sin claves y LIVE |
+| Quizzes docentes | 2 | 5 | 40% | B2/I1/I2 (mantener B1 @477 independiente) |
+| Unificación visual | 2 | 5 | 40% | Escritos/quizzes coherentes, QA visual |
+| **TOTAL SUBPLAN EXÁMENES** | **16** | **35** | **46%** | **19 criterios restantes** |
+
+**DIFERENCIAR:** 17/17 (100%) es elegibilidad de matrícula B2 de los expedientes, **NO** acceso histórico LIVE, nota oficial o PDF. 8/8 (100%) son workflows frontend sintéticos, **NO** publicación. Global histórico F111 **56%** queda como referencia distinta, sin cambio.
+
+**BLOQUEOS ABIERTOS:** 1) Proyecto Apps Script R12 aislado aún sin script ID/ruta autenticada/identidades sintéticas; 2) Directorio F111 no autorizado en Desktop Commander (dispositivo visible, solo directorio Shadow Contracts); 3) Cierre piloto real y verificación de nota/PDF imposibles de certificar hasta disponer del circuito autenticado. El control de edición histórica permite únicamente un borrador existente SIN INA, autor original, sesión docente legítima y matrícula CA verificada. Conservar esta guarda y no reabrir clase.
+
+**SIGUIENTE PASO ÚNICO:** autorizar el directorio específico de Campus F111 en Remote Desktop Commander (sin ampliar a todo el equipo), crear/certificar el proyecto Apps Script QA R12 distinto de producción sobre los recursos Drive aislados existentes, comprobar cierre SIN INA y rechazo INA con estudiantes sintéticos; después delta/readback productivo y un solo piloto oral real con respaldo independiente. No repetir R16 (4/4 backend), R17 (8/8 frontend) ni volver a contar las 17 filas sin cambio de datos.
+
+---
+
+
 ## F111 · D3-INTEGRACIÓN R16 · BANCO PRIVADO UNIFICADO, QA Y READBACK 17/17 (27-oct-2026)
 
 **ALCANCE EFECTIVAMENTE EJECUTADO:** se incorporaron en la rama existente del backend PR #65 (`fix/f111-r11-d3-d4-guards-20261017`) los componentes útiles de PR #55 que faltaban para una entrega integral del motor oral: banco privado `prod/70_F111_Bancos_Orales_IC5.js` (blob original idéntico), prueba sintética `tests/qa_f111_ex01_bancos_orales_e1.mjs`, herramienta de preflight exclusiva de Apps Script QA `tests/qa_f111_r12_appsscript_editor_only.js`, autorizaciones del endpoint `oralGetBancoPreguntasDocente` en las cuatro rutas del `prod/01_Router.js`, y nuevos checks incorporados al workflow existente `qa-f111-r11-d3-d4-guards.yml`. Se preservaron todos los guardas históricos SIN INA, autorización de grupo, borradores y PDF de PR #65. **Commit backend integrado = `6c17230060e4b993b219a3b9bfada06ee664aaf3`.** PR #55 permanece abierto como fuente original; NO fusionarlo por separado a main antes de definir la integración del PR #65, pues comparte `prod/01_Router.js` y `prod/02_Auth_Sesiones_Usuarios.js`.
