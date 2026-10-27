@@ -5,6 +5,9 @@ on:
       - fix/f111-d3-keylor-oral-rubric-level-bank-20261018
     paths:
       - 'modulos/examen_oral.html'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'campus.html'
+      - 'scripts/qa_f111_d3_teacher_exam_center.mjs'
       - 'scripts/qa_f111_d3_oral_frontend_level_guard.mjs'
       - 'scripts/qa_f111_oral_env_isolation_e1.mjs'
       - '.github/workflows/qa-f111-d3-oral-frontend.yml'
@@ -12,6 +15,9 @@ on:
     branches: [main]
     paths:
       - 'modulos/examen_oral.html'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'campus.html'
+      - 'scripts/qa_f111_d3_teacher_exam_center.mjs'
       - 'scripts/qa_f111_d3_oral_frontend_level_guard.mjs'
       - 'scripts/qa_f111_oral_env_isolation_e1.mjs'
       - '.github/workflows/qa-f111-d3-oral-frontend.yml'
@@ -31,3 +37,5 @@ jobs:
         run: node scripts/qa_f111_d3_oral_frontend_level_guard.mjs
       - name: Verificar aislamiento QA contra ruta y sesión PROD
         run: node scripts/qa_f111_oral_env_isolation_e1.mjs
+      - name: Certificar historial de orales, previews y marca institucional
+        run: node scripts/qa_f111_d3_teacher_exam_center.mjs
