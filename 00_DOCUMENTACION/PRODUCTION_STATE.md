@@ -1,5 +1,27 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · PROTOCOLO PERMANENTE DE CIERRE Y CONTINUIDAD (27-oct-2026)
+
+**ORDEN DEL USUARIO (obligatoria en cada turno de avance):** mantener un formato idéntico para reportar el progreso del Campus F111, impedir vueltas innecesarias, preservar una sola fuente de verdad, distinguir lo implementado de QA y producción, y dar siempre un prompt accionable para el siguiente turno. No confundir un PASS sintético con aplicación live.
+
+**ALERTA MANUAL:** si el siguiente paso depende de que el usuario autorice una acción, aporte datos/ruta o intervenga en su computadora, la entrega **DEBE EMPEZAR** con encabezado visible **"ACCIÓN MANUAL REQUERIDA — F111 DETENIDO"**, el pedido en **NEGRITA Y MAYÚSCULAS**, los datos exactos faltantes, y la frase copiable de autorización cuando corresponda. No esconder este requisito tras los resultados ni pedir secretos. Si NO se requiere acción manual: escribir **"ACCIÓN MANUAL: NO REQUERIDA"**.
+
+**PLANTILLA FIJA DE ENTREGA (mismo orden, sin excepciones):**
+A. **Identificación:** F111, ronda R#, fecha, objetivo y decisión de GO/NO-GO de esa ronda.
+B. **Resumen ejecutivo:** qué se hizo efectivamente, qué se corrigió, qué permanece pendiente; sin adelantos ficticios.
+C. **TABLA OBLIGATORIA DE %:** misma matriz R16-R18 de 8 módulos, con columnas Módulo | Cerradas | Total | % | Estado/pendiente. Registrar subtotal `16/35 = 46%` hasta nuevas compuertas efectivamente acreditadas; indicar por separado global histórico F111 `56%` sin confundir denominadores. Cambiar porcentajes únicamente con criterios reales cerrados, fecha/evidencia y razón explícita.
+D. **Implementación/PR/QA:** ramas existentes, SHA, archivos tocados, pruebas nuevas realizadas PASS/FAIL, pruebas anteriores NO repetidas, y fuente de cada cifra.
+E. **Producción/expedientes reales:** versionado Apps Script solo si readback; despliegue sí/no; Keylor B2 L09 (17 BORRADOR, 0 nota, 0 PDF última conciliación), estudiantes y asistencia tocados sí/no. Nunca asumir publicado por merge/CI.
+F. **Riesgos y BLOQUEOS:** acción humana requerida en destaque superior, puertas pendientes y condiciones para pasar a producción.
+G. **SIGUIENTE OPERACIÓN ÚNICA:** resultado esperado, condiciones, alcance mínimo y lo que no debe tocarse.
+H. **PROMPT DE CONTINUIDAD:** siempre entregar texto copiable para el siguiente `CONTINUAMOS CON: «F111 ...»`, con HEAD, estado y restricciones.
+I. **REGISTRO CANÓNICO:** enlazar `00_DOCUMENTACION/PRODUCTION_STATE.md`, documentar lo nuevo, no duplicar rondas, actualizar SHA final; sin afirmar modificación si no hubo commit.
+
+**ESTADO MANUAL LEÍDO EN R19:** Desktop Commander dispositivo `DESKTOP-9U2RJRG` conectado, `allowedDirectories=["C:\\Users\\leodr\\Documents\\Shadow Contracts"]`. NO modificar la configuración sin ruta concreta y autorización expresa del usuario; nunca establecer lista vacía `[]` porque abre todo el disco. El usuario debe proporcionar la ruta completa de la carpeta Campus F111 y autorizar expresamente añadirla **conservando Shadow Contracts**. Hasta entonces Apps Script R12 permanece sin ejecución real autenticada. Evitar nuevas vueltas sobre una QA que no se puede ejecutar sin este permiso.
+
+---
+
+
 ## F111 · D3-R18 · CIERRE HISTÓRICO REAL EN VM Y EJECUTOR QA R12 (27-oct-2026)
 
 **TRABAJO EJECUTADO (NUEVO, SIN PRODUCCIÓN):** en el backend PR #65 existente `fix/f111-r11-d3-d4-guards-20261017`, tras el commit base integrado R17 `6c172300`, se añadieron dos pruebas que apuntan precisamente al caso real de Keylor: B2 SIN INA, presentación oral sin preguntas, clase ya cerrada y 17 borradores preservados. 1) `tests/qa_f111_r18_oral_historical_dynamic_e2.mjs` carga y ejecuta la **función real** `_oralF63_upsert_` de `prod/02_Auth_Sesiones_Usuarios.js` en Node VM, con SpreadsheetApp, padrón, nota y Drive sustituidos por dependencias sintéticas; no copia/reimplementa la función, no lee Google y no toca producción. 29/29 controles en Actions PASS: historial SIN INA sin preguntas, 15%, conservar ORAL_ID, nota única, reintento denegado, docente ajeno bloqueado, grupo no autorizado, matrícula CA duplicada, INA sin sesión, INA sin pregunta y cierre incierto anti-duplicados. Una primera aserción esperaba un error específico al reintentar, pero el motor bloquea correctamente ANTES por `sesion_oral_no_activa`; se ajustó la prueba al resultado fail-closed SIN cambiar el motor productivo. 2) `tests/qa_f111_r12_appsscript_editor_only.js` recibió un **ejecutor QA-only F111_R12_QA_PRESENTACION_HISTORICA**, con gate existente `F111_R12_QA_PREFLIGHT` (Script ID, propiedades PROD distintas, hojas selladas y carpeta QA): verifica nombre docente, alumno CA único, expediente BORRADOR ya existente, 5 criterios, comentarios y sugerencias, ausencia de preguntas y ausencia demostrable de nota oficial; por defecto **soloLectura**; exige literalmente `AUTORIZO_CIERRE_SOLO_QA_R18` para intentar escritura exclusivamente dentro del proyecto QA. Si se usa, verifica nota oficial 15%, PDF y backup con IDs distintos e idempotencia, y falla con `NO_REINTENTAR` para cierres inciertos. No copiarlo en `prod/`, no usarlo contra Campus/Sheets institucionales.
