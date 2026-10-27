@@ -517,6 +517,64 @@ function WrittenSessionCardF929({ session }) {
   </>;
 }
 
+
+// F111 D3 · Expedientes orales históricos: consultar no requiere reabrir clase.
+function TeacherOralHistoryF111({ onNavigate, groupHint }) {
+  const ses=typeof getSesion==='function'?getSesion():{};
+  const candidatos=[ses?.grupo,ses?.grupoActivo,ses?.cod_grupo,groupHint,
+    ...(Array.isArray(ses?.grupos)?ses.grupos.map(g=>typeof g==='string'?g:g?.grupo||g?.cod_grupo||g?.codigo):[])];
+  const grupos=[...new Set(candidatos.map(x=>String(x||'').trim()).filter(Boolean))];
+  const [grupo,setGrupo]=React.useState(grupos[0]||'');
+  const [registros,setRegistros]=React.useState([]);
+  const [loading,setLoading]=React.useState(false);
+  const [error,setError]=React.useState('');
+  const load=React.useCallback(async()=>{
+    if(!grupo){setRegistros([]);setError('No hay un grupo docente disponible.');return;}
+    setLoading(true);setError('');
+    try{
+      const r=await appPostF91('oralListEvaluacionesDocente',{cod_grupo:grupo},45000);
+      if(!r?.ok||!Array.isArray(r.rows))throw Error(r?.mensaje||r?.error||'No se obtuvo historial.');
+      setRegistros(r.rows);
+    }catch(e){setRegistros([]);setError(appSafeUserErrorF91(e,'No se pudo consultar el historial oral. Usá Actualizar para reintentar.','historial_oral_docente'));}
+    finally{setLoading(false);}
+  },[grupo]);
+  React.useEffect(()=>{void load();},[load]);
+  const gruposOrdenados=[...new Set(registros.map(r=>r.nivel+'|'+r.leccion+'|'+(r.fecha||'')))];
+  const resumen=gruposOrdenados.map(k=>{
+    const [nivel,leccion,fecha]=k.split('|');
+    const rows=registros.filter(r=>r.nivel===nivel&&String(r.leccion)===leccion);
+    return {nivel,leccion:Number(leccion),fecha,
+      total:rows.length,pendientes:rows.filter(r=>String(r.estado)==='BORRADOR').length,
+      archivados:rows.filter(r=>r.pdf_generado).length};
+  });
+  return <section aria-label="Mis evaluaciones orales" style={{background:'#fff',border:'1px solid #DCE4ED',borderRadius:14,padding:16}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}>
+      <div><div style={{fontSize:10,fontWeight:850,letterSpacing:'.12em',color:'#7A1E2C'}}>EXPEDIENTES DEL DOCENTE</div>
+        <h3 style={{fontSize:19,margin:'4px 0',color:'#073B7A'}}>Historial de exámenes orales</h3>
+        <p style={{fontSize:12,color:'#60708A',margin:0}}>Consultá borradores, calificaciones y documentos sin reabrir la clase.</p></div>
+      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <select aria-label="Grupo para consultar orales" value={grupo} onChange={e=>setGrupo(e.target.value)}
+          style={{border:'1px solid #D8E1EF',borderRadius:9,padding:'9px 12px',fontFamily:'inherit'}}>
+          {grupos.map(g=><option key={g} value={g}>{appTeacherGroupLabelF88(g)}</option>)}
+        </select>
+        <button className="btn btn-ghost" type="button" disabled={loading} onClick={()=>void load()}>
+          {loading?'Consultando…':'Actualizar'}</button>
+      </div>
+    </div>
+    {error&&<p role="alert" style={{color:'#8B1F1F',fontSize:12}}>{error}</p>}
+    {!loading&&!error&&!resumen.length&&<p style={{fontSize:12,color:'#60708A'}}>Este grupo todavía no tiene exámenes orales guardados.</p>}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(245px,1fr))',gap:10,marginTop:12}}>
+      {resumen.map(x=><div key={x.nivel+'-'+x.leccion+'-'+x.fecha} style={{background:'#F7F9FC',border:'1px solid #DFE5EE',padding:13,borderRadius:11}}>
+        <strong style={{color:'#073B7A'}}>{x.nivel} · Oral Lección {String(x.leccion).padStart(2,'0')}</strong>
+        <p style={{fontSize:12,color:'#52647D',margin:'6px 0 9px'}}>{x.total} evaluaciones · {x.pendientes} borradores · {x.archivados} PDF</p>
+        <button type="button" className="btn btn-primary" onClick={()=>onNavigate&&onNavigate('examen_oral',{
+          oral:{grupo,nivel:x.nivel,leccion:x.leccion,fecha:x.fecha,historial:true}
+        })}>Revisar expedientes</button>
+      </div>)}
+    </div>
+  </section>;
+}
+
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
@@ -528,7 +586,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
   :esEscrito?<WrittenSessionCardF929 session={s}/>
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
-  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<TeacherOralHistoryF111 onNavigate={onNavigate} groupHint={ctx.grupo}/><ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
   return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={top}/>;
 }
 
