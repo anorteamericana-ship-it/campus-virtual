@@ -2894,17 +2894,8 @@ function TeacherWrittenLiveInbox() {
   }, [grupo]);
 
   useEffect(() => { setSelected(null); load(true); }, [grupo, load]);
-  useEffect(() => {
-    if (!grupo || selected) return undefined;
-    const refresh = () => load(true);
-    const timer = window.setInterval(refresh, 15000);
-    const onFocus = () => refresh();
-    window.addEventListener('focus', onFocus);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [grupo, selected, load]);
+  // F111 D3: la bandeja se consulta al entrar/cambiar de grupo y al solicitar
+  // actualización explícita. Sin consultas repetidas mientras el docente enseña.
 
   if (selected) return <TeacherWrittenBackendReviewF940 row={selected} onBack={()=>{ setSelected(null); load(true); }} onDone={()=>load(true)} />;
 
@@ -2918,7 +2909,7 @@ function TeacherWrittenLiveInbox() {
         <div>
           <div className="tch-kicker">ENTREGAS DEL ESTUDIANTE</div>
           <h2 className="tch-title">Exámenes escritos entregados</h2>
-          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. La bandeja se actualiza automáticamente cada 15 segundos y al volver a esta ventana.</p>
+          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. La lista se consulta al elegir el grupo o presionar Actualizar entregas. No interrumpe la clase.</p>
         </div>
         <div className="tch-stats">
           <div className="tch-stat"><b>{pendingCount}</b><span>requieren atención</span></div>
