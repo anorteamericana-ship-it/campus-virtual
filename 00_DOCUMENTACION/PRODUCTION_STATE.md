@@ -1,5 +1,36 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · D3-R18 · CIERRE HISTÓRICO REAL EN VM Y EJECUTOR QA R12 (27-oct-2026)
+
+**TRABAJO EJECUTADO (NUEVO, SIN PRODUCCIÓN):** en el backend PR #65 existente `fix/f111-r11-d3-d4-guards-20261017`, tras el commit base integrado R17 `6c172300`, se añadieron dos pruebas que apuntan precisamente al caso real de Keylor: B2 SIN INA, presentación oral sin preguntas, clase ya cerrada y 17 borradores preservados. 1) `tests/qa_f111_r18_oral_historical_dynamic_e2.mjs` carga y ejecuta la **función real** `_oralF63_upsert_` de `prod/02_Auth_Sesiones_Usuarios.js` en Node VM, con SpreadsheetApp, padrón, nota y Drive sustituidos por dependencias sintéticas; no copia/reimplementa la función, no lee Google y no toca producción. 29/29 controles en Actions PASS: historial SIN INA sin preguntas, 15%, conservar ORAL_ID, nota única, reintento denegado, docente ajeno bloqueado, grupo no autorizado, matrícula CA duplicada, INA sin sesión, INA sin pregunta y cierre incierto anti-duplicados. Una primera aserción esperaba un error específico al reintentar, pero el motor bloquea correctamente ANTES por `sesion_oral_no_activa`; se ajustó la prueba al resultado fail-closed SIN cambiar el motor productivo. 2) `tests/qa_f111_r12_appsscript_editor_only.js` recibió un **ejecutor QA-only F111_R12_QA_PRESENTACION_HISTORICA**, con gate existente `F111_R12_QA_PREFLIGHT` (Script ID, propiedades PROD distintas, hojas selladas y carpeta QA): verifica nombre docente, alumno CA único, expediente BORRADOR ya existente, 5 criterios, comentarios y sugerencias, ausencia de preguntas y ausencia demostrable de nota oficial; por defecto **soloLectura**; exige literalmente `AUTORIZO_CIERRE_SOLO_QA_R18` para intentar escritura exclusivamente dentro del proyecto QA. Si se usa, verifica nota oficial 15%, PDF y backup con IDs distintos e idempotencia, y falla con `NO_REINTENTAR` para cierres inciertos. No copiarlo en `prod/`, no usarlo contra Campus/Sheets institucionales.
+
+**QA NUEVO EJECUTADO:** `tests/qa_f111_r18_appsscript_historical_guard_e1.mjs` ejecutó el nuevo runner QA con dependencias simuladas en 14/14 escenarios: Script ID no aislado, grupos PROD, ausencia token, alumno no autorizado, CON INA, matrícula duplicada, historial no disponible, docente distinto, rúbrica incompleta, preguntas reales existentes, nota previa, lectura segura, confirmación obligatoria y circuito sintético completo con PDF-idempotencia. **14/14 PASS** en la misma CI, 0 Google API calls. Confirmación documental logs run `40602875392`: `F111_R18_ORAL_HISTORICAL_DYNAMIC_PASS 29/29`, `F111_R18_QA_HISTORICAL_RUNNER_PASS 14/14`. CI focalizado `F111 R11 D3 D4 - guards (offline)` **PASS**, igual que `Backend E1 QA compartida` y `F111 N02 P0 E1 independiente`; QZ32 por confirmar al HEAD R18 si sigue en curso. **Commit backend candidato = `55660e850c7fd2563c498bcc651a6378c7373699`.** Se modificaron archivos bajo `tests/` y workflow QA, **ningún archivo `prod/` en R18**.
+
+**READBACK DE AISLAMIENTO R12:** dos hojas Drive EXISTENTES, creadas previamente (NO creadas por R18): `F111_R12_QA_APOLLO_ORALES_D3D4_20261024` (ID `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4`) y `F111_R12_QA_OPERATIVO_ORALES_D3D4_20261024` (ID `12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc`). Ambas contienen `F111_R12_CONTROL!A1=F111_R12_QA_ISOLATED`, pestaña `F111_R12_FIXTURES_PLAN` con grupos sintéticos B1/B2/I1/I2. Su control visible dice `PROYECTO_APPS_SCRIPT_QA=NO_ACREDITADO`, `USUARIOS_QA=SIN ALTA NI TOKENS`, `F111_R12_QA_ENABLE=NO CONFIGURADO`. Carpeta QA histórica `F111_R12_QA_ORALES_D3D4_20261024` existe en Drive. **No hay Apps Script QA ejecutable confirmado, cero llamadas GAS auténticas, cero PDFs QA reales**. Las hojas sintéticas están selladas pero todavía no constituyen entorno E2E operativo. Desktop Commander continúa restringido al directorio de otro proyecto; no acceder fuera de su permiso.
+
+**EVIDENCIA PRODUCTIVA PRESERVADA:** última lectura institucional R17: grupo B1-LM69-C2-0526, B2, 23/23 matrículas CA, 17/17 expedientes orales de Keylor con correspondencia CA única; 17/17 BORRADOR, notas oficiales 0/17, PDF 0/17, respaldo 0/17. R18 NO escribe ni repite auditoría productiva. Lecciones cerradas y asistencias sin tocar. Límite: prueba VM ≠ cierre real GAS, prueba QA mock ≠ PDF real, y no afirmar que LIVE está actualizado.
+
+**MATRIZ DE AVANCE ESTABLE (8 MÓDULOS, 35 CRITERIOS; NO SUMAR PRUEBAS REPETIDAS):**
+
+| Módulo | Cerrados | Total | % | Estado |
+|---|---:|---:|---:|---|
+| Historial orales | 2 | 4 | 50% | CI y API source; falta E2E GAS y LIVE |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | Runner específico preparado; falta E2E GAS |
+| Notas oficiales oral | 2 | 4 | 50% | VM anti-duplicados aprobada; falta prueba GAS y piloto |
+| PDF y respaldo | 2 | 4 | 50% | QA runner verifica contrato; falta archivo auténtico |
+| Historial escritos | 1 | 4 | 25% | Bandeja existe; falta integración completa |
+| Vistas previas | 3 | 5 | 60% | Código listo; falta validación LIVE segura |
+| Quizzes docentes | 2 | 5 | 40% | B1 precedente @477, B2/I1/I2 pendientes |
+| Unificación visual | 2 | 5 | 40% | Falta cubrir escritos/quizzes y validar en dispositivo |
+| **SUBPLAN F111 EXÁMENES** | **16** | **35** | **46%** | **19 criterios restantes** |
+
+**PORCENTAJE GLOBAL:** F111 histórico 56% con base documental anterior no comparable, NO interpolar ni reemplazar con este 46%. Las dos pruebas nuevas fortalecen los 16 hitos parciales, no acreditan entrega productiva y NO modifican el numerador.
+
+**SIGUIENTE PASO EFECTIVO / BLOQUEO DE DESPLIEGUE:** configurar proyecto Apps Script QA independiente (ID, deploy QA, propiedades, datos y usuarios ficticios), validar `F111_R12_QA_PREFLIGHT`, ejecutar `F111_R12_QA_PRESENTACION_HISTORICA` primero lectura, luego UNA escritura autorizada exclusivamente QA con readback de nota y dos archivos distintos. Después reconciliar y publicar un candidato conjunto de backend/frontend sin fusionar por error el PR fuente #55, y solo entonces probar un expediente real autorizado de Keylor. Sin Script ID QA ni permisos al directorio F111, **NO-GO productivo**. No reabrir ni modificar lecciones.
+
+---
+
+
 ## F111 · D3-INTEGRACIÓN R17 · DESCUBRIMIENTO DE GRUPOS DOCENTES Y PREFLIGHT CA (27-oct-2026)
 
 **FASE Y OBJETIVO:** reparar el acceso al historial docente sin depender de que el grupo persista en `USUARIOS.grupo` o en el objeto local de sesión. Resolver la regresión silenciosa que podía dejar el selector oral vacío aunque APOLLO.GRUPOS contenga la asignación vigente. No repetir pruebas superadas por R16; preservar todas las notas, asistencias y evaluaciones reales.
