@@ -575,6 +575,63 @@ function TeacherOralHistoryF111({ onNavigate, groupHint }) {
   </section>;
 }
 
+
+function TeacherExamCatalogF111() {
+  const [nivel,setNivel]=React.useState('B1');
+  const [test,setTest]=React.useState('TEST1');
+  const [opcion,setOpcion]=React.useState('A');
+  const [plan,setPlan]=React.useState('SIN_INA');
+  const [oral,setOral]=React.useState(9);
+  const [preview,setPreview]=React.useState('');
+  const common={fontFamily:'inherit',border:'1px solid #D6DFEA',borderRadius:9,
+    padding:'9px 12px',background:'#fff',color:'#073B7A',fontSize:12};
+  const lbl=(title,children)=><label style={{fontSize:11,color:'#53647A',fontWeight:750,
+    display:'flex',flexDirection:'column',gap:5,minWidth:120}}>{title}{children}</label>;
+  return <section aria-label="Biblioteca institucional de exámenes" style={{background:'#fff',
+    border:'1px solid #DCE4ED',borderRadius:14,padding:16}}>
+    <div style={{fontSize:10,fontWeight:850,letterSpacing:'.13em',color:'#7A1E2C'}}>MATERIAL DOCENTE · VISTA PREVIA</div>
+    <h3 style={{fontSize:19,color:'#073B7A',margin:'4px 0'}}>Banco, rúbrica y modelos por nivel</h3>
+    <p style={{fontSize:12,color:'#60708A',margin:'4px 0 12px'}}>Abrí un modelo para practicar o proyectar en clase. Esta vista no activa exámenes, no recibe entregas y no escribe notas.</p>
+    <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}>
+      {lbl('Nivel',<select value={nivel} onChange={e=>setNivel(e.target.value)} style={common}>
+        {['B1','B2','I1','I2'].map(v=><option key={v} value={v}>{v}</option>)}</select>)}
+      {lbl('Prueba escrita',<select value={test} onChange={e=>setTest(e.target.value)} style={common}>
+        <option value="TEST1">Lección 18</option><option value="TEST2">Lección 32</option></select>)}
+      {lbl('Opción',<select value={opcion} onChange={e=>setOpcion(e.target.value)} style={common}>
+        <option value="A">Opción A</option><option value="B">Opción B</option></select>)}
+      {lbl('Programa',<select value={plan} onChange={e=>setPlan(e.target.value)} style={common}>
+        <option value="SIN_INA">SIN INA</option><option value="CON_INA">CON INA</option></select>)}
+      <button type="button" className="btn btn-primary" onClick={()=>setPreview('written')}>Ver examen escrito</button>
+    </div>
+    <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end',marginTop:14,
+      paddingTop:12,borderTop:'1px solid #E4EAF2'}}>
+      {lbl('Rúbrica oral',<select value={oral} onChange={e=>setOral(Number(e.target.value))} style={common}>
+        {[9,17,25,31].map(x=><option key={x} value={x}>Lección {x}</option>)}</select>)}
+      <button type="button" className="btn btn-ghost" onClick={()=>setPreview('oral')}>Ver rúbrica oral</button>
+      <span style={{fontSize:11,color:'#67758A'}}>En la proyección las respuestas correctas deben permanecer ocultas.</span>
+    </div>
+    {preview==='written'&&<TeacherWrittenPreviewModalF950
+      activation={{NIVEL:nivel,TEST_CODE:test,OPCION:opcion,PLAN:plan}}
+      group="" leccion={test==='TEST1'?18:32} onClose={()=>setPreview('')}/>}
+    {preview==='oral'&&<div role="dialog" aria-modal="true" aria-label="Vista previa de rúbrica oral"
+      onClick={()=>setPreview('')} style={{position:'fixed',inset:0,zIndex:99999,
+      background:'rgba(0,20,48,.73)',padding:18,display:'flex',justifyContent:'center',alignItems:'stretch'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#F7F3EC',borderRadius:16,
+        display:'flex',flexDirection:'column',overflow:'hidden',width:'min(1450px,100%)'}}>
+        <div style={{background:'#fff',padding:'12px 16px',display:'flex',
+          alignItems:'center',justifyContent:'space-between',gap:10}}>
+          <strong style={{color:'#073B7A'}}>Rúbrica institucional · {nivel} · Oral L{oral} · Sin registro de nota</strong>
+          <button className="btn btn-ghost" type="button" onClick={()=>setPreview('')}>Cerrar modelo</button>
+        </div>
+        <iframe title="Vista previa de rúbrica oral sin evaluación real"
+          src={`modulos/examen_oral.html?preview=1&nivel=${encodeURIComponent(nivel)}&leccion=${oral}&v=F111-D3-PREVIEW`}
+          style={{border:0,width:'100%',flex:1,minHeight:650}} loading="lazy"
+          sandbox="allow-scripts allow-same-origin allow-modals allow-presentation"/>
+      </div>
+    </div>}
+  </section>;
+}
+
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
@@ -586,7 +643,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
   :esEscrito?<WrittenSessionCardF929 session={s}/>
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
-  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<TeacherOralHistoryF111 onNavigate={onNavigate} groupHint={ctx.grupo}/><ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<TeacherOralHistoryF111 onNavigate={onNavigate} groupHint={ctx.grupo}/><TeacherExamCatalogF111/><ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
   return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={top}/>;
 }
 
