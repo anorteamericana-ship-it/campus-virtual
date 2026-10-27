@@ -554,6 +554,22 @@ function f111TeacherGroups(){
   for(const g of ses.grupos)raw.push(typeof g==='string'?g:g&&(g.grupo||g.cod_grupo||g.codigo));
  return Array.from(new Set(raw.map(x=>String(x||'').trim()).filter(Boolean)));
 }
+// F111 R17: obtener la lista autorizada por APOLLO.GRUPOS, no por sesión local.
+// getDocenteGruposActuales devuelve todos (incluye niveles históricos) y grupos
+// (únicamente COMENTARIO=En curso). Para el historial se necesitan ambos casos.
+function f111AuthorizedCourseGroups(data){
+ const rows=Array.isArray(data&&data.todos)?data.todos:
+  (Array.isArray(data&&data.grupos)?data.grupos:[]);
+ const seen=new Set(),out=[];
+ for(const row of rows){
+  if(!row||row.puede_curso===false||row.permisos_riel?.curso===false)continue;
+  const code=String(typeof row==='string'?row:
+   (row.code||row.cod_grupo||row.codigo_grupo||row.grupo||row.codigo||'')).trim();
+  if(!code||seen.has(code))continue;
+  seen.add(code);out.push(code);
+ }
+ return out;
+}
 function buildTeacherExamsF111(){
  const section=make('section',null,'f111-teacher-exam-center');
  section.dataset.f111TeacherExamCenter='true';
@@ -565,11 +581,10 @@ function buildTeacherExamsF111(){
  history.append(make('h4','Historial · Exámenes orales'));
  history.append(make('p','Borradores, evaluaciones cerradas y PDF del grupo. La consulta no reabre lecciones.'));
  const control=make('div',null,'f111-teacher-exam-controls');
- const groups=f111TeacherGroups(),select=make('select');
+ const select=make('select');
  select.setAttribute('aria-label','Grupo docente para historial oral');
- for(const group of groups){
-  const option=make('option',group);option.value=group;select.append(option);
- }
+ // Selector inicialmente vacío: solo se ofrece el grupo después de comprobar
+ // la lista autenticada del backend. Nunca elevar USUARIOS.grupo a permiso.
  const refresh=make('button','Actualizar historial','f111-tqr-open');refresh.type='button';
  control.append(select,refresh);
  const result=make('div',null,'f111-teacher-exam-results');result.setAttribute('role','status');
@@ -613,8 +628,35 @@ function buildTeacherExamsF111(){
    'No fue posible leer el historial. '+String(e&&e.message||e)));}
   finally{busy=false;refresh.disabled=false;refresh.textContent='Actualizar historial';}
  }
+ async function loadAuthorizedGroups(){
+  if(busy)return;
+  const oldGroup=String(select.value||'').trim();
+  select.disabled=true;refresh.disabled=true;
+  result.replaceChildren();result.append(make('p','Consultando grupos docentes autorizados…'));
+  try{
+   // Identidad de sesión del servidor: no enviar docente arbitrario.
+   const reply=await postQuiz('getDocenteGruposActuales',{});
+   if(!section.isConnected)return;
+   const allowed=f111AuthorizedCourseGroups(reply);
+   select.replaceChildren();
+   for(const group of allowed){const item=make('option',group);item.value=group;select.append(item);}
+   if(!allowed.length){
+    result.replaceChildren();
+    result.append(make('p','No hay grupos de curso autorizados para consultar.'));
+    return;
+   }
+   select.value=allowed.includes(oldGroup)?oldGroup:allowed[0];
+  }catch(e){
+   if(section.isConnected){
+    select.replaceChildren();result.replaceChildren();
+    result.append(make('p','No se pudo verificar la asignación docente. '+String(e&&e.message||e)));
+   }
+   return;
+  }finally{select.disabled=false;refresh.disabled=false;}
+  await loadHistory();
+ }
  select.addEventListener('change',loadHistory);
- refresh.addEventListener('click',loadHistory);
+ refresh.addEventListener('click',loadAuthorizedGroups);
  const catalog=make('article',null,'f111-teacher-exam-card');
  catalog.append(make('h4','Banco y vista previa de exámenes'),
   make('p','Modelo escrito o rúbrica oral para explicar el formato a los estudiantes. Sin lanzamiento ni registro.'));
@@ -649,7 +691,7 @@ function buildTeacherExamsF111(){
  catalog.append(make('small','La vista escrita muestra respuestas ocultas inicialmente. No proyectés la clave docente.'));
  summary.append(history,catalog);section.append(summary);
  // Cargar solo cuando se conecta esta tarjeta, y luego por cambio o botón.
- queueMicrotask(()=>{if(section.isConnected)void loadHistory();});
+ queueMicrotask(()=>{if(section.isConnected)void loadAuthorizedGroups();});
  return section;
 }
 
