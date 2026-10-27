@@ -1,5 +1,25 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · D3-INTEGRACIÓN R15 · RECUPERACIÓN DE CI Y PREPARACIÓN QA (27-oct-2026)
+
+**OPERACIONES COMPLETADAS:** leídos PR frontend #511, backend #55 y backend #65 y sus HEAD. Hallazgo NUEVO: los tres PR estaban un commit detrás de main (frontend `9d09271a`, backend `d4e61933`). El workflow compartido `qa-backend-e1.yml` exige que HEAD contenga main como antecesor (`test "$(git rev-parse origin/main)" = "$BASE"`), por eso las dos ejecuciones backend anteriores fallaban *antes de emitir patch-id*. No fue una prueba de que el motor oral hubiera fallado. Se preservaron las modificaciones MAIN CONAPE y las ramas y se integró main con merge commits de dos padres, sin modificar el motor académico del PR, sin ramas nuevas ni escrituras de producción.
+
+**MERGES DE MAIN HACIA RAMAS (NO PR MERGE, NO DEPLOY):**
+- Backend PR #65: `31bb21bd` → `48cf6eef75a10a4241f58b723fe475058fd1caf9`, MAIN `d4e61933`, detrás 0, cambios de main preservados; tres workflows GitHub PASS (`F111 N02 P0 E1 independiente`, `Backend E1 QA compartida`, `F111 QZ32 Diagnostic E1`).
+- Backend PR #55: `21c9a882` → `905dc3f050db73c3ec647d491db9697cea5d1049`, MAIN `d4e61933`; los mismos 3/3 workflows GitHub PASS.
+- Frontend PR #511: `2a7fc0e8` → `6bd835d7df55a21005d1502a1f624433bb33d0be`, MAIN `9d09271a`, 8/8 workflows GitHub PASS (incluye control D3 oral frontend y QZ32 E1).
+
+**GATE EJECUTABLE:** los 14 workflows de GitHub de estos tres HEAD pasaron (3+3+8, pruebas de código/sintéticas). No equivalen a QA autenticada de Apps Script. Remote Desktop Commander disponible pero **acceso a archivos restringido a `C:\\Users\\leodr\\Documents\\Shadow Contracts`**; la carpeta Campus F111 no está autorizada, por lo que no puede utilizarse para `clasp` o crear el proyecto oral QA en este contexto. QA GAS oral sigue 0/1 entorno autenticado; no sustituirlo por otros QA. Mantener separados PR #55 (banco privado) y #65 (historial/permisos) hasta conciliación de los cambios superpuestos en `prod/01_Router.js` y `prod/02_Auth_Sesiones_Usuarios.js`; no fusionar uno a producción sin el otro.
+
+**PRODUCCIÓN:** Campus institucional @473 y Quiz @477 como última referencia documental (no readback nuevo desde Apps Script); 0 commits de estos PR fusionados, 0 despliegues realizados en esta pasada, 0 expedientes reales editados, 0 cierres de exámenes, 0 notas sincronizadas, 0 PDF. Última auditoría productiva de Keylor B2 L09 = 17/17 BORRADOR sin preguntas legítimamente, no se repitió ni alteró.
+
+**MATRIZ DE ENTREGA CON DENOMINADOR:** frontend CI 8/8 (100% pruebas GitHub); backend CI PR #65 3/3 (100% GitHub), PR #55 3/3 (100% GitHub); QA autenticada Apps Script oral 0/1 (0%); piloto con nota oficial/PDF + respaldo 0/1 (0%); acceso histórico LIVE desde Campus 0/1 confirmado (0%); despliegue conjunto 0/1 (0%). Son compuertas independientes, no promedio global. F111 global histórico 56% sin recalcular.
+
+**SIGUIENTE PASO ÚNICO:** habilitar y certificar runtime Apps Script QA independiente F111 R12 (script ID distinto, flags de aislamiento, propiedades, credenciales QA ficticias, prueba SIN INA sin preguntas y denegación CON INA, cierre idempotente y PDF+backup), y luego conciliar ambos backend PR con delta mínimo al Apps Script productivo y despliegue readback; recién entonces un piloto real autorizado de un expediente de Keylor. No repetir pruebas GitHub 14/14 salvo cambios de código posteriores.
+
+---
+
+
 
 ## F111 · D3 SIN INA · IMPLEMENTACIÓN DE CÓDIGO Y PUERTA NO-GO (27-oct-2026)
 
