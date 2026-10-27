@@ -1,6 +1,49 @@
 # CAMPUS VIRTUAL · Estado de producción
 
 
+## F111 · D3 SIN INA · IMPLEMENTACIÓN DE CÓDIGO Y PUERTA NO-GO (27-oct-2026)
+
+**DECISIÓN DEL USUARIO:** grupo 0526 B2 de Keylor evaluó mediante PRESENTACIÓN (sin INA); no hubo preguntas explícitas, y no es correcto fabricarlas ni exigir que fueran marcadas. En SIN INA el resultado oficial es rúbrica de 5 criterios + comentarios + sugerencias + nota 15%, con PDF institucional de una página cuando no se consignaron preguntas. Las preguntas adicionales pueden registrarse de manera opcional. En INA se mantienen las validaciones de preguntas y bancos autorizados. No liberar borradores como notas: la nota es oficial SOLAMENTE después del cierre explícito y verificación de sincronización. Conservar comentario/nota/preguntas reales que ya existan.
+
+**BASE PRODUCTIVA COMPROBADA — SOLO LECTURA (27-oct-2026):** APOLLO `GRUPOS` código `B1-LM69-C2-0526` tiene la fila vigente B2 con `PROGRAMA=SIN_INA` (fila 35; fila B1 34). `CAMPUS_OPERATIVO!ORAL_EVALUACIONES` filas 9–25 contienen 17 registros únicos B2 L09 de Keylor: **17 BORRADOR; 17/17 con puntuación y comentarios+sugerencias; 0/17 preguntas; 0 notas oficiales; 0 PDFs**. Lección 09 ya cerrada, no reabrir ni alterar asistencia. Lectura NO certifica identidades actuales del roster ni autoriza cierre real sin conciliación.
+
+**IMPLEMENTACIÓN EN LOS PR EXISTENTES, AÚN NO PUBLICADA:**
+
+**Backend PR #65** rama `fix/f111-r11-d3-d4-guards-20261017` HEAD `31bb21bd7f011a507a3b7f1d97228dad1729e19e`:
+- `prod/02_Auth_Sesiones_Usuarios.js`: `_oralF111_isSinIna_` desde `getEstudiantesParaCierre(...).programa` resuelto por matrícula GRUPOS, NUNCA por etiqueta cliente; `oralCloseEvaluacion_F90` difiere el requisito de pregunta a `_oralF63_upsert_` tras verificar fuente institucional, por lo que **SIN_INA + PRESENTACION + preguntas vacías** admite cierre SOLO con 5 criterios, comentarios, sugerencias; INA exige pregunta real. Mantiene 15% y validación de nota CA única.
+- Para revisar un historial tras cierre de clase sin reabrirla, `_oralF63_upsert_` acepta guardado/cierre **de un BORRADOR ya existente SIN INA** únicamente si coincide grupo/rol/docente original, nivel, lección, calendario cerrado y matrícula autorizada. Sin sesión activa solo esa excepción; NO crea exámenes retroactivos, NO admite INA, NO desbloquea cierres o conciliaciones inciertas.
+- Nuevos endpoints autenticados `oralListEvaluacionesDocente` y `oralGetPanelHistorico` listan existentes por grupo autorizado; `oralGetPanelDocente_F90_1` expone `modo_sin_ina` desde roster. `prod/01_Router.js` registra endpoints en allowlist de roles, grupo y dispatcher; token de sesión por POST, no URL.
+- `prod/13_Examenes.js`: PDF de presentación sin preguntas usa la primera página institucional (logo/título, 5 criterios, resultados, comentarios, sugerencias, docente y trazabilidad), sin segunda hoja vacía; casos con preguntas mantienen el anexo y registro previo. Registro `RUBRICA_VERSION` marca modalidad PRESENTACION_SIN_INA. No se modificó la fórmula de 15% ni cierre idempotente/conciliación.
+- QA NUEVO sintético en `tests/qa_f111_d3_sin_ina_historial.mjs` más CI existente R11 ampliado: workflow `F111 R11 D3 D4 - guards (offline)` run `40583559721` **PASS** (nuevo + previos 9/9 estáticos, 30/30 dinámicos; no Apps Script auténtico ni Google writes). Otros dos workflows asociados al HEAD PASS; **`Backend E1 QA compartida` run `40583567891` FAIL** por guard de alcance PROD @463 / patch-id inmutable al detectar modificaciones intencionales de `prod`: **NO-GO para merge o deploy** hasta resolver la autorización/gate, SIN desactivar el guard.
+
+**Frontend PR #511** rama `feat/f111-ex01-orales-cambridge-qa-20261016` (HEAD verificable vía PR):
+- `modulos/examen_oral.html`: vista `?historial=1&grupo=&nivel=&leccion=` consume `oralGetPanelHistorico`, admite `modo_sin_ina` con presentación sin preguntas ni requerir banco privado; INA conserva fail-closed. Borrador guarda sin nota, botón final **«Finalizar examen · Nota oficial y PDF»** conserva confirmación cerrada+nota antes de emitir PDF y recuperación de cierre incierto sin retry. CSS Poppins, azul institucional `#073B7A`, borgoña `#7A1E2C`, fondo cálido.
+- `src/teacher_quiz_review_f111.js` (addon ya usado en Campus, sin modificar React protegido) inserta **«Mis evaluaciones y modelos»** en docente → Exámenes: selección grupo y lista histórica B1–I2 por lección, recuentos borradores/PDF, abre el mismo módulo oral (con token, no URL), y biblioteca de previews `modulos/examenes.html?view=teacher_preview` escritos L18/L32 A/B / `modulos/examen_oral.html?preview=1` rúbricas L9/L17/L25/L31. Vistas previas independientes de activación estudiantil; scripts y respuestas se muestran solo en vista docente existente (proyección debe mantener clave oculta). Quizzes existentes siguen en el addon.
+- `campus.html` cambia solo el cache bust de `teacher_quiz_review_f111.js` a `F111D3SINAEXAMS20261027`. Nuevos tests `scripts/qa_f111_d3_teacher_exam_center.mjs` y workflow `qa-f111-d3-oral-frontend.yml`: check de sintaxis, rutas autenticadas, no-POST de notas/entregas en portal, estilo, preview, excepciones INA. 16/16 contextos del anterior test oral permanecen.
+- Se intentó retirar `setInterval(...,15000)` de la bandeja escrita pero las suites EX04 protegen por SHA exacto los seis archivos del motor escritos. **Se revirtieron exactamente `src/examenes_modes.jsx` y `src/examenes_bundle.jsx`**; asimismo se restauraron `src/app.jsx` y `src/student_modules.jsx` protegidos por D1. El polling de 15 segundos de bandeja de escritos **continúa en esta versión**; no falsear que se quitó. Sacar de P0 hasta contar con delta autorizado/CI que preserve el motor. Códigos orales y quizzes conservados.
+- En la CI frontend: `F111 D3 - oral frontend level and rubric guard` PASS y 7/8 workflows PASS en un commit anterior; la única falla provenía de asserts antiguos que verificaban el nombre literal del cache de quizzes, adaptados sin cambiar comportamiento en `scripts/qa_f111_pc01_release_contract_e1.mjs` y `scripts/qa_f111_r10_teacher_student_e1.mjs`. HEAD final requiere confirmar CI y readback. Las pruebas sintéticas no son QA autenticado.
+
+**AVANCE / ESTADO DE P0:**
+| Elemento | Conteo/resultado |
+|---|---|
+| Expedientes productivos preservados | 17/17 (sin escritura) |
+| Regla académica SIN INA en código | Implementada, pendiente E2E |
+| Exigencia INA en código | Conservada, pendiente E2E |
+| Vista histórica docente en código | Implementada, pendiente autenticación Apps Script |
+| PDF una página SIN INA sin preguntas | Código implementado, PDF real **0/1** |
+| CI focalizado backend R11 ampliado | PASS run 40583559721 |
+| CI frontend | Parcial (ver HEAD actual) |
+| QA real Apps Script independiente | **0/4 niveles**, sin proyecto acreditado |
+| Nota oficial y PDF real Keylor | **0/17** |
+| Merges / deployments | **0 / 0** |
+| Producción Campus/Quiz | @473 / @477 SIN TOCAR |
+
+**GATE OBLIGATORIO ANTES DE PROD:** independencia de Apps Script QA: falta Script ID, auth y recursos ejecutables (R14 solo creó carpeta/Sheets sin runtime Apps Script); probar allí SIN INA sin preguntas, INA con/ sin preguntas, conservar borrador, cerrar solo una vez, nota 15%, PDF primario + backup distinto e idempotencia, rechazo de otro grupo/docente y evitar relanzamiento de la clase. Resolver también fallo de alcance inmutable del backend compartido y aprobar frontend suite completa. Leer los artefactos en su origen vivo antes de anunciar LIVE; solo luego cerrar **UN** expediente real 0526 para primer PDF, con readback exacto. No ejecutar escrituras en real como sustituto de QA.
+
+**LÍNEA BASE GLOBAL F111:** 56% histórico, no se incrementa por trabajo preparado no desplegado. No abrir ramas nuevas ni repetir rondas R10 históricas.
+
+---
+
 ## F111 · D3 HOTFIX DOCENTE 0526 · AUDITORÍA Y DECISIÓN DE DISEÑO (27-oct-2026) · SOLO LECTURA / NO PROD
 
 **Solicitud:** enseñar al docente, desde `Evaluaciones y comunicación > Exámenes`, material oral, escritos y quizzes por nivel, en vista previa proyectable sin publicar ni registrar intentos; historial permanente de evaluaciones enviadas y borradores, incluso con la clase cerrada; cierre de primer PDF oral real, con trazabilidad. El usuario pidió **revisar lógica ANTES de decidir hotfix**. En esta pasada **NO se editó código ejecutable, NO se publicó**.
