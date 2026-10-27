@@ -1,5 +1,42 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · D3-INTEGRACIÓN R16 · BANCO PRIVADO UNIFICADO, QA Y READBACK 17/17 (27-oct-2026)
+
+**ALCANCE EFECTIVAMENTE EJECUTADO:** se incorporaron en la rama existente del backend PR #65 (`fix/f111-r11-d3-d4-guards-20261017`) los componentes útiles de PR #55 que faltaban para una entrega integral del motor oral: banco privado `prod/70_F111_Bancos_Orales_IC5.js` (blob original idéntico), prueba sintética `tests/qa_f111_ex01_bancos_orales_e1.mjs`, herramienta de preflight exclusiva de Apps Script QA `tests/qa_f111_r12_appsscript_editor_only.js`, autorizaciones del endpoint `oralGetBancoPreguntasDocente` en las cuatro rutas del `prod/01_Router.js`, y nuevos checks incorporados al workflow existente `qa-f111-r11-d3-d4-guards.yml`. Se preservaron todos los guardas históricos SIN INA, autorización de grupo, borradores y PDF de PR #65. **Commit backend integrado = `6c17230060e4b993b219a3b9bfada06ee664aaf3`.** PR #55 permanece abierto como fuente original; NO fusionarlo por separado a main antes de definir la integración del PR #65, pues comparte `prod/01_Router.js` y `prod/02_Auth_Sesiones_Usuarios.js`.
+
+**READBACK GITHUB / QA INTEGRACIÓN:** el router del HEAD nuevo contiene la autorización `oralGetBancoPreguntasDocente` además de `oralGetPanelHistorico` y `oralListEvaluacionesDocente`. GitHub Actions para el mismo SHA: `Backend E1 QA compartida` run **40597034916 PASS**; `F111 QZ32 Diagnostic E1` run **40597034935 PASS**; `F111 N02 P0 E1 independiente` run **40597034846 PASS**; `F111 R11 D3 D4 - guards (offline)` run **40597027326 PASS**. **4/4 PASS**; la última añade el test de bancos privados y parseo QA-editor-only. Son pruebas sintéticas/offline, NO emulación auténtica de Apps Script/Drive, NO certifican API productiva.
+
+**READBACK INSTITUCIONAL ACTUAL, SÓLO LECTURA:** se leyó metadato de `CAMPUS_OPERATIVO` ID `1dbNtotJC51Bx40r4zZv3ugt8-P3GYYzeLxsMOEYismI`, pestaña exacta `ORAL_EVALUACIONES` y rango acotado `A2:AR140`; filtro exacto `COD_GRUPO=B1-LM69-C2-0526`, `NIVEL=B2`, `LECCION=9`. **17 filas / 17 códigos únicos / 17 BORRADOR / 17 con NOTA_100 / 17 con COMENTARIOS / 17 con SUGERENCIAS / 0 SINCRONIZADA / 0 PDF_FILE_ID / 0 PDF_BACKUP_FILE_ID**. No se escribieron celdas ni se mostraron nombres o documentos personales en reportes.
+
+### MATRIZ OFICIAL R16 · 8 MÓDULOS / CRITERIOS MEDIBLES
+
+**Regla de cómputo:** cada criterio definido equivale a una tarea verificable; el conteo refleja un hito confirmado en GitHub/documentos/productivo según se describe. Los criterios todavía pendientes no se cuentan, aunque haya código provisional. NO promediar esta matriz con el 56% histórico F111, que tiene un denominador distinto.
+
+| Módulo | Tareas comprobadas | Criterios totales | % subplan | Criterios terminados / faltantes |
+|---|---:|---:|---:|---|
+| Historial de exámenes orales | 2 | 4 | 50% | API+interfaz implementadas; faltan QA Apps Script autenticado y acceso LIVE comprobado |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | Backend+frontend condicional en fuente; faltan QA GAS con actores autorizados y LIVE |
+| Envío y sincronización de notas orales | 2 | 4 | 50% | Contratos de código + controles sintéticos CI; faltan cierre QA GAS y piloto real con readback |
+| PDF oral y respaldo | 2 | 4 | 50% | Generador ajustado + sintaxis CI; faltan archivo QA real y piloto con dos IDs distintos |
+| Historial de escritos | 1 | 4 | 25% | Bandeja de recibidos existente; faltan historial completo, QA autorizaciones y verificación LIVE del nuevo historial |
+| Previews de exámenes | 3 | 5 | 60% | Previews fuente oral/escrito/quiz disponibles; faltan QA de proyección sin claves y LIVE integrado |
+| Quizzes docentes | 2 | 5 | 40% | B1 QA y release de elegibilidad @477 previamente verificados; faltan módulos docentes B2/I1/I2 (8 cada uno) |
+| Unificación visual | 2 | 5 | 40% | Diseño oral y módulo docente incorporados; faltan escritos, quizzes y aprobación visual móvil/proyección |
+
+**Balance exclusivamente del subplan R16 = 16 hitos confirmados de 35 definidos (46% redondeado). NO es el avance total global F111.** Global histórico F111 se mantiene 56% SIN recálculo sobre base comparable.
+
+**ESTADOS:**
+- **Código:** PR #65 HEAD `6c172300` integra reglas SIN INA, historial y banco privado. PR #511 sigue con centro docente y vistas previas; PR #55 sigue como origen banco, no desplegar autónomamente.
+- **Pruebas:** 4/4 CI backend integrado PASS; frontend PR #511 anterior 8/8 PASS. Apps Script QA oral R12 **0/1 runtime certificado**, no repetir los PASS históricos sino cubrir el nuevo ensamblaje y escritura sintética aislada.
+- **Producción:** **0 merges a main, 0 releases F111 D3, 0 notas emitidas, 0 PDFs, 0 asistencias editadas**. Referencias publicadas hasta la última evidencia documental: Campus @473 / Quiz @477; NO nuevo readback de clasp.
+- **Keylor:** 17/17 datos preservados; 0/17 accesos históricos probados LIVE; 0/17 cierres; 0/17 notas oficiales conciliadas; 0/17 pares de PDF+respaldo.
+- **Bloqueo real:** faltan Script ID y runtime Apps Script QA R12 habilitado/autenticado; Desktop Commander actual delimita accesos a `C:\\Users\\leodr\\Documents\\Shadow Contracts` y no permite trabajar con la carpeta Campus F111. No ampliar permisos del filesystem implícitamente, no utilizar una copia QA histórica ni credenciales institucionales productivas para la prueba.
+
+**SIGUIENTE PASO ÚNICO:** habilitar acceso específico al directorio local Campus F111 y materializar el proyecto Apps Script R12 en recursos QA independientes; ejecutar prueba integral de presentación SIN INA con rúbrica y preguntas vacías + rechazo INA + idempotencia/cierre + PDF primario y respaldo distinto. Solo tras eso conciliar HEAD productivo y publicar el candidato mínimo, y cerrar 1 examen real autorizado de Keylor con readback; no enviar los 17 en bloque.
+
+---
+
+
 ## F111 · D3-INTEGRACIÓN R15 · RECUPERACIÓN DE CI Y PREPARACIÓN QA (27-oct-2026)
 
 **OPERACIONES COMPLETADAS:** leídos PR frontend #511, backend #55 y backend #65 y sus HEAD. Hallazgo NUEVO: los tres PR estaban un commit detrás de main (frontend `9d09271a`, backend `d4e61933`). El workflow compartido `qa-backend-e1.yml` exige que HEAD contenga main como antecesor (`test "$(git rev-parse origin/main)" = "$BASE"`), por eso las dos ejecuciones backend anteriores fallaban *antes de emitir patch-id*. No fue una prueba de que el motor oral hubiera fallado. Se preservaron las modificaciones MAIN CONAPE y las ramas y se integró main con merge commits de dos padres, sin modificar el motor académico del PR, sin ramas nuevas ni escrituras de producción.
