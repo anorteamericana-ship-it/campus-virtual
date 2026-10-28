@@ -1,5 +1,38 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R29 · CORRECCIÓN PONDERACIÓN ESCRITOS + AUDITORÍA PC02–PC08 (28-oct-2026)
+
+**RESUMEN EJECUTIVO:** R29 revisó R28/R27/R26 y el estado vigente de D5-B1 R9/R10 antes de editar. **No volver a preparar/publicar Quiz @476:** el estado documentado más reciente es **Quiz PROD @477**, backend PR #110 merged, frontend PR #655 y #656 merged; R10 certificó UI visual con API sintética, **NO** una sesión docente real autenticada. PC01 ya tenía **12 ENTREGADO / 12 alumnos distintos** en el último readback productivo documentado (24-oct); PC02–PC08 tenían **0 intentos y 0 aperturas** entonces, y siguen requiriendo decisión docente por grupo y fecha. R29 **NO releyó hojas PROD ni ejecutó aperturas**, por lo que NO atribuir a esas cifras vigencia al 28-oct. No alterar PC01 histórico ni habilitar PC02–PC08 sin docente. Las versiones de Campus @473 y Quiz @477 son las últimas verificadas por R10, no revalidadas en esta pasada.
+
+**DEFECTO DE CALIFICACIÓN REAL IDENTIFICADO Y CORREGIDO EN RAMA BACKEND, SIN DESPLIEGUE:** en `prod/02_Auth_Sesiones_Usuarios.js`, `_examF28PushFoundReviewToNotas_` obtenía `WEIGHT_PERCENT` y `WEIGHTED_SCORE` desde revisión/intento (y programa desde `activation.PLAN || body.plan || body.programa`). `registrarNotaEstatus` R27 verificaba que el valor no superara el máximo oficial, pero **no** que correspondiera a `FINAL_SCORE_100 × peso oficial`. Ejemplo reproducible: escrito INA 20/100 con ponderación antigua 15% producía 3 puntos, valor menor al máximo INA 5 y, por tanto, podía aceptarse cuando lo correcto es **1/5**. En SIN INA, 80/100 con ponderación antigua 5% podía producir 4 en lugar de **12/15**. Se corrigió el **único punto de envío F28**, sin modificar revisiones históricas: lectura de `_leerFilaGrupoNivel` en GRUPOS, programa canónico INA/SIN_INA validado, rechazo de PLAN de activación contradictorio y de programa ausente, validación nota final 0–100, recálculo obligatorio con `_notasF29_max_(tipoEval,programa)` y redondeo a dos decimales. Ignora los campos de peso y nota ponderada guardados en revisión/intento al escribir ESTATUS; conserva esos registros históricos intactos. Para L18 y L32: INA **5%**, SIN INA **15%**. Un error tras guardar la nota, al marcar `PUSHED_TO_NOTAS` o auditar, devuelve explícitamente `nota_escrita_conciliacion_requerida`, `nota_oficial_ya_escrita:true`; **NO REINTENTAR SIN READBACK**.
+
+**QA NUEVO R29:** `backend/tests/qa_f111_r29_written_canonical_vm_e1.mjs` extrae funciones productivas reales `_examF28PushFoundReviewToNotas_`, `_examF28ScoreToComponent_`, `_examF28PlanToPrograma_` y `_notasF29_max_`; utiliza GRUPOS/Sheets/actor completamente sintéticos y verifica **48/48 PASS**: ambos programas, L18/L32, 20% INA con ponderación vieja, 80% SIN INA, nota 0 y 100, decimal 77,5, programa desconocido/contradictorio, ausencia/errores de GRUPOS, nota inválida, revisión no cerrada, ya enviada, rechazo del writer y fallos parciales de marcador/auditoría. Sin acceso Google ni escrituras reales. Workflow existente `.github/workflows/qa-f111-r11-d3-d4-guards.yml` ampliado, sin workflow ni rama nueva. **CI sobre backend HEAD exacto `c5faad002c6f5c81690d6c176ff9b45cad021f32`: 4/4 completed/success**: guards run `40647880787` (log prueba **48/48 PASS**), QZ32 Diagnostic run `40647885272`, Backend E1 run `40647885273`, N02 run `40647885263`. Commits R29: `68b24b5` corrección F28, `211140c` regex de programa, `5d01d3a` test, `8ac76e8` CI, `8c84033` conciliación post-write, `c5faad0` test 48. No merge ni deploy.
+
+**AUDITORÍA D5-B1 / QUIZZES:** se leyó el código original `prod/75_F111_WQ_Progress_QA.js` y la suite `tests/qa_f111_b1_auth_e2.mjs`. PC02–08 B1 están **ya implementados** en código con grupo docente `_f77_canGroup_` → GRUPOS curso, matrícula CA, fecha, estado docente ABIERTO, cierre por docente y peso oficial 0%; 56/56 QA sintético histórico R9 y 8/8 pruebas visuales R10, no reejecutados manualmente en R29. No hay fundamento para volver a codificarlos, ni para abrirlos automáticamente. **B2/I1/I2 cuentan con catálogo/esquemas de preparación, pero el gate PROD de `_f111WqContext_` sigue intencionalmente limitado a B1**: no declarar los otros 24 quizzes productivos. **PENDIENTE real:** una inspección de pantalla docente PC01 autenticada y solo lectura, y autorización docente por fecha/grupo para PC02–08; la validación de la pantalla real no se obtiene de un test con token sintético.
+
+**PRODUCCIÓN Y LÍMITES:** Desktop Commander informó equipo `DESKTOP-9U2RJRG` **OFFLINE**, por lo que no fue posible leer/sincronizar el clon local `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL` ni editar el `LEEME_PRIMERO_F111.md` local. Se trabajó solo sobre ramas existentes de GitHub; el presente `PRODUCTION_STATE.md` es la fuente de continuidad. 0 escrituras en Google PROD, 0 cambios en exámenes/entregas históricas, 0 modificaciones de los 17 borradores Keylor, 0 Apps Script deploys, 0 PDFs nuevos, 0 cambios de asistencia o certificados. **NO-GO LIVE** hasta readback docente/GRUPOS, compatibilidad de activaciones históricas y validación institucional controlada. El nuevo rechazo de PLAN contradictorio puede bloquear expedientes antiguos con metadatos inconsistentes: detectar en modo lectura antes de publicar, **no corregir notas por lotes**.
+
+**MATRIZ BASE FIJA R29 (VM no equivale a certificación LIVE):**
+
+| Módulo | Cerrados | Total | Avance | Pendientes |
+|---|---:|---:|---:|---:|
+| Historial oral | 2 | 4 | 50% | 2 |
+| Reglas INA/SIN INA | 2 | 4 | 50% | 2 |
+| Notas oficiales orales | 2 | 4 | 50% | 2 |
+| PDF y respaldo | 2 | 4 | 50% | 2 |
+| Historial escrito | 1 | 4 | 25% | 3 |
+| Vistas previas | 3 | 5 | 60% | 2 |
+| Quizzes docentes | 2 | 5 | 40% | 3 |
+| Unificación visual | 2 | 5 | 40% | 3 |
+| **TOTAL** | **16** | **35** | **46%** | **19** |
+
+Global histórico F111 **56%**, otra base, sin recertificación. **ACCIÓN MANUAL INMEDIATA: NINGUNA**; no solicitar login ni apertura de PC01 en horario nocturno. Cuando corresponda, un docente autorizado deberá validar PC01 en sesión real de solo lectura.
+
+**PROMPT R30 (SEGUNDA PASADA, NO REPETIR R29):** «F111 — R30: CONSOLIDACIÓN NOCTURNA, UI DE EXÁMENES Y PREPARACIÓN DE UNA SOLA PUBLICACIÓN». Leer primero esta sección R29 y los commits `c5faad0` backend / HEAD frontend actualizado. Si Desktop Commander reconecta, verificar estado local limpio antes de fast-forward; si permanece offline, continuar GitHub ramas PR #511/#65. NO volver a ejecutar las 48 pruebas R29 manualmente ni R28 106, R27 91, R26 45, R25 33. Concentrarse en la compatibilidad de vistas B1/B2/I1/I2 y oral/escrito/quiz, guardas de sesión/rol, riesgos de merge de ramas frente a main R10, preservación PC01, coherencia de peso 5/15, documentación y dictamen GO/NO-GO para publicación ÚNICA futura. No desplegar LIVE, no tocar 17 Keylor ni hojas productivas, no crear ramas/clones, no borrar recursos no rastreados. Comprobar CI/SHAs actuales, actualizar esta fuente única y entregar prompt R31.
+
+---
+
+
 ## F111 · R28 · CIERRE ORAL INSTITUCIONAL E2E EN VM, LOCK COMPARTIDO Y PROGRAMA CANÓNICO (28-oct-2026)
 
 **RESUMEN EJECUTIVO / LÍMITE:** se leyó R27/R26 y se trabajó en las mismas ramas existentes, sin repositorios ni ramas adicionales. Remote Desktop Commander informó **DESKTOP-9U2RJRG OFFLINE**; no fue posible leer ni actualizar el clon local `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL` ni el archivo local `LEEME_PRIMERO_F111.md`. Todo cambio de esta pasada se realizó en el **repositorio GitHub backend existente**, con CI real. No se utilizó ningún recurso Google/Apps Script ni se reejecutó el adaptador R23; no se tocaron los 17 borradores Keylor (última lectura histórica, sin readback nuevo).
