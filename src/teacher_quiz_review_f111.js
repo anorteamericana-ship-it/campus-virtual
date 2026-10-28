@@ -586,7 +586,11 @@ function buildTeacherExamsF111(){
  // Selector inicialmente vacío: solo se ofrece el grupo después de comprobar
  // la lista autenticada del backend. Nunca elevar USUARIOS.grupo a permiso.
  const refresh=make('button','Actualizar historial','f111-tqr-open');refresh.type='button';
- control.append(select,refresh);
+ const lookup=make('input');lookup.type='search';lookup.placeholder='Código de grupo: B1-LM69-C2-0526';
+ lookup.setAttribute('aria-label','Buscar grupo de orales guardados');
+ lookup.style.cssText='min-width:220px;max-width:100%;padding:8px;border:1px solid #c9d7e6;border-radius:8px';
+ const lookupBtn=make('button','BUSCAR GRUPO','f111-tqr-open');lookupBtn.type='button';
+ control.append(select,refresh,lookup,lookupBtn);
  const result=make('div',null,'f111-teacher-exam-results');result.setAttribute('role','status');
  history.append(control,result);
  let busy=false;
@@ -604,12 +608,13 @@ function buildTeacherExamsF111(){
     const nivel=String(row.nivel||'').toUpperCase(),lec=Number(row.leccion);
     if(!['B1','B2','I1','I2'].includes(nivel)||![9,17,25,31].includes(lec))continue;
     const k=nivel+'|'+lec+'|'+String(row.fecha||'');
-    if(!map.has(k))map.set(k,{nivel,lec,fecha:String(row.fecha||''),total:0,borradores:0,pdf:0});
+    if(!map.has(k))map.set(k,{nivel,lec,fecha:String(row.fecha||''),total:0,borradores:0,pdf:0,students:[]});
     const entry=map.get(k);entry.total++;
     if(String(row.estado)==='BORRADOR')entry.borradores++;
     if(row.pdf_generado)entry.pdf++;
+    entry.students.push({code:String(row.cod_estudiante||''),name:String(row.nombre||row.cod_estudiante||'Estudiante'),estado:String(row.estado||'GUARDADO')});
    }
-   if(!map.size)result.append(make('p','Sin expedientes orales registrados para este grupo.'));
+   if(!map.size)result.append(make('p','Sin expedientes para este grupo. Los 17 orales de Keylor están en B1-LM69-C2-0526; buscá ese código si tenés acceso autorizado.'));
    for(const row of map.values()){
     const item=make('div',null,'f111-teacher-exam-entry');
     item.append(make('strong',row.nivel+' · Oral lección '+String(row.lec).padStart(2,'0')),
@@ -622,7 +627,19 @@ function buildTeacherExamsF111(){
         historial:1,grupo,nivel:row.nivel,leccion:row.lec,fecha:row.fecha
        }));
     });
-    item.append(view);result.append(item);
+    item.append(view);
+    const details=make('details'),summary=make('summary','VER '+row.students.length+' EXÁMENES GUARDADOS');
+    summary.style.cssText='cursor:pointer;font-size:12px;font-weight:800;color:#173d67;margin:10px 0';
+    details.append(summary);
+    for(const student of row.students){
+     const line=make('div');line.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-top:1px solid #dee6ef;padding:7px 0;font-size:11px';
+     line.append(make('span',student.name+' · '+student.estado));
+     const open=make('button','VER RÚBRICA / PDF','f111-tqr-open');open.type='button';
+     open.addEventListener('click',()=>f111TeacherExamModal('Examen guardado · '+row.nivel+' · L'+row.lec,
+       f111ExamPageUrl('modulos/examen_oral.html',{historial:1,grupo,nivel:row.nivel,leccion:row.lec,fecha:row.fecha,cod_estudiante:student.code})));
+     line.append(open);details.append(line);
+    }
+    item.append(details);result.append(item);
    }
   }catch(e){if(section.isConnected)result.append(make('p',
    'No fue posible leer el historial. '+String(e&&e.message||e)));}
@@ -655,6 +672,23 @@ function buildTeacherExamsF111(){
   }finally{select.disabled=false;refresh.disabled=false;}
   await loadHistory();
  }
+ lookupBtn.addEventListener('click',async()=>{
+  const group=String(lookup.value||'').trim().toUpperCase();
+  if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)){
+   result.replaceChildren(make('p','Ingresá un código de grupo válido.'));return;
+  }
+  lookupBtn.disabled=true;
+  try{
+   // Escribir un código nunca concede permisos: autorización desde Apps Script.
+   await postQuiz('oralListEvaluacionesDocente',{cod_grupo:group});
+   if(!Array.from(select.options).some(x=>x.value===group)){
+    const option=make('option',group);option.value=group;select.append(option);
+   }
+   select.value=group;await loadHistory();
+  }catch(e){result.replaceChildren(make('p','Grupo no autorizado o no disponible: '+String(e&&e.message||e)));}
+  finally{lookupBtn.disabled=false;}
+ });
+ lookup.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupBtn.click();}});
  select.addEventListener('change',loadHistory);
  refresh.addEventListener('click',loadAuthorizedGroups);
  const catalog=make('article',null,'f111-teacher-exam-card');
