@@ -517,6 +517,184 @@ function build(){
  renderGrid(grid,selected);
  return box;
 }
+
+// F111 D3: Extensión del MISMO centro docente existente. No muta los
+// componentes React ni el paquete inmutable de exámenes escritos EX04.
+function f111TeacherExamModal(title,url){
+ if(document.querySelector('[data-f111-teacher-exam-modal]'))return;
+ const overlay=make('div',null,'f111-tqr-workspace-backdrop');
+ overlay.dataset.f111TeacherExamModal='true';
+ overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
+ overlay.setAttribute('aria-label',title);
+ const shell=make('section',null,'f111-tqr-workspace');
+ const bar=make('header',null,'f111-tqr-workspace-header');
+ const info=make('div');
+ info.append(make('small','ACADEMIA NORTEAMERICANA · CAMPUS VIRTUAL'),make('h2',title),
+  make('p','Vista institucional por nivel · La vista previa no crea calificaciones ni entregas.'));
+ const close=make('button','CERRAR','f111-tqr-close');close.type='button';
+ bar.append(info,close);
+ const frame=make('iframe');frame.title=title;frame.src=url;
+ frame.style.cssText='flex:1;min-height:0;width:100%;height:100%;border:0;background:white';
+ frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-modals allow-presentation');
+ shell.append(bar,frame);overlay.append(shell);document.body.append(overlay);
+ const off=()=>{document.removeEventListener('keydown',key);overlay.remove();};
+ const key=e=>{if(e.key==='Escape')off();};
+ close.addEventListener('click',off);overlay.addEventListener('click',e=>{if(e.target===overlay)off();});
+ document.addEventListener('keydown',key);close.focus();
+}
+function f111ExamPageUrl(path,params){
+ const url=new URL(path,new URL('./',location.href));
+ for(const [k,v] of Object.entries(params||{}))if(v!=null)url.searchParams.set(k,String(v));
+ return url.href;
+}
+function f111TeacherGroups(){
+ const ses=typeof window.getSesion==='function'?window.getSesion()||{}:{};
+ const raw=[ses.grupo,ses.grupoActivo,ses.cod_grupo];
+ if(Array.isArray(ses.grupos))
+  for(const g of ses.grupos)raw.push(typeof g==='string'?g:g&&(g.grupo||g.cod_grupo||g.codigo));
+ return Array.from(new Set(raw.map(x=>String(x||'').trim()).filter(Boolean)));
+}
+// F111 R17: obtener la lista autorizada por APOLLO.GRUPOS, no por sesión local.
+// getDocenteGruposActuales devuelve todos (incluye niveles históricos) y grupos
+// (únicamente COMENTARIO=En curso). Para el historial se necesitan ambos casos.
+function f111AuthorizedCourseGroups(data){
+ const rows=Array.isArray(data&&data.todos)?data.todos:
+  (Array.isArray(data&&data.grupos)?data.grupos:[]);
+ const seen=new Set(),out=[];
+ for(const row of rows){
+  if(!row||row.puede_curso===false||row.permisos_riel?.curso===false)continue;
+  const code=String(typeof row==='string'?row:
+   (row.code||row.cod_grupo||row.codigo_grupo||row.grupo||row.codigo||'')).trim();
+  if(!code||seen.has(code))continue;
+  seen.add(code);out.push(code);
+ }
+ return out;
+}
+function buildTeacherExamsF111(){
+ const section=make('section',null,'f111-teacher-exam-center');
+ section.dataset.f111TeacherExamCenter='true';
+ section.append(make('small','ACADEMIA NORTEAMERICANA · EXÁMENES DEL DOCENTE'),
+  make('h3','Mis evaluaciones y modelos'),
+  make('p','Consultá los orales guardados aunque la clase esté cerrada. Los modelos son únicamente para vista previa.'));
+ const summary=make('div',null,'f111-teacher-exam-grid');
+ const history=make('article',null,'f111-teacher-exam-card');
+ history.append(make('h4','Historial · Exámenes orales'));
+ history.append(make('p','Borradores, evaluaciones cerradas y PDF del grupo. La consulta no reabre lecciones.'));
+ const control=make('div',null,'f111-teacher-exam-controls');
+ const select=make('select');
+ select.setAttribute('aria-label','Grupo docente para historial oral');
+ // Selector inicialmente vacío: solo se ofrece el grupo después de comprobar
+ // la lista autenticada del backend. Nunca elevar USUARIOS.grupo a permiso.
+ const refresh=make('button','Actualizar historial','f111-tqr-open');refresh.type='button';
+ control.append(select,refresh);
+ const result=make('div',null,'f111-teacher-exam-results');result.setAttribute('role','status');
+ history.append(control,result);
+ let busy=false;
+ async function loadHistory(){
+  if(busy)return;
+  const grupo=String(select.value||'').trim();
+  result.replaceChildren();
+  if(!grupo){result.append(make('p','No hay un grupo asignado en la sesión docente.'));return;}
+  busy=true;refresh.disabled=true;refresh.textContent='Consultando…';
+  try{
+   const data=await postQuiz('oralListEvaluacionesDocente',{cod_grupo:grupo});
+   if(!section.isConnected||String(select.value)!==grupo)return;
+   const map=new Map();
+   for(const row of Array.isArray(data.rows)?data.rows:[]){
+    const nivel=String(row.nivel||'').toUpperCase(),lec=Number(row.leccion);
+    if(!['B1','B2','I1','I2'].includes(nivel)||![9,17,25,31].includes(lec))continue;
+    const k=nivel+'|'+lec+'|'+String(row.fecha||'');
+    if(!map.has(k))map.set(k,{nivel,lec,fecha:String(row.fecha||''),total:0,borradores:0,pdf:0});
+    const entry=map.get(k);entry.total++;
+    if(String(row.estado)==='BORRADOR')entry.borradores++;
+    if(row.pdf_generado)entry.pdf++;
+   }
+   if(!map.size)result.append(make('p','Sin expedientes orales registrados para este grupo.'));
+   for(const row of map.values()){
+    const item=make('div',null,'f111-teacher-exam-entry');
+    item.append(make('strong',row.nivel+' · Oral lección '+String(row.lec).padStart(2,'0')),
+     make('p',row.total+' expedientes · '+row.borradores+' borradores · '+row.pdf+' PDF'));
+    const view=make('button','REVISAR EXPEDIENTES','f111-tqr-open');view.type='button';
+    view.addEventListener('click',()=>{
+      // NO reabrir sesión ni alterar calendario: solo contexto académico.
+      f111TeacherExamModal('Historial oral · '+row.nivel+' · L'+row.lec,
+       f111ExamPageUrl('modulos/examen_oral.html',{
+        historial:1,grupo,nivel:row.nivel,leccion:row.lec,fecha:row.fecha
+       }));
+    });
+    item.append(view);result.append(item);
+   }
+  }catch(e){if(section.isConnected)result.append(make('p',
+   'No fue posible leer el historial. '+String(e&&e.message||e)));}
+  finally{busy=false;refresh.disabled=false;refresh.textContent='Actualizar historial';}
+ }
+ async function loadAuthorizedGroups(){
+  if(busy)return;
+  const oldGroup=String(select.value||'').trim();
+  select.disabled=true;refresh.disabled=true;
+  result.replaceChildren();result.append(make('p','Consultando grupos docentes autorizados…'));
+  try{
+   // Identidad de sesión del servidor: no enviar docente arbitrario.
+   const reply=await postQuiz('getDocenteGruposActuales',{});
+   if(!section.isConnected)return;
+   const allowed=f111AuthorizedCourseGroups(reply);
+   select.replaceChildren();
+   for(const group of allowed){const item=make('option',group);item.value=group;select.append(item);}
+   if(!allowed.length){
+    result.replaceChildren();
+    result.append(make('p','No hay grupos de curso autorizados para consultar.'));
+    return;
+   }
+   select.value=allowed.includes(oldGroup)?oldGroup:allowed[0];
+  }catch(e){
+   if(section.isConnected){
+    select.replaceChildren();result.replaceChildren();
+    result.append(make('p','No se pudo verificar la asignación docente. '+String(e&&e.message||e)));
+   }
+   return;
+  }finally{select.disabled=false;refresh.disabled=false;}
+  await loadHistory();
+ }
+ select.addEventListener('change',loadHistory);
+ refresh.addEventListener('click',loadAuthorizedGroups);
+ const catalog=make('article',null,'f111-teacher-exam-card');
+ catalog.append(make('h4','Banco y vista previa de exámenes'),
+  make('p','Modelo escrito o rúbrica oral para explicar el formato a los estudiantes. Sin lanzamiento ni registro.'));
+ const form=make('div',null,'f111-teacher-exam-controls');
+ const level=make('select'),type=make('select'),option=make('select'),plan=make('select');
+ level.setAttribute('aria-label','Nivel de examen');
+ type.setAttribute('aria-label','Lección de examen');
+ option.setAttribute('aria-label','Opción de examen escrito');
+ plan.setAttribute('aria-label','Programa del modelo');
+ for(const value of ['B1','B2','I1','I2']){const opt=make('option',value);opt.value=value;level.append(opt);}
+ for(const [value,label] of [[9,'Oral L09'],[17,'Oral L17'],[18,'Escrito L18'],[25,'Oral L25'],[31,'Oral L31'],[32,'Escrito L32']]){
+  const opt=make('option',label);opt.value=value;type.append(opt);
+ }
+ for(const value of ['A','B']){const opt=make('option','Opción '+value);opt.value=value;option.append(opt);}
+ for(const value of ['SIN_INA','CON_INA']){
+  const opt=make('option',value.replace('_',' '));opt.value=value;plan.append(opt);
+ }
+ const view=make('button','ABRIR MODELO','f111-tqr-open');view.type='button';
+ const updateType=()=>{const written=[18,32].includes(Number(type.value));option.disabled=!written;};
+ type.addEventListener('change',updateType);updateType();
+ view.addEventListener('click',()=>{
+  const lec=Number(type.value);
+  const written=lec===18||lec===32;
+  const params=written?{view:'teacher_preview',nivel:level.value,
+    test:lec===18?'TEST1':'TEST2',opcion:option.value,
+    plan:plan.value.toLowerCase()}:
+    {preview:1,nivel:level.value,leccion:lec,plan:plan.value};
+  f111TeacherExamModal((written?'Modelo escrito':'Rúbrica oral')+' · '+level.value+' · L'+lec+' · '+plan.value.replace('_',' '),
+   f111ExamPageUrl(written?'modulos/examenes.html':'modulos/examen_oral.html',params));
+ });
+ form.append(level,type,option,plan,view);catalog.append(form);
+ catalog.append(make('small','La vista escrita muestra respuestas ocultas inicialmente. No proyectés la clave docente.'));
+ summary.append(history,catalog);section.append(summary);
+ // Cargar solo cuando se conecta esta tarjeta, y luego por cambio o botón.
+ queueMicrotask(()=>{if(section.isConnected)void loadAuthorizedGroups();});
+ return section;
+}
+
 function attach(){
  attachLessonAction();
  const screen=document.querySelector('section[data-screen-label="Docente · Exámenes"]');
@@ -524,11 +702,25 @@ function attach(){
  const heading=Array.from(screen.children).find(el=>(el.textContent||'').includes('EXÁMENES DEL DOCENTE'));
  if(!heading)return;
  heading.insertAdjacentElement('afterend',build());
+ const quizzes=screen.querySelector('[data-f111-teacher-quizzes]');
+ if(quizzes)quizzes.insertAdjacentElement('beforebegin',buildTeacherExamsF111());
 }
 function installStyle(){
  if(document.getElementById(STYLE))return;
  const s=make('style');s.id=STYLE;
  s.textContent=[
+
+ '.f111-teacher-exam-center{background:#fff;border:1px solid #DCE3EA;border-radius:14px;padding:16px;color:#143452;font-family:Poppins,system-ui,sans-serif}',
+ '.f111-teacher-exam-center>small{display:block;color:#7A1E2C;font-size:10px;font-weight:900;letter-spacing:.12em}',
+ '.f111-teacher-exam-center h3{font-size:20px;margin:5px 0 2px;color:#073B7A}',
+ '.f111-teacher-exam-center p{font-size:12px;color:#64748B;margin:5px 0 12px}',
+ '.f111-teacher-exam-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(295px,1fr));gap:12px}',
+ '.f111-teacher-exam-card{border:1px solid #DDE5EF;border-radius:12px;background:#F8FAFD;padding:13px}',
+ '.f111-teacher-exam-card h4{font-size:15px;margin:0;color:#073B7A}',
+ '.f111-teacher-exam-controls{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;align-items:center}',
+ '.f111-teacher-exam-controls select{border:1px solid #D5E0EC;border-radius:8px;background:#fff;color:#143F64;padding:9px;font:12px Poppins,system-ui,sans-serif}',
+ '.f111-teacher-exam-entry{border-top:1px solid #DBE5F0;padding:12px 0}',
+ '.f111-teacher-exam-entry strong{font-size:13px;color:#123E67}',
  '.f111-tqr{background:#fff;border:1px solid #D6E0EB;border-radius:14px;padding:16px;margin:2px 0;box-shadow:0 3px 12px rgba(10,55,92,.04)}',
  '.f111-tqr>small{font-size:10px;letter-spacing:.12em;font-weight:900;color:#8C6B1C}',
  '.f111-tqr h3{font-size:19px;color:#113A61;font-weight:900;margin:5px 0}',
