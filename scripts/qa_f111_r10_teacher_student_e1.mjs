@@ -8,7 +8,7 @@ const campus=fs.readFileSync(new URL('../campus.html',import.meta.url),'utf8');
 new Function(teacher);new Function(student);
 assert.match(teacher,/\^qzProgress\[A-Za-z0-9\]\+\$/,'B1 numeric endpoints must use dedicated Quiz API');
 assert.match(campus,/student_b1_progress_f111\.js\?v=F111B1R10STUDENT20261024/);
-assert.match(campus,/teacher_quiz_review_f111\.js\?v=F111B1R10GROUPONCE20261024/);
+assert.match(campus,/teacher_quiz_review_f111\.js\?v=F111R46KEYLORHIST20261028/);
 const ROOT='https://f111-r10-synthetic.invalid',API=ROOT+'/api';
 const browser=await chromium.launch({headless:true});
 const requests=[],states=new Map(),errors=[];
