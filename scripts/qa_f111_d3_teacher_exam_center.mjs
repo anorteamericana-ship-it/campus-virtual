@@ -35,6 +35,41 @@ assert(source.includes("historial:1,grupo,nivel:row.nivel,leccion:row.lec"));n++
 assert(source.includes('No reabrir sesión')||source.includes('NO reabrir sesión'));n++;
 assert(source.includes("view:'teacher_preview'"));n++;
 assert(source.includes("preview:1,nivel:level.value,leccion:lec"));n++;
+// R30: the same preview must respect all four levels, all oral lessons and
+// both institutional programs. It must never fetch a private bank in preview.
+assert(source.includes("preview:1,nivel:level.value,leccion:lec,plan:plan.value"));n++;
+const previewSource=oral.match(/function oralPreviewContextF111\(qs\)\{[\s\S]*?\n\}/);
+assert(previewSource,'R30 isolated oral preview context helper exists');n++;
+const oralPreviewContext=vm.runInNewContext(previewSource[0]+';oralPreviewContextF111');
+for(const nivel of ['B1','B2','I1','I2']){
+ for(const leccion of [9,17,25,31]){
+  for(const plan of ['SIN_INA','CON_INA']){
+   const p=oralPreviewContext(new URLSearchParams({nivel,leccion:String(leccion),plan}));
+   assert.equal(p.nivel,nivel);assert.equal(p.leccion,leccion);
+   assert.equal(p.programa,plan);assert.equal(p.modo_sin_ina,plan==='SIN_INA');
+   n++;
+  }
+ }
+}
+const invalid=oralPreviewContext(new URLSearchParams('nivel=XX&leccion=5&plan=UNVERIFIED'));
+assert.equal(invalid.nivel,'B1');assert.equal(invalid.leccion,9);
+assert.equal(invalid.programa,'CON_INA');n++;
+assert(oral.includes("if(p.preview){")&&oral.includes("Evaluación oral · CON INA")&&
+ oral.includes("Presentación oral · SIN INA"));n++;
+assert(oral.includes("MODELO INSTITUCIONAL · SIN GRUPO REAL")&&
+ !oral.includes("Sábados de 9am a 4pm - 0326"));n++;
+const previewStart=oral.indexOf("if(qs.get('preview')==='1'){");
+const previewEnd=oral.indexOf('const esHistorial',previewStart);
+assert(previewStart>=0&&previewEnd>previewStart,'R30 preview returns before backend calls');n++;
+const previewBranch=oral.slice(previewStart,previewEnd);
+assert(!/await\s+api\(/.test(previewBranch),'R30 preview never calls Google');n++;
+assert(previewBranch.includes('return;')&&previewBranch.includes('preview:preview'));n++;
+const writtenApp=fs.readFileSync('src/examenes_app.jsx','utf8');
+assert(writtenApp.includes("['B1','B2','I1','I2']"));n++;
+const quizzes=fs.readFileSync('src/teacher_quiz_review_f111.js','utf8');
+assert(quizzes.includes("const ready=level==='B1'&&lesson===4;")&&
+ quizzes.includes("}else if(level==='B1'){"),'No declarar B2/I1/I2 quizzes en LIVE');n++;
+
 assert(source.includes('teacher_preview')&&source.includes('allow-scripts'));n++;
 assert(!source.includes('setInterval('),'No introduzcas polling en la extensión');n++;
 assert(!/postQuiz\('(?:oralSaveDraft|oralCloseEvaluacion|oralGeneratePdf)'/.test(source),
