@@ -238,6 +238,15 @@ function setOriginalQuestionF111(unit,idx,checked){
 function questionBankForLevelF111(){return {}; /* R12: índice oficial B1/B2 NO corresponde al banco privado. Registro trazable de texto aplicado para los 4 niveles; no enviar índices equivocados a la nota. */}
 function renderQBank(){
   const p=state.panel||{},lec=Number(p.leccion||0),meta=LECCIONES[lec]||{units:[]};
+  // R30: modelo docente para todos los niveles y programas, sin cargar bancos
+  // privados ni abrir expedientes reales. La vista previa es siempre read-only.
+  if(p.preview){
+    document.getElementById('qb-label').textContent=p.modo_sin_ina?'OPCIONAL':'PRIVADO';
+    document.getElementById('qbody').innerHTML=p.modo_sin_ina?
+      '<div class="oral-presentation-note"><strong>Presentación oral · SIN INA</strong><p>Se utiliza la rúbrica institucional de cinco criterios. Las preguntas son opcionales. Esta vista previa no guarda notas ni genera PDF.</p></div>':
+      '<div class="oral-presentation-note"><strong>Evaluación oral · CON INA</strong><p>La rúbrica institucional se aplica junto al banco privado de preguntas, disponible solamente en una sesión docente autorizada. La vista previa no revela preguntas, no guarda notas ni genera PDF.</p></div>';
+    return;
+  }
   document.getElementById('qb-label').textContent=p.modo_sin_ina?'OPCIONAL':meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
   const qbody=document.getElementById('qbody');
   if(p.modo_sin_ina){
@@ -481,6 +490,16 @@ async function loadPrivateBankF111(panel){
     throw new Error('El servidor no confirmó el banco docente privado de la lección.');
   return {aprobado:true,version:res.version,unidades:bank};
 }
+// R30: contexto de vista previa local, nunca se envía a GAS ni confiere permisos.
+function oralPreviewContextF111(qs){
+  const rawNivel=String(qs.get('nivel')||'B1').trim().toUpperCase();
+  const rawLeccion=Number(qs.get('leccion')||9);
+  const rawPlan=String(qs.get('plan')||'CON_INA').trim().toUpperCase().replace(/[\s-]+/g,'_');
+  const nivel=['B1','B2','I1','I2'].includes(rawNivel)?rawNivel:'B1';
+  const leccion=[9,17,25,31].includes(rawLeccion)?rawLeccion:9;
+  const modo_sin_ina=rawPlan==='SIN_INA'||rawPlan==='SININA';
+  return {nivel,leccion,modo_sin_ina,programa:modo_sin_ina?'SIN_INA':'CON_INA'};
+}
 async function loadPanel(){
   state.bankReady=false;state.bank=null;
   setStatus('Cargando','warn');
@@ -491,18 +510,18 @@ async function loadPanel(){
   try{
     const qs=new URLSearchParams(location.search);
     if(qs.get('preview')==='1'){
-      const nivel=String(qs.get('nivel')||'B1').toUpperCase();
-      const leccion=Number(qs.get('leccion')||9);
+      const preview=oralPreviewContextF111(qs);
+      const {nivel,leccion}=preview;
       const meta=LECCIONES[leccion]||LECCIONES[9];
-      state.panel={cod_grupo:'PREVIEW-INSTITUCIONAL',nivel,leccion,titulo:meta.label,docente:'Docente de muestra',fecha:new Date().toLocaleDateString('es-CR'),peso_porcentaje:15,preview:true};state.bank=null;
+      state.panel={cod_grupo:'PREVIEW-INSTITUCIONAL',nivel,leccion,titulo:meta.label,docente:'Docente de muestra',fecha:new Date().toLocaleDateString('es-CR'),peso_porcentaje:15,preview:true,modo_sin_ina:preview.modo_sin_ina,programa:preview.programa};state.bank=null;
       state.students=[{codigo:'00001',nombre:'ESTUDIANTE DE MUESTRA',cedula:'0-0000-0000',convenio:'Vista previa'}];state.evaluations={};
       document.getElementById('session-chip').textContent='Vista previa administrativa';
-      document.getElementById('ctx-grupo').textContent='Sábados de 9am a 4pm - 0326';
+      document.getElementById('ctx-grupo').textContent='MODELO INSTITUCIONAL · SIN GRUPO REAL';
       document.getElementById('ctx-nivel').textContent=nivel;
       document.getElementById('ctx-examen').textContent=meta.label;
       document.getElementById('ctx-docente').textContent='Docente de muestra';
       document.getElementById('ctx-fecha').textContent=state.panel.es_reposicion?((state.panel.fecha_aplicacion||state.panel.fecha)+' · tentativa '+(state.panel.fecha_tentativa||'sin coordinar')):state.panel.fecha;
-      document.getElementById('warning-box').style.display='block';document.getElementById('warning-box').textContent='Vista previa institucional. No guarda notas, preguntas ni documentos.';
+      document.getElementById('warning-box').style.display='block';document.getElementById('warning-box').textContent='Vista previa '+preview.programa.replace('_',' ')+'. No guarda notas, preguntas ni documentos.';
       renderStudents();renderQBank();setStatus('Vista previa','ok');selectStudent('00001');
       const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.disabled=true;pdfBtn.textContent='Vista previa · sin guardar';}
       return;
