@@ -1,5 +1,48 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R23 · PREFLIGHT REAL PASS / ADAPTADOR DE CIERRE QA LISTO / PENDIENTE UNA EJECUCIÓN (27-oct-2026)
+
+**ORDEN DEL USUARIO R23:** validar resultados autenticados de Google, preparar (y si es posible ejecutar) UN cierre oral ficticio histórico B2 SIN INA, registrar nota oficial de componente 15%, dos PDF distintos con readback e idempotencia; conservar la única ruta local F111 y reportes constantes. No tocar PROD ni 17 borradores reales de Keylor.
+
+**GATE GAS AUTÉNTICO YA APROBADO POR EL USUARIO (LOG 20:00:24–20:00:25, 27-oct-2026):**
+- `F111_R20_QA_PREFLIGHT_RESULT {"ok":true,"qa_aislado":true,"solo_lectura":true,"script_qa":true,"apollo_qa":true,"operativo_qa":true,"carpeta_qa":true,"escrituras":0,"notas_modificadas":0,"pdfs_emitidos":0}`
+- `F111_R22_QA_FIXTURE_RESULT {"ok":true,"qa_aislado":true,"solo_lectura":true,"grupo":"QA-R12-B2-L09","nivel":"B2","leccion":9,"estado":"BORRADOR","programa":"SIN_INA","matricula_ca_unica":true,"preguntas":0,"nota_borrador_100":80,"nota_borrador_ponderada":12,"notas_oficiales":0,"pdf":0,"estudiantes_reales_tocados":0,"escrituras":0}`.
+Conclusión: preflight y fixture en GAS **2/2 PASS auténticos**, sin escrituras; NO significa que el motor de cierre haya ejecutado, ni que la nota y PDF existan todavía.
+
+**NUEVO TRABAJO R23 REALIZADO:**
+1. En libro existente **APOLLO QA exclusivo** `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4`, previo readback de título/sello, se creó UNA pestaña `DOCENTES_QA` (1 docente sintético): `QA-R12-DOC-001`, rol `teacher`, docente `QA DOCENTE R12`, grupo `QA-R12-B2-L09`, ACTIVO `TRUE`, alcance `ORAL_QA_SOLO`. Se verificó lectura posterior. **Esto es autorización de fixture simulado, NO una sesión docente real del Campus / login auténtico.** Usuario de Apps Script editor aporta la autenticación Google.
+2. Se construyó **ADAPTADOR QA INDEPENDIENTE**, `QA_APPS_SCRIPT_R12/F111_R23_CierreUnicoQA.gs`, y se copió con SHA256 idéntico a `backend/tests/qa_r12/F111_R23_CierreUnicoQA.gs` (NUNCA `prod/`). Integra `F111_R23_EJECUTAR_CIERRE_Y_MOSTRAR` que imprime `F111_R23_QA_CIERRE_RESULT`. Preflight `F111_R20_PREFLIGHT_SOLO_LECTURA` obligatorio + LockService + validación de rol ficticio y QA scope, una matrícula CA, grupo B2 SIN INA, lección L9 CERRADA, 5 criterios, comentarios, cero preguntas y borrrador existente vía R22 audit, ausencia de o1 y de PDF; no permite un segundo cierre con escritura.
+3. Transacción del adaptador: primero `ESTADO=QA_CIERRE_EN_PROCESO` para impedir reintentos inciertos; crea PDF **de demo QA** desde HTML de fuente fija usando `Utilities.newBlob(...).getAs('application/pdf')`; guarda en carpeta `F111_R12_QA_...` PDF principal y respaldo con Drive IDs separados, verifica MIME PDF, registra nota QA `ESTATUS.O1 = 12` (80/100 × 15%) SOLO en APOLLO QA, relee nota, después marca el oral QA `CERRADO`, `NOTA_OFICIAL_ESTADO=SINCRONIZADA`, tipo `ORAL_1`, fecha y total. `F111_R23_READBACK_QA_` vuelve a leer nota y ambos archivos, verifica IDs distintos/MIME/tamaño. Reejecución post-cierre solo lee y devuelve `already_closed:true,escrituras_nuevas:0`; operación incierta devuelve `NO_REINTENTAR`.
+4. Hallazgo y corrección de bug ANTES DE GOOGLE: `F111_R23_TABLA_QA_` normaliza encabezados a mayúsculas. El script inicial referenciaba `o1` en minúsculas y la simulación falló en etapa de nota; se corrigieron **5 referencias a `O1`** y se comprobó espejo hash.
+5. **QA offline:** `CONTROL_QA_F111_R21.mjs` actualizado solo LOCAL a 3 archivos QA y aislamiento de referencias PROD, **38/38 PASS**. `backend/tests/qa_f111_r23_close_dynamic_e1.mjs` ejecuta función auténtica del **adaptador QA** sobre objetos Drive/Sheets/LockService falsos, **43/43 PASS**, incluyendo 2 ID PDF ficticios, 12/15 nota ficticia, segunda invocación sin escrituras, error por rol o grupo ajeno, O1 ya registrada, preflight denegado, estado parcial y no reintento.
+6. **PUBLICACIÓN SOLO AL SCRIPT QA**: `clasp.cmd push --force` desde `F111_OFICIAL/QA_APPS_SCRIPT_R12`, verificando Script ID exacto **`1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes`** y único conjunto de tres archivos GS esperados; salida `Pushed 4 files` y EXIT 0. Contenido: manifest + `F111_R20_Preflight.gs`, `F111_R22_AuditoriaFixture.gs`, `F111_R23_CierreUnicoQA.gs`. **NO deploy, NO push PROD, NO ejecución de cierre real**.
+7. **GITHUB BACKEND:** commit `0a05fbb12f4ae77b4448b4678bf8d6aa1f6730d7` en la misma rama PR #65 `fix/f111-r11-d3-d4-guards-20261017`, sin alterar `prod/`. Workflow `.github/workflows/qa-f111-r11-d3-d4-guards.yml` extendido para correr el nuevo test. GitHub push EXIT 0. **4/4 workflows PASS en HEAD exacto**: `Backend E1 QA compartida` run 40619225844, `F111 N02 P0 E1 independiente` run 40619225783, `F111 QZ32 Diagnostic E1` run 40619225795, `F111 R11 D3 D4 - guards (offline)` run 40619220897.
+
+**ALCANCE HONESTO:** ya está certificado en Google preflight R20/R22; el **cierre escrito, la nota o1 y PDF aún NO están ejecutados ni verificados en Google real**. La simulación Node produce PDF falsos, el script real aún requiere una ejecución bajo el usuario autorizado del editor. Este adaptador QA es MINIMALISTA: **NO es ejecución del motor productivo auténtico, NO sustituye la autenticación real de docente y NO demuestra funcionamiento LIVE.** PDF es documento ficticio no certificado institucional. En caso de falla parcial, el QA pasa a `QA_CIERRE_EN_PROCESO` y **NO DEBE REPETIRSE** sin conciliación previa.
+
+**ACCIÓN MANUAL R23 ÚNICA (MOSTRAR AL PRINCIPIO DE RESPUESTA EN GRANDE Y NEGRITA):** abrir el script QA `https://script.google.com/d/1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes/edit`, seleccionar **`F111_R23_EJECUTAR_CIERRE_Y_MOSTRAR`** y pulsar **Ejecutar una sola vez** (verificar primero nombre/ID QA). Copiar solo la línea `F111_R23_QA_CIERRE_RESULT {...}`, sin tokens. Si `ok:false` / `NO_REINTENTAR`, detener y compartir resultado, **NO repetir** por cuenta propia; si `ok:true`, comprobar en R24 por lectura independiente O1=12, ORAL CERRADO con 2 PDF IDs distintos, Drive PDF reales y segundo acceso solo lectura sin repetir cierre.
+
+**TABLA 8 MÓDULOS, DENOMINADOR CONSTANTE:**
+
+| Módulo | Cerrados | Total | Avance | Pendiente |
+|---|---:|---:|---:|---|
+| Historial oral | 2 | 4 | 50% | QA motor autenticado y LIVE |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | Motor real y LIVE |
+| Notas oficiales orales | 2 | 4 | 50% | Una escritura GAS real QA y piloto LIVE |
+| PDF y respaldo | 2 | 4 | 50% | PDFs GAS reales + LIVE |
+| Historial escrito | 1 | 4 | 25% | Integración y LIVE |
+| Previews | 3 | 5 | 60% | Verificación LIVE |
+| Quizzes docentes | 2 | 5 | 40% | B2/I1/I2 |
+| Unificación visual | 2 | 5 | 40% | Escritos/quizzes/móvil |
+| **SUBPLAN EXÁMENES** | **16** | **35** | **46%** | **19 criterios abiertos** |
+
+Global histórico F111 **56%** otra base. **PRODUCCIÓN**: 0 cambios, 0 notas oficiales, 0 PDF, 0 asistencias, 0 certificados, 0 despliegues, 0 cambios a 17 borradores Keylor (última lectura R17 17 BORRADOR/17 CA). **GO:** primera fase autenticada Google de solo lectura, fixtures, paquete QA, CI. **NO-GO:** nota/PDF QA real sin log R23, autenticación docente real, motor PROD y LIVE.
+
+**SIGUIENTE R24:** recibir `F111_R23_QA_CIERRE_RESULT`; si ok, hacer readback QUIETAMENTE de **QA** APOLLO ESTATUS o1 y OPERATIVO ORAL nota/PDF y Drive PDF+respaldo diferentes, mantener original; si error, diagnosticar sin reintentos ni borrado de QA. Solo tras una conciliación QA satisfactoria continuar hacia un ensayo delimitado del motor real de producción con todas las dependencias remapeadas, antes de considerar publicar. Informar matriz constante y prompt R25.
+
+---
+
+
 ## F111 · R22 · AUDITORÍA DE FIXTURE QA SUBIDA / CI 4-4 / PENDIENTE EJECUCIÓN GOOGLE (27-oct-2026)
 
 **MODO DE TRABAJO CONSOLIDADO:** Ruta local única `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL`, dos repositorios `frontend/` y `backend/`, ambos sobre ramas existentes PR #511 y #65, un único directorio de despliegue QA `QA_APPS_SCRIPT_R12/`. No tocar otros handoffs, no clonarlos. NO crear ramas nuevas, NO modificar datos reales.
