@@ -1,5 +1,15 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R48-C — NOTA ORAL VANESSA 17189 GUARDADA, PDF INSTITUCIONAL PENDIENTE (28-oct-2026)
+
+**CONCILIACIÓN GOOGLE PROD AUTÉNTICA:** grupo `B1-LM69-C2-0526`, B2 L9, estudiante 17189 Vanessa Mata García: `ORAL_EVALUACIONES.ESTADO=CERRADO`, `NOTA_OFICIAL_ESTADO=SINCRONIZADA`, nota `76/100`, ponderada `11.4/15`, ambos campos `PDF_FILE_ID`/`PDF_BACKUP_FILE_ID` y URLs vacíos. APOLLO `ESTATUS.o1=11.4` y `NOTA=11.4`. Auditoría contiene única `CLOSE` 2026-10-28 17:10:47 y ningún `GENERATE_INSTITUTIONAL_PDF` para ese ORAL_ID. Search Drive por identificador y nombre del PDF 17189 no encontró archivo. **Cierre oficial 1/17; PDF principal 0/17; respaldo 0/17.** Otros 16 borradores sin cambios. Matriz global 16/35=46% sin actualización automática.
+
+**Ubicación futura:** carpeta por cédula del estudiante bajo documentos institucionales → `04_EVALUACIONES/ORALES/B2`; respaldo `RESPALDOS_ACADEMICOS/EVALUACIONES_ORALES/2026/B2/0526` bajo DOCUMENTOS_FOLDER_ID. El PDF solo existe después de recibir `oralGeneratePdf` PASS. Para `17189`, el archivo aún no existe en Google; no dar URL ficticia.
+
+**Orden siguiente R48-D:** desde Campus LIVE @479 y sesión Keylor/superadmin, abrir de nuevo historial alumno 17189 y ejecutar únicamente **`GENERAR PDF OFICIAL PENDIENTE`** en ficha de examen **ya CERRADO**. No ejecutar de nuevo `oralFinalizarBorradorHistoricoR47` ni corregir nota. Tras operación, comprobar dos IDs Drive distintos, PDF_GENERADO y la conservación de o1 11.4; si el error se repite no reintentar ni reemplazar archivo, conciliar causa exacta. No volver a R44–R47 ni a quizzes.
+
+---
+
 ## F111 · R48-B — PRIMER ESTUDIANTE KEYLOR IDENTIFICADO SIN CAMBIAR NOTA: CÓDIGO 17189, NO 170189 (28-oct-2026)
 
 **La visual de expedientes YA funciona en LIVE @479; no reabrir desarrollo R47 ni corregir el panel secundario vacío durante emisión de PDF.** El usuario solicita trabajar el primero «170189», pero contraste por lectura real `APOLLO.DATOS`, `APOLLO.ESTATUS` y `CAMPUS_OPERATIVO.ORAL_EVALUACIONES` demuestra que el primer estudiante es **17189**, **MATA GARCIA VANESSA DE LOS ANGELES**, código solicitado 170189 no hallado. ORAL_ID real `ORAL-20261025114115-17189-L9`, grupo `B1-LM69-C2-0526`, B2 L9, fecha 2026-10-19; cinco notas 4,3,4,4,4 suman **19/25, 76/100, 11,4/15**. Comentarios y sugerencias presentes, preguntas y otras preguntas JSON `{}`. APOLLO nivel B2 `CA`, `o1` vacío. Expediente sigue `BORRADOR` sin PDF ni respaldo. No hubo escritura oficial ni cierre ejecutado por el asistente (no hay acceso a sesión Keylor desde Browser).
