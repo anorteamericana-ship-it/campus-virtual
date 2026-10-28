@@ -1,5 +1,19 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R44 · CORREGIDO PDF SIN INA EN FUENTE Y GOOGLE QA; DOCUMENTO FINAL PENDIENTE DE EJECUCIÓN DEL EDITOR (28-oct-2026)
+
+**NO REABRIR EL EXAMEN NI LAS PRUEBAS HISTÓRICAS.** En el piloto único R42 el cierre y la nota B2 L9 SIN INA quedaron guardados correctamente (80/100, 12/15, expediente CERRADO/SINCRONIZADA, una auditoría oficial y una CLOSE, sesión revocada). Ambos archivos PDF siguen ausentes y el piloto está consumido terminalmente `R36_STOP_RECONCILE`. El usuario ordena terminar el PDF sin más ciclos, pruebas o copias de proyecto.
+
+**CAMBIO CONCRETO:** en backend PR #65 rama única se corrigió exactamente el contrato `_oralF63_writeQuestions_(...,true)` en `prod/02_Auth_Sesiones_Usuarios.js` y `qa_r33_apps_script/04_R36_Original_Oral_Engine.gs`: una presentación oral SIN INA verificada por versión y sin preguntas registradas NO exige la fotografía que su propio cierre omitió; INA y cualquier oral con preguntas la siguen exigiendo. Se reutiliza el mismo renderer institucional `_oralF90_pdfFromStored_` y `_oralF90_pdfShell_`. Se añadió **al archivo QA ya existente**, sin duplicar motor, `F111_R44_FINALIZAR_PDF_CERRADO_QA()`: nunca inicia sesión, nunca invoca R42/R36, nunca recalifica, no modifica R33/LIVE ni certificados. Esta función está fijada a 1 ORAL_ID QA, valida nota 12/15 y rúbrica 80, estado/identidad/grupo SIN INA, logs únicos, 3 sesiones revocadas y dos carpetas vacías, genera PDF original y respaldo, persiste dos IDs en la fila ya cerrada, anexa la auditoría PDF y verifica readback. Marca una sola operación irreversible `F111_R44_PDF_ATTEMPTED` antes de crear archivos, por lo que nunca se repite ante resultados parciales. El supervisor R36 continúa `R36_EXECUTION_ENABLED=false`; sus marcadores terminales quedan intactos.
+
+**PUBLICACIÓN DE CÓDIGO:** backend commit `1d140b597e88cf019800c4bafe51ad8fe5e7d57d`; Google **QA privado** recibió sincronización de 9 archivos a las **2:32:14 p. m. Costa Rica**, por `clasp push --force`, sin despliegue LIVE. Esta instalación no ejecuta por sí misma la finalización. `clasp run` ya fue rechazado por permisos; no repetir. **No afirmar PDF generado hasta observar resultado auténtico y verificar 2 archivos.** Esta pasada no reejecutó suites manuales de pruebas.
+
+**ÚNICO PASO DE EJECUCIÓN QUE FALTA POR RESTRICCIÓN REAL DE GOOGLE:** desde editor privado `https://script.google.com/d/13lz3xM_fEUyyiN6VafP7TcN09XJVTqoMhk5d8vbsPhzeh_cTMMGgkpDr/edit`, ejecutar exactamente una vez `F111_R44_FINALIZAR_PDF_CERRADO_QA`. Leer línea `F111_R44_PDF_FINAL_RESULT`. Nunca ejecutar R42/R36 ni repetir R44 aunque haya error. Tras un `ok:true` verificar dos PDF Drive, una auditoría de generación y estado `PDF_GENERADO`. No requerir autorización adicional: el usuario ya autorizó completar el servicio.
+
+**ESTADO:** corrección fuente instalada QA, **PDF real no confirmado**; 16/35=46%, 19 criterios pendientes hasta certificar PDF. Backend PR #65 HEAD `1d140b597e88cf019800c4bafe51ad8fe5e7d57d`; frontend PR #511 documentación R44 pendiente de commit. LIVE @473/@477 intacto. No crear ramas, copias, despliegues ni tests manuales redundantes.
+
+---
+
 ## F111 · R43 · PILOTO GOOGLE QA TERMINAL STOP; NOTA 12/15 REAL, PDF 0/2 — NO REINTENTAR (28-oct-2026)
 
 **RESULTADO AUTÉNTICO — PARCIAL, SIN REPETICIÓN.** El usuario ejecutó por primera y única vez `F111_R42_EJECUTAR_PILOTO_QA_UNICO` en Apps Script privado el 28-oct-2026 de **2:09:44 a 2:10:22 p. m. CR**. Registro literal saneado: `{"ok":false,"qa_only":true,"attempted":true,"reason":"R36_STOP_RECONCILE","grade":null,"grade_max":null,"distinct_pdf_and_backup":false,"stage":"R36_PDF_BACKUP_NOT_CONFIRMED"}`. **NO EJECUTAR DE NUEVO el supervisor, el lanzador R42 ni el cierre F90**. Los campos `grade:null` y `distinct_pdf_and_backup:false` indican que el supervisor no produjo PASS, **no** implican que la nota se haya perdido o que deban regenerarse ambas calificaciones.
