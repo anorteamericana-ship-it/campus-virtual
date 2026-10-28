@@ -1,5 +1,27 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R21-B · FIXTURE SINTÉTICO B2 SIN INA EN HOJAS QA (27-oct-2026)
+
+**CAMBIO EJECUTADO EN DRIVE QA Y VERIFICADO POR READBACK:** se identificaron por metadatos, título exacto y sello de aislamiento `F111_R12_CONTROL!A1=F111_R12_QA_ISOLATED` dos libros **distintos de las hojas de producción**: APOLLO QA `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4` y OPERATIVO QA `12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc`. Se leyó **exclusivamente el encabezado** de las hojas análogas PROD para respetar el contrato del backend; no se leyeron ni copiaron alumnos de producción.
+
+**Pestañas nuevas y contenido:**
+1. APOLLO QA `DATOS` 23 columnas; UNA fila `QA-R12-EST-B2-001`, nombre `ESTUDIANTE FICTICIO QA R12`, cédula ficticia `0-0000-0000`, grupo `QA-R12-B2-L09`.
+2. APOLLO QA `ESTATUS` 17 columnas; UNA fila del código sintético B2, matrícula **CA** y grupo exacto.
+3. APOLLO QA `GRUPOS` 39 columnas; UNA fila `QA-R12-B2-L09`, programa **SIN_INA**, docente ficticio `QA DOCENTE R12`, modalidad intensiva y comentario En curso.
+4. OPERATIVO QA `CALENDARIO_LECCIONES` 22 columnas; UNA fila del grupo B2, lección **9**, tipo `EVAL_ORAL`, estado **CERRADA** y docente QA.
+5. OPERATIVO QA `ORAL_EVALUACIONES` 44 columnas; UNA fila del estudiante QA y lección 9 con `ORAL_ID=ORAL-QA-R12-B2-L09-001`, **BORRADOR**, rúbrica de cinco criterios (4/5 cada uno), 20/25, **NOTA_100=80** y **NOTA_PONDERADA=12** como valores internos de borrador, comentarios/sugerencias ficticios, `PREGUNTAS_JSON={}`, sin preguntas, `NOTA_OFICIAL_ESTADO` vacío, `PDF_FILE_ID` vacío y `PDF_BACKUP_FILE_ID` vacío.
+
+Se dejaron encabezados destacados y primera fila congelada. **Verificación posterior real:** metadatos APOLLO QA muestran cinco pestañas en total (dos de control/plan anteriores + tres nuevas); OPERATIVO QA cuatro (dos originales + dos nuevas). Lectura `A1:...2` de cada una confirmó códigos sintéticos, B2/9, SIN_INA, CA, CERRADA y BORRADOR; en OPERATIVO la nota oficial y PDF permanecen vacíos. Se mantienen las dos hojas de control y sus sellos. NO se ejecutaron endpoints de examen, NO se envió una nota a ESTATUS.o1, NO se generó ningún PDF, y no hubo escrituras a las hojas productivas.
+
+**NOTA DE CONSISTENCIA:** la pestaña heredada `F111_R12_FIXTURES_PLAN` conservaba indicadores de `PENDIENTE_ALTA_QA` / `PENDIENTE_CALENDARIO_QA`; la evidencia actual de las pestañas recién creadas y su readback prevalece sobre esas leyendas históricas. En el futuro actualizar el plan sin sobrescribir otros campos, pero no repetir ni recrear la ficha sintética.
+
+**LÍMITE CRÍTICO:** estos datos son REALES en **libros QA**, pero la rúbrica 80/100 es un BORRADOR FICTICIO y **no una nota oficial**. Un entorno Apps Script QA con los IDs institucionales no remapeados todavía podría afectar PROD; prohibido copiar el backend `prod/` completo o ejecutar motor oral real hasta preflight autenticado y aislamiento íntegro del backend. `F111_R20_QA_PREFLIGHT_RESULT` sigue NO RECIBIDO en la conversación. Por tanto no cambia el avance del subplan: **16/35 = 46%** y global histórico 56% independiente.
+
+**SIGUIENTE R22 SIN VOLVER ATRÁS:** pedir al usuario la ÚNICA operación manual pendiente (abrir el script QA, ejecutar `F111_R20_EJECUTAR_Y_MOSTRAR_RESULTADO` y pegar `F111_R20_QA_PREFLIGHT_RESULT`), verificar el resultado y, en caso PASS, continuar con preparación de autenticación ficticia y el motor oral aislado. No pedir rutas adicionales, no recrear repositorios, no clonar archivos y no repetir 31/31 + 10/10 locales ni el fixture. Conservar todo en `F111_OFICIAL`.
+
+---
+
+
 ## F111 · R21 · COMPuERTA QA ESTÁTICA Y FUNCIONAL / PENDIENTE GAS AUTÉNTICO (27-oct-2026)
 
 **OBJETIVO R21:** atender la instrucción `F111 R21: CERTIFICAR APPS SCRIPT QA Y PREPARAR LA PRUEBA REAL DEL ORAL SIN INA`, sin repetir los workflows GitHub R17/R18 ni alterar los 17 expedientes reales de Keylor. Base única `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL` con `frontend`, `backend` y `QA_APPS_SCRIPT_R12`. Se respetaron las tres rutas autorizadas en Desktop Commander. R21 NO crea nuevo repo, rama ni script QA.
