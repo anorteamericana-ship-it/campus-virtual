@@ -683,8 +683,8 @@ function buildTeacherExamsF111(){
   const params=written?{view:'teacher_preview',nivel:level.value,
     test:lec===18?'TEST1':'TEST2',opcion:option.value,
     plan:plan.value.toLowerCase()}:
-    {preview:1,nivel:level.value,leccion:lec};
-  f111TeacherExamModal((written?'Modelo escrito':'Rúbrica oral')+' · '+level.value+' · L'+lec,
+    {preview:1,nivel:level.value,leccion:lec,plan:plan.value};
+  f111TeacherExamModal((written?'Modelo escrito':'Rúbrica oral')+' · '+level.value+' · L'+lec+' · '+plan.value.replace('_',' '),
    f111ExamPageUrl(written?'modulos/examenes.html':'modulos/examen_oral.html',params));
  });
  form.append(level,type,option,plan,view);catalog.append(form);
