@@ -1,5 +1,43 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R21 · COMPuERTA QA ESTÁTICA Y FUNCIONAL / PENDIENTE GAS AUTÉNTICO (27-oct-2026)
+
+**OBJETIVO R21:** atender la instrucción `F111 R21: CERTIFICAR APPS SCRIPT QA Y PREPARAR LA PRUEBA REAL DEL ORAL SIN INA`, sin repetir los workflows GitHub R17/R18 ni alterar los 17 expedientes reales de Keylor. Base única `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL` con `frontend`, `backend` y `QA_APPS_SCRIPT_R12`. Se respetaron las tres rutas autorizadas en Desktop Commander. R21 NO crea nuevo repo, rama ni script QA.
+
+**EVIDENCIA DE EJECUCIÓN REAL GAS:** código `F111_R20_Preflight.gs` y manifest permanecen en Apps Script QA independiente `1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes` (R20 `clasp push` exitoso). R21 comprobó `clasp status`, `frontend` HEAD `28638b3`, `backend` HEAD `55660e8`, ambos limpios. No existe línea de log `F111_R20_QA_PREFLIGHT_RESULT` recibida ni evidencia `ok:true`. La consulta remota `clasp logs --simplified` falla con **`GCP project ID is not set`**; R20 `clasp run` había fallado con `NOT_FOUND`. NO equiparar código subido / script existente con preflight de Google ejecutado y aprobado. Apps Script auténtico sigue 0/1.
+
+**INVESTIGACIÓN DE CONFIGURACIÓN PARA EVITAR PROD:** el backend `prod/00_Config_Globals.js` contiene SHEET_ID de APOLLO PROD, OPERATIVO_ID de CAMPUS_OPERATIVO PROD y IDs de plantillas, documentos estudiantiles, documentos docentes, proformas, CONAPE y distintos libros CONAPE, todos codificados como literales. El backend consta de 44 archivos JS de `prod/` y no debe copiarse indiscriminadamente al nuevo script QA. El preflight QA existente solo contiene un archivo `.gs` revisado, sin endpoints ni métodos de escritura; las dos hojas y carpeta QA se identifican con IDs diferentes y control `F111_R12_QA_ISOLATED`. No se intentó remapear todo el backend ni crear calificaciones ficticias en Sheets antes de obtener gate GAS.
+
+**CÓDIGO Y PRUEBAS NUEVOS EN CARPETA ÚNICA (NO COPIAR A OTROS REPOS):**
+- `F111_OFICIAL/CONTROL_QA_F111_R21.mjs`: validador LOCAL sin Google, verifica script ID exacto QA y distinto de PROD, zona horaria `America/Costa_Rica`, V8, manifest, único archivo .gs revisado, los tres IDs QA esperados, sellos de Sheets, ausencias de `doGet/doPost` y de métodos de escritura, y que ningún ID institucional literal extraído de `backend/prod/00_Config_Globals.js` aparezca en el .gs del proyecto QA. **31/31 PASS** (`F111_R21_QA_STATIC_PREFLIGHT_PASS`, EXIT=0).
+- `F111_OFICIAL/CONTROL_QA_F111_R21_MOCK.mjs`: ejecuta la **función real `F111_R20_PREFLIGHT_SOLO_LECTURA`** desde el `.gs` con objetos Apps Script simulados en Node VM; valida escenario permitido, Script ID productivo/ajeno, sello APOLLO incorrecto, sello OPERATIVO incorrecto, hoja faltante, carpeta que no sea QA y fallos de acceso a Sheets/Drive. **10/10 PASS** (`F111_R21_QA_PREFLIGHT_DYNAMIC_PASS`, EXIT=0). No utiliza OAuth, red, Google real, usuarios ni datos personales y no escribe en ninguna parte.
+
+**EVALUACIÓN:** compuertas locales del guard QA **41/41 PASS**, pero esto es SOLO prueba estática/simulada; no cuenta como QA GAS autenticada ni acredita despliegue. Código institucional real SIN INA ya disponía de R18 `29/29` y runner `14/14` sintéticos, no repetirlos. Se preservaron `backend` y `frontend` de código sin cambios, solamente actualización canónica de documentación de R21.
+
+**BLOQUEO HUMANO ÚNICO Y OBLIGATORIO (MOSTRAR EN GRANDE/NEGRITA AL INICIO DEL PRÓXIMO CIERRE):**
+**ACCIÓN MANUAL REQUERIDA:** entrar al script QA en `https://script.google.com/d/1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes/edit`, elegir y ejecutar la función `F111_R20_EJECUTAR_Y_MOSTRAR_RESULTADO`, autorizar únicamente el acceso solicitado al proyecto QA si Google lo pide, y entregar la línea `F111_R20_QA_PREFLIGHT_RESULT {...}` (sin contraseñas ni tokens). Si no devuelve `ok:true`, solucionar el error QA específico sin usar PROD. No se necesita que el usuario elija una nueva carpeta: ubicación y autenticación clasp ya están resueltas. Este requerimiento permanece aunque el usuario responda genéricamente `continuá`, porque no equivale a un resultado de ejecución.
+
+**MATRIZ OBLIGATORIA SIN PORCENTAJES INVENTADOS:**
+
+| Módulo | Cerrados | Total | Avance | Pendiente |
+|---|---:|---:|---:|---|
+| Historial oral | 2 | 4 | 50% | QA GAS autenticado y LIVE |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | QA GAS real y LIVE |
+| Notas orales oficiales | 2 | 4 | 50% | Cierre en QA real y piloto |
+| PDF y respaldo | 2 | 4 | 50% | Generar y validar 2 IDs QA |
+| Historial escrito | 1 | 4 | 25% | Integración, permisos y LIVE |
+| Previews | 3 | 5 | 60% | Proyección y LIVE |
+| Quizzes docentes | 2 | 5 | 40% | B2/I1/I2 |
+| Unificación visual | 2 | 5 | 40% | Escritos, quizzes y móvil |
+| **SUBPLAN EXÁMENES** | **16** | **35** | **46%** | **19 criterios abiertos** |
+
+**F111 GLOBAL HISTÓRICO:** 56% de otra base (no comparable). Estado Keylor: 17 expedientes B2 L09 con matrícula CA única (última conciliación R17), todos BORRADOR, ninguna nota oficial ni PDF conciliado (última lectura); R21: 0 expedientes modificados, 0 despliegues LIVE, 0 notas, 0 PDF, 0 borrados. **GO:** carpeta local canónica, guardas QA locales. **NO-GO:** preflight GAS no acreditado, fixtures no aplicados, notas y PDF QA, producción.
+
+**SIGUIENTE R22:** comprobar `F111_R20_QA_PREFLIGHT_RESULT` auténtico; si es `ok:true`, preparar contrato mínimo del motor Apps Script para QA con IDs remapeados y fixtures CA ficticios, controles por docente/grupo, y una prueba SIN INA sin preguntas en lección cerrada, sin registrar datos productivos. Si no hay resultado, mostrar en grande la acción manual, continuar con preparación de código aislado sin ejecutar operaciones de escritura a Google. Documentar siempre SHA y tabla por módulo con el mismo denominador.
+
+---
+
+
 ## F111 · R20 · CONSOLIDACIÓN LOCAL CANÓNICA Y BOOTSTRAP SCRIPT QA (27-oct-2026)
 
 **SOLICITUD Y AUTORIZACIÓN EXPRESA DEL USUARIO:** agregar `C:\\Users\\leodr\\Documents\\CampusVirtual` y `C:\\Users\\leodr\\Desktop\\ANORTEAM` a las carpetas autorizadas de Remote Desktop Commander, conservando `C:\\Users\\leodr\\Documents\\Shadow Contracts`; inspeccionar las copias históricas sin perder contenido único; fijar UNA ruta local canónica de trabajo en Documentos. El usuario solicita **siempre** tabla de porcentaje verificable, cierre de ronda, pendientes y prompt de próxima operación; cuando se necesite intervención humana el encabezado debe ser ENORME y en NEGRITA, delante de todo el reporte.
