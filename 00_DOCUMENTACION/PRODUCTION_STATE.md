@@ -1,5 +1,13 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R48-B — PRIMER ESTUDIANTE KEYLOR IDENTIFICADO SIN CAMBIAR NOTA: CÓDIGO 17189, NO 170189 (28-oct-2026)
+
+**La visual de expedientes YA funciona en LIVE @479; no reabrir desarrollo R47 ni corregir el panel secundario vacío durante emisión de PDF.** El usuario solicita trabajar el primero «170189», pero contraste por lectura real `APOLLO.DATOS`, `APOLLO.ESTATUS` y `CAMPUS_OPERATIVO.ORAL_EVALUACIONES` demuestra que el primer estudiante es **17189**, **MATA GARCIA VANESSA DE LOS ANGELES**, código solicitado 170189 no hallado. ORAL_ID real `ORAL-20261025114115-17189-L9`, grupo `B1-LM69-C2-0526`, B2 L9, fecha 2026-10-19; cinco notas 4,3,4,4,4 suman **19/25, 76/100, 11,4/15**. Comentarios y sugerencias presentes, preguntas y otras preguntas JSON `{}`. APOLLO nivel B2 `CA`, `o1` vacío. Expediente sigue `BORRADOR` sin PDF ni respaldo. No hubo escritura oficial ni cierre ejecutado por el asistente (no hay acceso a sesión Keylor desde Browser).
+
+**PRÓXIMO PASO R48-C SIN REPETIR PRUEBAS NI CÓDIGO:** con sesión legítima Keylor/superadmin abrir LIVE → Historial de orales → grupo exacto → B2 L9 → **Revisar expedientes** → seleccionar alumno **17189** → verificar valores → pulsar botón explícito **CONFIRMAR NOTA Y GENERAR PDF OFICIAL**. Una sola vez. Después conciliar exclusivamente este ORAL_ID: `ESTATUS.o1=11.4`, `ORAL_EVALUACIONES.ESTADO=PDF_GENERADO`, nota SINCRONIZADA, PDF principal y copia en Drive con IDs únicos. Los restantes **16** deben seguir como BORRADOR sin notas. Si respuesta incierta o parcial, STOP; no repetir cierre/PDF. Si PASS, continuar 2/17…17/17 con aprobaciones individuales, sin cierre masivo. Matriz global conservadora **16/35=46%** hasta aceptación, progreso de emisión **0/17** actualmente, no fingir un PDF.
+
+---
+
 ## F111 · R48 — KEYLOR 17 ORALES: CONCILIACIÓN ACADÉMICA REAL, NINGÚN CIERRE AUTORIZADO DESDE SESIÓN DOCENTE (28-oct-2026)
 
 **No repetir desarrollo R44–R47. No quizzes.** Se inspeccionaron por lectura las hojas reales `CAMPUS_OPERATIVO.ORAL_EVALUACIONES`, `APOLLO.ESTATUS` y `APOLLO.GRUPOS`: para `B1-LM69-C2-0526`, B2 L9, Keylor Leiva Miranda existen **17/17 registros con ORAL_ID distintos y 5 criterios completos**; 17/17 en `BORRADOR`, 0/17 notas sincronizadas, 0/17 PDF principales, 0/17 PDF de respaldo. **APOLLO.ESTATUS** contiene exactamente 17/17 matrículas `CA` del grupo/nivel y todas sus columnas `o1` vacías, sin alumnos faltantes; **APOLLO.GRUPOS** confirma programa **SIN_INA**, docente Keylor y activo TRUE para B2. Lección L9 tiene estado CERRADA (evidencia R47). Esta conciliación confirma que no hay nota ORAL_1 previa escrita en las celdas oficiales; no equivale a ejecutar los cierres.
