@@ -1,5 +1,43 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R22 · AUDITORÍA DE FIXTURE QA SUBIDA / CI 4-4 / PENDIENTE EJECUCIÓN GOOGLE (27-oct-2026)
+
+**MODO DE TRABAJO CONSOLIDADO:** Ruta local única `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL`, dos repositorios `frontend/` y `backend/`, ambos sobre ramas existentes PR #511 y #65, un único directorio de despliegue QA `QA_APPS_SCRIPT_R12/`. No tocar otros handoffs, no clonarlos. NO crear ramas nuevas, NO modificar datos reales.
+
+**OPERACIONES R22 EJECUTADAS:**
+1. Leído backend real de historial/cierre en `backend/prod/02_Auth_Sesiones_Usuarios.js`, padrón real en `prod/10_Estudiantes.js` y funciones de hoja/rúbrica en `prod/13_Examenes.js`. Se comprobaron contratos relevantes: docente autenticado, grupo autorizado, matrícula CA, SIN_INA, CALENDARIO_LECCIONES CERRADA, expediente BORRADOR con los cinco criterios 0–5 y nota de peso 15%. Identidad del docente y fecha provienen de recursos autorizados; no sustituirlas por parámetros web.
+2. Se creó **SOLO EN SCRIPT QA** el archivo `F111_R22_AuditoriaFixture.gs` con `F111_R22_AUDITAR_FIXTURE_SOLO_LECTURA` y `F111_R22_EJECUTAR_AUDITORIA_Y_MOSTRAR`; invoca `F111_R20_PREFLIGHT_SOLO_LECTURA` ANTES de cualquier acceso, relee por Apps Script las cinco pestañas sintéticas existentes de APOLLO/OPERATIVO QA, exige exactamente una ficha en cada una, relaciona grupo B2/SIN_INA, estudiante CA único, lección 9 CERRADA, examen BORRADOR SIN PREGUNTAS, profesor ficticio correspondiente, rúbrica y nota de borrador 80/100 = 12/15 y confirma nota oficial vacía, PDF y backup inexistentes. **No cierra, no escribe, no genera PDF, no abre lecciones**.
+3. Se actualizó guard local `CONTROL_QA_F111_R21.mjs` para dos scripts QA permitidos, sin IDs institucionales literales, sin endpoints HTTP ni métodos de escritura: `F111_R22_QA_STATIC_PREFLIGHT_PASS 34/34`. Se añadió `CONTROL_QA_F111_R22_MOCK.mjs` que ejecuta el código original de auditoría con dependencias falsas y 18 fallos/condiciones aislados: `F111_R22_QA_FIXTURE_DYNAMIC_PASS 18/18`. Prueba previa del R20 se mantuvo `10/10 PASS` solo como control de compatibilidad local; no cuenta como novedad.
+4. **Publicación exclusiva al Apps Script QA**, Script ID `1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes`. Antes de `clasp.cmd push --force`, se validó `.clasp.json.scriptId` exacto, solo dos `.gs` permitidos y `clasp status`. El push devolvió **EXIT=0** con tres archivos: `appsscript.json`, `F111_R20_Preflight.gs` y `F111_R22_AuditoriaFixture.gs`. No se desplegó sitio web ni script institucional y no se creó nueva versión productiva.
+5. Para versionar sin perder la única fuente GitHub, se guardaron **copias de fuente QA para repositorio (NO EN prod/)** en `backend/tests/qa_r12/`, cuyos hashes SHA256 coinciden con los archivos en el directorio QA desplegado, y `backend/tests/qa_f111_r22_fixture_dynamic_e1.mjs` ejecuta 18/18 casos sin Google, más control de que ningún ID literal institucional aparezca en la auditoría. El workflow existente `.github/workflows/qa-f111-r11-d3-d4-guards.yml` ejecuta el nuevo test. Commit backend real **`cf3be69b44af5f229e36de0671c231078de637bd`**, en **PR #65, misma rama**, Git push EXIT=0. **GitHub Actions 4/4 PASS** para HEAD exacto: `Backend E1 QA compartida` run `40612684848`, `F111 QZ32 Diagnostic E1` run `40612685009`, `F111 N02 P0 E1 independiente` run `40612684969`, `F111 R11 D3 D4 - guards (offline)` run `40612680098`.
+
+**LÍMITE DE PRUEBA CRÍTICO:** Aunque QA Apps Script recibió el archivo, **NO se ha ejecutado aún un preflight auténtico con `ok:true` en editor**. `clasp logs` requiere GCP project ID, `clasp run` dio `NOT_FOUND` anteriormente. Las cifras 34/34 y 18/18 son solo Node VM/estático sin Google; **no se cuentan como cierre en Apps Script real**. Los dos libros QA contienen el caso B2 L9 sintético creado R21: `DATOS`, `ESTATUS`, `GRUPOS`, `CALENDARIO_LECCIONES`, `ORAL_EVALUACIONES`, todos con una ficha ficticia. No duplicar fixtures ni reescribir su estado.
+
+**ACCIÓN MANUAL OBLIGATORIA EN GRANDE Y NEGRITA PARA SIGUIENTE TURNO:** abrir `https://script.google.com/d/1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes/edit`, elegir **`F111_R22_EJECUTAR_AUDITORIA_Y_MOSTRAR`** y pulsar **Ejecutar**. Revisar y autorizar permisos del script QA si Google los requiere; compartir **DOS LÍNEAS** `F111_R20_QA_PREFLIGHT_RESULT` y `F111_R22_QA_FIXTURE_RESULT`. Ambas deben indicar `ok:true`; **no enviar secretos**. Ya NO es necesario ejecutar separadamente `F111_R20_EJECUTAR_Y_MOSTRAR_RESULTADO`: la función R22 la incorpora, sin duplicar operaciones. Si el usuario sigue pidiendo `continuá` sin resultado, mantener NO-GO para escritura de nota y PDF y trabajar solamente en código aislado.
+
+**PORCENTAJES ESTABLES / MISMO DENOMINADOR:**
+
+| Módulo | Cerrados | Total | Avance | Pendiente |
+|---|---:|---:|---:|---|
+| Historial oral | 2 | 4 | 50% | E2E autenticado GAS y LIVE |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | QA auténtico y LIVE |
+| Envío y notas oficiales orales | 2 | 4 | 50% | Cierre 1 QA, piloto real |
+| PDF oral y respaldo | 2 | 4 | 50% | Dos archivos QA verificables y LIVE |
+| Historial escrito | 1 | 4 | 25% | Integración/permisos y LIVE |
+| Vistas previas | 3 | 5 | 60% | Validación y LIVE |
+| Quizzes docentes | 2 | 5 | 40% | B2/I1/I2 |
+| Unificación visual | 2 | 5 | 40% | Escritos/quizzes/móvil |
+| **TOTAL SUBPLAN EXÁMENES** | **16** | **35** | **46%** | **19 criterios pendientes** |
+
+**GLOBAL F111:** referencia histórica 56% con otra base, sin recalcular. **PRODUCCIÓN:** 0 merges, 0 deploy Apps Script PROD, 0 notas oficiales, 0 PDFs, 0 asistencias, 0 certificados ni modificaciones de expedientes reales. Keylor B2 L09 conserva 17/17 BORRADOR con CA (último readback R17), estado real no reconsultado en R22.
+
+**GO R22:** paquete QA de lectura subido, código versionado, CI 4/4, validadores 34/34 y 18/18, todos sin tocar producción. **NO-GO:** certificación de GAS autenticado, motor QA de cierre, nota y PDF auténtico, producción.
+
+**SIGUIENTE R23:** obtener ambas líneas de salida R22, certificar que Script ID y hojas QA estén aprobadas, preparar un adaptador mínimo de sesión/docente ficticio con **todos los recursos remapeados exclusivamente a QA**, y entonces ensayar UNA presentación SIN INA histórica sin preguntas, nota oficial 15%, PDF primario+respaldo distintos con anticlonación, siempre en QA. No repetir CI previo ni pedir nuevas rutas. Misma tabla y siguiente prompt.
+
+---
+
+
 ## F111 · R21-B · FIXTURE SINTÉTICO B2 SIN INA EN HOJAS QA (27-oct-2026)
 
 **CAMBIO EJECUTADO EN DRIVE QA Y VERIFICADO POR READBACK:** se identificaron por metadatos, título exacto y sello de aislamiento `F111_R12_CONTROL!A1=F111_R12_QA_ISOLATED` dos libros **distintos de las hojas de producción**: APOLLO QA `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4` y OPERATIVO QA `12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc`. Se leyó **exclusivamente el encabezado** de las hojas análogas PROD para respetar el contrato del backend; no se leyeron ni copiaron alumnos de producción.
