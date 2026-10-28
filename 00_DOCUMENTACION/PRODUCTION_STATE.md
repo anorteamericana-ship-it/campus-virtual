@@ -1,5 +1,48 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R30-B · CIERRE CONSOLIDADO / AUDITORÍA READ-ONLY DE GRUPOS Y GATE DE PUBLICACIÓN (28-oct-2026)
+
+**ALCANCE:** cierre adicional solicitado por dirección después de R30 nocturno. Se conserva **una sola fuente** de trabajo: frontend PR #511, rama `feat/f111-ex01-orales-cambridge-qa-20261016`; backend PR #65, rama `fix/f111-r11-d3-d4-guards-20261017`. No se abrió ningún PR/branch/clone nuevo, no se reejecutaron las suites R26–R30 y no se publicó LIVE. Desktop Commander `DESKTOP-9U2RJRG` seguía **OFFLINE** en consulta al iniciar: no es posible asegurar fast-forward local ni actualizar `LEEME_PRIMERO_F111.md`; GitHub sigue siendo la fuente remota canónica hasta reconexión.
+
+**VERSIONES REVISADAS, CÓDIGO Y CI:** frontend HEAD nocturno `29486ed15d71b2fefe220c859fd131348c082808` (R30 documentación) y código UI `559928a377ed6a05c35a216c0c70685936a6e2de`: 9/9 ejecuciones workflow completed/success, incluida `F111 D3 - oral frontend level and rubric guard` run `40653769590`, que pasó 69/69 controles y revisó 32 combinaciones B1/B2/I1/I2 × L9/17/25/31 × INA/SIN INA. Backend HEAD `c5faad002c6f5c81690d6c176ff9b45cad021f32` (R29) tiene 4/4 workflows completed/success. Las dos PR están **open, mergeable=true, mergeable_state=clean** contra main (consulta 28-oct), respectivamente 13 y 28 archivos cambiados en PR. **Mergeable NO significa validado en Apps Script productivo.** Este apéndice documental no agrega pruebas de UI nuevas ni altera los archivos de ejecución.
+
+**NUEVA AUDITORÍA INSTITUCIONAL REAL, EXCLUSIVAMENTE SOLO LECTURA**:
+- Libro APOLLO **productivo** `1I5uxY88wu_wNietQLKcYMl7hw7b0-q5ABI3QorY6zI4`, hoja `GRUPOS!A1:V974`: **60 filas pobladas correspondientes a 15 códigos de grupo distintos**, con **cuatro filas por grupo** y conjunto de niveles **B1, B2, I1, I2** exactamente una vez en cada grupo. **36 filas con PROGRAMA SIN_INA y 24 con INA**. **0** vacías/desconocidas, **0** discrepancias de programa intragrupo. Las 45 repeticiones de código se deben a niveles; **NO** son duplicados accidentales. Los campos DOCENTE de **8 filas / 2 códigos** están vacíos, pero esos dos códigos son **históricos e inactivos**; no se editaron. Se verificó por lectura las etiquetas por nivel `Completado / En curso / Histórico / Proyectado`, sin inferir que el atributo ACTIVO sea exactamente el mismo concepto que la lección actual.
+- Libro productivo `CAMPUS_OPERATIVO` `1dbNtotJC51Bx40r4zZv3ugt8-P3GYYzeLxsMOEYismI`, hoja `EXAM_ACTIVATIONS!A1:V974`: **una activación escrita** `B1-SA94-C1-0326`, nivel **B2**, lección **18**, tipo **ORDINARIO**, estado **CLOSED**, `PLAN=SIN_INA`. Comparación con `APOLLO.GRUPOS` para ese grupo y nivel: **PROGRAMA=SIN_INA**, estado `En curso`; **coinciden**, sin corrección necesaria. **Un registro coincidente no certifica todas las activaciones antiguas ni casos de los otros programas.**
+- No se consultaron matrículas individuales ni notas reales. **0 escrituras** en Google, 0 notas, 0 asistencia, 0 certificados, 0 nuevos PDF, 0 modificaciones de los **17 borradores Keylor** (estado solo histórico y no reconsultado).
+- El inventario elimina el riesgo específico de **PROGRAMA vacío o contradictorio entre niveles en las 60 filas actualmente pobladas**. No elimina los riesgos de caché de sesión, asignación docente por riel CURSO, calendarios históricos, otras hojas ni funciones internas de nota.
+
+**PORTÓN DE PUBLICACIÓN ÚNICA (NO-GO ACTUAL):**
+
+| Verificación obligatoria | Evidencia disponible | Estado |
+|---|---|---|
+| Integridad de `GRUPOS.PROGRAMA` para los registros actuales | 15 grupos, 60 filas, 0 anomalías de programa | **PASS solo lectura** |
+| Plan de activaciones escritas vs programa institucional | 1/1 registro visible coincide con GRUPOS | **PASS limitado** |
+| Frontend preview oral 4 niveles × 4 lecciones × 2 planes | 69/69 QA frontend; 9/9 workflows en HEAD código | **PASS sintético**, no sesión real |
+| Backend F26–F29 autorizaciones, nota/lock y peso 5/15 | suites aisladas + 4/4 CI en HEAD exacto | **PASS sintético**, no Apps Script real |
+| Asignación docente auténtica en riel CURSO y revocaciones | requiere sesión real y evaluar caché hasta 300s | **PENDIENTE / bloqueante** |
+| Compatibilidad F28/F29/F86 con cierres parciales e invocaciones internas | pruebas VM disponibles, falta piloto institucional QA del motor original | **PENDIENTE / bloqueante** |
+| PC01 B1 lectura autenticada sin abrir intentos, historial intacto | última certificación de entregas es histórica | **PENDIENTE / bloqueante** |
+| Equipo `F111_OFICIAL` Git limpio y sincronizado sin sobrescribir cambios | Desktop Commander OFFLINE | **PENDIENTE / bloqueante** |
+| Versiones de rollback exactas frontend/backend y plan de monitoreo postdeploy | deben capturarse del LIVE justo antes del despliegue | **PENDIENTE / bloqueante** |
+
+**PROCEDIMIENTO SEGURO DE PUBLICACIÓN COORDINADA (PREPARADO, NO EJECUTADO):**
+1. Reconectar Desktop Commander, inventariar cambios locales/no rastreados en `F111_OFICIAL`; si hay divergencias o archivos no rastreados, resguardarlos y conciliar. Solo hacer `git pull --ff-only` en repos existentes cuando sea seguro; **NUNCA usar `git reset --hard` ni eliminar copias no verificadas**.
+2. Leer y congelar estado productivo de ambos despliegues: URL, versión/deployment ID Apps Script, hash/build frontend, momento de captura, configuración actual de grupos y último respaldo utilizable. No inventar versiones de rollback. Guardar manifest de versiones y acciones reversibles en esta fuente de verdad, sin exponer credenciales.
+3. Ejecutar **un único piloto institucional de QA** con sesión docente autorizada y recursos sintéticos realmente aislados, motor ORIGINAL y puertas de idempotencia; conservar la muestra QA R23 ya cerrada, NO escribir sobre ella. Si el diseño exige producción o credenciales reales, detenerse en NO-GO. Comprobar PC01 exclusivamente en lectura sin alterar 12 entregas históricas.
+4. Antes de activar en LIVE, revisar contratos canónicos: docente CURSO/grupo/matrícula CA, `PROGRAMA` institucional no originado en parámetros cliente, oral B1/B2/I1/I2 L9/L17/L25/L31, escrito INA **5%** y SIN INA **15%** (L18/L32), quiz B1 gate y PC02–08 únicamente por activación expresa; tratamiento de parcial `CONCILIACION_REQUERIDA`.
+5. Exigir CI completa en los **SHA exactos finales** de frontend y backend, checklist de seguridad, copia previa de estado y autorización explícita de dirección. Planear **una sola ventana de publicación coordinada** de Apps Script y frontend; no mezclar dos baselines ni fusionar PR #55 por separado.
+6. Postdeploy, verificar login, grupos, menú de cuatro niveles, un solo oral/quiz autorizado de **lectura o QA**, notas SIN WRITE a estudiantes reales, cobertura de reversión y errores reales. Ante fallo, detener nuevas operaciones y volver a IDs/builds congelados, sin reabrir lecciones ni reescribir notas. Registrar hora, versión revertida y evidencia.
+
+**DICTAMEN FINAL R30-B:** **NO-GO LIVE** hasta superar los controles bloqueantes, aunque `GRUPOS` y la activación visible coincidieron en solo lectura y las pruebas aisladas pasan. **ACCIÓN MANUAL PARA PREPARAR PUBLICACIÓN: RECONEXIÓN DEL EQUIPO LOCAL**, además de la autorización de dirección cuando el dictamen cambie a GO. No pedir nueva ejecución de R23 ni repetir las suites aprobadas.
+
+**MATRIZ BASE HISTÓRICA SIN INFLAR:** historial oral 2/4=50%; reglas INA/SIN INA 2/4=50%; notas orales 2/4=50%; PDF y respaldo 2/4=50%; historial escrito 1/4=25%; vistas previas 3/5=60%; quizzes docentes 2/5=40%; unificación visual 2/5=40%. **TOTAL 16/35=46%, 19 abiertos**. F111 global histórico **56%** bajo otro denominador.
+
+**SIGUIENTE R31:** conciliar equipo local, comprobar revocación efectiva con caché y permisos CURSO, abrir un solo piloto del motor INSTITUCIONAL real en QA aislado (distinto de R23), validar PC01 lectura docente autenticada sin entrega/activación, recertificar SHA, construir manifest rollback con versiones reales y dictamen GO/NO-GO. No clonar ni crear ramas; conservar consolidación R30.
+
+---
+
+
 ## F111 · R30 · CONSOLIDACIÓN UI Y PREPARACIÓN DE PUBLICACIÓN ÚNICA (28-oct-2026)
 
 **RESUMEN EJECUTIVO:** R29 ya estaba realmente documentado, con backend `c5faad002c6f5c81690d6c176ff9b45cad021f32`, 48/48 PASS y 4/4 CI PASS. R30 **NO repitió R29 ni R28/R27/R26**. Se leyeron R29, R28 y el contrato docente del backend, se auditó el centro docente de exámenes, el módulo oral y el arranque del escrito/quiz. Desktop Commander confirmó **DESKTOP-9U2RJRG OFFLINE**; no se pudo leer ni actualizar `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL\\LEEME_PRIMERO_F111.md` (no existe en la rama GitHub). Se trabajó exclusivamente en **frontend PR #511, misma rama**, sin clonar ni crear ramas. No se alteró backend R29.
