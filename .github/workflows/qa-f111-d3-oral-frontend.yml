@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/f111-d3-keylor-oral-rubric-level-bank-20261018
+      - feat/f111-ex01-orales-cambridge-qa-20261016
     paths:
       - 'modulos/examen_oral.html'
       - 'src/teacher_quiz_review_f111.js'
