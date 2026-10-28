@@ -1,5 +1,28 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R34-A · READBACK DE ÚNICO PILOTO AUTH GOOGLE R33 CERTIFICADO (28-oct-2026, 10:31 Costa Rica)
+
+**RESULTADO REAL (SOLO LECTURA; NO SE REEJECUTÓ):** el usuario ejecutó en el Apps Script **QA R33** `F111_R33_PILOTO_UNICO` una única vez, iniciada a las 10:30:59 a. m. y completada por Google a las 10:31:16 a. m. La finalización por sí sola no constituía certificación: se realizó lectura independiente de Google Sheets **solo en los recursos QA R33**, sin imprimir hashes, contraseñas ni tokens.
+
+- APOLLO QA R33 `1EV_DJ0ytG3zDb9v0eRcHCQoH6XJfO6YWPXVlipyymzM`, `F111_R33_CONTROL!A1:E4`: sello `F111_R33_QA_ISOLATED` conservado, `A3=R33_AUTH_PASS_NO_NOTES`, `A4=QA_ONLY|2_LOGIN|2_REVOKED|PBKDF2|NO_NOTES|NO_PDF`. El **marcador de éxito** proviene del código del piloto original QA.
+- `USUARIOS`: **2 cuentas QA**, ambas con clave no vacía de formato `p2$iter$salt$hash` válido. Se validó únicamente presencia/estructura, **nunca se reprodujeron valores**.
+- `SESIONES`: **2 filas de sesión**, ambas con `ACTIVA=FALSE`; `TOKEN_HASH` presente y con formato hexadecimal SHA-256; ambas fechas de expiración registradas. Se comprobó la revocación persistida, no solo la afirmación del script.
+- `ESTATUS`: **1 expediente ficticio** nivel B2 en `CA`; `o1` sin escribir.
+- OPERATIVO QA R33 `1k9-shMZjRcHxf4VJ90l8eVun5uo1gEfNOxXKr7QnbA0`: sello `F111_R33_QA_ISOLATED` preservado; `ORAL_EVALUACIONES` **0** filas de evaluación y `NOTAS_OFICIALES_LOG` **0** registros.
+- **0 nuevas notas, 0 PDFs, 0 escrituras o modificaciones del asistente durante R34-A**. No se volvió a llamar `F111_R33_PILOTO_UNICO`. El piloto original realizó solo sus escrituras en QA R33. R12/R23, APOLLO PROD, OPERATIVO PROD, LIVE y 17 borradores Keylor no formaron parte de esta operación.
+
+**ALCANCE CERTERO:** la autenticación docente CURSO y el rechazo de permisos exclusivamente I CAN, PBKDF2 original, inicio de sesión y revocación obtuvieron marcador **PASS en Apps Script Google real**, corroborado en las hojas para el resultado persistente. Esto cierra **el hito R33 de autenticación QA**, **NO** demuestra un cierre oral ni nota oficial del motor completo ni la UI docente real. El piloto tiene barrera de ejecución única: **NO REINTENTAR, NO LIMPIAR A3**, incluso si alguien pide repetir.
+
+**CODIGO/CI CONSERVADOS:** frontend PR #511 HEAD R33 `c6e2cc7e8c76cf3055a233fa2565a77fb0e00ca4`; backend PR #65 HEAD R33 `ef05d8d8b24c82c2bc1a7288c11faca9168763b5`. Al iniciar esta pasada repositorios limpios. Ningún cambio al código del producto ni nuevo deploy en R34-A. Baseline LIVE previamente constatado: núcleo/login Apps Script **@473**, quizzes **@477**; no consultar de nuevo salvo cambio documentado.
+
+**DICTAMEN:** **GO** para preparar el siguiente piloto único del motor oral institucional completo, con expediente **nuevo** y contención estricta QA; **NO-GO** para LIVE. Continúan sin certificar: nota oficial del motor real de extremo a extremo, consistencia tras fallo parcial, PDF y respaldo del motor completo, PC01 con sesión docente autenticada solo lectura y respaldo frontend restaurable. **NO repetir 21/21 VM R33 ni R23.**
+
+**MATRIZ 8 MÓDULOS SIN INFLAR:** historial oral 2/4=50%; reglas INA/SIN INA 2/4=50%; notas orales 2/4=50%; PDF y respaldo 2/4=50%; historial escrito 1/4=25%; vistas previas 3/5=60%; quizzes docentes 2/5=40%; unificación visual 2/5=40%; **TOTAL 16/35 = 46%, 19 pendientes**, global F111 histórico 56% con otra base. Validar login QA no equivale a cerrar otro criterio de estos 35.
+
+**SIGUIENTE R34-B:** inventariar dependencias mínimas originales `oralCloseEvaluacion` y `oralGeneratePdf` para piloto QA separado; usar fixture nuevo y permisos auténticos ya certificados, pero **no reabrir/reutilizar la muestra R33 ni R23**; diseñar preflight de cero IDs productivos y anti duplicado antes de cualquier escritura, proteger los 13 intentos históricos PC01, revisar rutas internas sin router y preparar backup del frontend LIVE. Documentar resultados, CI, 8 módulos, riesgos, estado QA/LIVE y prompt R35.
+
+---
+
 ## F111 · R33 · QA GOOGLE AUTÉNTICO APROVISIONADO; PILOTO LOGIN PENDIENTE DE AUTORIZACIÓN (28-oct-2026)
 
 **ACCIÓN MANUAL BLOQUEANTE PARA CERRAR EL PILOTO REAL R33:** autorizar **UNA SOLA** ejecución de `F111_R33_PILOTO_UNICO` **desde el editor del nuevo Apps Script QA**, cuya URL se indica abajo. `clasp run` no está autorizado (reportó `Unable to run script function` después de crear un deployment privado). **NO ejecutar nuevamente R23**, no correr el piloto dos veces, ni seleccionar el script productivo. El piloto valida su sello y deja marcador de una ejecución `F111_R33_CONTROL!A3` antes de escribir claves/sesiones; sin notas ni PDF. Si falla, **NO reintentar**: consultar `A3/A4` y reportar estado. No pedir al usuario contraseñas, tokens ni hashes. Esta intervención solo se requiere para completar la ejecución dentro de Apps Script; **no hay autorización ni motivo para publicar LIVE**.
