@@ -63,7 +63,7 @@ const previewEnd=oral.indexOf('const esHistorial',previewStart);
 assert(previewStart>=0&&previewEnd>previewStart,'R30 preview returns before backend calls');n++;
 const previewBranch=oral.slice(previewStart,previewEnd);
 assert(!/await\s+api\(/.test(previewBranch),'R30 preview never calls Google');n++;
-assert(previewBranch.includes('return;')&&previewBranch.includes('preview:preview'));n++;
+assert(previewBranch.includes('return;')&&previewBranch.includes('preview:true'));n++;
 const writtenApp=fs.readFileSync('src/examenes_app.jsx','utf8');
 assert(writtenApp.includes("['B1','B2','I1','I2']"));n++;
 const quizzes=fs.readFileSync('src/teacher_quiz_review_f111.js','utf8');
