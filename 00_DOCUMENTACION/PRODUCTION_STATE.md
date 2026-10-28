@@ -1,5 +1,46 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R24 · CONCILIACIÓN DE QA SIN CIERRE + PDF REAL VM 49/49 (27-oct-2026)
+
+**OBJETIVO ORDENADO:** R24 conciliar `F111_R23_QA_CIERRE_RESULT` de una sola ejecución en Google QA: `ESTATUS.O1=12`, `ORAL_EVALUACIONES.ESTADO=CERRADO`, `NOTA_OFICIAL_ESTADO=SINCRONIZADA` y dos PDF Drive distintos, detectar parciales sin reintento, preparar ensayo delimitado del motor institucional real. Misma ruta de trabajo, mismas ramas, sin publicar ni afectar a los 17 Keylor.
+
+**RESULTADO REAL DE READBACK R24 (SIN ESCRITURAS):**
+- APOLLO QA `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4`: título y sello `F111_R12_QA_ISOLATED` verificados; `ESTATUS` exactamente una ficha QA estudiante `QA-R12-EST-B2-001`, grupo `QA-R12-B2-L09`, nivel B2, ESTATUS CA, componente `o1` **VACÍO**.
+- OPERATIVO QA `12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc`: título y sello QA verificados; `ORAL_EVALUACIONES` una ficha `ORAL-QA-R12-B2-L09-001`, nivel B2, L09, **BORRADOR**, `NOTA_OFICIAL_TIPO`, `NOTA_OFICIAL_TOTAL`, `NOTA_OFICIAL_SYNC_AT`, `NOTA_OFICIAL_ESTADO`, `PDF_FILE_ID` y `PDF_BACKUP_FILE_ID` todos **VACÍOS**.
+- **El usuario no ha remitido `F111_R23_QA_CIERRE_RESULT` en el turno R24.** Estos registros prueban que el cierre QA aún no quedó aplicado; no afirmar fallo de ejecución ni éxito, pues no hay log. **NO hubo intento de escribir ni conciliación destructiva en R24.**
+- Preflight real de lectura R20 y auditoría real R22 permanecen confirmados **ok:true** con logs recibidos por el usuario 20:00:24/20:00:25. No repetir esos controles ni crear otras fichas.
+
+**AVANCE TÉCNICO NUEVO R24 — MOTOR INSTITUCIONAL REAL PDF, SIN GOOGLE:**
+- Se leyó en su fuente vigente `backend/prod/02_Auth_Sesiones_Usuarios.js` la implementación efectiva de `_oralF63_upsert_`, `oralCloseEvaluacion_F90` y **`oralGeneratePdf`**. Se constató la distinción fundamental: `F111_R23_CierreUnicoQA.gs` es adaptador de demostración, NO motor de autenticación/nota/PDF productivo. La función real exige autorización de grupo, estado cerrado y nota oficial sincronizada; consulta nuevamente el componente real, verifica coincidencia 15%, cédula, ruta del expediente y respaldo, impide regeneración y archiva ambos documentos en carpetas independientes. El reintento posterior devuelve mismo archivo; si se creó un PDF pero falla el backup, deben conciliarse manualmente los archivos huérfanos antes de una segunda ejecución.
+- Se creó **`backend/tests/qa_f111_r24_prod_pdf_real_vm_e1.mjs`** que extrae el **código original** `oralGeneratePdf(body)` del backend y lo ejecuta en Node VM con sustitutos aislados de Sheets/Drive/LockService sin usar APIs Google ni cambiar `prod/`. Se comprobó **49/49 PASS**: dos PDF sintéticos distintos, estado PDF_GENERADO, readback nota, segundo acceso idempotente, controles de acceso y reposiciones, bloqueo de notas no registradas/desconciliadas, estado borrador, fechas y JSON inválidos, conflictos de archivos, backup ausente y efecto de falla parcial. El primer intento del harness falló por mock faltante `blob.getAs`; se completó el stub de laboratorio y el segundo paso dio 49/49 PASS. **NO significa PDF institucional generado en Google/QA**.
+- Workflow existente `backend/.github/workflows/qa-f111-r11-d3-d4-guards.yml` actualizado para detectar y ejecutar el nuevo test de 49 casos. Misma rama `fix/f111-r11-d3-d4-guards-20261017` de PR #65, sin ramas nuevas. Commit backend **`42fcfc713f392670005ecf425ac3b63128c1e67c`**, push GitHub exitoso. Los otros tests anteriormente PASS no se reabrieron.
+- GitHub CI para SHA `42fcfc7` arrancó 4 workflows, focal `F111 R11 D3 D4 - guards (offline)` run `40621608914` PASS confirmado; los otros tres aún estaban en ejecución al primer readback, pendiente verificar estado final antes de reportar 4/4. No afirmar anticipadamente.
+
+**FASE CONDICIONAL: GO PARA RECONCILIACIÓN DE LECTURA Y QA OFFLINE; NO-GO PARA CALIFICACIÓN NI LIVE.** Prohibido invocar cierre R23 desde herramientas si usuario no ejecutó la acción autorizada. La única intervención manual que falta para acreditar NOTA y PDF QA está bien definida.
+
+**ACCIÓN MANUAL OBLIGATORIA, VISIBLE AL PRINCIPIO DE LA RESPUESTA:** entrar a proyecto QA **`https://script.google.com/d/1oUqpDob1rT6KKuyLLplEGVHGy79eyr5q1vMDW6tsu8T92hlf1ADsHbes/edit`** (confirmar título `F111_R12_QA_ORALES_AISLADO_20261027`), seleccionar exactamente **`F111_R23_EJECUTAR_CIERRE_Y_MOSTRAR`** y pulsar **Ejecutar UNA SOLA VEZ**. Enviar únicamente la línea `F111_R23_QA_CIERRE_RESULT {...}`. Si devuelve `ok:false` o `NO_REINTENTAR`, no pulsar otra vez ni limpiar/modificar archivos: conciliar. Si ya hizo esa ejecución y hay log, compartir el log sin repetirla. La ejecución produce UNA nota en libro QA y dos PDF DEMO QA, no un certificado institucional.
+
+**TABLA CANÓNICA INALTERADA (no atribuir avance a tests offline):**
+
+| Módulo | Cerradas | Total | Avance | Pendiente |
+|---|---:|---:|---:|---|
+| Historial oral | 2 | 4 | 50% | Motor autenticado y LIVE |
+| Reglas SIN INA / CON INA | 2 | 4 | 50% | Integración real y LIVE |
+| Notas oficiales orales | 2 | 4 | 50% | Una nota QA y piloto LIVE |
+| PDF y respaldo | 2 | 4 | 50% | Dos PDF auténticos QA y validación LIVE |
+| Historial escrito | 1 | 4 | 25% | Integración LIVE |
+| Vistas previas | 3 | 5 | 60% | Validación LIVE |
+| Quizzes docentes | 2 | 5 | 40% | B2/I1/I2 |
+| Unificación visual | 2 | 5 | 40% | Escritos/quizzes/móvil |
+| **SUBPLAN EXÁMENES** | **16** | **35** | **46%** | **19** |
+
+**GLOBAL HISTÓRICO F111:** 56%, diferente denominador. **PROD R24:** 0 operaciones de escritura, 0 notas, 0 PDFs, 0 asistencias, 0 certificados, 0 deploy LIVE, 0 modificaciones a 17 borradores históricos Keylor. Estado de Keylor 17 BORRADOR/17 CA es lectura previa R17, no reconsultada en R24.
+
+**SIGUIENTE R25 SIN REPETICIÓN:** recibir la única línea `F111_R23_QA_CIERRE_RESULT`, leer nuevamente hojas QA, comprobar O1, estado, tipos y dos IDs Drive PDF; si error, conciliar el estado preciso sin reintentos. Luego preparar ensayo del **motor real de notas/cierre** sobre recursos totalmente ficticios y autorizados, sin cargar todo el backend de prod en un Script QA con IDs institucionales; usar test de extracción y emulación de dependencias de `_oralF63_upsert_` ya validado R18 como partida (no volver a correr lo ya aprobado). Reportar SHA frontend/backend y CI final, matriz 16/35, acción manual destacada, prompt R26.
+
+---
+
+
 ## F111 · R23 · PREFLIGHT REAL PASS / ADAPTADOR DE CIERRE QA LISTO / PENDIENTE UNA EJECUCIÓN (27-oct-2026)
 
 **ORDEN DEL USUARIO R23:** validar resultados autenticados de Google, preparar (y si es posible ejecutar) UN cierre oral ficticio histórico B2 SIN INA, registrar nota oficial de componente 15%, dos PDF distintos con readback e idempotencia; conservar la única ruta local F111 y reportes constantes. No tocar PROD ni 17 borradores reales de Keylor.
