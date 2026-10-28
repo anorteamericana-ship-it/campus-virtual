@@ -1,5 +1,28 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R25 · CONCILIACIÓN REAL 1/1 ORAL QA + 2 PDF + NOTAS OFICIALES REALES EN VM (27-oct-2026)
+
+**ORDEN Y RUTA CANÓNICA:** el usuario compartió registro del editor QA `F111_R23_QA_CIERRE_RESULT` con `ok:true`, 13 escrituras, nota de demostración de 12 puntos sobre 15, cierre único, PDF principal+respaldo distintos y cero datos reales tocados; luego ejecutó el prompt R25. Trabajar solamente en `C:\\Users\\leodr\\Documents\\CampusVirtual\\F111_OFICIAL`, frontend PR #511 + backend PR #65, no duplicar clones ni ramas. **NO REEJECUTAR EL CIERRE QA R23.**
+
+**CONCILIACIÓN INDEPENDIENTE AUTÉNTICA MEDIANTE GOOGLE DRIVE/SHEETS (R25, SOLO LECTURA):**
+- APOLLO QA, Sheet ID `1-n8G06GAKrVCPGs9xWuA7gQkLbifuhmyKBBOBJA4Ny4`, sello `F111_R12_CONTROL!A1=F111_R12_QA_ISOLATED`, hoja `ESTATUS` `A1:Q3`: exactamente 1 ficha ficticia `QA-R12-EST-B2-001`, grupo `QA-R12-B2-L09`, nivel B2, matrícula `CA`, componente `O1=12`.
+- OPERATIVO QA, Sheet ID `12D89wxmXeVIrh-1iXzACoYBOSIFIfsrqkHdYM16xRhc`, mismo sello de aislamiento, hoja `ORAL_EVALUACIONES!A1:AR3`: exactamente una fila `ORAL-QA-R12-B2-L09-001`, `LECCION=9`, `ESTADO=CERRADO`, `NOTA_100=80`, `NOTA_OFICIAL_TIPO=ORAL_1`, `NOTA_OFICIAL_TOTAL=12`, `NOTA_OFICIAL_ESTADO=SINCRONIZADA` y ambos ID PDF registrados. `SYNC_AT/PDF_GENERATED_AT` se muestran como 28/10/2026 en respuesta Google formato zona API, mientras el registro del usuario corresponde a la noche local del 27/10; no considerar discrepancia sin mirar zona horaria.
+- Drive `get_file_metadata` validó PDF principal `1Kbv6s3PYKH3gLuWn5nQIRXK7ts2J19qq` = `F111_R23_QA_ORAL_B2_PRINCIPAL.pdf`, `application/pdf`, **41,491 bytes**, parent `1M5FdRI0youXWtcgPYuCEUgPW5-eofXVb`; respaldo `1cR_BcECtnrt5b53RqbxbchSgiHS2WUWh` = `F111_R23_QA_ORAL_B2_RESPALDO.pdf`, `application/pdf`, **41,491 bytes**, MISMO parent QA y ID distinto. Carpeta verificada como `F111_R12_QA_ORALES_D3D4_20261024`. `list_folder` devolvió **4 elementos únicos** (dos hojas QA + exactamente esos dos PDFs), sin duplicados observados.
+- **CONCLUSIÓN R25:** el circuito **de demostración QA** se ejecutó realmente y quedó cerrado, nota y PDF+backup válidos en Google, 1/1 fixture sintético. NO acredita producción ni la autenticación docente institucional del Campus. Ninguna operación R25 modificó los recursos Google.
+
+**PRUEBA NUEVA DEL MOTOR DE NOTAS REAL EXTRAÍDO DE PROD, SIN GOOGLE:** se inspeccionaron `_oralF86_syncNotaOficial_` y `registrarNotaComponenteOficial` en `backend/prod/02_Auth_Sesiones_Usuarios.js`. Nuevo test **`backend/tests/qa_f111_r25_prod_note_sync_vm_e1.mjs`**, VM ejecuta literal ambas funciones originales con adaptadores ficticios `registrarNotaEstatus`, actor, resumen de nota y auditoría; **33/33 PASS**: componente ORAL_1 L09, 80/100 => 12/15; 0 y 100 válidos, fuera de rango/missing rechazados, matrícula inexistente, doble nota rechazada, fallos de registro/lectura y auditoría. **Hallazgo material:** si `registrarNotaEstatus` escribe y posteriormente falla el resumen o el log, `_oralF86_syncNotaOficial_` puede retornar error con componente de nota ya registrado. **Requiere conciliación; NO reintentar automáticamente.** No se editaron `prod/` ni datos reales.
+
+**GITHUB BACKEND:** `ed7a54adb295dcc15759ba7386648d9032b91d42` (PR #65 rama existente), test nuevo + extensión del workflow `.github/workflows/qa-f111-r11-d3-d4-guards.yml`, Git push confirmado. Foco de CI R25: `F111 R11 D3 D4 - guards (offline)` run `40624907707` PASS. Adicionales `Backend E1 QA compartida` run `40624911233`, `F111 N02 P0 E1 independiente` run `40624911217`, `F111 QZ32 Diagnostic E1` run `40624911219`; verificar y actualizar estado final si completan. SHA frontend documental R25 quedará en commit de esta sección; no se publicaron fuentes frontend ni nuevas versiones de Google Apps Script.
+
+**MATRIZ PORCENTAJES FIJA:** Historial oral 2/4=50%; reglas INA 2/4=50%; envío notas orales 2/4=50%; PDF+respaldo 2/4=50%; historial escritos 1/4=25%; vistas previas 3/5=60%; quizzes docentes 2/5=40%; unificación visual 2/5=40%. **TOTAL 16/35=46%**, 19 criterios pendientes (cerrar demostración QA es hito técnico, no sustituye motor real ni criterios LIVE). F111 global histórico 56% con otro denominador.
+
+**PRODUCCIÓN R25:** 0 writes, 0 notas oficiales reales, 0 PDFs institucionales, 0 asistencias, 0 certificados, 0 deployments, 0 merges, 0 alteraciones a los 17 borradores Keylor (última lectura R17). No se releyeron los registros Keylor; no afirmar estado nuevo. **ACCIÓN MANUAL INMEDIATA: NO REQUERIDA.** Conservar la única copia oficial; no pedir que el usuario vuelva a ejecutar funciones QA.
+
+**SIGUIENTE R26:** profundizar la prueba del **motor auténtico de notas con identidad/seguridad de profesor**: extraer `registrarNotaEstatus` y actores/autorizaciones efectivas, documentar sus dependencias APOLLO/OPERATIVO y verificar en entorno aislado docente/grupo/fecha/lección, escenarios de nota preexistente y reconciliación posterior a fallo. No llevar código productivo con IDs hardcodeados a Apps Script QA, no cerrar 17 exámenes Keylor ni generar otros PDFs, no repetir R20/R22/R23/R24. Cerrar con la matriz y prompt R27, mantener fuente canónica.
+
+---
+
+
 ## F111 · R24 · CONCILIACIÓN DE QA SIN CIERRE + PDF REAL VM 49/49 (27-oct-2026)
 
 **OBJETIVO ORDENADO:** R24 conciliar `F111_R23_QA_CIERRE_RESULT` de una sola ejecución en Google QA: `ESTATUS.O1=12`, `ORAL_EVALUACIONES.ESTADO=CERRADO`, `NOTA_OFICIAL_ESTADO=SINCRONIZADA` y dos PDF Drive distintos, detectar parciales sin reintento, preparar ensayo delimitado del motor institucional real. Misma ruta de trabajo, mismas ramas, sin publicar ni afectar a los 17 Keylor.
