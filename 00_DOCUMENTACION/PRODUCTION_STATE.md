@@ -1,5 +1,19 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R44 — CIERRE DEFINITIVO DEL PDF ORAL B2 L9 SIN INA EN GOOGLE QA (28-oct-2026, 2:45 p. m.)
+
+**RESULTADO AUTÉNTICO: PASS.** El usuario ejecutó UNA vez `F111_R44_FINALIZAR_PDF_CERRADO_QA` de 2:44:48 a 2:45:03 p. m. y obtuvo `F111_R44_PDF_FINAL_RESULT {"ok":true,"qa_only":true,"grade":12,"grade_max":15,"two_distinct_pdf_files":true,"oral_closed_original_preserved":true}`. **Comprobación independiente posterior por Google Sheets/Drive, solo lectura:** en APOLLO QA, `ESTATUS` del estudiante `QA-R34-STUDENT-001`, grupo `QA-R34-B2-CURSO`, nivel B2: `o1=12`, `NOTA=12`; las tres sesiones de `SESIONES!M2:M4` continúan `FALSE`. En OPERATIVO QA, el ORAL_ID ya existente `ORAL-20261028141008-61c746ea8d7340f7bcd96d4adaaf0149-QA-R34-STUDENT-001-L9` está en **`PDF_GENERADO`**, `NOTA_OFICIAL_ESTADO=SINCRONIZADA`, `NOTA_100=80`, `NOTA_PONDERADA=12`, `PDF_GENERATED_AT=2026-10-28 14:45:00`, con ambos IDs persistidos. Hay **una** auditoría oficial ORAL_1 12/15, **una** auditoría oral CLOSE y **una** `GENERATE_INSTITUTIONAL_PDF`. No hubo nuevo cierre, calificación ni sesión.
+
+**ARCHIVOS FÍSICOS REALES Y DISTINTOS, VERIFICADOS:** principal PDF ID `1tN5bAsOlxwv6V94ZqOPPqaaAvEIlJTwN`, `https://drive.google.com/file/d/1tN5bAsOlxwv6V94ZqOPPqaaAvEIlJTwN/view`; respaldo PDF ID `1FA52QLC5EpWEjpL43ek5gDz0LrndeEXd`, `https://drive.google.com/file/d/1FA52QLC5EpWEjpL43ek5gDz0LrndeEXd/view`. Ambas carpetas QA contienen exactamente UN archivo `application/pdf` de **61.710 bytes** cada una, con nombre correspondiente al mismo ORAL_ID; los IDs de Drive coinciden con los de `ORAL_EVALUACIONES`. No se generarán más copias. **PDF 2/2, caso QA CERRADO.**
+
+**ESTADOS TERMINALES CORRECTOS:** Los controles `F111_R35_CONTROL!C2` de APOLLO/OPERATIVO continúan `R36_STOP_RECONCILE` por el único intento R42 histórico que finalizó parcialmente. **No borrarlos ni cambiar su texto para fingir que R42 pasó.** R44 es una finalización documental independiente, que ya devolvió PASS y quedó comprobada. **NO REEJECUTAR R36, R42 NI R44; NO PEDIR MÁS ACCIONES MANUALES.** Tampoco tocar notas, sesiones, certificaciones o documentos.
+
+**CAMBIO IMPLEMENTADO:** fuente original y motor Google QA corregidos para que presentaciones SIN INA sin preguntas no requieran una fotografía no creada durante el cierre; los exámenes INA siguen verificando preguntas. Se empleó el generador institucional original y se preservó la calificación. Backend PR #65 commit `1d140b597e88cf019800c4bafe51ad8fe5e7d57d`, Google QA subido a las 2:32:14 p. m. Ningún despliegue LIVE; núcleo/login @473 y quizzes @477 permanecen como estaban. Frontend PR #511 contiene únicamente documentación. PC01 histórico y Keylor histórico no tocados.
+
+**AVANCE SIN INFLAR:** el caso real de prueba oral + nota + PDF principal/respaldo **está completo en Google QA**. La matriz institucional global conservadora sigue **16/35=46%** porque incluye otros 19 criterios sin certificar; F111 global histórico 56% usa otra base. Este resultado NO certifica aún que el cambio haya sido desplegado a LIVE. **Trabajo del PDF R44 terminado: no repetir este expediente ni abrir más rondas.**
+
+---
+
 ## F111 · R44 · CORREGIDO PDF SIN INA EN FUENTE Y GOOGLE QA; DOCUMENTO FINAL PENDIENTE DE EJECUCIÓN DEL EDITOR (28-oct-2026)
 
 **NO REABRIR EL EXAMEN NI LAS PRUEBAS HISTÓRICAS.** En el piloto único R42 el cierre y la nota B2 L9 SIN INA quedaron guardados correctamente (80/100, 12/15, expediente CERRADO/SINCRONIZADA, una auditoría oficial y una CLOSE, sesión revocada). Ambos archivos PDF siguen ausentes y el piloto está consumido terminalmente `R36_STOP_RECONCILE`. El usuario ordena terminar el PDF sin más ciclos, pruebas o copias de proyecto.
