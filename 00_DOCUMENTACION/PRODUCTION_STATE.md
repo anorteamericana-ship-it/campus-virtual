@@ -1,5 +1,47 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R39 · AUDITORÍA ORIGINAL ORAL/PDF BLINDADA EN QA; 461/461 VM, PILOTO AÚN SIN GO REAL (28-oct-2026)
+
+**RESUMEN EJECUTIVO.** Se continuó exclusivamente en `C:\Users\leodr\Documents\CampusVirtual\F111_OFICIAL` desde backend R38 `a269b6879f9546693452ebf3d095ab68b7e8a479` y frontend R38 `8930032b806f4cd020113b95f2f211285c9aee67`, ambos limpios. **R39 añadió pruebas de fallo parcial reales del motor original contra simuladores en memoria: 60/60 PASS F90/F86/F29 + 401/401 PASS supervisor = 461/461 nuevos controles VM**. Ningún test conectó a Google ni escribió notas, PDF o credenciales. No se repitieron manualmente pruebas R23–R38; las guardas CI históricas siguen disponibles en workflow existente. **NO-GO para piloto real hasta GO técnico explícito y autorización específica del usuario; NO-GO LIVE.**
+
+**HALLAZGO CRÍTICO Y CORRECCIÓN SOLO EN QA.** El registrador original `_oralF63_log_` usa `try/catch(_){}`, por lo que puede ocultar un error al guardar `ORAL_AUDIT_LOG` y permitir que el cierre/PDF devuelva `ok:true`. En `backend/qa_r33_apps_script/05_R36_Supervisor_Dormant.gs` se añadió `_qaR39_exactRow_`, una verificación **de lectura posterior, única y exacta** de registros persistidos:
+1. `NOTAS_OFICIALES_LOG`: **única nota ORAL_1, 12/15**, código/grupo/nivel ficticios, `ORIGEN=F29_PANEL_NOTAS`, `ACTIVO=SI`.
+2. `ORAL_AUDIT_LOG`: un solo `CLOSE` del ORAL_ID exacto, luego un solo `GENERATE_INSTITUTIONAL_PDF` del mismo expediente y estudiante/grupo.
+3. `ORAL_EVALUACIONES`: un solo registro `PDF_GENERADO`, `SINCRONIZADA`, nota 80/100=12/15, **dos IDs persistidos** que coinciden con los archivos verificados en sus carpetas QA distintas.
+Ante lectura vacía, duplicada, mal formada o distinta, el supervisor entra `R36_STOP_RECONCILE` de forma irreversible, preserva `ATTEMPTED=RESERVED_ONCE` y NO reintenta. Se endureció la reserva: solo el retorno preciso `ok:false, blockers:['R35_CREDENTIAL_NOT_PROVISIONED']` del preflight inicial es elegible. **No se tocó `backend/prod`; `R36_EXECUTION_ENABLED=false` permanece tanto local como en Script QA.**
+
+**ENSAYOS NUEVOS R39 — 461/461 PASS (EXCLUSIVAMENTE VM):** `backend/tests/qa_f111_r39_partial_original_oral_vm_e1.mjs` **60/60**, prueba funciones originales exactas (incluida igualdad textual del paquete QA): nota cero preexistente, auditoría de nota caída después de escribir 12/15, falla al guardar CERRADO, falla en auditoría CLOSE, archivo principal, respaldo que pudo crearse antes de perder respuesta, PDF principal y respaldo huérfanos, fallos al escribir metadatos y auditar PDF y la regla de no sobrescribir archivos previos. `backend/tests/qa_f111_r39_supervisor_stages_vm_e1.mjs` **401/401**, prueba supervisor **original QA** con Sheets/Drive/session simulados: autenticación/lock/docente/post-auth, fallos de cierre previo o posterior a nota, auditoría de nota/cierre/PDF ausente o duplicada, nota de auditoría 0 vs nota 12, metadatos PDF incorrectos, carpeta no QA, PDF ID repetido, revocación fallida, estado de parada terminal y reintento rechazado incluso si se restablecen controles en memoria; incluye único caso completo sintético. No demostrar atomicidad GAS/Drive con estos resultados ni PDF físico auténtico.
+
+**GOOGLE QA REAL DESPUÉS DE R39.** Backend PR #65, misma rama `fix/f111-r11-d3-d4-guards-20261017`, commit/HEAD R39 `bbcd242440400844b6ec5f4924f47566ef2da2ae`, ya publicado en GitHub. **CI R39 backend 4/4 PASS sobre HEAD final**: N02 `40754984183`, QZ32 `40754984163`, Backend E1 `40754984147`, y guardas offline push `40754977267` (incluyen los dos nuevos tests). Se subieron por `clasp.cmd push --force` los **7 archivos editables del mismo Script QA privado** `13lz3xM_fEUyyiN6VafP7TcN09XJVTqoMhk5d8vbsPhzeh_cTMMGgkpDr` a **1:31:03 p. m. CR**. Se verificó el Script ID y `R36_EXECUTION_ENABLED=false` antes; **no `clasp deploy`, no piloto, no LIVE**. Readback Google QA posterior: ambos `F111_R35_CONTROL!C2=PREPARED_NOT_EXECUTED`; `USUARIOS` docente QA con clave vacía; `ESTATUS` B2 ficticio CA, `o1` vacío; `ORAL_EVALUACIONES`, `ORAL_AUDIT_LOG`, `ORAL_PREGUNTAS_APLICADAS`, `NOTAS_OFICIALES_LOG` sin datos; ambos folders QA principal y respaldo **vacíos y distintos**. R33 `R33_AUTH_PASS_NO_NOTES`, 2 sesiones revocadas (ACTIVA=FALSE), sin reiniciar autenticación.
+
+**CI FRONTEND:** sobre HEAD R38 `8930032b806f4cd020113b95f2f211285c9aee67`, el workflow antes pendiente `40747596779` Virtual Campus Review finalizó `success`, estableciendo **8/8 PASS para R38**. NO atribuir esos resultados automáticamente a nuevo HEAD frontend de documentación R39: revisar las 8 ejecuciones finales de PR #511 antes de emitir dictamen definitivo.
+
+**OCHO MÓDULOS — BASE INVARIABLE, CRITERIOS INSTITUCIONALES (NO CONFUNDIR CON CONTROLES VM):**
+
+| Módulo | Cerrados | Pendientes | Avance |
+|---|---:|---:|---:|
+| Historial oral | 2 | 2 | 50% |
+| Reglas INA/SIN INA | 2 | 2 | 50% |
+| Notas oficiales orales | 2 | 2 | 50% |
+| PDF y respaldo | 2 | 2 | 50% |
+| Historial escrito | 1 | 3 | 25% |
+| Vistas previas | 3 | 2 | 60% |
+| Quizzes docentes | 2 | 3 | 40% |
+| Unificación visual | 2 | 3 | 40% |
+| **TOTAL** | **16** | **19** | **46%** |
+
+**F111 global histórico 56%** sobre denominador diferente. R39 cierra barreras técnicas **sin añadir un criterio funcional completo**, porque no hay piloto real ni documentos de Google físicos.
+
+**RIESGOS ABIERTOS Y NO-GO:** preflight Google `qaR35OralReadiness` fue completado a las 12:32–12:32:08 CR por el usuario, pero su retorno auténtico `ok/checks/blockers` **no fue registrado**; la simulación diagnostica bloqueo único `R35_CREDENTIAL_NOT_PROVISIONED`, no afirmar preflight real `ok:true`. Nunca se probó el cierre/transacción real Apps Script/Sheets/Drive, ni tres auditorías persistidas auténticas ni revocación recién generada en Google. El script está intencionalmente inerte. No hay 12/15 real ni PDF y respaldo reales. PC01 exige sesión docente legítima, sin accesos inventados. La restauración completa de hosting/CDN no fue ejecutada.
+
+**CONSERVACIÓN LIVE/PC01/KEYLOR/ZIP:** baseline histórico núcleo/login @473, quizzes @477 sin cambios; 13 entregas PC01 históricas y apertura CERRADO preservadas; 17 borradores Keylor intactos. ZIP público `F111_R34B_FRONTEND_PUBLIC_20261028.zip` 2.622.623 bytes, **137/137 archivos verificados anteriormente**, no se revalidó ni equivale a restore de hosting/servidor.
+
+**INTERVENCIÓN HUMANA:** ninguna prueba/manual R33/R38 debe repetirse. **No activar piloto todavía**. Para desbloquear un único piloto QA futuro se requiere captura sanitizada de `ok/checks/blockers`, dictamen GO técnico del paquete original y autorización expresa, independiente y limitada a `QA-R34-B2-CURSO` / `QA-R34-STUDENT-001`, B2 L9 **SIN INA**, 80/100=12/15, archivo PDF + respaldo distintos. Cualquier fallo parcial significa STOP/conciliar **SIN REINTENTAR**.
+
+**PROMPT R40:** «CONTINUAMOS F111 — R40: CAPTURAR RESULTADO PRECHECK GOOGLE QA DE FORMA SEGURA Y CERTIFICAR GO/NO-GO TÉCNICO DEL PILOTO ÚNICO SIN ACTIVARLO». Retomar ruta única `C:\Users\leodr\Documents\CampusVirtual\F111_OFICIAL` y las mismas dos ramas/PR #65/#511, leer sección R39 y LEEME primero. Backend HEAD `bbcd242440400844b6ec5f4924f47566ef2da2ae`; frontend HEAD R39 de documentación revisar contra GitHub. R39: 60/60 original + 401/401 supervisor = 461/461 nuevos PASS VM; auditorías oficiales/orales/PDF y registro archivado comprobados por fila única, preflight fail-closed, Script QA push 1:31:03 CR con supervisor `false`, sin producción/nota/PDF/sesiones. CI backend 4/4 PASS. Google R35 controles PREPARED, R33 intacto. Preparar método read-only de obtener `ok/checks/blockers` sanos desde Apps Script (sin tokens ni hashes) y conciliación exacta de clases/carpeta/registro; revisar CI frontend del HEAD R39. Si surge un defecto nuevo, corregirlo solo QA en las ramas existentes. Conceder GO técnico solo con evidencia; **NO invocar `F111_R36_PILOTO_UNICO` ni armar `R36_EXECUTION_ENABLED` sin autorización expresa nueva del usuario**. Conservar PC01 13, Keylor 17, LIVE @473/@477; reintentos terminales prohibidos. Reportar ocho módulos 16/35 hasta evidencia real, CI exacto, fuentes, próximo prompt.
+
+---
+
 ## F111 · R38 · GOOGLE QA PREFLIGHT EJECUTADO; DEPENDENCIAS ORALES B2/PDF RESTAURADAS; PILOTO BLOQUEADO (28-oct-2026)
 
 **DICTAMEN EJECUTIVO.** El usuario ejecutó en el script QA real `qaR35OralReadiness` el **28-oct-2026 12:32:00–12:32:08 Costa Rica**; Apps Script informó *Se completó la ejecución*, sin error visible. **NO publicó el objeto devuelto `ok/checks/blockers`: ejecución completada NO prueba `ok:true`.** La lectura independiente posterior de los dos libros QA y la ejecución en VM del **paquete original exacto contra esquemas R35 corroborados en Google** identifican un único bloqueo actual `R35_CREDENTIAL_NOT_PROVISIONED`; se verificó directamente que `USUARIOS.clave` del docente R35 sigue **vacía**. Este diagnóstico es **reconstrucción verificable del código y hojas QA, NO lectura del valor retornado por GAS**. No solicitar reejecución de R33 ni de preflight por rutina.
