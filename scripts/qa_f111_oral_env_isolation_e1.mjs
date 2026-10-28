@@ -13,7 +13,7 @@ const sessionFn=(html.match(/^function getSesion\(\)\{[^\n]+$/m)||[])[0];
 assert(sessionFn,'El módulo conserva una única fuente de sesión');
 const apiFn=(html.split('\n').find(line=>line.startsWith('async function api('))||'');
 assert(apiFn,'La API oral del módulo permanece localizable');
-const fullScript=html.slice(html.indexOf('<script>\n',html.indexOf('./oral_bancos_ic5.js'))+8,html.lastIndexOf('</script>'));
+const fullScript=html.slice(html.indexOf('<script>\n',html.indexOf('<script>\n'))+8,html.lastIndexOf('</script>'));
 new vm.Script(fullScript,'modulos/examen_oral.html');
 assert(!html.includes('eval('));
 const QA='https://script.google.com/macros/s/AKfycbxEAQ9lAg1Nv0ASX30MAVOzD7IZvwwqSI9MYcNaMhOQ/dev';

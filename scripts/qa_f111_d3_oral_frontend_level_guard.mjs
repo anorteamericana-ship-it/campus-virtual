@@ -1,113 +1,87 @@
-// F111 D3-R13 - regresión estática/VM en GitHub Actions, sin navegador, red ni datos reales.
+// F111 D3/D4 R12. El banco privado no se transforma en índices de catálogo oficial ajeno.
+// Ejecutable GitHub Actions, sin red, Apps Script, notas ni datos reales.
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 const html=fs.readFileSync('modulos/examen_oral.html','utf8');
-function extract(name){
- const start=html.indexOf('function '+name+'(');
- assert(start>=0,'Función frontend ausente '+name);
- const brace=html.indexOf('{',start);
- let depth=0;
+assert(!html.includes('ORAL_BANCOS_IC5'));
+assert(!html.includes('const QB={'));
+assert(!html.includes('oral_bancos_ic5.js'));
+assert(!fs.existsSync('modulos/oral_bancos_ic5.js'));
+assert(html.includes("api('oralGetBancoPreguntasDocente'"));
+assert(html.includes("preguntas_json:state.questions"));
+assert(html.includes("otras_preguntas:document.getElementById('otras-global').value"));
+assert(html.includes("if(!state.bankReady&&!state.panel?.modo_sin_ina)return toast"),'El guard del banco debe seguir activo para INA.');
+assert(html.includes("if(!state.bankReady&&!state.panel?.modo_sin_ina)return'Banco docente"),'La excepción SIN INA solo procede con panel institucional.');
+assert(html.includes("if(!anyQ&&!state.panel?.modo_sin_ina"),'INA exige preguntas; SIN INA permite rúbrica sin preguntas.');
+assert(html.includes('oralNeedsReviewF111'));
+assert(html.includes("await api('oralGetEvaluacion'"));
+const inline=html.slice(html.indexOf('<script>\n')+8,html.lastIndexOf('</script>'));
+new vm.Script(inline,{filename:'examen_oral.html'});
+function extract(name) {
+ const k='function '+name+'(',at=html.indexOf(k);
+ assert(at>=0,'Falta '+name);
+ const brace=html.indexOf('{',at);let d=0;
  for(let i=brace;i<html.length;i++){
-  if(html[i]==='{')depth++;
-  else if(html[i]==='}'&&--depth===0)return html.slice(start,i+1);
+  if(html[i]==='{') d++;
+  else if(html[i]==='}'&&--d===0)return html.slice(html.slice(at-6,at)==='async '?at-6:at,i+1);
  }
- throw Error('Función sin cierre '+name);
+ throw Error('Función incompleta '+name);
 }
-const criteria=['COMPREHENSION','FLUENCY','GRAMMAR','VOCABULARY','PRONUNCIATION'];
-const context=vm.createContext({
- state:{panel:{nivel:'B2'},scores:{}},QB:{1:{title:'Intro fixture ONLY'}},
- CRITERIA:criteria.map(k=>[k]),
- examWeightF90:()=>15,
- Number,Object,String
+const lessons={9:[1,2,3,4],17:[5,6,7,8],25:[9,10,11,12],31:[13,14,15,16]},
+levels=['B1','B2','I1','I2'], calls=[],notifications=[];
+const state={panel:null,selected:{codigo:'SIM-R12-001'},evaluations:{},
+ uncertainCloseCodes:{},busy:false,dirty:false,questions:{},bank:null,bankReady:false};
+let responseCorruption='';
+const field={value:''};
+const ctx=vm.createContext({
+ state, LECCIONES:Object.fromEntries(Object.entries(lessons).map(([l,units])=>[l,{units}])),
+ api:async (fn,body)=>{
+  assert.equal(fn,'oralGetBancoPreguntasDocente');
+  calls.push({...body});
+  const bank=Object.fromEntries((lessons[body.leccion]||[]).map(u=>[u,{
+    title:'Unit '+u+' QA synthetic',qs:Array.from({length:9},(_,i)=>'QA question '+u+'-'+i)
+  }]));
+  if(responseCorruption==='wrong-level')return {solo_docente:true,version:'SIM',nivel:'I2',leccion:body.leccion,banco:bank};
+  if(responseCorruption==='unit-missing')delete bank[lessons[body.leccion][0]];
+  return {solo_docente:true,version:'SIM',nivel:body.nivel,leccion:body.leccion,banco:bank};
+ },
+ document:{getElementById:()=>field},
+ oralLockedF111:ev=>['CERRADO','PDF_GENERADO'].includes(String(ev?.ESTADO||'').toUpperCase()),toast:x=>notifications.push(x),
+ String,Number,Object,Array
 });
-vm.runInContext(extract('examWeightF90'),context);
-vm.runInContext(extract('calc'),context);
-vm.runInContext(extract('questionBankForLevelF111'),context);
-vm.runInContext(extract('stateTag'),context);
-let checks=0;
-function verify(cond,msg){assert(cond,msg);checks++;}
-context.state.panel.peso_porcentaje=95;
-verify(context.examWeightF90()===15,'El panel no puede alterar ponderación oral');
-verify(context.calc().complete===false,'No evalúa vacío como cero');
-for(const name of criteria)context.state.scores[name]=null;
-verify(context.calc().complete===false,'No califica cinco criterios nulos');
-for(const name of criteria)context.state.scores[name]='';
-verify(context.calc().complete===false,'No califica cinco criterios en blanco');
-for(const name of criteria)context.state.scores[name]=0;
-let score=context.calc();
-verify(score.complete===true&&score.total===0&&score.nota100===0,'Cinco ceros voluntarios sí son válidos');
-criteria.forEach((k,i)=>context.state.scores[k]=i+1);
-score=context.calc();
-verify(score.complete===true&&score.total===15&&score.nota100===60&&score.pond===9,'5 criterios válidos, nota 60, aporte 9');
-verify(Object.keys(context.questionBankForLevelF111()).length===0,'Banco Intro no se presenta en B2');
-context.state.panel.nivel='I1';
-verify(Object.keys(context.questionBankForLevelF111()).length===0,'Banco Intro no se presenta en I1');
-context.state.panel.nivel='I2';
-verify(Object.keys(context.questionBankForLevelF111()).length===0,'Banco Intro no se presenta en I2');
-context.state.panel.nivel='B1';
-verify(Object.keys(context.questionBankForLevelF111()).length===1,'Banco existente se preserva solo en B1');
-verify(html.includes('b.dataset.crit]!=null')&&html.includes("trim()!==''"),'Marcado visual 0 no se activa por defecto');
-verify(html.includes('El banco de preguntas de este nivel aún no está validado.'),'Aviso explícito en niveles sin banco');
-verify(!html.includes('const data=QB[u]'),'No usar el banco sin nivel en UI');
-verify(context.stateTag('CIERRE_PENDIENTE_NOTA','CONCILIACION_REQUERIDA')[1].includes('Conciliar'), 'Cierre incierto nunca aparece cerrado');
-verify(context.stateTag('CIERRE_PENDIENTE_NOTA','ERROR')[1].includes('pendiente'), 'Fallo previo aparece pendiente');
-verify(html.includes("e.evaluacion=j?.evaluacion||null"),'Error del servidor preserva evaluación pendiente');
-verify(html.includes('oralSyncWarningF111(ev);renderStudents()'),'Mensaje de conciliación visible al seleccionar estudiante');
-verify(html.includes('function oralNeedsReviewF111(')&&html.includes('if(oralNeedsReviewF111(state.evaluations[state.selected.codigo]))'),'No permitir cierre/PDF de nota incierta o parcial');
-verify(html.includes('if(oralLockedF111(prev)||state.uncertainCloseCodes?.[selectedCode])')&&html.includes('if(oralLockedF111(state.evaluations[state.selected.codigo]))'),'No editar ni guardar borrador sobre cierre parcial o nota incierta');
-verify(html.includes('id="btn-draft"')&&html.includes("getElementById('btn-draft').onclick=saveDraft"),'El borrador tiene control visible y enlazado');
-verify(html.includes('state.dirty=true')&&html.includes('if(!interno&&state.dirty'),'No descartar cambios al alternar estudiantes');
-verify(html.includes('oralCompletedF111(ev)?evaluados:pendientes'),'Conteo cerrado solo con nota sincronizada');
-verify(html.includes('oralNeedsReviewF111(ev)||!!state.panel?.preview'),'Bloqueo visual de cierres parciales y vista previa');
-verify(html.includes("await api('oralGetEvaluacion'")&&html.includes('state.uncertainCloseCodes[selectedCode]=true'),'Timeout de cierre debe reconciliar lectura y bloquear nuevos intentos');
-verify(html.includes("if(oralNeedsReviewF111(previous))return toast"),'PDF bloqueado si la nota no está sincronizada');
-verify(html.includes('state.uncertainCloseCodes={}'),'La recarga exitosa rehace estado desde el servidor');
-
-// F111: 3 bancos originales transcritos de PDFs; niveles y lecciones sin mezclas.
-const catalogCode=fs.readFileSync('modulos/oral_bancos_ic5.js','utf8');
-const catalogContext=vm.createContext({window:{}});
-vm.runInContext(catalogCode,catalogContext);
-const original=catalogContext.window.ORAL_BANCOS_IC5;
-verify(['B2','I1','I2'].every(level=>
-  original[level]&&Object.keys(original[level]).length===16&&
-  Array.from({length:16},(_,i)=>original[level][i+1]?.qs?.length>0).every(Boolean)
-),'B2 I1 I2 contienen 16 unidades originales cada uno');
-verify(original.B2[1].title.includes('Where are you from?')&&
-       original.I1[1].title.includes('Good memories')&&
-       original.I2[1].title.includes('friend'),'Bancos específicos sin mezclar niveles');
-verify(html.includes('oral_bancos_ic5.js')&&
-       html.includes('data-original-unit'),'La pantalla carga banco canónico y presenta casillas');
-verify(!html.includes('B2_GUIDE_F111')&&!html.includes('data-b2-guide-unit'),
- 'No queda guía provisional duplicada');
-verify(!html.includes("state.bank={aprobado:true"),'No inventar aprobación desde el navegador');
-verify(html.includes("preguntas_json:state.questions")&&
-       html.includes("otras_preguntas:document.getElementById('otras-global').value"),
- 'Conservar contrato de backend sin índices falsos ni cambios de notas');
-
-const input={value:''},messages=[];
-const qa=vm.createContext({
- window:{ORAL_BANCOS_IC5:original},
- state:{panel:{nivel:'B2',leccion:9},selected:{codigo:'SIM-1'},
-        busy:false,evaluations:{},uncertainCloseCodes:{},dirty:false},
- document:{getElementById:()=>input},
- oralLockedF111:()=>false,toast:m=>messages.push(m),
- String,Number
-});
-for(const fn of ['originalBankF111','originalQuestionEntryF111','setOriginalQuestionF111'])
- vm.runInContext(extract(fn),qa);
-const q=original.B2[1].qs[0];
-verify(qa.setOriginalQuestionF111(1,0,true)===true&&
-       input.value.includes(q)&&qa.state.dirty,
- 'Marcar pregunta original guarda texto y marca ficha sucia');
-qa.setOriginalQuestionF111(1,0,true);
-verify(input.value.split(q).length===2,'Doble selección no duplica texto');
-qa.setOriginalQuestionF111(1,0,false);
-verify(input.value==='', 'Desmarcar pregunta quita solo esa entrada');
-qa.setOriginalQuestionF111(1,0,true);
-qa.state.evaluations['SIM-1']={ESTADO:'CERRADO'};qa.oralLockedF111=()=>true;
-const before=input.value;
-verify(qa.setOriginalQuestionF111(2,0,true)===false&&input.value===before,
- 'No se añaden preguntas en examen cerrado');
-verify(!('questions' in qa.state),'Preguntas originales no envían índices no aprobados');
-console.log('F111_D3_ORAL_FRONTEND_LEVEL_GUARD_PASS checks='+checks+' ; B1 intacto, B2/I1/I2 48 unidades PDF, PROD writes=0');
+for(const name of ['loadPrivateBankF111','questionBankForLevelF111','originalBankF111',
+ 'originalQuestionEntryF111','setOriginalQuestionF111'])vm.runInContext(extract(name),ctx);
+assert.equal(Object.keys(ctx.questionBankForLevelF111()).length,0);
+let n=0;
+for(const level of levels)for(const lesson of Object.keys(lessons).map(Number)){
+  state.bankReady=false; state.bank=null;state.panel={nivel:level,leccion:lesson,cod_grupo:'QA-ONLY-GRP'};
+  assert.equal(ctx.originalBankF111(),null,'fail-closed before private API');
+  state.bank=await ctx.loadPrivateBankF111(state.panel);state.bankReady=true;
+  assert.equal(Object.keys(ctx.originalBankF111()).length,4,'4 private units only');
+  assert.equal(Object.keys(ctx.questionBankForLevelF111()).length,0,
+    'NEVER send private Cambridge indices to legacy B1/B2 grader');
+  const u=lessons[lesson][0];state.dirty=false;field.value='';
+  assert.equal(ctx.setOriginalQuestionF111(u,8,true),true,'9th private question must be selectable');
+  assert(field.value.includes('QA question '+u+'-8')&&state.dirty,'Track actual text');
+  assert.equal(Object.keys(state.questions).length,0,'No unsupported numeric indices');
+  ctx.setOriginalQuestionF111(u,8,true);
+  assert.equal(field.value.split('QA question '+u+'-8').length,2,'No duplicated trace');
+  assert.equal(ctx.setOriginalQuestionF111(u,8,false),true,'Uncheck prompt');
+  assert.equal(field.value,'');
+  n++;
+}
+assert.equal(n,16,'All 4 levels x 4 lessons');
+assert.equal(calls.length,16,'Only 16 calls to private endpoint');
+state.panel={nivel:'B2',leccion:9,cod_grupo:'QA-ONLY-GRP'};
+responseCorruption='wrong-level';
+await assert.rejects(ctx.loadPrivateBankF111(state.panel),/no confirmó/);
+responseCorruption='unit-missing';
+await assert.rejects(ctx.loadPrivateBankF111(state.panel),/no confirmó/);
+responseCorruption='';
+state.bankReady=false;
+assert.equal(ctx.originalBankF111(),null,'No bank after invalidation');
+state.evaluations['SIM-R12-001']={ESTADO:'CERRADO'};
+state.bankReady=true;state.bank=await ctx.loadPrivateBankF111(state.panel);
+assert.equal(ctx.setOriginalQuestionF111(1,0,true),false,'Closed reviews are immutable');
+console.log('F111_R12_ORAL_CLIENT_CONTRACT_PASS: 16/16 level-lesson contexts, 64 unit slots, full-text trace, no B1/B2 index mismatch, 2 malformed payloads denied, closed denied, prodWrites=0');

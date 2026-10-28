@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';
+const html=fs.readFileSync('modulos/examen_oral.html','utf8');
+const inline=html.slice(html.indexOf('<script>\n')+8,html.lastIndexOf('</script>'));
+new Function(inline);
+assert(!html.includes('const QB={')&&!html.includes('ORAL_BANCOS_IC5'));
+assert(!html.includes('oral_bancos_ic5.js'));
+assert(!fs.existsSync('modulos/oral_bancos_ic5.js'));
+assert(html.includes("api('oralGetBancoPreguntasDocente'"));
+assert(html.includes('if(!state.bankReady'));
+assert(html.includes('escF90(data.title)')&&html.includes('escF90(q)'));
+assert(html.includes("api('oralGetPanelDocente'"));
+console.log('PASS F111 EX01 R11: frontend private bank, no bundled questions, auth route, fail-closed');
