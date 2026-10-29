@@ -1,5 +1,17 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R48-D — BUG FECHA PDF EN PRODUCCIÓN CORREGIDO; LIVE @480, AÚN FALTA PDF REAL VANESSA (28-oct-2026)
+
+**CAUSA CONCRETA:** `oralGeneratePdf` obtenía `datePart=String(ev.FECHA_ISO||ev.FECHA||'').slice(0,10)` y rechazaba el dato real de Google Sheets cuando `getValues()` entregaba `Date`, devolviendo `fecha_evaluacion_invalida`. El normalizador `_oralF63_isoDate_` YA EXISTÍA, pero el PDF no lo utilizaba. El mismo error ocurría al formar el año de la carpeta de respaldo: `_oralF90_backupFolder_` hacía `String(Date).slice(0,4)`, produciendo carpetas con nombres `Mon `/`Fri `/`Wed ` en vez de `2026`. Esas carpetas antiguas se preservaron; NO contienen PDF de Vanessa.
+
+**IMPLEMENTACIÓN Y DESPLIEGUE REALES:** backend `prod/02_Auth_Sesiones_Usuarios.js` normaliza fecha con `_oralF63_isoDate_` antes del nombre del PDF y usa copia temporal de metadatos con FECHA_ISO normalizada para su HTML institucional (sin cambiar fila); backend `prod/13_Examenes.js` normaliza año de respaldo y rechaza año no numérico. Se recuperó Apps Script LIVE @479 a staging institucional, se editaron únicamente esos dos archivos y se conservaron otros 31 archivos del proyecto. `clasp push --force` éxito 18:28:28 CR, `clasp deploy -i AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` éxito, **backend LIVE @480**. `clasp pull --versionNumber 480` confirma 3/3 modificaciones exactas de fecha, sin errores de sintaxis. Frontend R47 publicado, Quiz @477 intacto. No nuevas ramas ni módulos.
+
+**CONCILIACIÓN REAL DESPUÉS DEL DEPLOY:** PROD `CAMPUS_OPERATIVO.ORAL_EVALUACIONES` Keylor grupo B1-LM69-C2-0526 B2 L9: **17 expedientes**; Vanessa **17189** ORAL_ID `ORAL-20261025114115-17189-L9`, CERRADO SINCRONIZADA 11.4/15, PDF principal y respaldo aún vacíos; otros **16 BORRADOR**. APOLLO ESTATUS.o1=11.4. Indicadores: nota oficial 1/17, **PDF institucional 0/17**, backups 0/17. Matriz F111 institucional 16/35=46%, pendientes 19; no mezclar con avance técnico.
+
+**ÚNICA ACEPTACIÓN SIGUIENTE R48-E:** desde sesión autorizada docente/superadmin en LIVE @480, seleccionar Vanessa 17189 en Revisar Expedientes y pulsar una sola vez `GENERAR PDF OFICIAL PENDIENTE`. No ejecutar cierre ni sincronizar nota nuevamente. Después conciliar dos IDs Drive distintos, `PDF_GENERADO`, fechas correctas y nota 11.4 conservada. Si falla, usar mensaje concreto y verificar estado antes de otra escritura. Con 1/17 PASS, continuar individualmente hasta 17/17; nunca cierres masivos. No volver a revisar R44–R47, no volver a rediseñar PDF, no iniciar quizzes. **No declarar que PDF quedó hecho antes de readback de Drive.**
+
+---
+
 ## F111 · R48-C — NOTA ORAL VANESSA 17189 GUARDADA, PDF INSTITUCIONAL PENDIENTE (28-oct-2026)
 
 **CONCILIACIÓN GOOGLE PROD AUTÉNTICA:** grupo `B1-LM69-C2-0526`, B2 L9, estudiante 17189 Vanessa Mata García: `ORAL_EVALUACIONES.ESTADO=CERRADO`, `NOTA_OFICIAL_ESTADO=SINCRONIZADA`, nota `76/100`, ponderada `11.4/15`, ambos campos `PDF_FILE_ID`/`PDF_BACKUP_FILE_ID` y URLs vacíos. APOLLO `ESTATUS.o1=11.4` y `NOTA=11.4`. Auditoría contiene única `CLOSE` 2026-10-28 17:10:47 y ningún `GENERATE_INSTITUTIONAL_PDF` para ese ORAL_ID. Search Drive por identificador y nombre del PDF 17189 no encontró archivo. **Cierre oficial 1/17; PDF principal 0/17; respaldo 0/17.** Otros 16 borradores sin cambios. Matriz global 16/35=46% sin actualización automática.
