@@ -242,7 +242,7 @@ const COURSE_TYPES = [
     title:'Curso intensivo',
     subtitle:'2 días por semana',
     detail:'Ideal si querés avanzar con horario regular en la noche o sábado.',
-    badge:'6 horas semanales',
+    badge:'6 h de clase por semana',
     icon:'⚡'
   },
   {
@@ -250,7 +250,7 @@ const COURSE_TYPES = [
     title:'Curso súper intensivo',
     subtitle:'4 días por semana',
     detail:'Para avanzar más rápido con mayor práctica semanal.',
-    badge:'12 horas semanales',
+    badge:'12 h de clase por semana',
     icon:'🚀'
   }
 ];
@@ -884,22 +884,25 @@ function CedulaStep({form,setForm,cedulaStatus,setCedulaStatus,setStep,setPadron
   </section>;
 }
 
-function CourseTypeCard({type,selected,count,onSelect}){
+function CourseTypeCard({type,selected,count,onSelect,includeICAN=false}){
   return <button type="button" className={`ins-course-card ${selected?'selected':''}`} onClick={()=>onSelect(type.key)}>
     <div className="ins-course-head"><span>{type.icon}</span><b>{count || 0} horarios</b></div>
     <h3>{type.title}</h3>
     <p>{type.subtitle}</p>
     <small>{type.detail}</small>
-    <strong>{type.badge}</strong>
+    <strong>{type.badge}{includeICAN ? ' + Club iCAN' : ''}</strong>
+    {includeICAN && <small className="ins-course-ican">96 horas de clases + 32 horas de Club iCAN por nivel.</small>}
   </button>;
 }
 
 function GroupCard({group,selected,onSelect}){
   const wait = group.estado_cupo === 'LISTA_ESPERA';
+  const withINA = upper(group.programa) === 'INA';
   return <button type="button" className={`ins-group-card ${levelClass(group)} ${selected?'selected':''}`} onClick={()=>onSelect(group)}>
     <div className="ins-group-top"><span>{group.nivel}</span><b>{groupStatusLabel(group)}</b></div>
     <h3>{group.schedule_short || formatScheduleShort(group)}</h3>
     <p>{group.modalidad_label}</p>
+    {withINA && <div className="ins-group-ina"><b>CON INA</b><span>Club iCAN incluido</span></div>}
     <dl>
       <div><dt>Inicio</dt><dd>{group.fecha_inicio_label}</dd></div>
       <div><dt>Cupos</dt><dd>{group.cupo_disponible > 0 ? group.cupo_disponible : (wait?'Reserva':'Por confirmar')}</dd></div>
@@ -912,6 +915,7 @@ function GroupCard({group,selected,onSelect}){
 
 function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedGroup,setStep,reloadGroups}){
   const [courseType,setCourseType]=React.useState(form.modalidad ? modalityKey({modalidad:form.modalidad}) : '');
+  const onlyINA = groups.length > 0 && groups.every(g => upper(g.programa) === 'INA');
   const counts = React.useMemo(()=>{
     const acc = {INTENSIVO:0, SUPERINTENSIVO:0};
     groups.forEach(g=>{ const key = modalityKey(g); acc[key] = (acc[key] || 0) + 1; });
@@ -958,8 +962,16 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
 
   return <section className="ins-card ins-step-card">
     <div className="ins-card-head"><span>Paso 2</span><h2>Elegí tu curso y tu horario</h2><p>Primero elegí el tipo de curso. Después te mostramos únicamente los horarios disponibles para esa opción.</p></div>
+    {onlyINA && <div className="ins-ina-banner" role="note">
+      <div className="ins-ina-copy">
+        <span>Programa acreditado por el INA</span>
+        <h3>Inglés Conversacional <em>CON INA</em></h3>
+        <p><strong>Incluye Club iCAN.</strong> Cada nivel tiene 128 horas: 96 de clases y 32 de Club iCAN.</p>
+      </div>
+      <img src="https://www.ina.ac.cr/SiteAssets/img/INA_Logo_Facebook1.png" alt="Instituto Nacional de Aprendizaje (INA)" loading="lazy" />
+    </div>}
     <div className="ins-course-grid">
-      {COURSE_TYPES.map(type=><CourseTypeCard key={type.key} type={type} selected={courseType===type.key} count={counts[type.key]} onSelect={chooseCourseType} />)}
+      {COURSE_TYPES.map(type=><CourseTypeCard key={type.key} type={type} selected={courseType===type.key} count={counts[type.key]} includeICAN={onlyINA} onSelect={chooseCourseType} />)}
     </div>
     {loading && <div className="ins-skeleton-list"><span></span><span></span><span></span></div>}
     {error && <Alert type="error">{error}</Alert>}
