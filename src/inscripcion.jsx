@@ -1523,7 +1523,7 @@ function InscripcionApp(){
     {!success && <div className="ins-main">
       <Stepper step={step} />
       {step===0 && <CedulaStep form={form} setForm={setForm} cedulaStatus={cedulaStatus} setCedulaStatus={setCedulaStatus} setStep={setStep} setPadronName={setPadronName}/>} 
-      {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups} becas={becas}/>} 
+      {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups} becas={becas}/>}
       {step===2 && <DatosStep form={form} setForm={setForm} setStep={setStep} padronName={padronName}/>} 
       {step===3 && <FinanceStep form={form} setForm={setForm} setStep={setStep} selectedGroup={selectedGroup} becas={becas} asesores={asesores}/>} 
       {step===4 && <DocsStep form={form} setForm={setForm} setStep={setStep}/>} 
