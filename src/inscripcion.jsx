@@ -895,27 +895,34 @@ function CourseTypeCard({type,selected,count,onSelect,includeICAN=false}){
   </button>;
 }
 
-function GroupCard({group,selected,onSelect}){
+function GroupCard({group,selected,onSelect,impacta}){
   const wait = group.estado_cupo === 'LISTA_ESPERA';
   const withINA = upper(group.programa) === 'INA';
+  const icanDay = {'V':'viernes','S':'sábado','L':'lunes','K':'martes','M':'miércoles','J':'jueves','D':'domingo'}[upper(group.ican_dias_label)] || clean(group.ican_dias_label);
+  const impactaPct = Number(clean(impacta?.porcentaje).replace('%',''));
+  const impactaMonthly = impacta && impactaPct > 0 && impactaPct < 100 && Number(group.precio_cuota) > 0
+    ? Math.round(Number(group.precio_cuota) * (1 - impactaPct / 100)) : null;
   return <button type="button" className={`ins-group-card ${levelClass(group)} ${selected?'selected':''}`} onClick={()=>onSelect(group)}>
     <div className="ins-group-top"><span>{group.nivel}</span><b>{groupStatusLabel(group)}</b></div>
     <h3>{group.schedule_short || formatScheduleShort(group)}</h3>
     <p>{group.modalidad_label}</p>
-    {withINA && <div className="ins-group-ina"><b>CON INA</b><span>Club iCAN incluido</span></div>}
+    {withINA && <div className="ins-group-ina"><b>CON INA</b><span>Club iCAN incluido · 32 h por nivel{icanDay ? ' · ' + icanDay : ''}</span></div>}
     <dl>
-      <div><dt>Inicio</dt><dd>{group.fecha_inicio_label}</dd></div>
+      <div><dt>Inicio de {group.nivel}</dt><dd>{group.fecha_inicio_label}</dd></div>
       <div><dt>Cupos</dt><dd>{group.cupo_disponible > 0 ? group.cupo_disponible : (wait?'Reserva':'Por confirmar')}</dd></div>
       <div><dt>Matrícula</dt><dd>{fmtMoney(group.precio_matricula)}</dd></div>
-      <div><dt>Cuota</dt><dd>{fmtMoney(group.precio_cuota)}</dd></div>
+      <div><dt>Cuota mensual regular</dt><dd>{fmtMoney(group.precio_cuota)}</dd></div>
     </dl>
+    {impactaMonthly !== null && <div className="ins-impacta-price"><span>Con Beca Impacta ({impactaPct}% en mensualidades)</span><strong>{fmtMoney(impactaMonthly)} / mes</strong><small>Sujeto a solicitud y aprobación de la beca. Matrícula sin descuento.</small></div>}
+    {withINA && <div className="ins-group-calendar"><span>96 h de clases + 32 h de Club iCAN por nivel.</span>{group.periodo_label && <span>{group.periodo_label}</span>}{group.duracion_label && <span>{group.duracion_label}</span>}</div>}
     <small>Código: {group.codigo}</small>
   </button>;
 }
 
-function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedGroup,setStep,reloadGroups}){
+function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedGroup,setStep,reloadGroups,becas}){
   const [courseType,setCourseType]=React.useState(form.modalidad ? modalityKey({modalidad:form.modalidad}) : '');
   const onlyINA = groups.length > 0 && groups.every(g => upper(g.programa) === 'INA');
+  const impacta = (becas || []).find(b => b.key === 'BECA_IMPACTA' && b.disponible !== false) || null;
   const counts = React.useMemo(()=>{
     const acc = {INTENSIVO:0, SUPERINTENSIVO:0};
     groups.forEach(g=>{ const key = modalityKey(g); acc[key] = (acc[key] || 0) + 1; });
@@ -966,9 +973,9 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
       <div className="ins-ina-copy">
         <span>Programa acreditado por el INA</span>
         <h3>Inglés Conversacional <em>CON INA</em></h3>
-        <p><strong>Incluye Club iCAN.</strong> Cada nivel tiene 128 horas: 96 de clases y 32 de Club iCAN.</p>
+        <p><strong>Incluye Club iCAN.</strong> Cada nivel comprende 128 horas: 96 horas de clases y 32 horas de Club iCAN. El programa completo tiene 4 niveles y 512 horas.</p>
       </div>
-      <img src="https://www.ina.ac.cr/SiteAssets/img/INA_Logo_Facebook1.png" alt="Instituto Nacional de Aprendizaje (INA)" loading="lazy" />
+      <img src="assets/inscripcion/logo-ina-acreditacion-2027.webp?v=F111INAINSC20261029R2" alt="Unidad de Acreditación e Instituto Nacional de Aprendizaje (INA)" loading="eager" />
     </div>}
     <div className="ins-course-grid">
       {COURSE_TYPES.map(type=><CourseTypeCard key={type.key} type={type} selected={courseType===type.key} count={counts[type.key]} includeICAN={onlyINA} onSelect={chooseCourseType} />)}
@@ -979,7 +986,7 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
     {!loading && !error && courseType && filtered.length===0 && <Alert>No encontramos horarios activos para esta modalidad. Probá la otra opción o actualizá la lista.</Alert>}
     {courseType && Object.keys(grouped).map(level=><div key={level} className="ins-level-block">
       <div className="ins-level-title"><span className={`ins-level-dot ${levelClass(grouped[level][0])}`}></span><strong>{level}</strong></div>
-      <div className="ins-groups-grid">{grouped[level].map(g=><GroupCard key={g.codigo} group={g} selected={selectedGroup?.codigo===g.codigo} onSelect={chooseGroup} />)}</div>
+      <div className="ins-groups-grid">{grouped[level].map(g=><GroupCard key={g.codigo} group={g} selected={selectedGroup?.codigo===g.codigo} onSelect={chooseGroup} impacta={impacta} />)}</div>
     </div>)}
     {selectedGroup && <div className="ins-selected-box">
       <div><span>Horario seleccionado</span><strong>{selectedGroup.nivel} · {selectedGroup.schedule_short}</strong><small>Inicio {selectedGroup.fecha_inicio_label} · {groupStatusLabel(selectedGroup)}</small></div>
@@ -1516,7 +1523,7 @@ function InscripcionApp(){
     {!success && <div className="ins-main">
       <Stepper step={step} />
       {step===0 && <CedulaStep form={form} setForm={setForm} cedulaStatus={cedulaStatus} setCedulaStatus={setCedulaStatus} setStep={setStep} setPadronName={setPadronName}/>} 
-      {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups}/>} 
+      {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups} becas={becas}/>}
       {step===2 && <DatosStep form={form} setForm={setForm} setStep={setStep} padronName={padronName}/>} 
       {step===3 && <FinanceStep form={form} setForm={setForm} setStep={setStep} selectedGroup={selectedGroup} becas={becas} asesores={asesores}/>} 
       {step===4 && <DocsStep form={form} setForm={setForm} setStep={setStep}/>} 
