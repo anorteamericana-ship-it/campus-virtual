@@ -416,14 +416,10 @@ async function generatePdfAndCloseF90(){
     if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}
     state.lastPdfBlobUrl=pdfBlobUrlF90(pdf.pdf_base64,pdf.pdf_mime);
     state.lastPdfDriveUrl=pdf.pdf_url||'';
-    const viewer=document.getElementById('pdf-content');
-    viewer.replaceChildren();
-    if(!state.lastPdfBlobUrl)throw new Error('El servidor archivó el PDF, pero no devolvió el documento para visualizarlo. Abrilo desde el expediente.');
-    const frame=document.createElement('iframe');
-    frame.src=state.lastPdfBlobUrl;
-    frame.title='PDF oficial archivado de examen oral';
-    frame.style.cssText='display:block;width:100%;min-height:70vh;border:0;background:#fff';
-    viewer.appendChild(frame);
+    // R49: The historical viewer iframe is sandboxed; PDF blob inside an iframe
+    // fails in Chrome even when the PDF and its Drive backup are valid.
+    // Present explicit authenticated Drive/download links instead.
+    renderArchivedPdfF111(pdf,ev);
     advanceAfterCloseF90(selectedCode);
     notifyParentOral();
     document.getElementById('pdf-modal').classList.add('open');
@@ -554,9 +550,7 @@ async function f111FinalizarGuardadoR47(){
   if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}
   state.lastPdfBlobUrl=pdfBlobUrlF90(res.pdf_base64,res.pdf_mime);
   state.lastPdfDriveUrl=res.pdf_url||'';
-  const viewer=document.getElementById('pdf-content');viewer.replaceChildren();
-  const iframe=document.createElement('iframe');iframe.src=state.lastPdfBlobUrl;iframe.title='PDF oral oficial archivado';
-  iframe.style.cssText='width:100%;min-height:70vh;border:0';viewer.appendChild(iframe);
+  renderArchivedPdfF111(res,res.evaluacion);
   document.getElementById('pdf-modal').classList.add('open');
   toast('Nota oficial confirmada y PDF institucional respaldado.');
  }catch(e){
@@ -572,7 +566,40 @@ async function f111FinalizarGuardadoR47(){
   selectStudent(student.codigo,true);
  }
 }
-function printPdfF90(){const url=state.lastPdfBlobUrl||state.lastPdfDriveUrl;if(!url)return toast('No se encontró el PDF generado.');const w=window.open(url,'_blank','noopener');if(!w)toast('El navegador bloqueó la apertura del PDF. Permití ventanas emergentes para imprimir o guardarlo.');}
+function renderArchivedPdfF111(pdf,ev){
+  const viewer=document.getElementById('pdf-content');
+  viewer.replaceChildren();
+  const drive=String(pdf?.pdf_url||ev?.PDF_URL||'');
+  const driveAllowed=/^https:\/\/drive\.google\.com\/file\/d\/[A-Za-z0-9_-]+\/view(?:[?#].*)?$/.test(drive);
+  const blob=state.lastPdfBlobUrl;
+  if(!driveAllowed&&!blob)throw Error('El PDF está archivado pero no se obtuvo un enlace válido para abrirlo.');
+  const card=document.createElement('section');
+  card.style.cssText='max-width:650px;margin:12px auto;padding:24px;background:#f4f8ff;border:1px solid #cad8e9;border-radius:12px;color:#153658;text-align:center';
+  const title=document.createElement('h3');title.textContent='PDF institucional archivado';card.appendChild(title);
+  const detail=document.createElement('p');detail.textContent='La calificación está registrada. Abrí el documento original en Drive o descargalo directamente; no hay que volver a generarlo.';
+  detail.style.cssText='font-size:13px;line-height:1.5';card.appendChild(detail);
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin:24px 0 8px';
+  if(driveAllowed){
+    const open=document.createElement('a');open.id='f111-pdf-drive';open.href=drive;open.target='_blank';open.rel='noopener noreferrer';
+    open.textContent='ABRIR PDF OFICIAL EN DRIVE';
+    open.style.cssText='display:inline-block;background:#194f96;color:white;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:bold';
+    actions.appendChild(open);
+  }
+  if(blob){
+    const download=document.createElement('a');
+    download.id='f111-pdf-download';download.href=blob;
+    const code=String(ev?.COD_ESTUDIANTE||'ESTUDIANTE').replace(/[^a-zA-Z0-9_-]/g,'');
+    download.download='EXAMEN_ORAL_'+String(ev?.NIVEL||'').replace(/[^a-zA-Z0-9_-]/g,'')+'_L'+String(ev?.LECCION||'')+'_'+code+'.pdf';
+    download.textContent='DESCARGAR PDF';
+    download.style.cssText='display:inline-block;background:#e4b734;color:#142c45;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:bold';
+    actions.appendChild(download);
+  }
+  card.appendChild(actions);
+  const help=document.createElement('p');help.textContent='Para imprimir, abrí el PDF en Drive y usá el botón de imprimir del documento.';
+  help.style.cssText='font-size:11px;color:#617489';card.appendChild(help);
+  viewer.appendChild(card);
+}
+function printPdfF90(){const download=document.getElementById('f111-pdf-download'),open=document.getElementById('f111-pdf-drive');if(download){download.click();return;}if(open){open.click();return;}toast('No se encontró un enlace válido al PDF archivado.');}
 async function loadPanel(){
   setStatus('Cargando','warn');
   const ses=getSesion();

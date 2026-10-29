@@ -535,7 +535,9 @@ function f111TeacherExamModal(title,url){
  bar.append(info,close);
  const frame=make('iframe');frame.title=title;frame.src=url;
  frame.style.cssText='flex:1;min-height:0;width:100%;height:100%;border:0;background:white';
- frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-modals allow-presentation');
+ // R49: the oral document lives inside this modal iframe. A user-initiated
+ // official Drive link must open outside the sandbox; downloads also need permission.
+ frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-modals allow-presentation allow-popups allow-popups-to-escape-sandbox allow-downloads');
  shell.append(bar,frame);overlay.append(shell);document.body.append(overlay);
  const off=()=>{document.removeEventListener('keydown',key);overlay.remove();};
  const key=e=>{if(e.key==='Escape')off();};
