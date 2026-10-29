@@ -242,7 +242,7 @@ const COURSE_TYPES = [
     title:'Curso intensivo',
     subtitle:'2 días por semana',
     detail:'Ideal si querés avanzar con horario regular en la noche o sábado.',
-    badge:'6 h de clase por semana',
+    badge:'6 h de clase + 2 h de iCAN / semana',
     icon:'⚡'
   },
   {
@@ -250,7 +250,7 @@ const COURSE_TYPES = [
     title:'Curso súper intensivo',
     subtitle:'4 días por semana',
     detail:'Para avanzar más rápido con mayor práctica semanal.',
-    badge:'12 h de clase por semana',
+    badge:'12 h de clase + 2 h de iCAN / semana',
     icon:'🚀'
   }
 ];
@@ -354,9 +354,18 @@ function useDraft(initial){
         try{ localStorage.removeItem(key); }catch(_){}
       });
       const saved=JSON.parse(localStorage.getItem(INS_STORAGE_KEY)||'{}');
+      const draft=pickDraftFields(saved);
+      const pastBeca=clean(draft.beca || draft.beca_propio);
+      const keepImpacta=['IMPACTA','BECA_IMPACTA'].includes(becaKey(pastBeca));
       return {
         ...initial,
-        ...pickDraftFields(saved),
+        ...draft,
+        financiamiento:'PROPIO',
+        beca:keepImpacta ? pastBeca : '',
+        beca_propio:keepImpacta ? pastBeca : '',
+        conape_toeic:false,
+        conape_equipo:'NINGUNO',
+        conape_sostenimiento:'NO',
         clave:'',
         foto_ced_frente:'',
         foto_ced_dorso:'',
@@ -389,7 +398,7 @@ const INITIAL_FORM = {
   tipo_id:'CEDULA_NACIONAL', cedula:'', nombre:'', clave:'', correo:'', whatsapp:'', telefono:'',
   sexo:'', provincia:'', canton:'', distrito:'', distrito_otro:'', direccion:'', fecha_nac:'', es_menor:false,
   tutor_nombre:'', tutor_cedula:'', tutor_correo:'', tutor_tel:'',
-  programa:'INA', modalidad:'', financiamiento:'CONAPE', beca:'', beca_propio:'',
+  programa:'INA', modalidad:'', financiamiento:'PROPIO', beca:'', beca_propio:'',
   grupo_tentativo:'', conape_equipo:'NINGUNO', conape_toeic:false, conape_toeic_monto:0, toeic_monto:0,
   conape_sostenimiento:'NO', como_entero:'', asesor_ref:'', conocimientos_previos:'', aceptar_lista_espera:false,
   foto_ced_frente:'', foto_ced_dorso:'', foto_titulo:''
@@ -890,39 +899,31 @@ function CourseTypeCard({type,selected,count,onSelect,includeICAN=false}){
     <h3>{type.title}</h3>
     <p>{type.subtitle}</p>
     <small>{type.detail}</small>
-    <strong>{type.badge}{includeICAN ? ' + Club iCAN' : ''}</strong>
-    {includeICAN && <small className="ins-course-ican">96 horas de clases + 32 horas de Club iCAN por nivel.</small>}
+    <strong>{includeICAN ? type.badge : type.badge.replace(' + 2 h de iCAN', '')}</strong>
   </button>;
 }
 
-function GroupCard({group,selected,onSelect,impacta}){
-  const wait = group.estado_cupo === 'LISTA_ESPERA';
+function GroupCard({group,selected,onSelect}){
   const withINA = upper(group.programa) === 'INA';
   const icanDay = {'V':'viernes','S':'sábado','L':'lunes','K':'martes','M':'miércoles','J':'jueves','D':'domingo'}[upper(group.ican_dias_label)] || clean(group.ican_dias_label);
-  const impactaPct = Number(clean(impacta?.porcentaje).replace('%',''));
-  const impactaMonthly = impacta && impactaPct > 0 && impactaPct < 100 && Number(group.precio_cuota) > 0
-    ? Math.round(Number(group.precio_cuota) * (1 - impactaPct / 100)) : null;
+  const weeklyClass = modalityKey(group) === 'SUPERINTENSIVO' ? 12 : 6;
   return <button type="button" className={`ins-group-card ${levelClass(group)} ${selected?'selected':''}`} onClick={()=>onSelect(group)}>
     <div className="ins-group-top"><span>{group.nivel}</span><b>{groupStatusLabel(group)}</b></div>
     <h3>{group.schedule_short || formatScheduleShort(group)}</h3>
-    <p>{group.modalidad_label}</p>
-    {withINA && <div className="ins-group-ina"><b>CON INA</b><span>Club iCAN incluido · 32 h por nivel{icanDay ? ' · ' + icanDay : ''}</span></div>}
+    {withINA && <small className="ins-group-ican-day">(Club iCAN: {icanDay || 'horario por confirmar'}, 2 horas adicionales)</small>}
+    <p>{modalityKey(group)==='SUPERINTENSIVO'?'Súper intensivo':'Intensivo'} · {weeklyClass} h de clase{withINA ? ' + 2 h iCAN' : ''} por semana</p>
+    {withINA && <div className="ins-group-ina"><b>CON INA</b></div>}
     <dl>
-      <div><dt>Inicio de {group.nivel}</dt><dd>{group.fecha_inicio_label}</dd></div>
-      <div><dt>Cupos</dt><dd>{group.cupo_disponible > 0 ? group.cupo_disponible : (wait?'Reserva':'Por confirmar')}</dd></div>
-      <div><dt>Matrícula</dt><dd>{fmtMoney(group.precio_matricula)}</dd></div>
-      <div><dt>Cuota mensual regular</dt><dd>{fmtMoney(group.precio_cuota)}</dd></div>
+      <div><dt>Inicio</dt><dd>{group.fecha_inicio_label}</dd></div>
+      <div><dt>Cupos</dt><dd>{group.cupo_disponible > 0 ? group.cupo_disponible : (group.estado_cupo === 'LISTA_ESPERA'?'Reserva':'Por confirmar')}</dd></div>
     </dl>
-    {impactaMonthly !== null && <div className="ins-impacta-price"><span>Con Beca Impacta ({impactaPct}% en mensualidades)</span><strong>{fmtMoney(impactaMonthly)} / mes</strong><small>Sujeto a solicitud y aprobación de la beca. Matrícula sin descuento.</small></div>}
-    {withINA && <div className="ins-group-calendar"><span>96 h de clases + 32 h de Club iCAN por nivel.</span>{group.periodo_label && <span>{group.periodo_label}</span>}{group.duracion_label && <span>{group.duracion_label}</span>}</div>}
     <small>Código: {group.codigo}</small>
   </button>;
 }
 
-function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedGroup,setStep,reloadGroups,becas}){
+function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedGroup,setStep,reloadGroups}){
   const [courseType,setCourseType]=React.useState(form.modalidad ? modalityKey({modalidad:form.modalidad}) : '');
   const onlyINA = groups.length > 0 && groups.every(g => upper(g.programa) === 'INA');
-  const impacta = (becas || []).find(b => b.key === 'BECA_IMPACTA' && b.disponible !== false) || null;
   const counts = React.useMemo(()=>{
     const acc = {INTENSIVO:0, SUPERINTENSIVO:0};
     groups.forEach(g=>{ const key = modalityKey(g); acc[key] = (acc[key] || 0) + 1; });
@@ -973,7 +974,7 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
       <div className="ins-ina-copy">
         <span>Programa acreditado por el INA</span>
         <h3>Inglés Conversacional <em>CON INA</em></h3>
-        <p><strong>Incluye Club iCAN.</strong> Cada nivel comprende 128 horas: 96 horas de clases y 32 horas de Club iCAN. El programa completo tiene 4 niveles y 512 horas.</p>
+        <p><strong>Incluye Club iCAN:</strong> 2 horas adicionales por semana.</p>
       </div>
       <img src="assets/inscripcion/logo-ina-acreditacion-2027.webp?v=F111INAINSC20261029R2" alt="Unidad de Acreditación e Instituto Nacional de Aprendizaje (INA)" loading="eager" />
     </div>}
@@ -986,7 +987,7 @@ function GroupStep({groups,loading,error,form,setForm,selectedGroup,setSelectedG
     {!loading && !error && courseType && filtered.length===0 && <Alert>No encontramos horarios activos para esta modalidad. Probá la otra opción o actualizá la lista.</Alert>}
     {courseType && Object.keys(grouped).map(level=><div key={level} className="ins-level-block">
       <div className="ins-level-title"><span className={`ins-level-dot ${levelClass(grouped[level][0])}`}></span><strong>{level}</strong></div>
-      <div className="ins-groups-grid">{grouped[level].map(g=><GroupCard key={g.codigo} group={g} selected={selectedGroup?.codigo===g.codigo} onSelect={chooseGroup} impacta={impacta} />)}</div>
+      <div className="ins-groups-grid">{grouped[level].map(g=><GroupCard key={g.codigo} group={g} selected={selectedGroup?.codigo===g.codigo} onSelect={chooseGroup} />)}</div>
     </div>)}
     {selectedGroup && <div className="ins-selected-box">
       <div><span>Horario seleccionado</span><strong>{selectedGroup.nivel} · {selectedGroup.schedule_short}</strong><small>Inicio {selectedGroup.fecha_inicio_label} · {groupStatusLabel(selectedGroup)}</small></div>
@@ -1103,17 +1104,12 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   const becasActivas = (becas || []).filter(Boolean);
   const becasMap = {};
   becasActivas.forEach(b => { becasMap[b.key] = b; });
-  const visibleBecas = ['BECA_IMPACTA','BECA_MUJER']
-    .map(key => becasMap[key] || {
-      id:key,
-      key,
-      nombre:key === 'BECA_IMPACTA' ? 'BECA IMPACTA' : 'BECA MUJER',
-      porcentaje:'',
-      descripcion:'Esta beca debe habilitarse desde Super Admin.',
-      disponible:false
-    });
-  const becasDisponibles = visibleBecas.filter(b => b.disponible !== false);
-  const becasSinCupo = visibleBecas.filter(b => b.disponible === false);
+  const impacta = becasMap.BECA_IMPACTA || null;
+  const selectedImpacta = !!impacta && impacta.disponible !== false &&
+    (form.beca === impacta.id || form.beca_propio === impacta.id);
+  const impactaPct = Number(clean(impacta?.porcentaje).replace('%',''));
+  const precioFinal = selectedImpacta && impactaPct > 0 && impactaPct < 100 && Number(selectedGroup?.precio_cuota) > 0
+    ? Math.round(Number(selectedGroup.precio_cuota) * (1 - impactaPct / 100)) : null;
   const toeicAmount = conapeToeicAmount(selectedGroup, form);
   const toeicAvailable = selectedGroup?.toeic_disponible || toeicAmount > 0;
   const laptopSelected = isConapeEquipoSelected(form.conape_equipo);
@@ -1121,7 +1117,8 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
 
   function next(){
     const missing=[];
-    if(!clean(form.financiamiento)) missing.push('opción de pago');
+    if(!propio) missing.push('matrícula con la Academia');
+    if(!selectedImpacta) missing.push('Beca Impacta');
     if(!clean(form.como_entero)) missing.push('cómo se enteró');
     if(!clean(form.conocimientos_previos)) missing.push('experiencia con el inglés');
     if(selectedGroup?.estado_cupo === 'LISTA_ESPERA' && !form.aceptar_lista_espera) missing.push('aceptación de lista de espera');
@@ -1130,13 +1127,13 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
   }
 
   return <section className="ins-card ins-step-card">
-    <div className="ins-card-head"><span>Paso 4</span><h2>Opciones de pago</h2><p>Elegí la opción que mejor se ajusta a tu proceso de ingreso.</p></div>
+    <div className="ins-card-head"><span>Paso 4</span><h2>Opciones de pago</h2><p>Seleccioná Beca Impacta para aplicar al descuento en mensualidades.</p></div>
     <div className="ins-choice-grid finance-grid">
-      <button type="button" className={`ins-choice finance academy-pay ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>🎓</i><strong>Matrícula con la Academia</strong><span>Pagá directamente la matrícula y las mensualidades. Si hay una beca con cupo, podés solicitarla de forma opcional.</span></button>
-      <button type="button" className={`ins-choice finance conape-pay ${conape?'selected':''}`} onClick={()=>setForm({financiamiento:'CONAPE',beca:'',beca_propio:''})}><i>🏦</i><strong>Financiado por CONAPE</strong><span>Financia el 100% del programa, laptop, internet y certificación internacional TOEIC.</span></button>
+      <button type="button" className={`ins-choice finance academy-pay ${propio?'selected':''}`} onClick={()=>setForm({financiamiento:'PROPIO'})}><i>🎓</i><strong>Matrícula con la Academia</strong><span>Solicitá Beca Impacta.</span></button>
+      <button type="button" className="ins-choice finance conape-pay is-disabled" disabled aria-disabled="true"><i>🏦</i><strong>Financiamiento CONAPE</strong><span>Temporalmente no disponible</span></button>
     </div>
 
-    {conape && <div className="ins-subcard conape-panel">
+    {false && conape && <div className="ins-subcard conape-panel">
       <div className="ins-conape-title">
         <div><h3>Opciones CONAPE</h3><p>Seleccioná lo que querés incluir en la propuesta. Admisiones valida condiciones, montos y disponibilidad antes de formalizar.</p></div>
         <span>{selectedGroup?.codigo || 'Grupo por confirmar'}</span>
@@ -1194,15 +1191,16 @@ function FinanceStep({form,setForm,setStep,selectedGroup,becas,asesores}){
     </div>}
 
     {propio && <div className="ins-subcard">
-      <h3>Becas disponibles <small style={{fontWeight:600,color:'var(--ink-3, #777)'}}>· opcional</small></h3>
-      {becasDisponibles.length > 0 ? <div className="ins-beca-grid">
-        {becasDisponibles.map(b=><BecaCard key={b.id || b.nombre} beca={b} selected={(form.beca || form.beca_propio) === b.id} onSelect={id=>{setBecaNotice('');setForm({beca:id,beca_propio:id});}} />)}
-      </div> : <Alert>No hay becas con cupo en este momento. Podés continuar con matrícula regular y pagar la matrícula y mensualidades correspondientes.</Alert>}
-      {becasSinCupo.length > 0 && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}>
-        {becasSinCupo.map(b=><span key={b.id || b.nombre} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 10px',border:'1px solid #E3E6EA',borderRadius:999,background:'#F7F8FA',color:'#737B85',fontSize:12,fontWeight:700}}><b style={{color:'#59616B'}}>{b.nombre}</b> · Sin cupo</span>)}
+      <h3>Beca Impacta</h3>
+      {impacta && impacta.disponible !== false
+        ? <BecaCard beca={impacta} selected={selectedImpacta} onSelect={id=>{setBecaNotice('');setForm({beca:id,beca_propio:id});}}/>
+        : <Alert type="error">Beca Impacta sin cupos disponibles por el momento.</Alert>}
+      {precioFinal !== null && <div className="ins-beca-precio">
+        <span>Mensualidad con Beca Impacta ({impactaPct}% de descuento)</span>
+        <strong>{fmtMoney(precioFinal)}</strong>
+        <small>Matrícula: {fmtMoney(selectedGroup?.precio_matricula)}.</small>
       </div>}
       {becaNotice && <Alert type="error">{becaNotice}</Alert>}
-      {!clean(form.beca || form.beca_propio) && becasDisponibles.length > 0 && <Alert>Si querés una beca, podés seleccionarla. Si preferís pagar el precio regular, continuá sin elegir ninguna.</Alert>}
     </div>}
 
     <div className="ins-grid two">
@@ -1463,7 +1461,9 @@ function InscripcionApp(){
     if(upper(form.distrito)==='OTRO' && !clean(form.distrito_otro)) return 'Escribí el distrito.';
     if(!clean(form.direccion) || !clean(form.fecha_nac) || !clean(form.sexo)) return 'Completá los datos personales obligatorios.';
     if(form.es_menor && (!clean(form.tutor_nombre) || !clean(form.tutor_cedula) || !clean(form.tutor_tel))) return 'Completá los datos del representante legal.';
-    if(!clean(form.financiamiento)) return 'Seleccioná una opción de pago.';
+    if(upper(form.financiamiento) !== 'PROPIO') return 'El financiamiento CONAPE no está disponible en esta inscripción.';
+    const impactaElegible=(becas || []).find(b => b.key === 'BECA_IMPACTA' && b.disponible !== false && b.id === (form.beca || form.beca_propio));
+    if(!impactaElegible) return 'Seleccioná Beca Impacta en opciones de pago.';
     if(!clean(form.como_entero)) return 'Indicá cómo te enteraste.';
     if(!clean(form.conocimientos_previos)) return 'Seleccioná tu experiencia con el inglés.';
     if(!form.foto_ced_frente || !form.foto_ced_dorso || !form.foto_titulo) return 'Subí los tres documentos requeridos.';
@@ -1478,7 +1478,7 @@ function InscripcionApp(){
     try{
       const finalDistrict = upper(form.distrito)==='OTRO' ? clean(form.distrito_otro) : form.distrito;
       const selectedBecaId = clean(form.beca || form.beca_propio);
-      const selectedBeca = (becas || []).find(b => b.id === selectedBecaId && b.disponible !== false);
+      const selectedBeca = (becas || []).find(b => b.key === 'BECA_IMPACTA' && b.id === selectedBecaId && b.disponible !== false);
       const becaVigente = upper(form.financiamiento)==='PROPIO' && selectedBeca ? selectedBeca.id : '';
       const payload = {
         ...form,
@@ -1523,7 +1523,7 @@ function InscripcionApp(){
     {!success && <div className="ins-main">
       <Stepper step={step} />
       {step===0 && <CedulaStep form={form} setForm={setForm} cedulaStatus={cedulaStatus} setCedulaStatus={setCedulaStatus} setStep={setStep} setPadronName={setPadronName}/>} 
-      {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups} becas={becas}/>}
+      {step===1 && <GroupStep groups={groups} loading={groupsLoading} error={groupsError} form={form} setForm={setForm} selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup} setStep={setStep} reloadGroups={reloadGroups}/>}
       {step===2 && <DatosStep form={form} setForm={setForm} setStep={setStep} padronName={padronName}/>} 
       {step===3 && <FinanceStep form={form} setForm={setForm} setStep={setStep} selectedGroup={selectedGroup} becas={becas} asesores={asesores}/>} 
       {step===4 && <DocsStep form={form} setForm={setForm} setStep={setStep}/>} 
