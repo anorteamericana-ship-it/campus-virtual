@@ -738,6 +738,8 @@ function Paso4AP({
           <div style={{margin:'8px 0'}}>
             Este pago se registrará en matrícula/cuotas/certificado de B2 con su recibo y referencia bancaria.
             B1 sigue CA con sus notas reales; B2 sigue PE, sin fila de morosidad SI/NO en CONAPE hasta su activación.
+            El anticipo queda vinculado al grupo previsto de B2. Si después se cambia ese grupo,
+            se debe conciliar y convalidar el pago antes de dar B2 por cancelado.
           </div>
           <span style={{display:'flex',alignItems:'flex-start',gap:8}}>
             <input type="checkbox" checked={anticipoConfirmado} onChange={e=>setAnticipoConfirmado(e.target.checked)} />
