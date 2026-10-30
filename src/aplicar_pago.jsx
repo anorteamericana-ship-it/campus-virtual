@@ -376,7 +376,7 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
                   <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:4 }}>{grupoNivel || 'Sin grupo asignado'}</div>
                   <div style={{ fontSize:12, color:'var(--ink-2)' }}>
                     {String(h?.estatus || '').toUpperCase() === 'PE'
-                      ? <>Precio de cuota proyectada: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · saldo anticipable {fmtCRC_A(Math.max(0,cuotaNivel*Number(pendientes.n_cuotas_periodo||4)-Number(pNivel.cuotas_pagadas||0)))}</>
+                      ? <>Precio de cuota proyectada: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · saldo anticipable {fmtCRC_A(Math.max(0,cuotaNivel*Number(pNivel.n_cuotas_periodo||0)-Number(pNivel.cuotas_pagadas||0)))}</>
                       : cuotaNivel > 0 && Number(pNivel.cuotas_pend || 0) > 0
                         ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · pendiente {fmtCRC_A(pNivel.cuotas_pend)}</>
                         : <span style={{ color:'#2E7D32', fontWeight:600 }}>✓ Sin cuotas pendientes</span>}
@@ -542,7 +542,9 @@ function Paso4AP({
 
   // Cantidad realmente pendiente del intento seleccionado. Evita cobrar de más
   // cuando ya existen una o más cuotas aplicadas en ese mismo grupo/intento.
-  const nCuotasPeriodo = Number(pend.n_cuotas_periodo || pendNivel.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
+  const nCuotasPeriodo = anticipoFuturo
+    ? Number(pendNivel.n_cuotas_periodo || 0)
+    : Number(pendNivel.n_cuotas_periodo || pend.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
   const cuotaPendienteTotal = anticipoFuturo
     ? Math.max(0, montoCuota*nCuotasPeriodo - Number(pendNivel.cuotas_pagadas || 0))
     : Number(pendNivel.cuotas_pend || 0);
@@ -567,7 +569,7 @@ function Paso4AP({
 
   const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qToeic*montoToeic + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
-  const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl && (!anticipoFuturo || anticipoConfirmado);
+  const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl && (!anticipoFuturo || (anticipoConfirmado && (nCuotasPeriodo === 2 || nCuotasPeriodo === 4)));
 
   // Sync panel
   React.useEffect(() => { setTotalAplicarPanel(total); }, [total]);
