@@ -1,5 +1,17 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 D5-R4 — 32 QUIZZES: EDITORIAL ADMINISTRATIVA IMPLEMENTADA, NO DESPLEGADA (30-oct-2026)
+
+**Estado fuente de verdad:** Inscripción INA 2027 PR #666 en `main` commit remoto 9502332d intacto. Orales de Keylor aceptados, pendiente actuación normal del profesor, no volver. Campus institucional CORE **@481**; Quiz deployment **@477** CONFIRMADOS mediante lectura `clasp deployments` 30-oct. El bloqueo de `clasp deploy -i` sigue sin resolver; NO se intentó evadir. No confundir @HEAD de Apps Script con deployment público.
+
+**D5-R4 código NO LIVE:** backend `703791714c53f9a07c85456b4ab36ebc06a249c9` en PR #65, frontend `3f1e5f129147fd488d7c99dc15f67fc221e345b1` en PR #511. Se añadió revisión editorial privada `__CATALOGO__` restringida a admin/superadmin SIN grupo/fecha para poder inspeccionar los 32 PDF/clave/guion/esquema antes de formar clases; docentes continúan atados a grupo+nivel+CURSO activo. La UI B2/I1/I2 ofrece opción institucional sin grupo SOLO si el backend confirma permiso, junto a vistas privadas de los 24 Progress Checks. Ningún lanzamiento, calificación, apertura o cambio de hojas. Tests de seguridad **38/38 PASS**, B1 auth 56 PASS, QZ32 E1 PASS, frontend `node --check` PASS; backend 3/4 CI exitosos, 1 workflow R11 offline falla por contrato antiguo de orales no modificado aquí; guard frontend push PASS.
+
+**Verificación producción PC01 (lectura real 30-oct):** 13 entradas `ENTREGADO`, 13 alumnos diferentes en `B1-KJ18-C3-0826`, B1 L4, 0 REVISADO; se conservan. Permiso docente de nombres invertidos D5-R1 preparado pero no publicado Quiz. PC02/L8 fecha 05-nov-2026 sin activación previa. Inventario 32/32 catálogos y 32/32 esquemas/manifiestos; B1 audio 8 referenciado, B2/I1/I2 **24 grabaciones sin verificación**. No declarar que 32 quizzes están disponibles para estudiante. F111 **16/35=46%**, 19 pendientes, sin aumento por código.
+
+**PRÓXIMO R5:** por canal autorizado publicar SOLO Quiz con D5-R1+R3+R4, comprobar versión y acceso autenticado Diego a 13 PC01; después integrar SOLO frontend de vistas de material sobre `main` sin alterar INA/otros PR, probar revisión editorial admin B2 en LIVE, completar 24 MP3/editorial por nivel antes de estudiante. No rehacer R4, orales ni inscripción. Reportar estado real y prompt de continuidad.
+
+---
+
 ## F111 D5-R3 — 32 QUIZZES RECONCILIADOS, MATERIALES DOCENTES 24 PREPARADOS, TODAVÍA NO LIVE (29-oct-2026)
 
 **NO TOCAR ORALES / INA.** User confirmed oral exam workflow accepted, 16 pending teacher approvals, no more oral development. `main` remote current `9502332d0a4888a397dbc74267b685b3bc9dd969` includes INA 2027 PR #666: keep simplified schedules, Impacta 60% only monthly fees, matrícula ₡20.000, CONAPE disabled, Beca Mujer hidden, approved logo resource. This iteration changed no enrollment code, official notes or 13 PC01 submissions.
