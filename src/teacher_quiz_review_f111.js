@@ -202,8 +202,14 @@ function buildPrivateTeacherLevelControls(level,lesson){
    throw Error('Catálogo no autorizado');
   const empty=make('option','Seleccioná tu grupo autorizado');empty.value='';select.append(empty);
   const groups=Array.isArray(data.grupos)?data.grupos.filter(x=>x.nivel===level&&typeof x.cod_grupo==='string'):[];
+  if(data.consulta_editorial_sin_grupo===true){
+   const option=make('option','CATÁLOGO INSTITUCIONAL · REVISIÓN EDITORIAL (SIN GRUPO)');
+   option.value='__CATALOGO__';select.append(option);
+  }
   groups.forEach(g=>{const o=make('option',g.cod_grupo);o.value=g.cod_grupo;select.append(o)});
-  status.textContent=groups.length?'Material de consulta privada. Sin lanzamiento digital ni acceso estudiantil.':'Sin grupos activos autorizados en '+level+'.';
+  status.textContent=(groups.length||data.consulta_editorial_sin_grupo===true)?
+   'Consulta privada institucional; no habilita estudiantes ni cambia notas.':
+   'Sin grupos activos autorizados en '+level+'.';
  }).catch(e=>{status.textContent='Consulta no disponible: '+String(e.message||e)+'. Quizzes no habilitados.';});
  return wrap;
 }
