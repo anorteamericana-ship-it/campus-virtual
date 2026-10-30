@@ -1,5 +1,9 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## CONFIRMACIÓN DEL RESPONSABLE — NO REABRIR TRABAJOS ORALES KEYLOR (29-oct-2026)
+
+El responsable confirma revisión humana satisfactoria de visualización de **los 17 expedientes guardados**, acceso a rúbricas, procedimiento de impresión/PDF y primer documento Vanessa **17189** entregado y archivado. El machote de diseño docente **R51** con logo completo fue aprobado. **No se requieren nuevos pilotos, pruebas, reconstrucciones ni reemisión de Vanessa**. Permanecen **16 expedientes BORRADOR** cuyo cierre es una actividad normal del **profesor Keylor**, individual y con los puntajes originales; no afirmar cierre automático ni 17 PDF existentes. Se mantiene como observación técnica diferida que el diseño R51 aún no estaba integrado al generador @481 al momento de aprobarlo, sin abrir trabajo nuevo. **Progress Checks PC01–PC08 son independientes**; el último dato técnico Quiz LIVE era @477 con fix autorización D5-B1 en código pendiente de publicación, no confundirse con orales. Inscripción INA 2027 PR #666 integrada y preservada. Se registró esta aclaración para impedir que los siguientes prompts rehagan trabajo aceptado por la Academia.
+
 ## F111 D5-B1 R1 — PC01/PC02–08: CÓDIGO CORREGIDO, QUIZ LIVE @477 NO ACTUALIZADO (29-oct-2026)
 
 **SINCRO INA 2027 PUBLICADO, NO REIMPLEMENTAR:** Frontend main remote SHA `9502332d0a4888a397dbc74267b685b3bc9dd969` confirmado, PR #666 fusionado 29-oct-2026. Inscripción pública cache `F111INSCRSIMPL20261029R3`, horarios 8h/14h con iCAN, grupos 1027/1127, logo INA autorizado `assets/inscripcion/logo-ina-acreditacion-2027.webp`; CONAPE deshabilitado, Impacta 60% solo sobre mensualidad 74.750→29.900, matrícula 20.000 sin descuento, Beca Mujer oculta. Main no se modificó en esta pasada. No revertir esos cambios ni restaurar precios/becas/CONAPE antiguos.
