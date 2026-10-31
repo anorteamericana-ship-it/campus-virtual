@@ -306,7 +306,10 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
     if (i === 0) { desbloq[niv] = activoFinanciero; return; }
     const prev = NIVEL_ORDER_A[i-1];
     const estadoPrev = String(niveles[prev]?.estatus || '').trim().toUpperCase();
-    desbloq[niv] = activoFinanciero && STATUS_APROBADO.includes(estadoPrev);
+    const anticipoB2 = niv === 'B2' && estadoActual === 'PE' &&
+      String(estSel?.CONVENIO || '').trim().toUpperCase() === 'CONAPE' &&
+      estadoPrev === 'CA';
+    desbloq[niv] = (activoFinanciero && STATUS_APROBADO.includes(estadoPrev)) || anticipoB2;
   });
 
   const seleccionarNivel = (niv) => {
@@ -326,7 +329,7 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
   return (
     <div>
       <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, marginBottom:6, color:'var(--an-navy-ink)' }}>Seleccionar nivel</div>
-      <div style={{ fontSize:13, color:'var(--ink-3)', marginBottom:18 }}>Solo los niveles existentes y no proyectados (PE) pueden recibir pagos.</div>
+      <div style={{ fontSize:13, color:'var(--ink-3)', marginBottom:18 }}>Los niveles activos admiten pagos ordinarios. Para CONAPE se permite el anticipo de B2 en PE sin aprobar B1 ni activar B2.</div>
 
       {/* Info estudiante */}
       <div style={{ padding:'12px 16px', background:'color-mix(in srgb,var(--an-navy) 5%,white)', border:'1px solid color-mix(in srgb,var(--an-navy) 20%,white)', borderRadius:'var(--r-md)', marginBottom:18, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
@@ -365,11 +368,18 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
               </div>
               {ok ? (
                 <>
+                  {String(h?.estatus || '').toUpperCase() === 'PE' && (
+                    <div style={{fontSize:11,color:'#9A5B00',fontWeight:700,marginBottom:5}}>
+                      Anticipo financiero B2 — mantiene PE, no cambia notas ni morosidad CONAPE
+                    </div>
+                  )}
                   <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:4 }}>{grupoNivel || 'Sin grupo asignado'}</div>
                   <div style={{ fontSize:12, color:'var(--ink-2)' }}>
-                    {cuotaNivel > 0 && Number(pNivel.cuotas_pend || 0) > 0
-                      ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · pendiente {fmtCRC_A(pNivel.cuotas_pend)}</>
-                      : <span style={{ color:'#2E7D32', fontWeight:600 }}>✓ Sin cuotas pendientes</span>}
+                    {String(h?.estatus || '').toUpperCase() === 'PE'
+                      ? <>Precio de cuota proyectada: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · saldo anticipable {fmtCRC_A(Math.max(0,cuotaNivel*Number(pNivel.n_cuotas_periodo||0)-Number(pNivel.cuotas_pagadas||0)))}</>
+                      : cuotaNivel > 0 && Number(pNivel.cuotas_pend || 0) > 0
+                        ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · pendiente {fmtCRC_A(pNivel.cuotas_pend)}</>
+                        : <span style={{ color:'#2E7D32', fontWeight:600 }}>✓ Sin cuotas pendientes</span>}
                   </div>
                   {matriculaNivel > 0 && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Matrícula pendiente: {fmtCRC_A(matriculaNivel)}</div>}
                   {cargoNivel && <div style={{ fontSize:11, color:'#9A5B00', fontWeight:700, marginTop:2 }}>{cargoNivel.CONCEPTO}: {fmtCRC_A(cargoNivel.MONTO)}</div>}
@@ -493,10 +503,15 @@ function Paso4AP({
 
   const pendNivel = pend?.por_nivel?.[niv] || {};
   const estadoNivel = String(pendNivel.estatus || estData?.niveles?.[niv]?.estatus || '').trim().toUpperCase();
+  const anticipoFuturo = niv === 'B2' && estadoNivel === 'PE' &&
+    String(est?.CONVENIO || '').trim().toUpperCase() === 'CONAPE' &&
+    String(estData?.niveles?.B1?.estatus || '').trim().toUpperCase() === 'CA';
   const nivelMatriculado = !!estData?.niveles?.[niv] && estadoNivel !== 'PE';
-  const documentoCobrable = nivelMatriculado && ['CA','APR'].includes(estadoNivel);
-  const montoMat   = nivelMatriculado ? Number(pendNivel.matricula_pend ?? pend.matricula ?? 0) : 0;
-  const montoCuota = nivelMatriculado ? Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0) : 0;
+  const documentoCobrable = (nivelMatriculado && ['CA','APR'].includes(estadoNivel)) || anticipoFuturo;
+  const montoMat = anticipoFuturo
+    ? Math.max(0, Number(pendNivel.precio_matricula || est?.MATRICULA || 0) - Number(pendNivel.mat_pagada || 0))
+    : nivelMatriculado ? Number(pendNivel.matricula_pend ?? pend.matricula ?? 0) : 0;
+  const montoCuota = nivelMatriculado || anticipoFuturo ? Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0) : 0;
 
   // El certificado puede cobrarse durante CA. La morosidad sigue exigiéndolo
   // únicamente al aprobar; aquí solo se habilita el cobro anticipado/controlado.
@@ -523,12 +538,16 @@ function Paso4AP({
     String(c.ESTADO || '').toUpperCase() === 'PENDIENTE' &&
     (!c.NIVEL || String(c.NIVEL).toUpperCase() === String(niv || '').toUpperCase())
   ) || null;
-  const montoOtro = Number(cargoOtro?.MONTO || 0);
+  const montoOtro = anticipoFuturo ? 0 : Number(cargoOtro?.MONTO || 0);
 
   // Cantidad realmente pendiente del intento seleccionado. Evita cobrar de más
   // cuando ya existen una o más cuotas aplicadas en ese mismo grupo/intento.
-  const cuotaPendienteTotal = Number(pendNivel.cuotas_pend || 0);
-  const nCuotasPeriodo = Number(pendNivel.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
+  const nCuotasPeriodo = anticipoFuturo
+    ? Number(pendNivel.n_cuotas_periodo || 0)
+    : Number(pendNivel.n_cuotas_periodo || pend.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
+  const cuotaPendienteTotal = anticipoFuturo
+    ? Math.max(0, montoCuota*nCuotasPeriodo - Number(pendNivel.cuotas_pagadas || 0))
+    : Number(pendNivel.cuotas_pend || 0);
   const nCuotas = montoCuota > 0 && cuotaPendienteTotal > 0
     ? Math.min(nCuotasPeriodo, Math.ceil(cuotaPendienteTotal / montoCuota))
     : 0;
@@ -540,6 +559,8 @@ function Paso4AP({
   }, [mostrarCuotas, nCuotas, qCuota, setQCuota]);
 
   const [cargandoApl, setCargandoApl] = React.useState(false);
+  const [anticipoConfirmado, setAnticipoConfirmado] = React.useState(false);
+  React.useEffect(() => { setAnticipoConfirmado(false); }, [est?.CODIGO, niv, compr?.doc]);
   const [errLocal, setErrLocal] = React.useState('');
   const requestIdRef = React.useRef('');
   React.useEffect(() => {
@@ -548,7 +569,7 @@ function Paso4AP({
 
   const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qToeic*montoToeic + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
-  const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl;
+  const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl && (!anticipoFuturo || (anticipoConfirmado && (nCuotasPeriodo === 2 || nCuotasPeriodo === 4)));
 
   // Sync panel
   React.useEffect(() => { setTotalAplicarPanel(total); }, [total]);
@@ -581,6 +602,7 @@ function Paso4AP({
         doc:            compr.doc,
         monto_total:    total,
         cod_estudiante: est?.CODIGO || est?.rec_m,
+        anticipo_futuro: anticipoFuturo,
         rubros,
       });
       if (!data.ok) { setErrLocal(apSafeUserError(data?.error || data?.mensaje, 'No se pudo aplicar el pago. Revisá los datos e intentá de nuevo.', 'aplicar_pago')); return; }
@@ -604,6 +626,7 @@ function Paso4AP({
         monto:          total,
         saldoRestante:  data.saldo_restante ?? (saldo - total),
         conapeSyncFallo,
+        anticipoFuturo,
       });
     } catch(e) {
       setErrLocal(apSafeUserError(e?.message || String(e), 'No se pudo aplicar el pago. Revisá la conexión e intentá de nuevo.', 'aplicar_pago'));
@@ -620,7 +643,7 @@ function Paso4AP({
           borderRadius:'var(--r-xl)', padding:'40px 32px', color:'white', marginBottom:20,
         }}>
           <div style={{ fontSize:60, marginBottom:12 }}>✅</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:28, fontWeight:500, marginBottom:6 }}>Pago aplicado</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:28, fontWeight:500, marginBottom:6 }}>{confirmado.anticipoFuturo ? 'Anticipo B2 registrado' : 'Pago aplicado'}</div>
           {confirmado.recibos.map((rec, i) => (
             <div key={i} style={{ fontSize:28, fontFamily:'var(--f-mono)', fontWeight:700, letterSpacing:'0.04em', marginBottom:6 }}>
               REC-{rec}
@@ -633,6 +656,11 @@ function Paso4AP({
             </div>
           )}
         </div>
+        {confirmado.anticipoFuturo && (
+          <div style={{padding:'12px 16px',marginBottom:14,borderRadius:10,background:'#FFF8E9',color:'#75480B',textAlign:'left',fontSize:13}}>
+            B2 permanece PE y B1 permanece CA. No se reporta B2 como NO/SI en morosidad CONAPE hasta su activación académica.
+          </div>
+        )}
         {confirmado.conapeSyncFallo && (
           <div style={{
             padding:'12px 16px', marginBottom:16,
@@ -704,6 +732,21 @@ function Paso4AP({
         )}
       </div>
 
+      {anticipoFuturo && (
+        <label style={{display:'block',padding:'14px 16px',marginBottom:16,border:'1px solid #A76A1F',background:'#FFF8E9',borderRadius:10,fontSize:13,color:'#75480B',lineHeight:1.45}}>
+          <strong>Anticipo financiero de Básico II — CONAPE</strong>
+          <div style={{margin:'8px 0'}}>
+            Este pago se registrará en matrícula/cuotas/certificado de B2 con su recibo y referencia bancaria.
+            B1 sigue CA con sus notas reales; B2 sigue PE, sin fila de morosidad SI/NO en CONAPE hasta su activación.
+            El anticipo queda vinculado al grupo previsto de B2. Si después se cambia ese grupo,
+            se debe conciliar y convalidar el pago antes de dar B2 por cancelado.
+          </div>
+          <span style={{display:'flex',alignItems:'flex-start',gap:8}}>
+            <input type="checkbox" checked={anticipoConfirmado} onChange={e=>setAnticipoConfirmado(e.target.checked)} />
+            Confirmé que el comprobante pertenece a este estudiante y autorizo registrar el anticipo B2 sin promoverlo.
+          </span>
+        </label>
+      )}
       {/* Total */}
       <div style={{ padding:'16px 18px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:'1px solid var(--line)', marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span style={{ fontWeight:700, fontSize:15 }}>Total a aplicar</span>
