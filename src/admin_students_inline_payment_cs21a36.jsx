@@ -3,7 +3,7 @@
 (function(){
 'use strict';
 
-const BUILD='F98.4-Z6-CS21A36';
+const BUILD='F111-CONAPE-CONSULTA-ANTICIPO-20261031';
 const LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 const RUBRO_LABEL={MATRICULA:'Matrícula',CUOTA:'Cuotas',CERTIFICADO:'Certificado',PROGRAMA_COMPLETO:'Programa completo',TOEIC:'TOEIC'};
 const InlinePaymentContext=React.createContext(null);
@@ -203,6 +203,132 @@ function AgIndIntentoFinancieroCS21A36({intento,color,nivel,certificadoRegistro}
   </div>;
 }
 
+// F111: cobro CONAPE en PE desde Consulta individual; mismo aplicarPago que
+// la pantalla de Aplicar Pago. El servidor vuelve a validar TODOS los importes.
+function AgIndAnticipoConape({codigo,nivel,color}){
+  const ctx=React.useContext(InlinePaymentContext);
+  const open=ctx?.openLevel===nivel;
+  const [loading,setLoading]=React.useState(false);
+  const [finance,setFinance]=React.useState(null);
+  const [query,setQuery]=React.useState('');
+  const [receipt,setReceipt]=React.useState(null);
+  const [searching,setSearching]=React.useState(false);
+  const [applying,setApplying]=React.useState(false);
+  const [accepted,setAccepted]=React.useState(false);
+  const [error,setError]=React.useState('');
+  const [success,setSuccess]=React.useState('');
+  const idRef=React.useRef('');
+
+  React.useEffect(()=>{
+    if(!open)return;
+    let alive=true;
+    setFinance(null);setLoading(true);setError('');setReceipt(null);
+    setAccepted(false);setQuery('');setSuccess('');idRef.current='';
+    postInline('getEstudiante',{codigo},45000).then(data=>{
+      if(!alive)return;
+      const e=data.estudiante||{},levels=data.niveles||{},target=levels[nivel]||{},info=data.pendientes?.por_nivel?.[nivel]||{};
+      const order=['B1','B2','I1','I2'],index=order.indexOf(nivel),previous=index>0?order[index-1]:'';
+      const prevStatus=previous?upper(levels[previous]?.estatus):'';
+      if(upper(e.CONVENIO||e.convenio)!=='CONAPE'||upper(target.estatus)!=='PE'||index<0||(previous&&prevStatus!=='CA'))
+        throw new Error('Solo se anticipa CONAPE del nivel PE inmediatamente siguiente al que está CA.');
+      const n=num(info.n_cuotas_periodo),m=num(info.precio_matricula),q=num(info.precio_cuota),c=num(info.precio_certificado);
+      if(![2,4].includes(n)||m<=0||q<=0||c<=0)throw new Error('El nivel no tiene precios contractuales completos para anticiparlo.');
+      const dueMat=round(Math.max(0,m-num(info.mat_pagada)));
+      const dueQuota=round(Math.max(0,q*n-num(info.cuotas_pagadas)));
+      const dueCert=round(Math.max(0,c-num(info.cert_pagado)));
+      const total=round(dueMat+dueQuota+dueCert);
+      if(total<=.009)throw new Error('Este nivel ya no tiene saldo financiero por anticipar.');
+      const group=norm(info.grupo||target.grupo);
+      if(!group)throw new Error('El nivel PE no tiene grupo financiero asignado.');
+      setFinance({m:dueMat,q:dueQuota,c:dueCert,total,group,previous,n,unit:q});
+    }).catch(e=>alive&&setError(inlineFinanceSafeUserError(e?.message||String(e),'No se pudo preparar el anticipo. Actualizá la consulta.','anticipo_futuro')))
+      .finally(()=>alive&&setLoading(false));
+    return()=>{alive=false;};
+  },[open,codigo,nivel]);
+
+  async function buscar(){
+    if(!finance)return;
+    const doc=norm(query);
+    if(!/^\d{4,}$/.test(doc)){setError('Escribí el número exacto del comprobante bancario.');return;}
+    setSearching(true);setError('');setReceipt(null);setAccepted(false);idRef.current='';
+    try{
+      const r=await postInline('getComprobantes',{numero_documento:doc,consulta_en:Date.now()},45000);
+      const found=availableReceipts(r.comprobantes).find(x=>norm(x.doc)===doc);
+      if(!found)throw new Error('El comprobante no existe o no tiene saldo disponible.');
+      setReceipt(found);
+    }catch(e){setError(inlineFinanceSafeUserError(e?.message||String(e),'No se pudo consultar el comprobante.','buscar_anticipo'))}
+    finally{setSearching(false);}
+  }
+
+  async function aplicar(){
+    if(!finance||!receipt||!accepted||applying)return;
+    const saldo=receiptSaldo(receipt);
+    if(saldo+0.01<finance.total){setError('El comprobante no cubre el saldo completo del nivel: '+money(finance.total));return;}
+    const rubros=[
+      {tipo:'MATRICULA',nivel,monto:finance.m,grupo:finance.group},
+      {tipo:'CUOTA',nivel,monto:finance.q,grupo:finance.group},
+      {tipo:'CERTIFICADO',nivel,monto:finance.c,grupo:finance.group}
+    ].filter(x=>x.monto>.009);
+    if(!confirm('ANTICIPO CONAPE DESDE CONSULTA INDIVIDUAL\n\nEstudiante: '+codigo+
+      '\nNivel: '+(LABEL[nivel]||nivel)+' (mantiene PE)\nComprobante: '+receipt.doc+
+      '\nMatrícula: '+money(finance.m)+'\nCuotas: '+money(finance.q)+
+      '\nCertificado: '+money(finance.c)+'\nTOTAL: '+money(finance.total)+
+      '\n\n¿Confirmar este pago real?'))return;
+    setApplying(true);setError('');
+    try{
+      const bank=await postInline('getComprobantes',{numero_documento:receipt.doc,consulta_en:Date.now()},45000);
+      const current=availableReceipts(bank.comprobantes).find(x=>norm(x.doc)===norm(receipt.doc));
+      if(!current||receiptSaldo(current)+.01<finance.total)throw new Error('El comprobante ya no tiene saldo suficiente. No se aplicó ningún pago.');
+      if(!idRef.current)idRef.current=requestId();
+      const result=await postInline('aplicarPago',{
+        request_id:idRef.current,doc:receipt.doc,monto_total:finance.total,
+        cod_estudiante:codigo,anticipo_futuro:true,rubros
+      },100000);
+      const synced=result?.conape_sync===true||result?.conape_sync?.ok===true;
+      const msg='Anticipo '+nivel+' registrado: '+money(finance.total)+' · Recibos '+(result.recibos||[]).join(', ')+(synced?' · CONAPE actualizado':' · CONAPE pendiente de conciliación');
+      idRef.current='';setSuccess(msg);setReceipt(null);setAccepted(false);
+      ctx?.refresh?.(msg);
+    }catch(e){
+      // Conservar request_id en fallo incierto para que un reintento sea idempotente.
+      setError(inlineFinanceSafeUserError(e?.message||String(e),
+        'No se confirmó la operación. Revisá su estado antes de intentar nuevamente.','aplicar_anticipo'));
+    }finally{setApplying(false);}
+  }
+
+  if(!open)return null;
+  const saldo=receiptSaldo(receipt),canApply=!!finance&&!!receipt&&accepted&&!applying&&saldo+.01>=finance.total;
+  return <div style={{marginBottom:9,padding:12,borderRadius:11,border:'2px solid #9ABFDE',background:'#F1F7FD'}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+      <b style={{fontSize:12,color:'#14385C'}}>💳 Aplicar anticipo CONAPE de {LABEL[nivel]||nivel}</b>
+      <button type="button" onClick={()=>ctx?.close?.()} disabled={applying} style={{border:'1px solid #B6CDE2',background:'white',padding:'5px 9px',borderRadius:8,cursor:'pointer'}}>Cerrar</button>
+    </div>
+    {loading&&<div style={{fontSize:10,marginTop:8}}>Verificando precios, grupo y estado actual…</div>}
+    {finance&&<div style={{marginTop:9,fontSize:10,color:'#244A7C'}}>
+      <div>Matrícula {money(finance.m)} · {finance.n} cuotas de {money(finance.unit)}: {money(finance.q)} · Certificado {money(finance.c)}</div>
+      <b style={{fontSize:13}}>Anticipo completo: {money(finance.total)}</b>
+      <div style={{fontSize:9,marginTop:3}}>El nivel continúa PE; no se alteran notas ni morosidad.</div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:9}}>
+        <input value={query} onChange={e=>{setQuery(e.target.value);setReceipt(null);setAccepted(false);idRef.current='';}}
+          onKeyDown={e=>e.key==='Enter'&&buscar()} disabled={applying||searching}
+          placeholder="N.º comprobante bancario" style={{flex:'1 1 190px',minWidth:180,padding:'8px 10px',border:'1px solid #AFC4D6',borderRadius:8}}/>
+        <button type="button" onClick={buscar} disabled={searching||applying} style={{padding:'8px 12px',borderRadius:8,border:'none',background:'#1769A5',color:'white',fontWeight:900,cursor:'pointer'}}>{searching?'Buscando…':'Buscar comprobante'}</button>
+      </div>
+    </div>}
+    {receipt&&finance&&<div style={{marginTop:9,padding:'9px 10px',background:'white',borderRadius:8,fontSize:10}}>
+      <div>Documento <b>{receipt.doc}</b> · saldo disponible <b>{money(saldo)}</b></div>
+      {saldo+.01<finance.total?<b style={{color:'#B42318'}}>Saldo insuficiente para pagar el nivel completo.</b>:<label style={{display:'flex',alignItems:'flex-start',gap:7,marginTop:8}}>
+        <input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/>
+        Confirmé el comprobante y autorizo el anticipo completo de {nivel}, sin activar el nivel académico.
+      </label>}
+      <button type="button" onClick={aplicar} disabled={!canApply} style={{marginTop:9,padding:'9px 13px',borderRadius:8,border:'none',background:canApply?'#0D6B3B':'#D8DDD9',color:canApply?'white':'#667',fontWeight:950,cursor:canApply?'pointer':'not-allowed'}}>
+        {applying?'Aplicando…':'✓ Aplicar '+money(finance.total)}
+      </button>
+    </div>}
+    {error&&<div role="alert" style={{marginTop:8,padding:'8px 9px',borderRadius:8,background:'#FFEBEE',color:'#B42318',fontSize:10,fontWeight:800}}>⚠ {error}</div>}
+    {success&&<div style={{marginTop:8,padding:8,background:'#E8F5E9',color:'#256B36',borderRadius:8,fontSize:10,fontWeight:900}}>✓ {success}</div>}
+  </div>;
+}
+
 function AdminEstudianteResumenIndividualCS21A36(props){
   const codigo=norm(props?.estudianteBase?.codigo||props?.estudianteBase?.rec_m||props?.estudianteBase?.CODIGO);
   const [version,setVersion]=React.useState(0),[openLevel,setOpenLevel]=React.useState(''),[toast,setToast]=React.useState('');
@@ -223,6 +349,7 @@ function apply(){
   OriginalResumen=resumen;OriginalIntento=intento;OriginalAbrirPago=abrir;
   window.AdminEstudianteResumenIndividual=AdminEstudianteResumenIndividualCS21A36;
   window.AgIndIntentoFinanciero=AgIndIntentoFinancieroCS21A36;
+  window.AgIndAnticipoConape=AgIndAnticipoConape;
   window.abrirPago=abrirPagoInline;
   try{AdminEstudianteResumenIndividual=AdminEstudianteResumenIndividualCS21A36;}catch(_){ }
   try{AgIndIntentoFinanciero=AgIndIntentoFinancieroCS21A36;}catch(_){ }
