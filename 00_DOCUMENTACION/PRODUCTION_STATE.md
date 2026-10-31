@@ -1,5 +1,18 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · D5-R13 · E0 PRIVADO CARGADO / AÚN NO EJECUCIÓN VERIFICADA · 31-oct-2026
+
+**CORTE DE LA CONFIRMACIÓN DEL OPERADOR:** se ejecutó el lanzador local preparado en D5-R12. Readback independiente mediante `clasp pull` en `F111_OFICIAL/D5R11_READBACK` devolvió exactamente **2 archivos remotos: `appsscript.json` y `F111_D5R11_RootPreflight.js`**. El SHA-256 del archivo de diagnóstico remoto es **`38018B2BC4DEC3B2CEA969385D4BE61FE916D61B91D8CA9526C56FFFA5936172`**. El manifiesto remoto incluye sólo `https://www.googleapis.com/auth/drive.metadata.readonly` y el servicio avanzado Google Drive v3; búsqueda estática de mutadores de Drive devolvió cero. **Evidencia: carga E0 real 1/1 PASS, no ejecución E0, no despliegue CORE/Quiz, no escritura Drive**. Se cierra el bloqueo técnico de `Skipping push` del standalone sin `--force`.
+
+**BLOQUEO REAL DE READBACK DE EJECUCIÓN:** `clasp logs --simplified` no puede consultar logs por `GCP project ID is not set`. `clasp run F111_D5R11_ROOT_PREFLIGHT` devuelve `NOT_FOUND` aunque el archivo sí existe, consistente con requisitos de **API Executable y proyecto estándar GCP compartido** para `scripts.run`; no desplegar ese ejecutable público por comodidad. Consulta propia de lectura `processes:listScriptProcesses` con credencial OAuth `clasp` existente respondió HTTP **403**; no ampliar scopes silenciosamente ni extraer credenciales. Los logs de `console.log` del diagnóstico en editor Apps Script son la prueba faltante. La acción necesaria es obtener el resultado agregado `READ_ONLY_REAL_DRIVE_V3_E0` del editor autorizado (o revisar error exacto), sin correos, IDs, capturas de secretos. No atribuir a `clasp run` código 0 como éxito.
+
+**SEGURIDAD SIN CAMBIOS:** Cambridge B2/I1/I2: 3/3 raíces públicas con 168/168 materiales expuestos por inventario previo; **0/168 remediados (0%)**, origen ACL heredada/directa real **0/3 verificado**, capacidades limited-access reales **0/3 certificadas**, acceso anónimo denegado **0/1**. No mover carpetas ni restringir la raíz general. Backend PR #112 DRAFT, CI institucional bloqueado; no bypass ni APPLY. PR #65 DRAFT, gate virtual Quiz @477/@486 aún pendiente (control remoto previo lo bloqueó), no publicar. CORE @486/Quiz @477 última identidad validada; PC01 Diego 13/13 ENTREGADO, 0 REVISADO lectura histórica, sin nuevos cambios. Matriz F111 **16/35 = 46% histórico**, no recertificado.
+
+**CONTINUACIÓN: obtener JSON agregado del E0 en Apps Script editor** para decidir limited-access por raíz con conservación de permisos docentes y eliminación separada de `anyone` directo. Después diagnóstico Drive v3 de 168 archivos para snapshot seguro, revisar política PR112 y gate selectivo Quiz con 5 divergencias institucionales; no habilitar estudiantes hasta **0/168 públicos y acceso anónimo DENEGADO**, editorial/licencia 24 audios. Ninguna modificación académica o económica autorizada por este readback.
+
+---
+
+
 ## F111 · D5-R12 · CLASP MANIFEST NO INTERACTIVO DIAGNOSTICADO, LANZADOR PRIVADO VALIDADO, ACL/QUIZ NO-GO · 31-oct-2026
 
 **ANCLA CONFIRMADA:** frontend `campus-virtual/main` PR documental #679 fusionada `24c430d0237f133a67bf1641abc63c7facfb8538`; backend `campus_backend/main` `d4e61933c809bea27a632626678b0d43ceed1d97`. Sin cambios de repositorio backend, proyecto productivo, permisos Cambridge, matrículas, asistencia, notas, pagos, CONAPE, INA, orales ni entregas. Corte agregado EXCLUSIVAMENTE al comienzo de `00_DOCUMENTACION/PRODUCTION_STATE.md`.
