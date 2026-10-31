@@ -236,11 +236,25 @@ function AgIndAnticipoConape({codigo,nivel,color}){
       const dueMat=round(Math.max(0,m-num(info.mat_pagada)));
       const dueQuota=round(Math.max(0,q*n-num(info.cuotas_pagadas)));
       const dueCert=round(Math.max(0,c-num(info.cert_pagado)));
-      const total=round(dueMat+dueQuota+dueCert);
+      let dueTitle=0,dueToeic=0;
+      if(nivel==='I2'){
+        if(info.proforma_toeic_confirmado!==true)
+          throw new Error('Falta verificar la selección de TOEIC en la proforma individual CONAPE.');
+        const title=num(info.precio_programa_completo??info.precio_titulo);
+        if(title<=0)throw new Error('La proforma no tiene precio confirmado para el título final de I2.');
+        dueTitle=round(Math.max(0,title-num(info.programa_completo_pagado??info.titulo_pagado)));
+        if(info.toeic_aplica===true){
+          const precioToeic=num(info.precio_toeic);
+          if(info.toeic_incluido_proforma!==true||precioToeic<=0)
+            throw new Error('La proforma TOEIC no coincide con el importe registrado. Revisá antes de cobrar.');
+          dueToeic=round(Math.max(0,precioToeic-num(info.toeic_pagado)));
+        }
+      }
+      const total=round(dueMat+dueQuota+dueCert+dueTitle+dueToeic);
       if(total<=.009)throw new Error('Este nivel ya no tiene saldo financiero por anticipar.');
       const group=norm(info.grupo||target.grupo);
       if(!group)throw new Error('El nivel PE no tiene grupo financiero asignado.');
-      setFinance({m:dueMat,q:dueQuota,c:dueCert,total,group,previous,n,unit:q});
+      setFinance({m:dueMat,q:dueQuota,c:dueCert,t:dueTitle,tc:dueToeic,total,group,previous,n,unit:q});
     }).catch(e=>alive&&setError(inlineFinanceSafeUserError(e?.message||String(e),'No se pudo preparar el anticipo. Actualizá la consulta.','anticipo_futuro')))
       .finally(()=>alive&&setLoading(false));
     return()=>{alive=false;};
@@ -267,12 +281,16 @@ function AgIndAnticipoConape({codigo,nivel,color}){
     const rubros=[
       {tipo:'MATRICULA',nivel,monto:finance.m,grupo:finance.group},
       {tipo:'CUOTA',nivel,monto:finance.q,grupo:finance.group},
-      {tipo:'CERTIFICADO',nivel,monto:finance.c,grupo:finance.group}
+      {tipo:'CERTIFICADO',nivel,monto:finance.c,grupo:finance.group},
+      {tipo:'PROGRAMA_COMPLETO',nivel,monto:finance.t||0,grupo:finance.group},
+      {tipo:'TOEIC',nivel,monto:finance.tc||0,grupo:finance.group}
     ].filter(x=>x.monto>.009);
     if(!confirm('ANTICIPO CONAPE DESDE CONSULTA INDIVIDUAL\n\nEstudiante: '+codigo+
       '\nNivel: '+(LABEL[nivel]||nivel)+' (mantiene PE)\nComprobante: '+receipt.doc+
       '\nMatrícula: '+money(finance.m)+'\nCuotas: '+money(finance.q)+
-      '\nCertificado: '+money(finance.c)+'\nTOTAL: '+money(finance.total)+
+      '\nCertificado nivel: '+money(finance.c)+
+      (nivel==='I2'?'\nTítulo final: '+money(finance.t)+'\nTOEIC: '+money(finance.tc):'')+
+      '\nTOTAL PROFORMA: '+money(finance.total)+
       '\n\n¿Confirmar este pago real?'))return;
     setApplying(true);setError('');
     try{
@@ -304,7 +322,7 @@ function AgIndAnticipoConape({codigo,nivel,color}){
     </div>
     {loading&&<div style={{fontSize:10,marginTop:8}}>Verificando precios, grupo y estado actual…</div>}
     {finance&&<div style={{marginTop:9,fontSize:10,color:'#244A7C'}}>
-      <div>Matrícula {money(finance.m)} · {finance.n} cuotas de {money(finance.unit)}: {money(finance.q)} · Certificado {money(finance.c)}</div>
+      <div>Matrícula {money(finance.m)} · {finance.n} cuotas de {money(finance.unit)}: {money(finance.q)} · Certificado {money(finance.c)}{nivel==='I2'&&<> · Título final {money(finance.t)} · TOEIC {finance.tc>0?money(finance.tc):'NO INCLUIDO'}</>}</div>
       <b style={{fontSize:13}}>Anticipo completo: {money(finance.total)}</b>
       <div style={{fontSize:9,marginTop:3}}>El nivel continúa PE; no se alteran notas ni morosidad.</div>
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:9}}>
