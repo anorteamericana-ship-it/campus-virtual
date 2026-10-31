@@ -213,6 +213,11 @@ function AgIndProformaLegacy({codigo,referencia}){
   const [choice,setChoice]=React.useState(''),[amount,setAmount]=React.useState(String(referencia||''));
   const [checked,setChecked]=React.useState(false),[saving,setSaving]=React.useState(false);
   const [error,setError]=React.useState('');
+  React.useEffect(()=>{
+    const handler=e=>{if(norm(e?.detail?.codigo)===norm(codigo))setOpen(true);};
+    window.addEventListener('an:legacy-proforma-open',handler);
+    return()=>window.removeEventListener('an:legacy-proforma-open',handler);
+  },[codigo]);
   async function guardar(){
     if(saving)return;
     if(!/^(SI|NO)$/.test(choice)){setError('Seleccioná la opción indicada en la proforma.');return;}
@@ -270,6 +275,7 @@ function AgIndAnticipoConape({codigo,nivel,color}){
   const ctx=React.useContext(InlinePaymentContext);
   const open=ctx?.openLevel===nivel;
   const [loading,setLoading]=React.useState(false);
+  const [pendingProforma,setPendingProforma]=React.useState(false);
   const [finance,setFinance]=React.useState(null);
   const [query,setQuery]=React.useState('');
   const [receipt,setReceipt]=React.useState(null);
@@ -283,7 +289,7 @@ function AgIndAnticipoConape({codigo,nivel,color}){
   React.useEffect(()=>{
     if(!open)return;
     let alive=true;
-    setFinance(null);setLoading(true);setError('');setReceipt(null);
+    setFinance(null);setLoading(true);setPendingProforma(false);setError('');setReceipt(null);
     setAccepted(false);setQuery('');setSuccess('');idRef.current='';
     postInline('getEstudiante',{codigo},45000).then(data=>{
       if(!alive)return;
@@ -299,8 +305,10 @@ function AgIndAnticipoConape({codigo,nivel,color}){
       const dueCert=round(Math.max(0,c-num(info.cert_pagado)));
       let dueTitle=0,dueToeic=0;
       if(nivel==='I2'){
-        if(info.proforma_toeic_confirmado!==true)
-          throw new Error('Falta verificar la selección de TOEIC en la proforma individual CONAPE.');
+        if(info.proforma_toeic_confirmado!==true){
+          setPendingProforma(true);
+          return;
+        }
         const title=num(info.precio_programa_completo??info.precio_titulo);
         if(title<=0)throw new Error('La proforma no tiene precio confirmado para el título final de I2.');
         dueTitle=round(Math.max(0,title-num(info.programa_completo_pagado??info.titulo_pagado)));
@@ -381,7 +389,8 @@ function AgIndAnticipoConape({codigo,nivel,color}){
       <b style={{fontSize:12,color:'#14385C'}}>💳 Aplicar anticipo CONAPE de {LABEL[nivel]||nivel}</b>
       <button type="button" onClick={()=>ctx?.close?.()} disabled={applying} style={{border:'1px solid #B6CDE2',background:'white',padding:'5px 9px',borderRadius:8,cursor:'pointer'}}>Cerrar</button>
     </div>
-    {loading&&<div style={{fontSize:10,marginTop:8}}>Verificando precios, grupo y estado actual…</div>}
+    {loading&&<div style={{fontSize:10,marginTop:8}}>Verificando el nivel y los importes...</div>}
+    {pendingProforma&&<div style={{marginTop:9,padding:10,borderRadius:9,border:'1px solid #E1B45D',background:'#FFF8E5',fontSize:10,color:'#765017'}}><b>El anticipo I2 se puede preparar, pero todavia no cobrar.</b><div style={{marginTop:4}}>Primero vincula la proforma historica para confirmar si CONAPE financio el TOEIC. El servidor no admitira un anticipo incompleto.</div><button type="button" onClick={()=>window.dispatchEvent(new CustomEvent('an:legacy-proforma-open',{detail:{codigo}}))} style={{marginTop:8,padding:'7px 10px',border:'1px solid #A97D36',borderRadius:7,background:'white',fontWeight:900,color:'#765017',cursor:'pointer'}}>Vincular proforma historica</button></div>}
     {finance&&<div style={{marginTop:9,fontSize:10,color:'#244A7C'}}>
       <div>Matrícula {money(finance.m)} · {finance.n} cuotas de {money(finance.unit)}: {money(finance.q)} · Certificado {money(finance.c)}{nivel==='I2'&&<> · Título final {money(finance.t)} · TOEIC {finance.tc>0?money(finance.tc):'NO INCLUIDO'}</>}</div>
       <b style={{fontSize:13}}>Anticipo completo: {money(finance.total)}</b>
