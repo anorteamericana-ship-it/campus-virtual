@@ -528,11 +528,11 @@ function Paso4AP({
   // Programa Completo no aplica cuando existe CNV por examen de nivelación.
   const precioTitulo = Number(pendNivel.precio_programa_completo ?? pendNivel.precio_titulo ?? 0);
   const pagadoTitulo = Number(pendNivel.programa_completo_pagado ?? pendNivel.titulo_pagado ?? 0);
-  const montoTitulo = niv === 'I2' && documentoCobrable && !anticipoFuturo && pendNivel.programa_completo_aplica !== false && pendNivel.programa_completo_cobrable !== false
+  const montoTitulo = niv === 'I2' && documentoCobrable && (anticipoFuturo ? precioTitulo>0 : (pendNivel.programa_completo_aplica !== false && pendNivel.programa_completo_cobrable !== false))
     ? Math.max(Number(pendNivel.programa_completo_pend ?? pendNivel.titulo_pend ?? 0), Math.max(0, precioTitulo - pagadoTitulo))
     : 0;
   const precioToeic = Number(pendNivel.precio_toeic || 0);
-  const montoToeic = niv === 'I2' && documentoCobrable && !anticipoFuturo && pendNivel.toeic_aplica !== false && !pendNivel.toeic_omitido
+  const montoToeic = niv === 'I2' && documentoCobrable && (anticipoFuturo ? (pendNivel.toeic_aplica === true && pendNivel.toeic_incluido_proforma === true) : (pendNivel.toeic_aplica !== false && !pendNivel.toeic_omitido))
     ? Math.max(Number(pendNivel.toeic_pend || 0), Math.max(0, precioToeic - Number(pendNivel.toeic_pagado || 0)))
     : 0;
 
@@ -571,7 +571,8 @@ function Paso4AP({
 
   const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qToeic*montoToeic + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
-  const anticipoCompleto = !anticipoFuturo || Math.abs(total - (montoMat + cuotaPendienteTotal + montoCert)) < 0.01;
+  const proformaI2Verificada = niv !== 'I2' || (pendNivel.proforma_toeic_confirmado === true && precioTitulo>0 && (pendNivel.toeic_aplica!==true || precioToeic>0));
+  const anticipoCompleto = !anticipoFuturo || (proformaI2Verificada && Math.abs(total - (montoMat + cuotaPendienteTotal + montoCert + montoTitulo + montoToeic)) < 0.01);
   const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl &&
     (!anticipoFuturo || (anticipoConfirmado && (nCuotasPeriodo === 2 || nCuotasPeriodo === 4) && anticipoCompleto));
 
@@ -724,9 +725,11 @@ function Paso4AP({
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
         {mostrarCuotas && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
         {montoCert  > 0 && <RubroRow label={`Certificado de ${NIVEL_LABEL_A[niv] || niv}`} monto={montoCert} qty={qCert} maxQty={1} onQty={setQCert} />}
-        {montoTitulo > 0 && <RubroRow label="Certificado Programa Completo" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
+        {montoTitulo > 0 && <RubroRow label="Título Programa Completo / INA según proforma" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
         {niv === 'I2' && pendNivel.programa_completo_estado === 'NO_APLICA_NIVELACION' && <div style={{padding:'10px 12px',borderRadius:9,background:'#F4F1EC',color:'#756D65',fontSize:11,fontWeight:700}}>Programa Completo: no aplica por nivel convalidado mediante examen de nivelación.</div>}
         {montoToeic > 0 && <RubroRow label="Prueba TOEIC" monto={montoToeic} qty={qToeic} maxQty={1} onQty={setQToeic} />}
+        {niv === 'I2' && anticipoFuturo && pendNivel.proforma_toeic_confirmado !== true && <div style={{padding:'10px 12px',borderRadius:9,background:'#FFF8E1',color:'#8A5A00',fontSize:11,fontWeight:700}}>No se ha confirmado la selección TOEIC de la proforma individual. El anticipo I2 está bloqueado para evitar un cobro incompleto o indebido.</div>}
+        {niv === 'I2' && anticipoFuturo && pendNivel.proforma_toeic_confirmado === true && pendNivel.toeic_incluido_proforma === false && <div style={{padding:'10px 12px',borderRadius:9,background:'#F1F7FD',fontSize:11}}>TOEIC: no incluido en la proforma financiada del estudiante.</div>}
         {niv === 'I2' && pendNivel.toeic_omitido && <div style={{padding:'10px 12px',borderRadius:9,background:'#E8F5E9',color:'#2E7D32',fontSize:11,fontWeight:700}}>TOEIC omitido administrativamente: no bloquea la mora.</div>}
         {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
         {montoMat === 0 && !mostrarCuotas && montoCert === 0 && montoTitulo === 0 && montoToeic === 0 && montoOtro === 0 && (
@@ -740,7 +743,7 @@ function Paso4AP({
         <label style={{display:'block',padding:'14px 16px',marginBottom:16,border:'1px solid #A76A1F',background:'#FFF8E9',borderRadius:10,fontSize:13,color:'#75480B',lineHeight:1.45}}>
           <strong>Anticipo financiero completo de {NIVEL_LABEL_A[niv]} — CONAPE</strong>
           <div style={{margin:'8px 0'}}>
-            Se registrará el saldo completo de matrícula, cuotas y certificado de {niv} con recibos y comprobante bancario.
+            Se registrará el saldo completo de los rubros financiados de {niv} con recibos y comprobante bancario.{niv==='I2'?' Incluye el título final y TOEIC únicamente si están incluidos en la proforma individual.':''}
             {nivelPrevio ? (' ' + nivelPrevio + ' permanece CA.') : ' B1 todavía no inicia.'} {niv} permanece PE,
             sin alterar notas ni generar morosidad anticipada.
           </div>
