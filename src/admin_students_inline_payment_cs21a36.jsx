@@ -3,7 +3,7 @@
 (function(){
 'use strict';
 
-const BUILD='F111-CONAPE-CONSULTA-ANTICIPO-20261031';
+const BUILD='F111-TOEIC-PROFORMA-HISTORICA-20261031';
 const LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 const RUBRO_LABEL={MATRICULA:'Matrícula',CUOTA:'Cuotas',CERTIFICADO:'Certificado',PROGRAMA_COMPLETO:'Programa completo',TOEIC:'TOEIC'};
 const InlinePaymentContext=React.createContext(null);
@@ -205,6 +205,67 @@ function AgIndIntentoFinancieroCS21A36({intento,color,nivel,certificadoRegistro}
 
 // F111: cobro CONAPE en PE desde Consulta individual; mismo aplicarPago que
 // la pantalla de Aplicar Pago. El servidor vuelve a validar TODOS los importes.
+// F111: recuperar proformas anteriores al registro PROSPECTOS 2026.
+// No hace cobros: registra el PDF que Super Admin ya revisó.
+function AgIndProformaLegacy({codigo,referencia}){
+  const ctx=React.useContext(InlinePaymentContext);
+  const [open,setOpen]=React.useState(false),[url,setUrl]=React.useState('');
+  const [choice,setChoice]=React.useState(''),[amount,setAmount]=React.useState(String(referencia||''));
+  const [checked,setChecked]=React.useState(false),[saving,setSaving]=React.useState(false);
+  const [error,setError]=React.useState('');
+  async function guardar(){
+    if(saving)return;
+    if(!/^(SI|NO)$/.test(choice)){setError('Seleccioná la opción indicada en la proforma.');return;}
+    if(!/^https:\/\/drive\.google\.com\/file\/d\/[-_a-zA-Z0-9]+/.test(url)){
+      setError('Ingresá el enlace del PDF histórico en Google Drive.');return;
+    }
+    if(choice==='SI'&&(!Number.isFinite(Number(amount))||Number(amount)<=0)){
+      setError('Ingresá el valor del TOEIC que figura en la proforma.');return;
+    }
+    if(!checked){setError('Confirmá que revisaste la proforma original.');return;}
+    setSaving(true);setError('');
+    try{
+      await postInline('registrarProformaHistoricaConape',{
+        codigo,toeic_incluido:choice,toeic_monto:choice==='SI'?Number(amount):0,
+        proforma_url:url,documento_revisado:true
+      },55000);
+      setOpen(false);
+      ctx?.refresh?.('Proforma histórica verificada. Actualizando cotización...');
+    }catch(e){setError(inlineFinanceSafeUserError(e?.message||String(e),
+      'No se pudo guardar la verificación documental.','proforma_historica'))}
+    finally{setSaving(false);}
+  }
+  return <div style={{border:'1px solid #E2BD6B',background:'#FFF9EA',borderRadius:10,padding:10,marginBottom:9}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+      <div style={{fontSize:10.5,color:'#78521C',fontWeight:750}}>Proforma histórica CONAPE sin documento vinculado. El precio TOEIC de referencia es <b>{referencia>0?money(referencia):'no disponible'}</b>; falta comprobar si se financió.</div>
+      <button type="button" onClick={()=>setOpen(v=>!v)} style={{border:'1px solid #BD924B',padding:'7px 10px',borderRadius:8,background:'white',color:'#72501A',fontWeight:900,cursor:'pointer'}}>
+        {open?'Cerrar verificación':'Vincular proforma histórica'}
+      </button>
+    </div>
+    {open&&<div style={{display:'grid',gap:8,marginTop:10,maxWidth:620}}>
+      <label style={{fontSize:10,fontWeight:850}}>¿La proforma financiada incluye TOEIC?
+        <select value={choice} onChange={e=>{setChoice(e.target.value);setError('');}} style={{display:'block',width:'100%',padding:8,marginTop:3}}>
+          <option value="">Verificar en PDF...</option><option value="SI">Sí, incluido</option><option value="NO">No, excluido</option>
+        </select>
+      </label>
+      {choice==='SI'&&<label style={{fontSize:10,fontWeight:850}}>TOEIC según proforma (₡)
+        <input type="number" min="1" step="1" value={amount} onChange={e=>setAmount(e.target.value)} style={{display:'block',width:'100%',padding:8,marginTop:3}}/>
+      </label>}
+      <label style={{fontSize:10,fontWeight:850}}>Enlace al PDF original de la proforma
+        <input type="url" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://drive.google.com/file/d/..." style={{display:'block',width:'100%',padding:8,marginTop:3}}/>
+      </label>
+      <label style={{display:'flex',gap:7,fontSize:10,alignItems:'flex-start'}}>
+        <input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/>
+        Revisé el PDF original y confirmo que estos importes coinciden con el financiamiento CONAPE del estudiante.
+      </label>
+      {error&&<div role="alert" style={{color:'#B42318',fontSize:10,fontWeight:850}}>{error}</div>}
+      <button type="button" onClick={guardar} disabled={saving||!checked||!choice} style={{padding:'8px 12px',background:'#194872',color:'white',border:0,borderRadius:8,fontWeight:900,cursor:'pointer',opacity:saving?.6:1}}>
+        {saving?'Verificando PDF...':'Guardar verificación de proforma'}
+      </button>
+    </div>}
+  </div>;
+}
+
 function AgIndAnticipoConape({codigo,nivel,color}){
   const ctx=React.useContext(InlinePaymentContext);
   const open=ctx?.openLevel===nivel;
@@ -368,6 +429,7 @@ function apply(){
   window.AdminEstudianteResumenIndividual=AdminEstudianteResumenIndividualCS21A36;
   window.AgIndIntentoFinanciero=AgIndIntentoFinancieroCS21A36;
   window.AgIndAnticipoConape=AgIndAnticipoConape;
+  window.AgIndProformaLegacy=AgIndProformaLegacy;
   window.abrirPago=abrirPagoInline;
   try{AdminEstudianteResumenIndividual=AdminEstudianteResumenIndividualCS21A36;}catch(_){ }
   try{AgIndIntentoFinanciero=AgIndIntentoFinancieroCS21A36;}catch(_){ }
