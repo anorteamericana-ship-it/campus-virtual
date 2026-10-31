@@ -77,7 +77,7 @@ const F96_LAZY = {
   vista_docente: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R-HOTFIX-DATES-SUPER'],
   admin_master: ['src/conape_bridge_config_c3_6.js?v=V4.2.9','src/conape_bridge_client_c3_6.js?v=V3.1.0','src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94C'],
-  admin_students: ['src/admin_students.jsx?v=F111I2PROJECTED20261020'],
+  admin_students: ['src/admin_students.jsx?v=F111CONAPEQUOTE20261031'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
