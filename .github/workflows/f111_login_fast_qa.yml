@@ -1,0 +1,24 @@
+name: F111 Login Fast QA
+on:
+  pull_request:
+    paths:
+      - 'login.html'
+      - 'src/login.jsx'
+      - 'src/data.jsx'
+      - 'src/login.compiled.js'
+      - 'src/data.login.compiled.js'
+      - 'scripts/build_login_fast.cjs'
+      - 'tests/qa_f111_login_fast.cjs'
+      - '.github/workflows/f111_login_fast_qa.yml'
+  workflow_dispatch:
+jobs:
+  login-fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JSX compilado y flujos sintéticos por rol
+        run: node tests/qa_f111_login_fast.cjs
