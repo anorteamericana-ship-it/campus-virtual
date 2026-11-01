@@ -2,6 +2,8 @@
 
 ## F111 · AUTOPASS 5/5 · CÓDIGO NOCTURNO, LIMPIEZA REAL Y GATES DE INTEGRACIÓN · 31-oct-2026
 
+**CIERRE DOCUMENTAL POSTMERGE:** [PR #681](https://github.com/anorteamericana-ship-it/campus-virtual/pull/681) fusionada por squash en frontend/main, SHA **`1ac7ecb77d0c126d1688975e9486632b97db14b1`**. El diff tuvo **1 archivo documental, 150 líneas añadidas, 0 eliminadas**, y [Source Truth Guard run 41275371820](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/41275371820) **SUCCESS**. El HEAD `aabf231...` mencionado en la tabla es la línea base anterior a esta integración documental. **Los cinco PR de código permanecen abiertos, DRAFT, no fusionados y no desplegados**; documentación integrada NO significa funcionalidad LIVE.
+
 **FUENTE ÚNICA Y ESTADO VERIFICADO:** lectura nueva de GitHub al cierre de las cinco pasadas. `campus-virtual/main` **`aabf231d1e57c1080eded21f60ebf577700710b1`** y `campus_backend/main` **`d4e61933c809bea27a632626678b0d43ceed1d97`**, ambos **sin cambios por autopass**. Todas las cinco PR de implementación siguen **OPEN / DRAFT / SIN MERGE / SIN DESPLIEGUE**. Los cambios existen en ramas de GitHub, no en Campus LIVE. No se modificaron alumnos, notas, matrículas, pagos, asistencias, INA/CONAPE, claves, permisos Cambridge ni deployment CORE @486 / Quiz @477.
 
 | Pasada | Código implementado en PR / SHA verificado | Evidencia QA/CI | Estado real |
@@ -21,7 +23,7 @@
 2. Revisar #113 y #115 contra backend/main; ambas CI 2/2 verdes y archivos de código de producción disjuntos (`prod/48` vs `prod/12` y `prod/53`), pero ambas tocan tests/workflow en distinta medida. Hacer revisión de contrato, una integración a la vez, refrescar CI tras cada merge y un único candidato Apps Script controlado.
 3. **NO integrar #114 directamente a main**. Primero reconciliar/particionar #65 con baseline inmutable CORE @486 / Quiz @477, después correr E1 real en HEAD #114 y revisar autorización docente/estudiante, PDF/MP3, PC01 y registros históricos. No publicar B2/I1/I2 ni habilitar quizzes prematuramente.
 4. Preparar un único despliegue con readback y rollback en el mismo Deployment ID **sólo** después de los gates de funcionalidad, seguridad y permisos necesarios para las rutas afectadas. La vulnerabilidad Drive se gestiona en #112 por revisión separada, sin bypass ni duplicar archivos. Ningún merge o deploy se efectuó en esta pasada.
-5. Mantener esta PR documental [frontend #681](https://github.com/anorteamericana-ship-it/campus-virtual/pull/681) como **único expediente acumulado pendiente de integración**; al fusionarla no confundir el documento con implementación LIVE. No crear otra bitácora paralela.
+5. La PR documental [frontend #681](https://github.com/anorteamericana-ship-it/campus-virtual/pull/681) ya está **fusionada** en main; este archivo es el único expediente acumulado. La integración documental no equivale a implementación LIVE. No crear otra bitácora paralela.
 
 **SIGUIENTE CORTE TÉCNICO:** verificar CI de #114, revisar riesgo de dependencia #65 y preparar una integración acotada de #683, #113, #115, #682 según E2/E3. Entregar informe de cambio real vs main vs runtime; no reiniciar análisis de permisos ni generar copias de Cambridge.
 
