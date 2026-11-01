@@ -25,7 +25,13 @@ assert(!recovery.includes("fn:'solicitarRecuperacionContrasena'"),'No usar PWREC
 assert(recovery.includes("URLSearchParams") && recovery.includes("get('cedula')"),'Prefill de cédula sin usuario ni contraseña');
 assert(recovery.includes('Si la cuenta tiene un correo registrado')||recovery.includes('Si existe una cuenta activa'),
   'Respuesta genérica, sin enumeración de cuentas');
-assert(loginHtml.includes('src/login.jsx?v=F111LOGINUNICO20261015'),'Bust de caché login');
+assert(
+  loginHtml.includes('src/login.jsx?v=F111LOGINUNICO20261015') ||
+  (loginHtml.includes('src/login.compiled.js?v=F111AUTOPASS1') &&
+   loginHtml.includes('src/data.login.compiled.js?v=F111AUTOPASS1') &&
+   !loginHtml.includes('vendor/babel.js')),
+  'Bust de caché login: JSX histórico o build compilado verificable'
+);
 assert(recoveryHtml.includes('src/recovery.jsx?v=F111LOGINUNICO20261015'),'Bust de caché recovery');
 const enrollment=fs.readFileSync('src/inscripcion.jsx','utf8');
 const enrollmentHtml=fs.readFileSync('inscripcion.html','utf8');
