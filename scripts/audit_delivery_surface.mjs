@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { parseF96LazyMap } from './lib/parse_f96_lazy_map.mjs';
 
 const root = process.cwd();
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -18,12 +19,6 @@ function extractLocalAssets(html) {
     refs.push({ raw, file: cleanRef(raw) });
   }
   return refs;
-}
-
-function extractLazyMap(source) {
-  const match = source.match(/const\s+F96_LAZY\s*=\s*(\{[\s\S]*?\n\};)/);
-  if (!match) throw new Error('No se pudo extraer F96_LAZY de src/app.jsx.');
-  return Function(`"use strict";return (${match[1].replace(/;\s*$/, '')});`)();
 }
 
 function walk(dir) {
@@ -62,7 +57,7 @@ for (const ref of staticRefs) {
 }
 if (!errors.length) ok(`${staticRefs.length} recursos estáticos publicados existen.`);
 
-const lazyMap = extractLazyMap(app);
+const lazyMap = parseF96LazyMap(app);
 const lazyRefs = [...new Set(Object.values(lazyMap).flat().map(cleanRef))];
 for (const file of lazyRefs) {
   if (!exists(file)) fail(`F96_LAZY referencia un archivo inexistente: ${file}`);
