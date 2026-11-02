@@ -5,12 +5,14 @@ on:
     paths:
       - 'src/vista_docente.jsx'
       - 'scripts/qa_f111_suspension_preopen_e1.mjs'
+      - 'scripts/qa_f111_r13_authenticated_readonly_e2.mjs'
       - '.github/workflows/f111_teacher_suspension_preopen_e1.yml'
   push:
     branches: [main]
     paths:
       - 'src/vista_docente.jsx'
       - 'scripts/qa_f111_suspension_preopen_e1.mjs'
+      - 'scripts/qa_f111_r13_authenticated_readonly_e2.mjs'
       - '.github/workflows/f111_teacher_suspension_preopen_e1.yml'
   workflow_dispatch:
 jobs:
@@ -21,6 +23,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify suspension policy and pre-open UI contract
         run: node scripts/qa_f111_suspension_preopen_e1.mjs
+      - name: Verify R13 live read-only endpoint allowlist and E2 harness (offline)
+        run: node scripts/qa_f111_r13_authenticated_readonly_e2.mjs --self-test
       - name: Parse teacher JSX (no execution)
         run: |
           npm install --no-save --ignore-scripts @babel/parser@7.28.4
