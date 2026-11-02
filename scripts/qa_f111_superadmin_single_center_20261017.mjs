@@ -84,7 +84,7 @@ if (mainBaseline.includes(newProfileScript)) {
   // Se exige igualdad exacta y se evita revertirla contra sí misma.
   // Únicamente se permite modificar el cache-bust del punto de entrada:
   // se mantiene sin alterar el resto del HTML, los motores y los scripts.
-  const expectedApp='src/app.jsx?v=F111ATTROSTER20261021';
+  const expectedApp='src/app.jsx?v=F111PEPAID20261102';
   const expectedSidebar='src/sidebar.jsx?v=F111ATTEND20261021';
   assert.equal(currentAppSrc,expectedApp,'F111: app Superadmin con versión de asistencia actual');
   assert.equal(currentSidebarSrc,expectedSidebar,'F111: sidebar Superadmin con versión de asistencia actual');
