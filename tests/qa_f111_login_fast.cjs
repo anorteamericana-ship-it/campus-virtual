@@ -67,7 +67,7 @@ function findElement(element, predicate) {
   return findElement(element.props && element.props.children, predicate);
 }
 
-function createLoginHarness(role) {
+function createLoginHarness(role, responseOverride = {}) {
   const hooks = [];
   let hookIndex = 0;
   let rootElement = null;
@@ -108,6 +108,7 @@ function createLoginHarness(role) {
       return { status: 200, text: async () => JSON.stringify({
         ok: true, rol: role, nombre: 'PERSONA SINTETICA', token: 'token-sintetico',
         grupo: 'GRUPO-QA', expira: 999999,
+        ...responseOverride,
       }) };
     },
     setTimeout(fn, ms) { timers.push({ fn, ms }); return timers.length; },
@@ -149,6 +150,52 @@ for (const role of ['student', 'teacher', 'admin', 'superadmin', 'ventas']) {
       : role === 'student' ? 'student' : role === 'teacher' ? 'teacher' : 'admin');
   });
 }
+
+test('multigrupo: exige elegir grupo antes de crear sesión', async () => {
+  const h = createLoginHarness('teacher', {
+    multiGrupo: true,
+    grupos: [{ grupo: 'GRUPO-A', programa: 'INA' }, { grupo: 'GRUPO-B', programa: 'SIN_INA' }],
+    grupo: 'GRUPO-A',
+  });
+  let tree = h.render();
+  findElement(tree, e => e.type === 'input' && e.props.id === 'usuario').props.onChange({ target: { value: 'docente-qa' } });
+  findElement(tree, e => e.type === 'input' && e.props.id === 'clave').props.onChange({ target: { value: 'clave-qa' } });
+  tree = h.render();
+  await findElement(tree, e => e.type === 'form').props.onSubmit({ preventDefault() {} });
+  tree = h.render();
+  const modal = findElement(tree, e => typeof e.type === 'function' && e.type.name === 'GroupModal');
+  assert.ok(modal, 'debe mostrar selector, no elegir automáticamente el primer grupo');
+  assert.equal(h.sessionStorage.getItem('an_usuario'), null, 'no debe fijar sesión antes de elegir');
+  assert.equal(h.timers.length, 0, 'no debe redirigir antes de elegir');
+  modal.props.onPick({ grupo: 'GRUPO-B', programa: 'SIN_INA' });
+  const saved = JSON.parse(h.sessionStorage.getItem('an_usuario'));
+  assert.equal(saved.grupoActivo, 'GRUPO-B');
+  assert.equal(saved.grupo, 'GRUPO-B');
+  assert.equal(saved.programa, 'SIN_INA');
+  assert.equal(saved.token, 'token-sintetico');
+  assert.equal(saved.grupos.length, 2);
+  assert.equal(h.timers.length, 1);
+});
+
+test('multigrupo: cancelar no fija sesión y permite reintentar', async () => {
+  const h = createLoginHarness('teacher', {
+    multiGrupo: true, grupos: ['GRUPO-A', 'GRUPO-B'], grupo: 'GRUPO-A',
+  });
+  let tree = h.render();
+  findElement(tree, e => e.type === 'input' && e.props.id === 'usuario').props.onChange({ target: { value: 'docente-qa' } });
+  findElement(tree, e => e.type === 'input' && e.props.id === 'clave').props.onChange({ target: { value: 'clave-qa' } });
+  tree = h.render();
+  await findElement(tree, e => e.type === 'form').props.onSubmit({ preventDefault() {} });
+  tree = h.render();
+  const modal = findElement(tree, e => typeof e.type === 'function' && e.type.name === 'GroupModal');
+  assert.ok(modal);
+  assert.deepEqual(Array.from(modal.props.data.grupos, x => x.grupo), ['GRUPO-A', 'GRUPO-B']);
+  modal.props.onCancel();
+  tree = h.render();
+  assert.equal(findElement(tree, e => typeof e.type === 'function' && e.type.name === 'GroupModal'), null);
+  assert.equal(findElement(tree, e => e.type === 'button' && e.props.type === 'submit').props.disabled, false);
+  assert.equal(h.sessionStorage.getItem('an_usuario'), null);
+});
 
 test('sin backend real: las cinco rutas y sesiones fueron evaluadas solo en VM', () => {
   assert.ok(dataCompiled.length > 20000 && loginCompiled.length > 10000);
