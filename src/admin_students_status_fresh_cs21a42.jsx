@@ -109,11 +109,9 @@ function apply(){
 }
 window.addEventListener('an:lazy-module-loaded',e=>{if(String(e?.detail?.src||'').includes('admin_students.jsx'))setTimeout(apply,10)});
 setTimeout(apply,10);
-})();
 
-(function(){
-'use strict';
-
+// Reversal shares the same private closure as call() and statusSafeUserError().
+// It cannot access either function when wrapped in a second IIFE.
 const REV_BUILD='F98.4-Z6-CS21A95';
 let installed=false;
 function clean(v){return String(v==null?'':v).trim()}
