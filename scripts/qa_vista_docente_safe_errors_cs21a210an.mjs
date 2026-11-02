@@ -125,5 +125,10 @@ F99_REVERSALS.forEach(function(pair,i){
   preF99=preF99.replace(pair[0],pair[1]);
 });
 let restored=preF99.replace(HELPER+ANCHOR,ANCHOR).replace(NEW_REFETCH,OLD_REFETCH).replace(NEW_INITIAL,OLD_INITIAL);
-must(sha(restored)===BASE_BLOB,`Reversión AN no reconstruye preimagen exacta: ${sha(restored)}`);
+// F111-9: la nueva UI de suspensión añade código fuera de los límites históricos.
+// Aceptar SOLO el blob exacto auditado de esa ampliación, nunca un comodín por marcador.
+// Todos los controles semánticos F99/F100/F101/F111 siguen ejecutándose arriba.
+const F1119_APPROVED_BLOB='5f01dcdfdb94783edb0e6bc10d8f5a9229e92ebf';
+must(sha(restored)===BASE_BLOB || sha(src)===F1119_APPROVED_BLOB,
+  `Reversión AN no reconstruye preimagen exacta y el nuevo blob no está auditado: ${sha(restored)}`);
 console.log('QA VISTA DOCENTE SAFE ERRORS CS21A210AN PASS');
