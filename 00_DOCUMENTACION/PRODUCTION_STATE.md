@@ -1,5 +1,32 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+## F111 · R10/10 — cierre del segundo bloque e integración · 01-nov-2026
+
+**ESTADO ACTUAL (GitHub verificado):** frontend main SHA `534fc0ffd5aeb4c48c0c0cb4a2187a33226e0a36`; backend main SHA `d4e61933c809bea27a632626678b0d43ceed1d97`. El HOTFIX frontend 9502332 de horarios es trabajo ajeno a estas pasadas. CORE Apps Script @486 y Quiz @477 no fueron desplegados de nuevo. Ninguna escritura a alumnos, asistencia, notas, pagos, INA/CONAPE o Drive.
+
+| Pasada | Resultado verificable | Estado de integración |
+|---|---|---|
+| **6/10 Frontend** | [#683](https://github.com/anorteamericana-ship-it/campus-virtual/pull/683) parser estático fusionado en main, merge `534fc0ffd5aeb4c48c0c0cb4a2187a33226e0a36`; 19/19 parser, 33/33 rutas, 68/68 refs, 41/41 archivos. [#682](https://github.com/anorteamericana-ship-it/campus-virtual/pull/682) login E2 Chromium sintético 5 roles PASS. | #683 MERGED; #682 aún no, pendiente auth real. GitHub Pages se actualizó con herramientas QA, no login. |
+| **7/10 Backend** | [#113](https://github.com/anorteamericana-ship-it/campus_backend/pull/113) caché y [#115](https://github.com/anorteamericana-ship-it/campus_backend/pull/115) docentes integradas solo en worktree QA: 28/28 suite general, 14/14 caché, 28/28 autorización, 17/17 auth simulada, 36/36 borradores, 14/14 suspensiones y F100 PASS. #115 actualizado con CI `51f0162da354e8e203d2248b8e52f8d4f65f335f`. | Ambas DRAFT, 2/2 CI SUCCESS cada una, no fusionadas a main. |
+| **8/10 Quiz** | [#114](https://github.com/anorteamericana-ship-it/campus_backend/pull/114) cerrada tras arreglar YAML CI; sustituida por [#116](https://github.com/anorteamericana-ship-it/campus_backend/pull/116) basada directamente en backend/main, HEAD `48e899fba64c3dd42dfcd5a8cf519393a0de895c`, sin arrastrar 124 commits de #65. | #116 DRAFT, 3/3 CI SUCCESS; 32/32 esquemas, 64/64 metadata, 62 B1 auth, 30 entrega temporal; no LIVE. |
+| **9/10 Docentes UI** | [#685](https://github.com/anorteamericana-ship-it/campus-virtual/pull/685), HEAD `9c352b6345c646b78bfb64a92e7fdced4306192f`: botón de suspensión sin abrir clase ni marcar ausencias, 33/33 E1 PASS. | DRAFT, 6/6 CI SUCCESS; falta estado individual aprobado/rechazado y E2 autenticado. |
+| **10/10 QA transversal** | En worktree temporal backend se fusionaron #113 + #115 + #116 sin conflictos: 9 suites, 14 caché +28 autorización +17 auth +36 borradores +14 suspensión + F100 +32/32 Quiz +62 auth B1 +30 PDF/MP3, **todas PASS**. Frontend temporal #682 + #685: login 9/9, suspensión 33/33, errores docentes PASS y auditoría 119 recursos/41 diferidos PASS. | Son pruebas E1 sintéticas, no pruebas de producción ni medidas reales de latencia. |
+
+**HALLAZGO CRÍTICO Y CORRECCIÓN DE CÓDIGO:** la PR login #682, aunque su commit `f5e670b` toca solo 8 archivos, arrastra en su rama **12 archivos** contra main: cuatro adicionales no relacionados (`src/admin_students.jsx`, `src/admin_students_inline_payment_cs21a36.jsx`, `src/aplicar_pago.jsx`, `00_DOCUMENTACION/PRODUCTION_STATE.md`; en total 497 líneas añadidas y 26 eliminadas en esos cuatro). La causa es historia divergente; fusionarla habría incluido cambios de pagos y estudiantes sin autorización funcional.
+
+Se creó la [PR limpia #686](https://github.com/anorteamericana-ship-it/campus-virtual/pull/686), rama `fix/f111-r10-login-clean-base-20261101`, HEAD `71c238a417f039dc730cd9647550577e9e544206`. Contiene cherry-pick aislado `5bc3024` del login sobre main actual, más guard `tests/qa_f111_r10_pr_surface_guard.cjs` y CI: **9/9 archivos permitidos**, rechazo explícito de archivos de estudiantes, pagos y documentación. Login E1 9/9 PASS, PWREC2 PASS, guard 9/9 PASS local. #682 fue CERRADA SIN MERGE como sustituida por #686. En #686 el workflow legado Diff for Claude detectó dos líneas vacías al final; corregidas en commit 71c238a, git diff --check PASS y cuatro workflows SUCCESS al corte, uno en ejecución. La combinación temporal LIMPIA #686 + #685 pasó 9/9 login y 33/33 suspensión, sin los cuatro archivos ajenos. Falta E2/E3 autenticado antes de fusionar. No force-push, no cambios de notas ni pagos.
+
+**SEGURIDAD:** backend [#112](https://github.com/anorteamericana-ship-it/campus_backend/pull/112) sigue DRAFT y CI FAIL, sin aprobación formal. Riesgo histórico Cambridge: 168/168 archivos con ACL pública heredada, 3/3 pruebas HTTP anónimas accesibles, 0/168 remediados. No se ejecutó APPLY, no se crearon copias persistentes ni enlaces Drive directos. PR #65 DRAFT continúa separada; #116 no depende de ella.
+
+**GATES DE RELEASE ÚNICO:** (1) cerrar #682 como sustituida por #686, validar #686 y #685 con CI y autenticación real antes de merge; (2) revisar #113/#115/#116, integrar secuencialmente con readback CI y pruebas por rol/PC01; (3) resolver seguridad #112 por revisión formal, identidad ejecutora de Quiz @477 y postcheck de acceso autorizado/anónimo; (4) preparar un único despliegue con rollback y autorización expresa, nunca interpretar GitHub main o Pages como Apps Script LIVE. **No desplegar CORE @486 ni Quiz @477** en este corte.
+
+**MATRIZ F111:** 16/35 = **46% histórico**, 19 hitos pendientes; no incrementar por commits ni suites sintéticas. Ningún hito nuevo fue recertificado en producción. Mantener fuente única en este archivo y conservar los cinco cambios preexistentes del worktree principal.
+
+---
+
+
+
+
 ## F111 · AUTOPASS 5/5 · CÓDIGO NOCTURNO, LIMPIEZA REAL Y GATES DE INTEGRACIÓN · 31-oct-2026
 
 **CIERRE DOCUMENTAL POSTMERGE:** [PR #681](https://github.com/anorteamericana-ship-it/campus-virtual/pull/681) fusionada por squash en frontend/main, SHA **`1ac7ecb77d0c126d1688975e9486632b97db14b1`**. El diff tuvo **1 archivo documental, 150 líneas añadidas, 0 eliminadas**, y [Source Truth Guard run 41275371820](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/41275371820) **SUCCESS**. El HEAD `aabf231...` mencionado en la tabla es la línea base anterior a esta integración documental. **Los cinco PR de código permanecen abiertos, DRAFT, no fusionados y no desplegados**; documentación integrada NO significa funcionalidad LIVE.
