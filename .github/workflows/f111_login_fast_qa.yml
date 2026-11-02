@@ -1,4 +1,4 @@
-﻿name: F111 Login Fast QA
+name: F111 Login Fast QA
 on:
   pull_request:
     paths:
@@ -30,4 +30,3 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin "$BASE_SHA"
           node tests/qa_f111_r10_pr_surface_guard.cjs "$BASE_SHA"
-

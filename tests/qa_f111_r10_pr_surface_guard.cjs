@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const allowed = new Set([
@@ -44,4 +44,3 @@ if (unexpected.length || missing.length) {
 }
 console.log(JSON.stringify({ result: 'PASS', changed: paths.length, unexpected: 0, missing: 0,
   scope: 'login-only; no student payments, docs, grades, or attendance' }));
-
