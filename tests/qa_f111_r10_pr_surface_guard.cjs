@@ -12,6 +12,22 @@ const allowed = new Set([
   'tests/qa_f111_login_fast.cjs',
   'tests/qa_f111_r10_pr_surface_guard.cjs',
 ]);
+/*
+ * F111 R11: isolated release-candidate combines login PR #686
+ * with ONLY the four permitted teacher-suspension paths from PR #685.
+ * Other branches retain the login-only scope.
+ */
+const combinedReleaseCandidate = process.env.GITHUB_HEAD_REF ===
+  'feat/f111-release-candidate-frontend-20261102';
+if (combinedReleaseCandidate) {
+  const teacherScope = [
+    '.github/workflows/f111_teacher_suspension_preopen_e1.yml',
+    'scripts/qa_f111_suspension_preopen_e1.mjs',
+    'scripts/qa_vista_docente_safe_errors_cs21a210an.mjs',
+    'src/vista_docente.jsx',
+  ];
+  for (const file of teacherScope) allowed.add(file);
+}
 function inspect(paths) {
   return {
     unexpected: paths.filter((path) => !allowed.has(path)),
@@ -43,4 +59,4 @@ if (unexpected.length || missing.length) {
   process.exit(1);
 }
 console.log(JSON.stringify({ result: 'PASS', changed: paths.length, unexpected: 0, missing: 0,
-  scope: 'login-only; no student payments, docs, grades, or attendance' }));
+  scope: combinedReleaseCandidate ? 'login+teacher-suspension-only; no students, payments, docs, grades or attendance' : 'login-only; no student payments, docs, grades, or attendance' }));
