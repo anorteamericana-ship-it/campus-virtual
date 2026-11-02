@@ -16,7 +16,7 @@ const one=(source,match,label)=>{
 one(app,'asistencia_grupos: <LazyRoute title="Asistencia de grupos" component="AttendanceGroupsSuperadminView" files={F96_LAZY.asistencia_grupos} />','Ruta lista docente');
 one(app,"asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021']",'Lazy asset');
 one(app,'auditoria_academica: <LazyRoute title="Auditoría Académica" component="AuditoriaAcademicaView" files={F96_LAZY.auditoria} />','Auditoría sin sustituir');
-one(html,'src/app.jsx?v=F111ATTROSTER20261021','Cache-bust del router');
+one(html,'src/app.jsx?v=F111PEPAID20261102','Cache-bust del router');
 one(src,"Object.assign(window,{AttendanceGroupsSuperadminView});",'Export lazy global');
 assert(!src.includes('<AuditoriaAcademicaView'),'No volver a duplicar la auditoría como lista');
 assert(audit.includes('function AuditoriaAcademicaView('),'Auditoría histórica conservada');
