@@ -1,5 +1,63 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+
+## F111 · R15/15 — cierre ejecutable de pasadas 11–15 · 02-nov-2026
+
+**ALCANCE Y CORTE:** auditoría GitHub directa, sin merge funcional, sin deploy y sin operaciones sobre alumnos, expedientes, asistencia, notas, pagos, INA/CONAPE ni ACL Cambridge. Esta sección es la actualización acumulativa de la **única** fuente canónica; las secciones históricas inferiores son fotografías de cortes anteriores, no estados vigentes. **F111 histórico = 16/35 (46% redondeado); 19/35 pendientes, 0 hitos nuevos recertificados.** Los PASS de E1 no son certificación LIVE.
+
+**BASE ACTUAL VERIFICADA:** `campus-virtual/main` = `171e6ff19870f7f3cc87c5ef9a1021172bb0ba70` (incluye merges frontend #683 `534fc0ffd5aeb4c48c0c0cb4a2187a33226e0a36` y documental #687 `171e6ff19870f7f3cc87c5ef9a1021172bb0ba70`); `campus_backend/main` = `d4e61933c809bea27a632626678b0d43ceed1d97`. Ninguna PR funcional de este bloque se encuentra fusionada. **CORE @486 / Quiz @477** son las versiones LIVE **de referencia histórica**, NO un readback actual de Apps Script: GitHub no demuestra qué SHA está desplegado ni la identidad real del deployer de Quiz @477. No atribuir cambios de estas ramas a LIVE.
+
+### Matriz de PR y CI (consulta directa del HEAD indicado)
+
+| Área | PR / HEAD | Estado GitHub y CI sobre ese HEAD | Integración / dependencia |
+|---|---|---|---|
+| Frontend auditoría | #683 `bed5bc1a9be709b67d5c53fe68c9c94c16c3e8c4` | MERGED; audit y source truth SUCCESS (limpieza de ramas adicional SUCCESS) | En frontend/main; tooling, no mejora LIVE de login |
+| Frontend documento anterior | #687 `6e5bbff06aa0804c69c7ab3c5a86158bd1899443` | MERGED; source truth SUCCESS | En frontend/main; solo documentación |
+| Login original | #682 `f5e670b5555bf7d2d4194c2745d5dc3f6e163bd2` | CLOSED, no merge; 5 workflows de producto SUCCESS, limpieza SKIPPED | Sustituida por #686; **no fusionar**: rama arrastra archivos de estudiantes/pagos |
+| Login limpio | #686 `71c238a417f039dc730cd9647550577e9e544206` | OPEN/DRAFT, 5/5 workflows SUCCESS | Base de #688; sin merge |
+| Login multigrupo | #688 `80ed734ea591cd1a9beabce1cb78fcafa61ba700` | OPEN/DRAFT, 2/2 workflows SUCCESS | Apilada sobre #686; selector corregido, falta E2 auth real |
+| Suspensión UI | #685 `9c352b6345c646b78bfb64a92e7fdced4306192f` | OPEN/DRAFT, 6/6 workflows SUCCESS | Sin merge; estado docente local PENDIENTE puede quedar obsoleto |
+| Backend caché | #113 `5583f6d6123a85fe413364e5e1f1df41d70227bd` | OPEN/DRAFT, 2/2 workflows SUCCESS | Sin merge; sin latencia real medida |
+| Backend suspensiones/borradores | #115 `51f0162da354e8e203d2248b8e52f8d4f65f335f` | OPEN/DRAFT, 2/2 workflows SUCCESS | Sin merge; **mismo módulo prod/12 que #119** |
+| Quiz antiguo | #114 `a38cd383387e91cef9c2c2332a4fd1ae464365de` | CLOSED sin merge; diagnóstico QZ32 SUCCESS, limpieza SKIPPED | Apilada sobre #65; sustituida por #116 |
+| Quiz independiente | #116 `48e899fba64c3dd42dfcd5a8cf519393a0de895c` | OPEN/DRAFT, 3/3 workflows SUCCESS | Sin merge, independiente de #65 |
+| Guards históricos | #65 `dcbc3d812f588b1e0c622aa018dd51d9096de0c5` | OPEN/DRAFT, 2/2 workflows SUCCESS, **75 archivos** | No mezclar a ciegas ni asumir dependencia de #116 |
+| Seguridad Cambridge | #112 `54b6ebb1e4d676d7b5da8e47b0bb62d72530facb` | OPEN/DRAFT, **1/1 workflow FAILURE** | Bloqueo institucional de rutas `security/`; sin aprobación formal ni APPLY |
+| Seguridad preflight | #117 `b2a3273e0497f467bef855317a6d0e802a3b59cd` | OPEN/DRAFT, **0 workflows asociados al HEAD** | Apilada sobre #112; 9/9 E1 y 4/4 suites sintéticas reportadas en R12, no CI GitHub |
+| QA transversal | #118 `a6debb842f6fbb93beb3759beb3e16b181cb3b4e` | OPEN/DRAFT, workflow #41411122527 SUCCESS: **2/2 jobs ejecutados SUCCESS**, 1 job de readback productivo SKIPPED | Sin merge; candidato temporal E1 **no incluía #119** |
+| Lectura global de suspensiones | #119 `543a0f6e3300d86a68b778e67cb74bd8ba6464e1` | OPEN/DRAFT, 4/4 workflows SUCCESS | Sin merge; evita lectura de bandeja global por docente; reconciliar con #115 |
+
+**CI NO ES UN PORCENTAJE ACADÉMICO:** los denominadores anteriores son workflows por HEAD salvo #118, donde son jobs. `SKIPPED` no equivale a `PASS`; #117 no tiene CI asociado al HEAD. Ningún estado de PR garantiza merge seguro o deployment. Reconsultar CI tras cualquier rebase/merge.
+
+### Entregas de las pasadas 11–14 y evidencia reproducible
+
+- **R11 #688:** dos defectos reproducidos antes del fix: login `multiGrupo:true` saltaba selector (pre-fix 9/10 PASS, 1/10 FAIL) y guard CI rechazaba PR incremental de archivos autorizados. Tras fix, login 11/11 E1 PASS, suspensión UI 33/33, CI #688 2/2 workflows SUCCESS. **Pendiente:** verificar sesión/grupo elegido con backend real.
+- **R12 #117:** preflight Cambridge aceptaba concesión directa a grupo en archivo hijo y `anyone:writer` heredado; dos negativos fallaban antes del fix. Después: D5-R18 9/9 E1 sintético PASS, 4/4 suites locales PASS; **0 workflows GitHub sobre HEAD #117**, 0 APPLY. No cambia ACL; #112 continúa FAILURE.
+- **R13 #118:** candidato temporal backend `39dacf1c5a792f9d24e32faee0692103985765ae` y frontend `c7e19457e08350ca0e0c73860a49270536dbc464`, **NO main**. Run #41411122527: 2/2 jobs ejecutados SUCCESS, readback SKIPPED; `node --test tests/qa_f111_r13_cross_surface_e1.mjs` con `F111_R13_FRONTEND_DIR`/`F111_R13_BACKEND_DIR`: **10/10 contratos PASS**. Suites: login 11/11, suspensión UI 33/33, manifiesto 19/19 (33 rutas, 68 refs, 41 archivos), caché 14/14; **14/14 suites sintéticas PASS** en total. No sumar denominadores heterogéneos ni interpretar como E2/E3. El Campus principal sigue usando Babel runtime: sin prueba de mejora de primera carga.
+- **R14 #119:** `getSolicitudesSuspension` podía devolver bandeja de TODOS los grupos a docente; se reforzaron GET/POST y llamada directa `google.script.run`. `node tests/qa_f111_r14_suspension_read_auth_e1.mjs`: **26/26 casos PASS**; 4/4 workflows SUCCESS (run #41426054633 para suite dedicada). **Pendiente:** combinar con #115 y validar E2 admin/docente; #685 puede conservar `PENDIENTE` local tras resolución.
+
+### Bloqueos que impiden GO de release
+
+1. **Seguridad Cambridge — NO-GO:** evidencia previa de Drive E1: 195/195 objetos auditados, 168/168 archivos con acceso `anyone:reader` heredado, y 3/3 muestras PDF devolvieron bytes reales a cliente anónimo. **0/168 remediados** al último corte verificado, no reauditoría LIVE en R15. #112 falla por guard de delta que rechaza rutas `security/`, no por una prueba de ACL; **no ampliar whitelist ni sortear guard**. #117 añade preflight fail-closed pero no autoriza APPLY. Requiere revisión formal, identidad del deployer real de Quiz @477, prueba controlada de raíz y postcheck anónimo DENIED / Campus autenticado ALLOWED antes de decidir aislamiento.
+2. **Suspensión extremo a extremo — NO-GO:** #115 y #119 comparten `prod/12_Cronograma_Calendario.js`; no existe una certificación conjunta posterior a #119. #685 puede mostrar estado local obsoleto tras aprobación/rechazo. Requiere compatibilidad de firma/token del dispatcher y `google.script.run`, roles docente/admin/superadmin, bandeja administrativa, transición PENDIENTE→APROBADA/RECHAZADA y lectura refrescada sin crear ausencias.
+3. **Login — NO-GO:** #688 está apilada sobre #686. Probar recuperación, 5 roles, multigrupo y selección contra backend autenticado; no introducir rama #682. Verificar que los artefactos JSX/compilado sean idénticos al build y que el grupo seleccionado gobierne consultas posteriores.
+4. **Quizzes — NO-GO:** #116 CI verde E1 no certifica PC01 histórico ni el uso real de PC02–08; validar apertura por docente/lección, autorización B1, PDF/MP3 desde servidor sin enlaces Drive, aislamiento de claves y 32/32 esquemas. #65 y #114 no son parte del candidato.
+5. **Carga inicial/caché — NO-GO de rendimiento:** las reducciones de bytes/RPC son sintéticas; faltan métricas reales navegador/latencia, cold/warm, sesión inválida, fallback y navegaciones por rol. No atribuir mejoras LIVE a PRs sin merge.
+
+### Secuencia ejecutable de un único release (PROPUESTA; NO AUTORIZADA)
+
+1. **Congelar y respaldar:** reconsultar `main`/HEAD/CI/PR y conflictos; obtener identidad real del deployer de CORE @486 y Quiz @477, deployment IDs, versión activa, hashes de fuentes y procedimiento comprobable de rollback al mismo deployment. Mantener el readback privado sin exportar secretos.
+2. **Resolver gate de seguridad:** revisión institucional explícita #112/#117 y plan de aislamiento por raíz Cambridge; sin `APPLY` mientras falte identidad y postcheck. Si no se aprueba, **NO-GO** del release que dependa de Cambridge. No ejecutar scripts de ACL desde QA.
+3. **Candidato backend sin histórico ajeno:** integrar en rama temporal, en orden, #113, #115, reconciliar #119 en `prod/12`, después #116 y QA #118; resolver conflictos en tests/workflow con una única fuente de casos. Ejecutar nuevamente E1 con #119 incluido, tests negativos de permisos y controles 32/32. Revisar diff y CI tras cada paso; no fusionar #65/#114.
+4. **Candidato frontend:** tomar #686 y su dependiente #688 en ese orden, más #685; resolver estados docentes con respuesta de servidor, no mediante lectura global por docente. E2/E3 autenticado: 5 roles, recuperación, multigrupo, suspensión previa, aprobación/rechazo, navegación y carga inicial con medición reproducible. No publicar todavía.
+5. **Gate preproducción:** smoke cruzado frontend/backend del candidato exacto, 0 fallos críticos de autorización, ningún cambio de datos reales, PC01 histórico inmutable, 32/32 esquemas, control Cambridge y performance cold/warm medidos; registrar SHAs y resultados PASS/total. Si falla, detener sin merge productivo.
+6. **Release único sujeto a autorización expresa:** solo tras GO firmado, integrar secuencialmente con CI nueva, desplegar una única vez por servicio afectado con versión y readback de deployment, smoke canario de login/caché/suspensión/quizzes/primera carga, monitoreo y rollback a las versiones/hashes capturados ante regresión. **Esta pasada no realiza merge ni deploy ni modifica ACL.**
+
+**ESTADO DE SALIDA R15:** cambios de código R11–R14 = 4 PR nuevas (#688, #117, #118, #119) en ramas; 0/4 fusionadas, 0/4 desplegadas por estas pasadas; 1 expediente canónico actualizado mediante PR documental independiente; **0/35 hitos adicionales recertificados**, total institucional **16/35 (46%)**. Próxima prioridad operativa: (a) #115+#119 y #685 con estado real, (b) #686+#688 login autenticado, (c) revisión formal #112/#117 y cuenta ejecutora @477, (d) E2/E3 + readback y gate único de release.
+
+---
+
+
 ## F111 · R10/10 — cierre del segundo bloque e integración · 01-nov-2026
 
 **ESTADO ACTUAL (GitHub verificado):** frontend main SHA `534fc0ffd5aeb4c48c0c0cb4a2187a33226e0a36`; backend main SHA `d4e61933c809bea27a632626678b0d43ceed1d97`. El HOTFIX frontend 9502332 de horarios es trabajo ajeno a estas pasadas. CORE Apps Script @486 y Quiz @477 no fueron desplegados de nuevo. Ninguna escritura a alumnos, asistencia, notas, pagos, INA/CONAPE o Drive.
