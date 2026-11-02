@@ -320,24 +320,24 @@ function App() {
       return;
     }
 
-    if (data.multiGrupo && Array.isArray(data.grupos) && data.grupos.length > 0) {
-      const first = data.grupos[0] || {};
-      const gruposAsignados = data.grupos
-        .map(item => typeof item === 'string' ? item : (item.grupo || item.cod_grupo || item.codigo || item.code || ''))
-        .filter(Boolean);
-      finishLogin({
-        rol: data.rol,
-        nombre: data.nombre,
-        grupos: gruposAsignados,
-        grupoActivo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
-        grupo: typeof first === 'string' ? first : (first.grupo || first.cod_grupo || first.codigo || first.code || gruposAsignados[0] || null),
-        codigo: data.codigo || first.codigo || null,
-        cedula: (data.cedula || usuarioLimpio || '').toString().trim().toLowerCase() || null,
-        programa: first.programa || data.programa || 'SIN_INA',
-        token: data.token || null,
-        expira: data.expira || null,
-      });
-      return;
+    if (data.multiGrupo && Array.isArray(data.grupos)) {
+      // La sesión backend contiene todos los grupos; el docente elige el activo
+      // antes de fijar la sesión local. No elegir silenciosamente el primero.
+      const grupos = data.grupos.map(item => {
+        if (typeof item === 'string') return { grupo: item, programa: data.programa || 'SIN_INA' };
+        if (!item || typeof item !== 'object') return null;
+        const grupo = item.grupo || item.cod_grupo || item.codigo || item.code || '';
+        return grupo ? { ...item, grupo } : null;
+      }).filter(Boolean);
+      if (grupos.length > 1) {
+        setPendingMulti({
+          ...data,
+          grupos,
+          cedula: (data.cedula || usuarioLimpio || '').toString().trim().toLowerCase() || null,
+        });
+        setLoading(false);
+        return;
+      }
     }
 
     finishLogin({
@@ -359,20 +359,16 @@ function App() {
 
   const pickGroup = (group) => {
     const pending = pendingMulti;
+    if (!pending || !group || !group.grupo) return;
     setPendingMulti(null);
-    const gruposAsignados = (Array.isArray(pending.grupos) ? pending.grupos : [])
-      .map(item => typeof item === 'string' ? item : item.grupo)
-      .filter(Boolean);
+    const gruposAsignados = pending.grupos.map(item => item.grupo);
     finishLogin({
-      rol: pending.rol,
-      nombre: pending.nombre,
-      grupos: gruposAsignados.length ? gruposAsignados : [group.grupo],
+      ...pending,
+      grupos: gruposAsignados,
       grupoActivo: group.grupo,
-      codigo: group.codigo || null,
-      cedula: pending.cedula || (usuario || '').toString().trim().toLowerCase() || null,
-      programa: group.programa || 'SIN_INA',
-      token: pending.token || null,
-      expira: pending.expira || null,
+      grupo: group.grupo,
+      codigo: pending.codigo || group.codigo || null,
+      programa: group.programa || pending.programa || 'SIN_INA',
     });
   };
 
@@ -439,7 +435,7 @@ function App() {
         </section>
       </main>
 
-      {pendingMulti && <GroupModal data={pendingMulti} onPick={pickGroup} onCancel={() => setPendingMulti(null)} />}
+      {pendingMulti && <GroupModal data={pendingMulti} onPick={pickGroup} onCancel={() => { setPendingMulti(null); setLoading(false); }} />}
       {account && <RedirectOverlay account={account} />}
     </>
   );
