@@ -23,6 +23,7 @@ if (combinedReleaseCandidate) {
   const teacherScope = [
     '.github/workflows/f111_teacher_suspension_preopen_e1.yml',
     'scripts/qa_f111_suspension_preopen_e1.mjs',
+    'scripts/qa_f111_r13_authenticated_readonly_e2.mjs',
     'scripts/qa_vista_docente_safe_errors_cs21a210an.mjs',
     'src/vista_docente.jsx',
   ];
