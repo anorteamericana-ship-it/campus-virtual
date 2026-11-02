@@ -8,7 +8,7 @@ const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',
 const anchor="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  const oralSrc=";
 const inject="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del\n  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.\n  // Este último conserva su componente y sus datos fuera de esta vista.\n  if (superadmin) {\n    return <ExamenesIframePanel\n      hideHeader\n      view=\"admin\"\n      screenLabel=\"Superadmin · Centro de exámenes\"\n      iframeTitle=\"Centro de exámenes · Escritos, Orales y Progress Check\"\n    />;\n  }\n  const oralSrc=";
 assert.equal(baseline.split(anchor).length-1,1,'Anchor exacto una vez');
-const newStudentsAsset='src/admin_students.jsx?v=F111I2PROJECTED20261020';
+const newStudentsAsset='src/admin_students.jsx?v=F111PEPAID20261102';
 const previousStudentsAsset='src/admin_students.jsx?v=F99-STUDENT-EMAIL-20261008';
 assert.equal(source.split(newStudentsAsset).length-1,3,'Solo los tres accesos de Estudiantes deben actualizar caché');
 // F111 docente: revertir SOLO los cambios exactos del perfil y de los ciclos
