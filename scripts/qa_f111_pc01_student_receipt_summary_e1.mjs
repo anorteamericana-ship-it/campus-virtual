@@ -27,7 +27,7 @@ assert(academic.includes('Ponderación oficial 0%'),'explicit formative weight')
 assert(academic.includes("return null;} //".split(' //')[0]),'backend failure is never treated as successful review');
 assert(academic.includes('esc(q.comentario'),'teacher comments HTML escaped');
 assert(campus.includes('student_pc01_f111.js?v=F111PC01G1EVAL20261023'),'student cache bust');
-assert(campus.includes('student_menu_academic_cs21a120.jsx?v=F111PC01G1EVAL20261023'),'menu cache bust');
+assert(campus.includes('student_menu_academic_cs21a120.jsx?v=F111REALMENUI18N20261103'),'menu cache bust; language selector fix retains PC01 menu');
 assert(menu.includes('student_academic_summary_dom_cs21a113.js?v=F111PC01G1EVAL20261023'),'summary cache bust');
 assert(!student.includes('localStorage')&&!student.includes('sessionStorage'),'no locally forged state');
 const begin=academic.indexOf('  async function ownPc01(portal){');
