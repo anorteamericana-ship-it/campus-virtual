@@ -4,6 +4,11 @@
 (function(){
   const VERSION = 'F98.4-Z6-CS21A6';
   const BLUE = 'var(--an-navy-ink,#001E47)';
+  // Translate presentation only. Document IDs, links, and official PDF content stay immutable.
+  const t = value => window.AN_I18N?.t(value) || value;
+  const isEnglish = () => window.AN_I18N?.getLang() === 'en';
+  const docTitle = doc => isEnglish() ? (doc.enTitle || t(doc.title)) : doc.title;
+  const docDesc = doc => isEnglish() ? (doc.enDesc || t(doc.desc)) : doc.desc;
 
   function session(){ try { return (typeof getSesion === 'function' ? getSesion() : JSON.parse(sessionStorage.getItem('an_usuario') || 'null')) || {}; } catch(_) { return {}; } }
   function filePreview(id){ return 'https://drive.google.com/file/d/' + id + '/preview'; }
@@ -16,7 +21,12 @@
   function fileDoc(code, title, desc, id){ return { code, title, desc, kind:'file', preview:filePreview(id), download:fileDownload(id), url:filePreview(id) }; }
   function pdfDoc(code, title, desc, id){ return { code, title, desc, kind:'file', preview:filePreview(id), download:fileUserDownload(id), url:filePreview(id) }; }
   function folderDoc(code, title, desc, id){ return { code, title, desc, kind:'folder', preview:folderPreview(id), download:folderOpen(id), url:folderOpen(id) }; }
-  function lessonDocs(levelCode, levelName, ids){ return ids.map((id, idx) => { const n = idx + 1; const nn = String(n).padStart(2,'0'); return fileDoc(levelCode + '-L' + nn, levelName + ' · Lección ' + nn, 'Planeamiento didáctico oficial de ' + levelName + ', lección ' + nn + '.', id); }); }
+  function lessonDocs(levelCode, levelName, ids){ return ids.map((id, idx) => {
+    const nn = String(idx + 1).padStart(2,'0');
+    const doc = fileDoc(levelCode + '-L' + nn, levelName + ' · Lección ' + nn, 'Planeamiento didáctico oficial de ' + levelName + ', lección ' + nn + '.', id);
+    const englishLevel = ({B1:'Basic I',B2:'Basic II',I1:'Intermediate I',I2:'Intermediate II'})[levelCode] || levelName;
+    return {...doc, enTitle:englishLevel + ' · Lesson ' + nn, enDesc:'Official lesson plan for ' + englishLevel + ', lesson ' + nn + '.'};
+  }); }
 
   const INFO_DOCS = [
     fileDoc('1.1', 'Reglamento estudiantil', 'Derechos, deberes y conducta académica.', '1K_yZjUpiPF6MtXgapeFq7J314qqPQ-Ei'),
@@ -66,16 +76,16 @@
 
   function Header({ data }){
     return <div style={{ background:'linear-gradient(135deg,#fff 0%,#F8F4EE 100%)', border:'1px solid var(--line,#e5e0d8)', borderRadius:18, padding:'18px 20px', boxShadow:'var(--sh-1,0 6px 22px rgba(0,0,0,.06))', marginBottom:14 }}>
-      <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate,#7A1E2C)' }}>{data[0]}</div>
-      <div style={{ fontSize:31, fontWeight:950, lineHeight:1.08, color:BLUE, marginTop:4 }}>{data[1]}</div>
-      <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:860, lineHeight:1.5 }}>{data[2]}</div>
+      <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate,#7A1E2C)' }}>{t(data[0])}</div>
+      <div style={{ fontSize:31, fontWeight:950, lineHeight:1.08, color:BLUE, marginTop:4 }}>{t(data[1])}</div>
+      <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:860, lineHeight:1.5 }}>{t(data[2])}</div>
     </div>;
   }
 
   function DocButton({ doc, selected, onClick }){
     return <button type="button" onClick={onClick} className={selected ? 'btn btn-primary' : 'btn'} style={{ textAlign:'left', justifyContent:'flex-start', padding:'10px 11px', height:'auto', whiteSpace:'normal' }}>
       <span style={{ fontFamily:'var(--f-mono,monospace)', fontSize:10, fontWeight:950, marginRight:8 }}>{doc.code}</span>
-      <span style={{ fontWeight:900 }}>{doc.title}</span>
+      <span style={{ fontWeight:900 }}>{docTitle(doc)}</span>
     </button>;
   }
 
@@ -84,7 +94,7 @@
     React.useEffect(()=>setSelected(0), [JSON.stringify((docs||[]).map(d=>d.title))]);
     const list = docs || [];
     const doc = list[selected] || list[0];
-    if (!doc) return <div style={{ padding:18, background:'#fff', border:'1px solid var(--line)', borderRadius:16 }}>No hay documento configurado para esta sección.</div>;
+    if (!doc) return <div style={{ padding:18, background:'#fff', border:'1px solid var(--line)', borderRadius:16 }}>{t('No hay documento configurado para esta sección.')}</div>;
     return <div style={{ display:'grid', gridTemplateColumns:'minmax(250px,340px) 1fr', gap:14, alignItems:'start' }}>
       <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, padding:12, display:'grid', gap:8, maxHeight:'78vh', overflowY:'auto' }}>
         {list.map((d,i)=><DocButton key={d.code + d.title} doc={d} selected={i===selected} onClick={()=>setSelected(i)} />)}
@@ -92,23 +102,23 @@
       <div style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, overflow:'hidden', minHeight:590 }}>
         <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <div>
-            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15 }}>{doc.title}</div>
-            <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{doc.desc}</div>
+            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15 }}>{docTitle(doc)}</div>
+            <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{docDesc(doc)}</div>
           </div>
-          <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>Descargar</button>
+          <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>{t('Descargar')}</button>
         </div>
-        <iframe title={doc.title} src={doc.preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
+        <iframe title={docTitle(doc)} src={doc.preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
       </div>
     </div>;
   }
 
   function AsistenciaPassthrough({ props }){
     return <div style={{ padding:18, background:'#fff', border:'1px solid var(--line)', borderRadius:16 }}>
-      <div style={{ fontSize:22, fontWeight:950, color:BLUE }}>Asistencia</div>
-      <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>Esta sección se mantiene desde Gestión Académica. La edición sigue en Mis grupos.</div>
+      <div style={{ fontSize:22, fontWeight:950, color:BLUE }}>{t('Asistencia')}</div>
+      <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>{t('Esta sección se mantiene desde Gestión Académica. La edición sigue en Mis grupos.')}</div>
       <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
-        <button className="btn btn-primary" onClick={()=>props?.onNavigate && props.onNavigate('grupos')}>Ir a Mis grupos</button>
-        <button className="btn" onClick={()=>props?.onNavigate && props.onNavigate('cronograma_grupo')}>Ver calendario académico</button>
+        <button className="btn btn-primary" onClick={()=>props?.onNavigate && props.onNavigate('grupos')}>{t('Ir a Mis grupos')}</button>
+        <button className="btn" onClick={()=>props?.onNavigate && props.onNavigate('cronograma_grupo')}>{t('Ver calendario académico')}</button>
       </div>
     </div>;
   }
