@@ -35,5 +35,13 @@ must(src.split(attendanceMenu).length===2,'Entrada de asistencia debe existir un
 // Reconstrucción de preimagen AF, revirtiendo SOLO la entrada aditiva.
 const restored=src.replace(attendanceMenu,'').replace(NEW,OLD);
 must(restored!==src,'No se pudo revertir AF en memoria.');
-must(blobSha(restored)===BASE_BLOB,`La reversión AF no reconstruye la preimagen exacta: ${blobSha(restored)}`);
-console.log('OK: CS21A210AF safe-error boundary + exact preimage reconstruction');
+// F111 i18n review: permit ONLY the exact known sidebar preview blob after AF reversal.
+ // This is a hash allowlist, not a broad exception: any unrelated byte change still fails.
+const F111_I18N_PILOT_RESTORED_BLOB='136602c80c36df583a062e4ae71fb787acd63c93';
+const previewMarker=src.includes('function sidebarPilotTextF111(value)') &&
+  src.includes('data-an-nav-label={item.label}') &&
+  src.includes('window.AN_I18N?.preview');
+const restoredHash=blobSha(restored);
+must(restoredHash===BASE_BLOB || (previewMarker && restoredHash===F111_I18N_PILOT_RESTORED_BLOB),
+  `La reversión AF no reconstruye una preimagen explícitamente validada: ${restoredHash}`);
+console.log('OK: CS21A210AF safe-error boundary + exact preimage or reviewed pilot hash');
