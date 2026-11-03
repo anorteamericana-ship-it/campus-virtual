@@ -1,5 +1,5 @@
 /* F111 · i18n pilot: role-aware, opt-in, no DOM rewriting.
-   Visible on every authenticated Campus screen; EN is opt-in for student/teacher. Default ES.
+   Visible on every authenticated Campus screen; academic roles default EN at each login. ES remains selectable.
    No persistent data, no Apps Script changes, no translated identifiers. */
 (function (root) {
   'use strict';
@@ -27,7 +27,40 @@
     'Evaluaciones':'Assessments', 'Exámenes':'Exams',
     'Club I CAN':'Club I CAN', 'Pagos y estado de cuenta':'Payments & Account Statement',
     'Certificados':'Certificates', 'Documentos y ayuda':'Documents & Help',
-    'Mi Perfil':'My Profile', 'Mis Grupos':'My Groups', 'Mis grupos':'My Groups',
+    'Mi Perfil':'My Profile', 'Mi Perfil profesional':'My Professional Profile',
+    'Mis Grupos':'My Groups', 'Mis grupos':'My Groups',
+    'MI CUENTA':'MY ACCOUNT', 'Perfil docente':'Teacher Profile',
+    'Tu identidad profesional dentro de Academia Norteamericana.':'Your professional identity at Academia Norteamericana.',
+    'Docente activo':'Active Teacher', 'Docente inactivo':'Inactive Teacher',
+    'Docente de Inglés Conversacional':'Conversational English Teacher',
+    'Correo':'Email', 'Teléfono':'Phone', 'Cédula':'ID Number', 'Usuario':'Username',
+    'Ocultar':'Hide', 'Mostrar':'Show', 'Cambiar foto':'Change photo', 'Subir foto':'Upload photo',
+    'Subiendo…':'Uploading…', 'No registrado':'Not registered',
+    'PERFIL PROFESIONAL':'PROFESSIONAL PROFILE', 'Presentación':'Introduction',
+    'Editar':'Edit', 'Cancelar':'Cancel', 'Titular profesional':'Professional Title',
+    'Especialidad':'Specialization', 'Experiencia':'Experience', 'Presentación breve':'Short Bio',
+    'Guardar perfil':'Save Profile', 'Guardando…':'Saving…',
+    'EXPEDIENTE PROFESIONAL':'PROFESSIONAL RECORD', 'Documentos':'Documents',
+    'Guardado institucional':'Institutional Storage', 'Currículum':'Résumé',
+    'Trayectoria y formación profesional':'Professional background and education',
+    'Aval INA':'INA Endorsement', 'Respaldo documental del docente':'Teacher supporting documents',
+    'Expediente institucional completo':'Complete Institutional Record',
+    'Abrir carpeta de atestados':'Open Credentials Folder',
+    'Antes de empezar tu programa':'Before You Begin Your Program',
+    'MATERIAL OBLIGATORIO':'REQUIRED MATERIAL',
+    'Reglamento estudiantil':'Student Regulations',
+    'Reglamento de netiqueta':'Netiquette Guidelines',
+    'Video de bienvenida al Programa':'Program Welcome Video',
+    'Guía — Uso de Zoom y Google Meet':'Zoom and Google Meet Guide',
+    'Guía — Contingencias técnicas':'Technical Contingencies Guide',
+    'Datos personales':'Personal Information', 'Datos del programa':'Program Details',
+    'ACTUALIZAR DATOS':'UPDATE INFORMATION', 'DATOS DEL PROGRAMA':'PROGRAM DETAILS',
+    'Nombre completo':'Full Name', 'Correo electrónico actual':'Current Email',
+    'Teléfono actual':'Current Phone', 'Editar contacto':'Edit Contact',
+    'Guardar cambios':'Save Changes', 'Código':'Student Code', 'Programa':'Program',
+    'Avance del nivel':'Level Progress', 'Pendiente':'Pending',
+    'Estudiante':'Student', 'Estudiante activo':'Active Student',
+    'Información del programa':'Program Information',
     'Biblioteca del Programa':'Program Library',
     'Cronograma Inglés Conversacional':'Conversational English Schedule',
     'Comunicados':'Announcements', 'Mis pendientes':'My To-Dos',
@@ -79,7 +112,7 @@
         return 'en';
       }
     } catch (_) {}
-    return 'es'; // The existing Campus remains Spanish until EN is chosen.
+    return 'en'; // Teacher/student always enter in English; a current-session ES choice remains available.
   }
   function t(value) {
     if (getLang() !== 'en' || typeof value !== 'string') return value;
