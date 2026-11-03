@@ -297,9 +297,29 @@
     ];
     const isActive = item => item.target === 'materiales' ? (active === 'materiales' && intent === item.intent) : active === item.id;
     const go = item => { if(item.intent) setHubScreen(item.intent); if(setActive) setActive(item.target || item.id); };
+    const tr = label => window.AN_I18N?.t(label) || label;
     return <aside className="sb teacher-sb" data-role="teacher" data-version={VERSION}>
       <div className="sb-brand"><div className="sb-logo"/><div className="sb-brand-text"><div className="sb-brand-t1">Norteamericana</div><div className="sb-brand-t2">Campus Virtual</div></div></div>
-      {nav.map(group=><React.Fragment key={group.section || 'main-actions'}>{group.section && <div className="sb-section teacher-sb-section" style={sectionStyle}>{group.section}</div>}{group.items.map(item=><button key={item.id} className={'sb-item teacher-sb-item ' + (isActive(item) ? 'active' : '')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{ fontSize:13, fontWeight:850 }}>{item.label}</span>{item.badge && <span className="sb-badge">{item.badge}</span>}</button>)}</React.Fragment>)}
+      {window.AN_I18N?.available && (
+        <div role="group" aria-label="Language / Idioma" data-no-translate="true"
+          style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'9px 14px',borderBottom:'1px solid var(--line)'}}>
+          <span style={{fontSize:12,fontWeight:800,color:'var(--ink-3)'}}>Idioma / Language</span>
+          <div style={{display:'flex',gap:4}}>
+            {['es','en'].map(lang => (
+              <button key={lang} type="button" aria-label={lang==='es'?'Español':'English'}
+                aria-pressed={window.AN_I18N.getLang()===lang}
+                onClick={()=>window.AN_I18N.setLang(lang)}
+                style={{padding:'5px 9px',minWidth:38,borderRadius:7,border:'1px solid var(--line)',
+                  fontWeight:800,background:window.AN_I18N.getLang()===lang?'var(--an-navy,#002F6C)':'white',
+                  color:window.AN_I18N.getLang()===lang?'#fff':'var(--an-navy-ink,#001E47)',cursor:'pointer'}}>
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {nav.map(group=><React.Fragment key={group.section || 'main-actions'}>{group.section && <div className="sb-section teacher-sb-section" style={sectionStyle}>{tr(group.section)}</div>}{group.items.map(item=><button key={item.id} type="button" data-nav-id={item.id} data-an-nav-label={item.label} className={'sb-item teacher-sb-item ' + (isActive(item) ? 'active' : '')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{ fontSize:13, fontWeight:850 }}>{tr(item.label)}</span>{item.badge && <span className="sb-badge">{item.badge}</span>}</button>)}</React.Fragment>)}
       <div className="sb-user"><div className="sb-avatar">{init}</div><div style={{ flex:1, minWidth:0 }}><div className="sb-user-t1">{name}</div><div className="sb-user-t2">Docente · CS21A4</div></div><button title="Cerrar sesión" onClick={async()=>{ try { if(typeof window.cerrarSesionServidor==='function') await window.cerrarSesionServidor(); else sessionStorage.removeItem('an_usuario'); } catch(_){} if(onLogout) onLogout(); else window.location.href='login.html'; }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-3)', padding:4 }}>⎋</button></div>
     </aside>;
   }
