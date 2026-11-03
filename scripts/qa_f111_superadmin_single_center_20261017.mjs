@@ -107,7 +107,9 @@ if (mainBaseline.includes(newProfileScript)) {
   const r50Html=mainBaseline.includes(r50New)?hotfixHtml:hotfixHtml.replace(r50New,r50Old);
   const b1ReviewParam='&b1review=F111DIEGOPC0208REVIEW20261103';
   const b1Html=mainBaseline.includes(b1ReviewParam)?r50Html:r50Html.replaceAll(b1ReviewParam,'');
-  const d1Normalized=b1Html.replace(currentAppSrc,baselineAppSrc)
+  const teacherDocsParam='&docs=F111DIEGOEXPEDIENTE20261103';
+  const docsHtml=mainBaseline.includes(teacherDocsParam)?b1Html:b1Html.replaceAll(teacherDocsParam,'');
+  const d1Normalized=docsHtml.replace(currentAppSrc,baselineAppSrc)
     .replace(currentSidebarSrc,baselineSidebarSrc)
     .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
     .replace(currentWelcomeCss,baselineWelcomeCss);
