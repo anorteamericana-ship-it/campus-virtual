@@ -100,7 +100,10 @@ if (mainBaseline.includes(newProfileScript)) {
   const currentWelcomeCss='styles/campus.css?v=F111WELCOMEMOBILE20261023';
   const baselineWelcomeCss=(mainBaseline.match(/styles[/]campus[.]css[?]v=[A-Za-z0-9_.-]+/)||[])[0];
   assert(baselineWelcomeCss&&mainHtml.includes(currentWelcomeCss),'caché del modal responsive exacta');
-  const d1Normalized=mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','').replace(currentAppSrc,baselineAppSrc)
+  const hotfixHtml=mainBaseline.includes('&hotfix=F111ANTICIPOS20261103')
+    ? mainHtml
+    : mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','');
+  const d1Normalized=hotfixHtml.replace(currentAppSrc,baselineAppSrc)
     .replace(currentSidebarSrc,baselineSidebarSrc)
     .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
     .replace(currentWelcomeCss,baselineWelcomeCss);
