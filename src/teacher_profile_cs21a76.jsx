@@ -146,14 +146,15 @@
               : tp76t('Todavía no hay un PDF cargado.')}
           </div>
           <div className="tp76-doc-actions">
-            {available && (
+            {available ? (
               <button type="button" className="btn btn-primary" onClick={() => window.open(document.vista_url, '_blank', 'noopener,noreferrer')}>
                 {tp76t('Abrir')}
               </button>
+            ) : (
+              <button type="button" className="btn" disabled={busy} onClick={onPick}>
+                {tp76t(busy ? 'Cargando…' : 'Cargar PDF')}
+              </button>
             )}
-            <button type="button" className="btn" disabled={busy} onClick={onPick}>
-              {tp76t(busy ? 'Cargando…' : available ? 'Reemplazar PDF' : 'Cargar PDF')}
-            </button>
           </div>
         </div>
       </article>
@@ -447,15 +448,15 @@
                 <div className="tp76-archive-copy">
                   <strong>{tp76t('Expediente institucional completo')}</strong>
                   <p>{tp76t('Título profesional, TOEIC, constancias de experiencia, colegiatura, certificados, declaraciones y autorización INA, según los documentos disponibles.')}</p>
-                  <small>{tp76t('Carpeta privada de la Academia. Para abrirla necesitás permiso de Google Drive; no se publica para estudiantes.')}</small>
+                  <small>{tp76t('Podés agregar otros atestados a tu carpeta institucional privada desde Google Drive. Necesitás permiso de edición; la Academia debe autorizarlo. Esta opción no reemplaza el CV ni el Aval INA.')}</small>
                 </div>
                 <a
                   className="btn btn-primary tp76-archive-link"
                   href={data.carpeta_docente.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Abrir carpeta privada con atestados docentes"
-                >{tp76t('Abrir carpeta de atestados')}</a>
+                  aria-label={tp76t('Agregar al expediente profesional')}
+                >{tp76t('Agregar al expediente profesional')}</a>
               </div>
             )}
           </section>
