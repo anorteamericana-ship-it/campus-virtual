@@ -4,6 +4,7 @@
 
   const VERSION = 'F98.4-Z6-CS21A120';
   let queued = false;
+  const tr = value => window.AN_I18N?.t(value) || value;
 
   const MATERIALS = [
     {
@@ -42,11 +43,11 @@
     const section = document.createElement('section');
     section.className = 'tp117-required';
     section.dataset.cs21a117 = 'teacher-required-material';
-    section.setAttribute('aria-label', 'Material obligatorio del programa');
+    section.setAttribute('aria-label', tr('Material obligatorio del programa'));
 
     const head = document.createElement('div');
     head.className = 'tp117-required-head';
-    head.innerHTML = '<div class="tp117-required-icon">📋</div><div><div class="tp117-required-kicker">Material obligatorio</div><div class="tp117-required-title">Antes de empezar tu programa</div></div>';
+    head.innerHTML = '<div class="tp117-required-icon">📋</div><div><div class="tp117-required-kicker">' + tr('Material obligatorio') + '</div><div class="tp117-required-title">' + tr('Antes de empezar tu programa') + '</div></div>';
 
     const grid = document.createElement('div');
     grid.className = 'tp117-required-grid';
@@ -54,7 +55,7 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'tp117-required-card';
-      button.innerHTML = '<span class="tp117-required-code">' + item.code + '</span><strong>' + item.title + '</strong><p>' + item.desc + '</p><span class="tp117-required-meta">' + item.meta + '</span>';
+      button.innerHTML = '<span class="tp117-required-code">' + item.code + '</span><strong>' + tr(item.title) + '</strong><p>' + tr(item.desc) + '</p><span class="tp117-required-meta">' + tr(item.meta) + '</span>';
       button.addEventListener('click', function () {
         window.open(item.url, '_blank', 'noopener,noreferrer');
       });
