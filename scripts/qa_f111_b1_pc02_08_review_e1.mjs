@@ -63,7 +63,9 @@ try{
  const reviewSubmit=modal.locator('.f111-tqr-grade-form button[type=submit]');
  assert.equal(await reviewSubmit.count(),1,'botón de revisión presente');
  await reviewSubmit.click();
- await modal.getByText('REVISADO · 92 / 100').first().waitFor();
+ await page.waitForTimeout(350);
+ console.log('REVIEW_DEBUG',JSON.stringify({calls:calls.map(x=>x.fn),status:await modal.locator('.f111-tqr-feedback').allTextContents(),content:(await modal.locator('.f111-tqr-detail').innerText()).slice(-800)}));
+ await modal.getByText('REVISADO · 92 / 100').first().waitFor({timeout:1500});
  assert.equal(calls.filter(x=>x.fn==='qzProgressTeacherReview').length,1);
  assert.ok(calls.filter(x=>x.fn==='qzProgressTeacherList').length>=2,'readback requeridó');
  assert.equal(errors.length,0,errors.join('\n'));
