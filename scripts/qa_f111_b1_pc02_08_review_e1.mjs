@@ -60,7 +60,9 @@ try{
  await modal.getByText('Estudiante QA01').first().click();
  await modal.locator('[aria-label="Nota del Quiz"]').fill('92');
  await modal.locator('[aria-label="Comentario de mejora"]').fill('Trabajar las preguntas de Listening.');
- await modal.getByRole('button',{name:'GUARDAR REVISIÓN DIAGNÓSTICA'}).click();
+ const reviewSubmit=modal.locator('.f111-tqr-grade-form button[type=submit]');
+ assert.equal(await reviewSubmit.count(),1,'botón de revisión presente');
+ await reviewSubmit.click();
  await modal.getByText('REVISADO · 92 / 100').first().waitFor();
  assert.equal(calls.filter(x=>x.fn==='qzProgressTeacherReview').length,1);
  assert.ok(calls.filter(x=>x.fn==='qzProgressTeacherList').length>=2,'readback requeridó');
