@@ -660,7 +660,7 @@ async function loadPanel(){
     }
     state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;state.uncertainCloseCodes={};state.reviewConflicts={};
     const help=document.getElementById('oral-workflow-help');
-    if(help&&state.panel?.historico)help.textContent='Historial: revisá cada nota provisional, guardá los cambios del borrador y confirmá uno por uno. El PDF oficial solo se descarga después de sincronizar la nota.';
+    if(help&&state.panel?.historico)help.textContent='Revisá cada nota provisional y guardá el borrador antes del cierre. Si APOLLO ya registra una nota oficial (incluso 0 por reposición), no se puede cerrar otra vez: requiere conciliación académica. El PDF oficial solo se descarga tras nota sincronizada.';
     document.getElementById('ctx-grupo').textContent=visibleGroupF88(state.panel.cod_grupo)||'—';
     document.getElementById('ctx-nivel').textContent=state.panel.nivel||'—';
     document.getElementById('ctx-examen').textContent=state.panel.titulo||'—';
