@@ -7,12 +7,14 @@ import {createHash} from 'node:crypto';
 
 const OFFICIAL='https://anorteamerican.com/campus-virtual/';
 const SPECS=[
- {path:'campus.html',marker:'F111ATTROSTER20261021',kind:'html'},
+ {path:'campus.html',marker:'&hotfix=F111ANTICIPOS20261103',kind:'html'},
  {path:'modulos/examen_oral.html',marker:'const ORAL_F111_ENV_BLOCKED=',kind:'html'},
  {path:'src/cronograma_grupo.jsx',marker:'F111-0826:',kind:'source'},
  {path:'src/student_academic_summary_dom_cs21a113.js',marker:"postStudentPortal('getAsistenciaEstudiante'",kind:'source'},
  {path:'src/sidebar.jsx',marker:"id: 'asistencia_grupos'",kind:'source'},
  {path:'src/app.jsx',marker:'component="AttendanceGroupsSuperadminView"',kind:'source'},
+ {path:'src/admin_students.jsx',marker:'Título final del programa (según proforma)',kind:'source'},
+ {path:'src/aplicar_pago.jsx',marker:'Título final del programa (según proforma)',kind:'source'},
  {path:'src/admin_attendance_roster.jsx',marker:'Object.assign(window,{AttendanceGroupsSuperadminView})',kind:'source'},
  {path:'src/auditoria_academica.jsx',marker:'justificacion: justificacion.trim()',kind:'source'}
 ];
@@ -139,8 +141,8 @@ async function selftest(){
  assert.equal(summary([matched,marked]),'LIVE_SOURCE_MATCH_WITH_CLOUDFLARE_INJECTION');
  assert.equal(summary([matched,mismatch]),'LIVE_MISMATCH_CONFIRMED');
  assert.equal(summary(specs.map(x=>({verdict:'EXACT_MATCH'}))),'LIVE_MATCHES_REPOSITORY');
- assert.equal(SPECS.length,8);
- console.log('F111_LIVE_READONLY_SELFTEST_PASS: 8 GET paths, exact hash, known Cloudflare injection, real diff preserved, mismatch and inconclusive classified');
+ assert.equal(SPECS.length,10);
+ console.log('F111_LIVE_READONLY_SELFTEST_PASS: 10 GET paths, exact hash, known Cloudflare injection, real diff preserved, mismatch and inconclusive classified');
 }
 if(process.argv.includes('--selftest'))await selftest();
 else{
