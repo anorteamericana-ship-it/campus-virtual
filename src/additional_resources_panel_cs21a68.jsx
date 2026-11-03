@@ -319,7 +319,8 @@
   }
 
   function menuLabel(button) {
-    return clean(button?.querySelector?.('.sb-label')?.textContent || button?.textContent);
+    // The academic sidebars may localize visible text; routing still uses the Spanish canonical label.
+    return clean(button?.getAttribute?.('data-an-nav-label') || button?.querySelector?.('.sb-label')?.textContent || button?.textContent);
   }
 
   function makeNavButton(aside, booksButton) {
