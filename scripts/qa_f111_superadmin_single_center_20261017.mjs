@@ -40,7 +40,7 @@ revertTeacher("'src/vista_docente.jsx?v=F111ARCHIVESEP20261020'","'src/vista_doc
 // La nueva pantalla sustituye la ruta duplicada sin alterar exámenes.
 revertTeacher("      asistencia_grupos: <LazyRoute title=\"Asistencia de grupos\" component=\"AttendanceGroupsSuperadminView\" files={F96_LAZY.asistencia_grupos} />,\n",'',1,'pantalla independiente de asistencia');
 revertTeacher("  asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'],\n",'',1,'loader aislado de asistencia');
-assert.equal(restoredTeacher.replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado tras revertir exactamente el cambio docente F111');
+assert.equal(restoredTeacher.replaceAll('&hotfix=F111ANTICIPOS20261103','').replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado tras revertir exactamente el cambio docente F111');
 const adminStart=source.indexOf('function ExamenesAdminPanel()');
 const adminEnd=source.indexOf('const APP_ORAL_DEFS_F927',adminStart);
 assert(adminStart>=0&&adminEnd>adminStart,'Componente admin original conservado');
@@ -100,7 +100,7 @@ if (mainBaseline.includes(newProfileScript)) {
   const currentWelcomeCss='styles/campus.css?v=F111WELCOMEMOBILE20261023';
   const baselineWelcomeCss=(mainBaseline.match(/styles[/]campus[.]css[?]v=[A-Za-z0-9_.-]+/)||[])[0];
   assert(baselineWelcomeCss&&mainHtml.includes(currentWelcomeCss),'caché del modal responsive exacta');
-  const d1Normalized=mainHtml.replace(currentAppSrc,baselineAppSrc)
+  const d1Normalized=mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','').replace(currentAppSrc,baselineAppSrc)
     .replace(currentSidebarSrc,baselineSidebarSrc)
     .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
     .replace(currentWelcomeCss,baselineWelcomeCss);
@@ -108,7 +108,7 @@ if (mainBaseline.includes(newProfileScript)) {
 } else {
   // En el PR original, origin/main todavía no incluía el cambio.
   // Se mantiene la prueba de inversión exacta de las líneas nuevas.
-  let restoredHtml=mainHtml.replace(newProfileScript,oldProfileScript);
+  let restoredHtml=mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','').replace(newProfileScript,oldProfileScript);
   restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
   assert.equal(restoredHtml,mainBaseline,'HTML conserva fuente original al revertir cambios explícitos F111');
 }
