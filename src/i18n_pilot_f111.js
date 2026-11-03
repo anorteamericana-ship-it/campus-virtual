@@ -14,6 +14,18 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    'Material obligatorio del programa':'Required Program Materials',
+    'Material obligatorio':'Required Materials',
+    'Antes de empezar tu programa':'Before You Begin Your Program',
+    'Introducción al Campus Virtual y al programa.':'Introduction to Campus and the English program.',
+    'Herramienta principal y de contingencia.':'Primary and backup communication tools.',
+    'Qué hacer ante fallas de audio, video o conexión.':'What to do if audio, video or your connection fails.',
+    'Normas de comportamiento en sesiones virtuales.':'Guidelines for behavior during virtual sessions.',
+    'REQUERIDO · ~20 min':'REQUIRED · ~20 min',
+    'REQUERIDO · ~10 min':'REQUIRED · ~10 min',
+    'REQUERIDO · ~6 min':'REQUIRED · ~6 min',
+    'RECOMENDADO · ~8 min':'RECOMMENDED · ~8 min',
+    'RECOMENDADO · ~5 min':'RECOMMENDED · ~5 min',
     'Menú':'Menu', 'Gestión':'Management', 'Prematrícula':'Pre-enrollment',
     'Principal':'Home', 'Gestión Académica':'Academic Management',
     'Planificación Académica':'Academic Planning', 'Recursos Didácticos':'Learning Resources',
