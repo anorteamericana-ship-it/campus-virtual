@@ -737,12 +737,11 @@ function App() {
     : null;
 
   const [active, setActive] = useState(() => {
-    // F96.5 UX: el estudiante SIEMPRE inicia en Mi Campus.
-    // No se hereda la última pantalla porque mañana entran usuarios nuevos y
-    // la primera impresión debe ser clara, estable y orientada al cumplimiento INA.
-    if (role === 'student') return 'dashboard';
-
-    // Admin/docente sí conservan su última pantalla porque trabajan operación diaria.
+    // F111: each academic entry starts in the real profile. Never restore the
+    // last saved academic tab; navigation remains free after the profile opens.
+    if (role === 'student') return 'dashboard'; // Native Student My Profile
+    if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76
+    // Preserve the operational state of admin/superadmin (outside bilingual pilot).
     const roleKey = 'an_active_' + (role || 'unknown');
     const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';
     return saved === 'portal_estudiante' ? 'dashboard' : saved;
@@ -853,6 +852,8 @@ function App() {
   };
 
   useEffect(() => {
+    // Academic navigation is intentionally not remembered across entries.
+    if (role === 'student' || role === 'teacher') return;
     try {
       localStorage.setItem('an_active', active);
       localStorage.setItem('an_active_' + (role || 'unknown'), active);
