@@ -15,6 +15,13 @@
   }
   const DICTIONARY = Object.freeze({
     'Menú':'Menu', 'Gestión':'Management', 'Prematrícula':'Pre-enrollment',
+    'Principal':'Home', 'Gestión Académica':'Academic Management',
+    'Planificación Académica':'Academic Planning', 'Recursos Didácticos':'Learning Resources',
+    'Evaluación y comunicación':'Assessments & Communication',
+    'Resumen Académico':'Academic Summary', 'Plan de Estudio':'Study Plan',
+    'Planeamiento didáctico':'Lesson Planning', 'Cronograma del módulo':'Module Schedule',
+    'Cronograma general':'General Schedule', 'Biblioteca digital':'Digital Library',
+    'Libros de texto':'Textbooks', 'Audios':'Audio',
     'Hola,':'Hello,', 'Accesos rápidos':'Quick Access', 'Entradas principales':'Main Shortcuts',
     'Mi Campus':'My Campus', 'Mi curso':'My Course',
     'Evaluaciones':'Assessments', 'Exámenes':'Exams',
