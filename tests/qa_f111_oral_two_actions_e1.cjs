@@ -7,7 +7,7 @@ const includes=(s,msg)=>assert.ok(script.includes(s),msg);
 includes("draftBtn.textContent='GUARDAR BORRADOR'",'un botón para guardar digital');
 includes("finalizeSaved.textContent=status==='PDF_GENERADO'||status==='CERRADO'?'DESCARGAR PDF':'GUARDAR NOTA OFICIAL'",'cambio automático de botón oficial a descarga');
 includes("const j=await api('oralSaveDraft',payload)",'persistencia individual');
-includes("const closed=await api('oralFinalizarBorradorHistoricoR47',ident)",'confirmación servidor');
+includes("r50Permitido?'r50CerrarOralConciliado':'oralFinalizarBorradorHistoricoR47'",'confirmación servidor: vía normal o R50 autorizada');
 includes("const res=await api('oralGeneratePdf',ident)",'PDF institucional existente');
 includes("if(estado!=='BORRADOR'&&individualDownload)individualDownload.click()", 'descarga solo tras cerrar');
 includes("if(state.dirty)return toast('Guardá primero", 'obliga guardar cambios antes de cierre');
