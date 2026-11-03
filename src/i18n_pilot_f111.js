@@ -9,6 +9,7 @@
   const STAMP = 'an_i18n_pilot_login';
   const DICTIONARY = Object.freeze({
     'Menú':'Menu', 'Gestión':'Management', 'Prematrícula':'Pre-enrollment',
+    'Hola,':'Hello,', 'Accesos rápidos':'Quick Access', 'Entradas principales':'Main Shortcuts',
     'Mi Campus':'My Campus', 'Mi curso':'My Course',
     'Evaluaciones':'Assessments', 'Exámenes':'Exams',
     'Club I CAN':'Club I CAN', 'Pagos y estado de cuenta':'Payments & Account Statement',
