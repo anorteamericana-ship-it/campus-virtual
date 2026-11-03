@@ -7,6 +7,9 @@ on:
       - 'src/sidebar.jsx'
       - 'src/sidebar_active_state_cs21a69.js'
       - 'src/student_dashboard.jsx'
+      - 'src/teacher_cs21a_docs_viewer.jsx'
+      - 'src/teacher_profile_cs21a76.jsx'
+      - 'scripts/qa_f111_real_teacher_docs_record_e1.mjs'
       - 'scripts/qa_f111_i18n_preview_e1.mjs'
       - '.github/workflows/qa-f111-i18n-preview-e1.yml'
 permissions:
@@ -23,3 +26,5 @@ jobs:
         run: node --check src/i18n_pilot_f111.js
       - name: Native role-aware preview, stable nav and emergency exit
         run: node scripts/qa_f111_i18n_preview_e1.mjs
+      - name: Real teacher document viewer and professional record regression
+        run: node scripts/qa_f111_real_teacher_docs_record_e1.mjs

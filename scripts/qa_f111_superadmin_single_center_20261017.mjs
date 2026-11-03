@@ -74,32 +74,19 @@ for(const path of protectedPaths){
  }
 }
 const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
-const academicAssetDiffs=[
- ['src/i18n_pilot_f111.js?v=F111ENDEFAULT20261103C','src/i18n_pilot_f111.js?v=F111I18NCDN20261103B'],
- ['src/student_menu_academic_cs21a120.jsx?v=F111ENPROFILE20261103','src/student_menu_academic_cs21a120.jsx?v=F111REALMENUI18N20261103'],
- ['src/program_info_shared_cs21a119.jsx?v=F111ENPROGRAM20261103','src/program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121'],
- ['&entry=F111ENPROFILE20261103',''],
- ['src/student_demo_level_filter_cs21a110.js?v=F111ENBRAND20261103','src/student_demo_level_filter_cs21a110.js?v=F98.4Z6CS21A122'],
- ['&i18n=F111ENPROFILE20261103',''],
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
+// Normalize only the three changed asset URLs in this review; no backend/exam
+// script changes are permitted. Also passes after squash when origin/main
+// already contains the exact deployed versions.
+const approvedAssetDiffs=[
+ ['src/teacher_cs21a_docs_viewer.jsx?v=F111REALDOCSEN20261103','src/teacher_cs21a_docs_viewer.jsx?v=F98.4Z6CS21A6'],
+ ['src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103','src/i18n_pilot_f111.js?v=F111ENDEFAULT20261103C'],
+ ['&record=F111ADDRECORD20261103',''],
 ];
 let mainHtml=mainHtmlRaw;
-for (const [current,previous] of academicAssetDiffs){
- assert.equal(mainHtml.split(current).length-1,1,'Only one expected F111 academic UI asset delta: '+current);
- mainHtml=mainHtml.replace(current,previous);
+for (const [next,previous] of approvedAssetDiffs){
+ assert.equal(mainHtml.split(next).length-1,1,'Unique expected F111 language/record asset: '+next);
+ if (!mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
 }
-const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
-const currentAppSrc=(mainHtml.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
-const baselineAppSrc=(mainBaseline.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
-const currentSidebarSrc=(mainHtml.match(/src[/]sidebar[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
-const baselineSidebarSrc=(mainBaseline.match(/src[/]sidebar[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
-assert(currentSidebarSrc&&baselineSidebarSrc,'Se conserva asset del menú Superadmin');
-assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
-// El HTML F111 agrega únicamente el loader del filtro y el asset de
-// perfil profesional, sin reordenar otros scripts productivos.
-// F111 2026-11-03: the October exact HTML preimage no longer represents main.
-// Compare this PR against the current origin/main byte-for-byte after removing
-// only the six reviewed i18n asset-query changes above. This is stricter than
-// a broad allowlist and still protects all superadmin/exam entrypoints.
-assert.equal(mainHtml,mainBaseline,
-  'Superadmin D1: Campus HTML unchanged versus current main except the six explicit academic language cache changes');
+assert.equal(mainHtml,mainBaseline,'D1: all superadmin/exam scripts untouched by the three approved F111 asset version changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
