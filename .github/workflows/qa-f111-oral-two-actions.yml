@@ -1,0 +1,26 @@
+name: F111 — Dos acciones en examen oral docente
+on:
+  pull_request:
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_oral_two_actions_e1.cjs'
+      - '.github/workflows/qa-f111-oral-two-actions.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_oral_two_actions_e1.cjs'
+permissions:
+  contents: read
+jobs:
+  qa-two-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/qa_f111_oral_two_actions_e1.cjs
+      - run: node tests/qa_f111_oral_two_actions_e1.cjs
+      - run: node tests/qa_f111_r48_oral_historical_teacher_ui.cjs
