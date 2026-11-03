@@ -4,6 +4,7 @@
   'use strict';
 
   const VERSION = 'F98.4-Z6-CS21A76';
+  const tp76t = label => window.AN_I18N?.t(label) || label;
   const SCRIPT_URL = window.APPS_SCRIPT_URL;
 
   function tp76SafeUserError(raw, fallback, context = '') {
@@ -113,9 +114,9 @@
   function InfoItem({ label, value, action }) {
     return (
       <div className="tp76-info-item">
-        <span>{label}</span>
+        <span>{tp76t(label)}</span>
         <div className="academy-id-info-value">
-          <strong title={value || ''}>{value || 'No registrado'}</strong>
+          <strong title={value || ''}>{value || tp76t('No registrado')}</strong>
           {action}
         </div>
       </div>
@@ -132,26 +133,26 @@
         <div className="tp76-doc-content">
           <div className="tp76-doc-topline">
             <div>
-              <div className="tp76-doc-title">{title}</div>
-              <div className="tp76-doc-subtitle">{subtitle}</div>
+              <div className="tp76-doc-title">{tp76t(title)}</div>
+              <div className="tp76-doc-subtitle">{tp76t(subtitle)}</div>
             </div>
             <span className={`tp76-status ${available ? 'ready' : 'pending'}`}>
-              {available ? 'Disponible' : 'Pendiente'}
+              {tp76t(available ? 'Disponible' : 'Pendiente')}
             </span>
           </div>
           <div className="tp76-doc-meta">
             {available
-              ? `${document.nombre || 'Documento PDF'}${formatDate(document.actualizado_en) ? ` · ${formatDate(document.actualizado_en)}` : ''}`
-              : 'Todavía no hay un PDF cargado.'}
+              ? `${document.nombre || tp76t('Documento PDF')}${formatDate(document.actualizado_en) ? ` · ${formatDate(document.actualizado_en)}` : ''}`
+              : tp76t('Todavía no hay un PDF cargado.')}
           </div>
           <div className="tp76-doc-actions">
             {available && (
               <button type="button" className="btn btn-primary" onClick={() => window.open(document.vista_url, '_blank', 'noopener,noreferrer')}>
-                Abrir
+                {tp76t('Abrir')}
               </button>
             )}
             <button type="button" className="btn" disabled={busy} onClick={onPick}>
-              {busy ? 'Cargando…' : available ? 'Reemplazar PDF' : 'Cargar PDF'}
+              {tp76t(busy ? 'Cargando…' : available ? 'Reemplazar PDF' : 'Cargar PDF')}
             </button>
           </div>
         </div>
@@ -273,7 +274,7 @@
       return (
         <div className="tp76-page">
           <style>{styles}</style>
-          <div className="tp76-loading">Preparando tu perfil profesional…</div>
+          <div className="tp76-loading">{tp76t('Preparando tu perfil profesional…')}</div>
         </div>
       );
     }
@@ -283,9 +284,9 @@
         <div className="tp76-page">
           <style>{styles}</style>
           <div className="tp76-error">
-            <strong>No pudimos cargar tu perfil.</strong>
+            <strong>{tp76t('No pudimos cargar tu perfil.')}</strong>
             <span>{state.error}</span>
-            <button type="button" className="btn btn-primary" onClick={load}>Reintentar</button>
+            <button type="button" className="btn btn-primary" onClick={load}>{tp76t('Reintentar')}</button>
           </div>
         </div>
       );
@@ -305,11 +306,11 @@
 
         <header className="tp76-heading">
           <div>
-            <div className="tp76-kicker">MI CUENTA</div>
-            <h1>Mi <em>Perfil</em></h1>
-            <p>Tu identidad profesional dentro de Academia Norteamericana.</p>
+            <div className="tp76-kicker">{tp76t('MI CUENTA')}</div>
+            <h1>{tp76t('Mi')} <em>{tp76t('Perfil')}</em></h1>
+            <p>{tp76t('Tu identidad profesional dentro de Academia Norteamericana.')}</p>
           </div>
-          <span className="tp76-version">Perfil docente</span>
+          <span className="tp76-version">{tp76t('Perfil docente')}</span>
         </header>
 
         <section className="tp76-hero-card">
@@ -324,13 +325,13 @@
                 </div>
                 <button type="button" className="tp76-camera" disabled={busy === 'photo'}
                   onClick={() => photoRef.current?.click()}
-                  title={photo ? 'Cambiar foto' : 'Subir foto'}
-                  aria-label={photo ? 'Cambiar foto' : 'Subir foto'}>
+                  title={tp76t(photo ? 'Cambiar foto' : 'Subir foto')}
+                  aria-label={tp76t(photo ? 'Cambiar foto' : 'Subir foto')}>
                   {busy === 'photo' ? <span className="an-spinner" aria-hidden="true" />
                     : window.AcademyCameraIcon && React.createElement(window.AcademyCameraIcon)}
                 </button>
                 <span className="tp76-photo-hint" role="status">
-                  {busy === 'photo' ? 'Subiendo…' : photo ? 'Cambiar foto' : 'Subir foto'}
+                  {tp76t(busy === 'photo' ? 'Subiendo…' : photo ? 'Cambiar foto' : 'Subir foto')}
                 </span>
                 <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={uploadPhoto} />
               </div>
@@ -339,23 +340,23 @@
               <div className="tp76-name-block">
                 {teacher.activo !== null && teacher.activo !== undefined && (
                   <div className="tp76-active">
-                    <span /> {teacher.activo === false ? 'Docente inactivo' : 'Docente activo'}
+                    <span /> {tp76t(teacher.activo === false ? 'Docente inactivo' : 'Docente activo')}
                   </div>
                 )}
                 <h2>{name}</h2>
-                <p>{teacher.titular || 'Docente de Inglés Conversacional'}</p>
+                <p>{teacher.titular ? tp76t(teacher.titular) : tp76t('Docente de Inglés Conversacional')}</p>
               </div>
             )
           })}
 
           <div className="tp76-info-strip">
-            <InfoItem label="Correo" value={teacher.correo} />
-            <InfoItem label="Teléfono" value={teacher.telefono} />
-            <InfoItem label="Cédula"
+            <InfoItem label={tp76t('Correo')} value={teacher.correo} />
+            <InfoItem label={tp76t('Teléfono')} value={teacher.telefono} />
+            <InfoItem label={tp76t('Cédula')}
               value={showId ? teacher.cedula : window.AcademyMaskCedula?.(teacher.cedula)}
               action={teacher.cedula && <button type="button" className="academy-id-toggle"
-                aria-pressed={showId} onClick={()=>setShowId(v=>!v)}>{showId ? 'Ocultar' : 'Mostrar'}</button>} />
-            <InfoItem label="Usuario" value={teacher.usuario || current.usuario} />
+                aria-pressed={showId} onClick={()=>setShowId(v=>!v)}>{tp76t(showId ? 'Ocultar' : 'Mostrar')}</button>} />
+            <InfoItem label={tp76t('Usuario')} value={teacher.usuario || current.usuario} />
           </div>
         </section>
 
@@ -365,47 +366,47 @@
           <section className="tp76-panel">
             <div className="tp76-panel-head">
               <div>
-                <span>PERFIL PROFESIONAL</span>
-                <h3>Presentación</h3>
+                <span>{tp76t('PERFIL PROFESIONAL')}</span>
+                <h3>{tp76t('Presentación')}</h3>
               </div>
               <button type="button" className="btn" onClick={() => setEditing(value => !value)}>
-                {editing ? 'Cancelar' : 'Editar'}
+                {tp76t(editing ? 'Cancelar' : 'Editar')}
               </button>
             </div>
 
             {editing ? (
               <div className="tp76-form">
                 <label>
-                  Titular profesional
-                  <input value={form.titular} maxLength={90} onChange={e => setForm(previous => ({ ...previous, titular: e.target.value }))} placeholder="Docente de Inglés Conversacional" />
+                  {tp76t('Titular profesional')}
+                  <input value={form.titular} maxLength={90} onChange={e => setForm(previous => ({ ...previous, titular: e.target.value }))} placeholder={tp76t('Docente de Inglés Conversacional')} />
                 </label>
                 <div className="tp76-form-row">
                   <label>
-                    Especialidad
-                    <input value={form.especialidad} maxLength={140} onChange={e => setForm(previous => ({ ...previous, especialidad: e.target.value }))} placeholder="Ej. Inglés conversacional" />
+                    {tp76t('Especialidad')}
+                    <input value={form.especialidad} maxLength={140} onChange={e => setForm(previous => ({ ...previous, especialidad: e.target.value }))} placeholder={tp76t('Ej. Inglés conversacional')} />
                   </label>
                   <label>
-                    Experiencia
-                    <input value={form.experiencia} maxLength={100} onChange={e => setForm(previous => ({ ...previous, experiencia: e.target.value }))} placeholder="Ej. 6 años de experiencia" />
+                    {tp76t('Experiencia')}
+                    <input value={form.experiencia} maxLength={100} onChange={e => setForm(previous => ({ ...previous, experiencia: e.target.value }))} placeholder={tp76t('Ej. 6 años de experiencia')} />
                   </label>
                 </div>
                 <label>
-                  Presentación breve
-                  <textarea value={form.presentacion} maxLength={650} onChange={e => setForm(previous => ({ ...previous, presentacion: e.target.value }))} placeholder="Una presentación profesional breve, clara y humana." />
+                  {tp76t('Presentación breve')}
+                  <textarea value={form.presentacion} maxLength={650} onChange={e => setForm(previous => ({ ...previous, presentacion: e.target.value }))} placeholder={tp76t('Una presentación profesional breve, clara y humana.')} />
                 </label>
                 <button type="button" className="btn btn-primary" disabled={busy === 'profile'} onClick={saveProfile}>
-                  {busy === 'profile' ? 'Guardando…' : 'Guardar perfil'}
+                  {tp76t(busy === 'profile' ? 'Guardando…' : 'Guardar perfil')}
                 </button>
               </div>
             ) : (
               <div className="tp76-professional">
                 <p className={teacher.presentacion ? '' : 'is-empty'}>
-                  {teacher.presentacion || 'Agregá una presentación breve para que tu perfil refleje tu experiencia y estilo profesional.'}
+                  {teacher.presentacion || tp76t('Agregá una presentación breve para que tu perfil refleje tu experiencia y estilo profesional.')}
                 </p>
                 <div className="tp76-tags">
                   {teacher.especialidad && <span>{teacher.especialidad}</span>}
                   {teacher.experiencia && <span>{teacher.experiencia}</span>}
-                  {!teacher.especialidad && !teacher.experiencia && <span>Perfil por completar</span>}
+                  {!teacher.especialidad && !teacher.experiencia && <span>{tp76t('Perfil por completar')}</span>}
                 </div>
               </div>
             )}
@@ -414,10 +415,10 @@
           <section className="tp76-panel">
             <div className="tp76-panel-head">
               <div>
-                <span>EXPEDIENTE PROFESIONAL</span>
-                <h3>Documentos</h3>
+                <span>{tp76t('EXPEDIENTE PROFESIONAL')}</span>
+                <h3>{tp76t('Documentos')}</h3>
               </div>
-              <div className="tp76-lock">Guardado institucional</div>
+              <div className="tp76-lock">{tp76t('Guardado institucional')}</div>
             </div>
 
             <div className="tp76-doc-list">
@@ -444,9 +445,9 @@
              /^https:\/\/drive\.google\.com\/drive\/folders\/[a-zA-Z0-9_-]+(?:[/?#]|$)/.test(data.carpeta_docente.url) && (
               <div className="tp76-archive">
                 <div className="tp76-archive-copy">
-                  <strong>Expediente institucional completo</strong>
-                  <p>Título profesional, TOEIC, constancias de experiencia, colegiatura, certificados, declaraciones y autorización INA, según los documentos disponibles.</p>
-                  <small>Carpeta privada de la Academia. Para abrirla necesitás permiso de Google Drive; no se publica para estudiantes.</small>
+                  <strong>{tp76t('Expediente institucional completo')}</strong>
+                  <p>{tp76t('Título profesional, TOEIC, constancias de experiencia, colegiatura, certificados, declaraciones y autorización INA, según los documentos disponibles.')}</p>
+                  <small>{tp76t('Carpeta privada de la Academia. Para abrirla necesitás permiso de Google Drive; no se publica para estudiantes.')}</small>
                 </div>
                 <a
                   className="btn btn-primary tp76-archive-link"
@@ -454,7 +455,7 @@
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Abrir carpeta privada con atestados docentes"
-                >Abrir carpeta de atestados</a>
+                >{tp76t('Abrir carpeta de atestados')}</a>
               </div>
             )}
           </section>
