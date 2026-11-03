@@ -89,6 +89,15 @@ const WarnIcon = () => (
 function HeroCarousel() {
   const [scene, setScene] = useState(0);
   const [cycle, setCycle] = useState(0);
+  // F111 PERF: solamente la escena visible y la siguiente solicitan imagen al iniciar.
+  // Conservamos las escenas ya visitadas para que el crossfade no pierda su imagen.
+  const [requestedScenes, setRequestedScenes] = useState([0, 1]);
+  const readyScenes = useRef(new Set());
+
+  useEffect(() => {
+    const next = (scene + 1) % HERO_SCENES.length;
+    setRequestedScenes(current => current.includes(next) ? current : [...current, next]);
+  }, [scene]);
 
   useEffect(() => {
     const reduceMotion = window.matchMedia
@@ -96,16 +105,28 @@ function HeroCarousel() {
     if (reduceMotion) return undefined;
 
     const timer = window.setInterval(() => {
-      setScene(current => (current + 1) % HERO_SCENES.length);
+      const next = (scene + 1) % HERO_SCENES.length;
+      // Red lenta: no mostrar una escena hasta que su imagen esté lista.
+      if (!readyScenes.current.has(next) || document.hidden) return;
+      setScene(next);
       setCycle(current => current + 1);
     }, HERO_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [scene]);
 
   const selectScene = (index) => {
-    setScene(index);
-    setCycle(current => current + 1);
+    const activate = () => {
+      setRequestedScenes(current => current.includes(index) ? current : [...current, index]);
+      setScene(index);
+      setCycle(current => current + 1);
+    };
+    if (readyScenes.current.has(index)) { activate(); return; }
+    // Navegación manual a una escena aún no solicitada: precargar antes de mostrar.
+    const preload = new Image();
+    preload.onload = () => { readyScenes.current.add(index); activate(); };
+    preload.onerror = () => {}; // conservar la escena visible ante fallo de red
+    preload.src = HERO_SCENES[index].image;
   };
 
   return (
@@ -117,15 +138,16 @@ function HeroCarousel() {
             key={item.image}
             aria-hidden={scene !== index}
           >
-            <img
+            {requestedScenes.includes(index) && <img
               src={item.image}
               alt={scene === index ? item.alt : ''}
               className="hero-photo"
               draggable="false"
-              loading="eager"
+              loading={index === 0 ? 'eager' : 'lazy'}
               decoding="async"
-              fetchPriority={index === 0 ? 'high' : 'auto'}
-            />
+              fetchPriority={index === 0 ? 'high' : 'low'}
+              onLoad={() => readyScenes.current.add(index)}
+            />}
           </figure>
         ))}
       </div>
@@ -254,7 +276,7 @@ function App() {
       localStorage.setItem('an_role', rolCampus);
     } catch (_) {}
     const destino = acc.rol === 'ventas' ? 'ventas.html' : 'campus.html';
-    setTimeout(() => { window.location.href = destino; }, 1100);
+    setTimeout(() => { window.location.href = destino; }, 180);
   };
 
   const submit = async (event) => {
