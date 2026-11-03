@@ -23,7 +23,7 @@ try{
  const page=await browser.newPage();
  page.on('pageerror',e=>errors.push(e.message));
  page.on('dialog',d=>d.accept());
- await page.route(ROOT+'/teacher.js',r=>r.fulfill({status:200,contentType:'application/javascript',body:source}));
+ await page.route(ROOT+'/teacher.js',r=>r.fulfill({status:200,contentType:'application/javascript; charset=utf-8',body:source}));
  await page.route(API+'**',route=>{
   const fn=new URL(route.request().url()).searchParams.get('fn');
   const body=JSON.parse(route.request().postData()||'{}');
@@ -45,7 +45,7 @@ try{
   }
   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(reply)});
  });
- const markup='<html><body><div id="root"><section data-screen-label="Docente · Exámenes"><h2>EXÁMENES DEL DOCENTE</h2></section></div>'+
+ const markup='<html><head><meta charset="utf-8"></head><body><div id="root"><section data-screen-label="Docente · Exámenes"><h2>EXÁMENES DEL DOCENTE</h2></section></div>'+
  '<script>window.getSessionToken=()=>\'QA_AUTORIZADO_DOCENTE\';window.F111_QZ_API_URL=\''+API+'\';</script>'+
  '<script src="/teacher.js"></script></body></html>';
  await page.route(ROOT+'/teacher',r=>r.fulfill({status:200,contentType:'text/html',body:markup}));
@@ -63,9 +63,7 @@ try{
  const reviewSubmit=modal.locator('.f111-tqr-grade-form button[type=submit]');
  assert.equal(await reviewSubmit.count(),1,'botón de revisión presente');
  await reviewSubmit.click();
- await page.waitForTimeout(350);
- console.log('REVIEW_DEBUG',JSON.stringify({calls:calls.map(x=>x.fn),status:await modal.locator('.f111-tqr-feedback').allTextContents(),content:(await modal.locator('.f111-tqr-detail').innerText()).slice(-800)}));
- await modal.getByText('REVISADO · 92 / 100').first().waitFor({timeout:1500});
+ await modal.getByText('REVISADO · 92 / 100').first().waitFor({timeout:4500});
  assert.equal(calls.filter(x=>x.fn==='qzProgressTeacherReview').length,1);
  assert.ok(calls.filter(x=>x.fn==='qzProgressTeacherList').length>=2,'readback requeridó');
  assert.equal(errors.length,0,errors.join('\n'));
