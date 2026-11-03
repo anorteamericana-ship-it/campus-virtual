@@ -448,7 +448,7 @@
                 <div className="tp76-archive-copy">
                   <strong>{tp76t('Expediente institucional completo')}</strong>
                   <p>{tp76t('Título profesional, TOEIC, constancias de experiencia, colegiatura, certificados, declaraciones y autorización INA, según los documentos disponibles.')}</p>
-                  <small>{tp76t('Podés agregar otros atestados a tu carpeta institucional privada desde Google Drive. Necesitás permiso de edición; la Academia debe autorizarlo. Esta opción no reemplaza el CV ni el Aval INA.')}</small>
+                  <small>{tp76t('Carpeta privada de la Academia. Podés agregar otros atestados desde Google Drive con permiso de edición otorgado por la Academia. No reemplaza el CV ni el Aval INA.')}</small>
                 </div>
                 <a
                   className="btn btn-primary tp76-archive-link"
