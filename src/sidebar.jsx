@@ -616,6 +616,31 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         </div>
       </div>
 
+      {window.AN_I18N?.available && (
+        <div data-no-translate="true" role="group" aria-label="Language / Idioma"
+             style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'5px 10px',fontSize:12}}>
+          <span style={{color:"var(--ink-3)",fontSize:11}}>EN / ES</span>
+          <div style={{display:'flex',gap:4}}>
+            {['en','es'].map(lang => (
+              <button type="button" key={lang} aria-pressed={window.AN_I18N.getLang()===lang}
+                disabled={role !== 'student' && role !== 'teacher' && lang === 'en'}
+                title={role !== 'student' && role !== 'teacher' && lang === 'en' ? 'Vista previa EN disponible en el rol estudiante o docente' : undefined}
+                onClick={() => window.AN_I18N.setLang(lang)}
+                style={{border:'1px solid var(--line)',borderRadius:8,padding:'5px 9px',
+                  background:window.AN_I18N.getLang()===lang?'var(--an-navy)':'var(--surface)',
+                  color:window.AN_I18N.getLang()===lang?'#fff':'var(--ink-2)',
+                  fontWeight:700,fontSize:11,minWidth:37,
+                  opacity:role !== 'student' && role !== 'teacher' && lang === 'en'?0.5:1}}>
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {role !== 'student' && role !== 'teacher' && window.AN_I18N?.available && (
+        <div data-no-translate="true" style={{fontSize:10,padding:'0 10px',color:'var(--ink-3)'}}>EN disponible en vista estudiante/docente.</div>
+      )}
+
       {esSuperadmin && <ModoPruebaPanel />}
 
       {role === 'student' ? studentSections.map(section => (
@@ -706,24 +731,6 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         </>
       )}
 
-      {window.AN_I18N?.preview && (role === 'student' || role === 'teacher') && (
-        <div data-no-translate="true" role="group" aria-label="Language / Idioma"
-             style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'5px 10px',fontSize:12}}>
-          <span style={{color:"var(--ink-3)",fontSize:11}}>Language preview</span>
-          <div style={{display:'flex',gap:4}}>
-            {['en','es'].map(lang => (
-              <button type="button" key={lang} aria-pressed={window.AN_I18N.getLang()===lang}
-                onClick={() => window.AN_I18N.setLang(lang)}
-                style={{border:'1px solid var(--line)',borderRadius:8,padding:'5px 9px',
-                  background:window.AN_I18N.getLang()===lang?'var(--an-navy)':'var(--surface)',
-                  color:window.AN_I18N.getLang()===lang?'#fff':'var(--ink-2)',
-                  fontWeight:700,fontSize:11,minWidth:37}}>
-                {lang.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
       <div className="sb-user">
         <div className="sb-avatar">{userInit}</div>
         <div style={{ flex:1, minWidth:0 }}>
