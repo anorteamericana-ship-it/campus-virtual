@@ -1,0 +1,24 @@
+name: F111 R50 — conflicto oral al abrir
+on:
+  pull_request:
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r50_oral_conflict_on_load.cjs'
+      - '.github/workflows/qa-f111-r50-oral-conflict.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r50_oral_conflict_on_load.cjs'
+permissions:
+  contents: read
+jobs:
+  r50-readonly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/qa_f111_r50_oral_conflict_on_load.cjs
+      - run: node tests/qa_f111_r50_oral_conflict_on_load.cjs
