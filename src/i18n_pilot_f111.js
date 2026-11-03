@@ -1,12 +1,18 @@
 /* F111 · i18n pilot: role-aware, opt-in, no DOM rewriting.
-   Activate only with campus.html?i18n=preview. Production default remains ES.
+   Visible on every authenticated Campus screen; EN is opt-in for student/teacher. Default ES.
    No persistent data, no Apps Script changes, no translated identifiers. */
 (function (root) {
   'use strict';
   const params = new URLSearchParams(root.location.search);
-  const preview = params.get('i18n') === 'preview';
+  const requestedPreview = params.get('i18n') === 'preview';
+  const available = true; // A language selector is always visible after Campus login.
   const KEY = 'an_i18n_pilot_lang';
   const STAMP = 'an_i18n_pilot_login';
+  const INTENT = 'an_i18n_pilot_intent';
+  // Capture the request before any login guard removes the URL query.
+  if (requestedPreview) {
+    try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
+  }
   const DICTIONARY = Object.freeze({
     'Menú':'Menu', 'Gestión':'Management', 'Prematrícula':'Pre-enrollment',
     'Hola,':'Hello,', 'Accesos rápidos':'Quick Access', 'Entradas principales':'Main Shortcuts',
@@ -55,10 +61,18 @@
     } catch (_) {}
   }
   function getLang() {
-    if (!preview || root.AN_I18N_FORCE_ES || role() === 'other') return 'es';
+    if (root.AN_I18N_FORCE_ES || role() === 'other') return 'es';
     clearPreviousLoginChoice();
-    try { return root.sessionStorage.getItem(KEY) === 'es' ? 'es' : 'en'; }
-    catch (_) { return 'en'; }
+    try {
+      const choice = root.sessionStorage.getItem(KEY);
+      if (choice === 'en' || choice === 'es') return choice;
+      if (root.sessionStorage.getItem(INTENT) === 'en') {
+        root.sessionStorage.removeItem(INTENT);
+        root.sessionStorage.setItem(KEY, 'en');
+        return 'en';
+      }
+    } catch (_) {}
+    return 'es'; // The existing Campus remains Spanish until EN is chosen.
   }
   function t(value) {
     if (getLang() !== 'en' || typeof value !== 'string') return value;
@@ -66,8 +80,9 @@
       ? DICTIONARY[value] : value;
   }
   function setLang(next) {
-    if (!preview || (next !== 'en' && next !== 'es') || role() === 'other') return false;
-    try { root.sessionStorage.setItem(KEY, next); } catch (_) { return false; }
+    if ((next !== 'en' && next !== 'es') || role() === 'other') return false;
+    try { root.sessionStorage.setItem(KEY, next); root.sessionStorage.removeItem(INTENT); }
+    catch (_) { return false; }
     root.location.reload();
     return true;
   }
@@ -75,7 +90,7 @@
     const codes = { B1:'Basic I', B2:'Basic II', I1:'Intermediate I', I2:'Intermediate II' };
     return getLang() === 'en' ? (codes[String(value)] || t(value)) : value;
   }
-  const api = Object.freeze({ preview, role, getLang, setLang, t, level });
+  const api = Object.freeze({ available, requestedPreview, role, getLang, setLang, t, level });
   root.AN_I18N = api;
   root.document.documentElement.lang = getLang();
   if (getLang() === 'en') root.document.title = 'My Campus · Academia Norteamericana';
