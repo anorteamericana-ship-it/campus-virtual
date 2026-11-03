@@ -78,7 +78,9 @@ assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 // perfil profesional, sin reordenar otros scripts productivos.
 const oldProfileScript='<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F98.4Z6CS21A76"></script>';
 const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
-assert.equal(mainHtml.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
+const docEntryParam='&docs=F111DIEGOEXPEDIENTE20261103';
+const htmlForDocEntry=mainHtml.replaceAll(docEntryParam,'');
+assert.equal(htmlForDocEntry.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
 if (mainBaseline.includes(newProfileScript)) {
   // En el push posterior al merge, origin/main ya contiene la corrección.
   // Se exige igualdad exacta y se evita revertirla contra sí misma.
