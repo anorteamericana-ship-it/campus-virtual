@@ -294,19 +294,20 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
   const pendientes = estData?.pendientes || {};
   const grupo      = estData?.grupo    || '';
 
-  // F98.4-Z6-BG: un nivel solo admite pagos si existe realmente en ESTATUS
-  // y no está PE. El nivel siguiente además requiere APR/CNV del anterior.
-  // Esto evita cobrar cursos proyectados que todavía no están matriculados.
+  // F111: pago ordinario intacto; CONAPE anticipa B1 PE o el nivel PE
+  // consecutivo al que está CA, nunca niveles salteados.
   const desbloq = {};
   NIVEL_ORDER_A.forEach((niv, i) => {
     const actual = niveles[niv];
     const estadoActual = String(actual?.estatus || '').trim().toUpperCase();
     const existe = !!actual && typeof actual === 'object';
     const activoFinanciero = existe && estadoActual !== 'PE';
-    if (i === 0) { desbloq[niv] = activoFinanciero; return; }
+    const conape = String(estSel?.CONVENIO || '').trim().toUpperCase() === 'CONAPE';
+    if (i === 0) { desbloq[niv] = activoFinanciero || (conape && estadoActual === 'PE'); return; }
     const prev = NIVEL_ORDER_A[i-1];
     const estadoPrev = String(niveles[prev]?.estatus || '').trim().toUpperCase();
-    desbloq[niv] = activoFinanciero && STATUS_APROBADO.includes(estadoPrev);
+    const anticipoSiguiente = conape && estadoActual === 'PE' && estadoPrev === 'CA';
+    desbloq[niv] = (activoFinanciero && STATUS_APROBADO.includes(estadoPrev)) || anticipoSiguiente;
   });
 
   const seleccionarNivel = (niv) => {
@@ -326,7 +327,7 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
   return (
     <div>
       <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, marginBottom:6, color:'var(--an-navy-ink)' }}>Seleccionar nivel</div>
-      <div style={{ fontSize:13, color:'var(--ink-3)', marginBottom:18 }}>Solo los niveles existentes y no proyectados (PE) pueden recibir pagos.</div>
+      <div style={{ fontSize:13, color:'var(--ink-3)', marginBottom:18 }}>Pagos ordinarios de niveles activos. CONAPE: B1 anticipado antes de iniciar, o el único nivel PE inmediatamente siguiente al nivel CA.</div>
 
       {/* Info estudiante */}
       <div style={{ padding:'12px 16px', background:'color-mix(in srgb,var(--an-navy) 5%,white)', border:'1px solid color-mix(in srgb,var(--an-navy) 20%,white)', borderRadius:'var(--r-md)', marginBottom:18, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
@@ -365,11 +366,18 @@ function Paso2AP({ estData, setEstData, estSel, setNivelSel, setError, setPaso, 
               </div>
               {ok ? (
                 <>
+                  {String(h?.estatus || '').toUpperCase() === 'PE' && (
+                    <div style={{fontSize:11,color:'#9A5B00',fontWeight:700,marginBottom:5}}>
+                      Anticipo financiero de {niv} — mantiene PE, no cambia notas ni morosidad CONAPE
+                    </div>
+                  )}
                   <div style={{ fontSize:11, color:'var(--ink-3)', marginBottom:4 }}>{grupoNivel || 'Sin grupo asignado'}</div>
                   <div style={{ fontSize:12, color:'var(--ink-2)' }}>
-                    {cuotaNivel > 0 && Number(pNivel.cuotas_pend || 0) > 0
-                      ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · pendiente {fmtCRC_A(pNivel.cuotas_pend)}</>
-                      : <span style={{ color:'#2E7D32', fontWeight:600 }}>✓ Sin cuotas pendientes</span>}
+                    {String(h?.estatus || '').toUpperCase() === 'PE'
+                      ? <>Precio de cuota proyectada: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · saldo anticipable {fmtCRC_A(Math.max(0,cuotaNivel*Number(pNivel.n_cuotas_periodo||0)-Number(pNivel.cuotas_pagadas||0)))}</>
+                      : cuotaNivel > 0 && Number(pNivel.cuotas_pend || 0) > 0
+                        ? <>Cuota: <strong style={{ color:c }}>{fmtCRC_A(cuotaNivel)}</strong> · pendiente {fmtCRC_A(pNivel.cuotas_pend)}</>
+                        : <span style={{ color:'#2E7D32', fontWeight:600 }}>✓ Sin cuotas pendientes</span>}
                   </div>
                   {matriculaNivel > 0 && <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>Matrícula pendiente: {fmtCRC_A(matriculaNivel)}</div>}
                   {cargoNivel && <div style={{ fontSize:11, color:'#9A5B00', fontWeight:700, marginTop:2 }}>{cargoNivel.CONCEPTO}: {fmtCRC_A(cargoNivel.MONTO)}</div>}
@@ -493,10 +501,19 @@ function Paso4AP({
 
   const pendNivel = pend?.por_nivel?.[niv] || {};
   const estadoNivel = String(pendNivel.estatus || estData?.niveles?.[niv]?.estatus || '').trim().toUpperCase();
+  const indexNivel = NIVEL_ORDER_A.indexOf(niv);
+  const nivelPrevio = indexNivel > 0 ? NIVEL_ORDER_A[indexNivel - 1] : '';
+  const estadoPrevio = nivelPrevio
+    ? String(estData?.niveles?.[nivelPrevio]?.estatus || '').trim().toUpperCase() : '';
+  const anticipoFuturo = indexNivel >= 0 && estadoNivel === 'PE' &&
+    String(est?.CONVENIO || '').trim().toUpperCase() === 'CONAPE' &&
+    (!nivelPrevio || estadoPrevio === 'CA');
   const nivelMatriculado = !!estData?.niveles?.[niv] && estadoNivel !== 'PE';
-  const documentoCobrable = nivelMatriculado && ['CA','APR'].includes(estadoNivel);
-  const montoMat   = nivelMatriculado ? Number(pendNivel.matricula_pend ?? pend.matricula ?? 0) : 0;
-  const montoCuota = nivelMatriculado ? Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0) : 0;
+  const documentoCobrable = (nivelMatriculado && ['CA','APR'].includes(estadoNivel)) || anticipoFuturo;
+  const montoMat = anticipoFuturo
+    ? Math.max(0, Number(pendNivel.precio_matricula || est?.MATRICULA || 0) - Number(pendNivel.mat_pagada || 0))
+    : nivelMatriculado ? Number(pendNivel.matricula_pend ?? pend.matricula ?? 0) : 0;
+  const montoCuota = nivelMatriculado || anticipoFuturo ? Number(pendNivel.precio_cuota ?? pend.cuota_mensual ?? 0) : 0;
 
   // El certificado puede cobrarse durante CA. La morosidad sigue exigiéndolo
   // únicamente al aprobar; aquí solo se habilita el cobro anticipado/controlado.
@@ -511,11 +528,11 @@ function Paso4AP({
   // Programa Completo no aplica cuando existe CNV por examen de nivelación.
   const precioTitulo = Number(pendNivel.precio_programa_completo ?? pendNivel.precio_titulo ?? 0);
   const pagadoTitulo = Number(pendNivel.programa_completo_pagado ?? pendNivel.titulo_pagado ?? 0);
-  const montoTitulo = niv === 'I2' && documentoCobrable && pendNivel.programa_completo_aplica !== false && pendNivel.programa_completo_cobrable !== false
+  const montoTitulo = niv === 'I2' && documentoCobrable && (anticipoFuturo ? precioTitulo>0 : (pendNivel.programa_completo_aplica !== false && pendNivel.programa_completo_cobrable !== false))
     ? Math.max(Number(pendNivel.programa_completo_pend ?? pendNivel.titulo_pend ?? 0), Math.max(0, precioTitulo - pagadoTitulo))
     : 0;
   const precioToeic = Number(pendNivel.precio_toeic || 0);
-  const montoToeic = niv === 'I2' && documentoCobrable && pendNivel.toeic_aplica !== false && !pendNivel.toeic_omitido
+  const montoToeic = niv === 'I2' && documentoCobrable && (anticipoFuturo ? (pendNivel.toeic_aplica === true && pendNivel.toeic_incluido_proforma === true) : (pendNivel.toeic_aplica !== false && !pendNivel.toeic_omitido))
     ? Math.max(Number(pendNivel.toeic_pend || 0), Math.max(0, precioToeic - Number(pendNivel.toeic_pagado || 0)))
     : 0;
 
@@ -523,12 +540,16 @@ function Paso4AP({
     String(c.ESTADO || '').toUpperCase() === 'PENDIENTE' &&
     (!c.NIVEL || String(c.NIVEL).toUpperCase() === String(niv || '').toUpperCase())
   ) || null;
-  const montoOtro = Number(cargoOtro?.MONTO || 0);
+  const montoOtro = anticipoFuturo ? 0 : Number(cargoOtro?.MONTO || 0);
 
   // Cantidad realmente pendiente del intento seleccionado. Evita cobrar de más
   // cuando ya existen una o más cuotas aplicadas en ese mismo grupo/intento.
-  const cuotaPendienteTotal = Number(pendNivel.cuotas_pend || 0);
-  const nCuotasPeriodo = Number(pendNivel.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
+  const nCuotasPeriodo = anticipoFuturo
+    ? Number(pendNivel.n_cuotas_periodo || 0)
+    : Number(pendNivel.n_cuotas_periodo || pend.n_cuotas_periodo || (estData?.grupo_tipo === 'B' ? 2 : 4));
+  const cuotaPendienteTotal = anticipoFuturo
+    ? Math.max(0, montoCuota*nCuotasPeriodo - Number(pendNivel.cuotas_pagadas || 0))
+    : Number(pendNivel.cuotas_pend || 0);
   const nCuotas = montoCuota > 0 && cuotaPendienteTotal > 0
     ? Math.min(nCuotasPeriodo, Math.ceil(cuotaPendienteTotal / montoCuota))
     : 0;
@@ -540,6 +561,8 @@ function Paso4AP({
   }, [mostrarCuotas, nCuotas, qCuota, setQCuota]);
 
   const [cargandoApl, setCargandoApl] = React.useState(false);
+  const [anticipoConfirmado, setAnticipoConfirmado] = React.useState(false);
+  React.useEffect(() => { setAnticipoConfirmado(false); }, [est?.CODIGO, niv, compr?.doc]);
   const [errLocal, setErrLocal] = React.useState('');
   const requestIdRef = React.useRef('');
   React.useEffect(() => {
@@ -548,7 +571,10 @@ function Paso4AP({
 
   const total       = qMat*montoMat + subtotalCuotas + qCert*montoCert + qTitulo*montoTitulo + qToeic*montoToeic + qOtro*montoOtro;
   const excedeSaldo = total > saldo;
-  const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl;
+  const proformaI2Verificada = niv !== 'I2' || (pendNivel.proforma_toeic_confirmado === true && precioTitulo>0 && (pendNivel.toeic_aplica!==true || precioToeic>0));
+  const anticipoCompleto = !anticipoFuturo || (proformaI2Verificada && Math.abs(total - (montoMat + cuotaPendienteTotal + montoCert + montoTitulo + montoToeic)) < 0.01);
+  const puedeAplicar = total > 0 && !excedeSaldo && !cargandoApl &&
+    (!anticipoFuturo || (anticipoConfirmado && (nCuotasPeriodo === 2 || nCuotasPeriodo === 4) && anticipoCompleto));
 
   // Sync panel
   React.useEffect(() => { setTotalAplicarPanel(total); }, [total]);
@@ -581,6 +607,7 @@ function Paso4AP({
         doc:            compr.doc,
         monto_total:    total,
         cod_estudiante: est?.CODIGO || est?.rec_m,
+        anticipo_futuro: anticipoFuturo,
         rubros,
       });
       if (!data.ok) { setErrLocal(apSafeUserError(data?.error || data?.mensaje, 'No se pudo aplicar el pago. Revisá los datos e intentá de nuevo.', 'aplicar_pago')); return; }
@@ -604,6 +631,7 @@ function Paso4AP({
         monto:          total,
         saldoRestante:  data.saldo_restante ?? (saldo - total),
         conapeSyncFallo,
+        anticipoFuturo,
       });
     } catch(e) {
       setErrLocal(apSafeUserError(e?.message || String(e), 'No se pudo aplicar el pago. Revisá la conexión e intentá de nuevo.', 'aplicar_pago'));
@@ -620,7 +648,7 @@ function Paso4AP({
           borderRadius:'var(--r-xl)', padding:'40px 32px', color:'white', marginBottom:20,
         }}>
           <div style={{ fontSize:60, marginBottom:12 }}>✅</div>
-          <div style={{ fontFamily:'var(--f-serif)', fontSize:28, fontWeight:500, marginBottom:6 }}>Pago aplicado</div>
+          <div style={{ fontFamily:'var(--f-serif)', fontSize:28, fontWeight:500, marginBottom:6 }}>{confirmado.anticipoFuturo ? ('Anticipo ' + niv + ' registrado') : 'Pago aplicado'}</div>
           {confirmado.recibos.map((rec, i) => (
             <div key={i} style={{ fontSize:28, fontFamily:'var(--f-mono)', fontWeight:700, letterSpacing:'0.04em', marginBottom:6 }}>
               REC-{rec}
@@ -633,6 +661,11 @@ function Paso4AP({
             </div>
           )}
         </div>
+        {confirmado.anticipoFuturo && (
+          <div style={{padding:'12px 16px',marginBottom:14,borderRadius:10,background:'#FFF8E9',color:'#75480B',textAlign:'left',fontSize:13}}>
+            {niv} permanece PE{nivelPrevio ? (', y ' + nivelPrevio + ' permanece CA') : ' antes de iniciar'}. No se reporta el nivel anticipado como NO/SI en morosidad CONAPE hasta su activación académica.
+          </div>
+        )}
         {confirmado.conapeSyncFallo && (
           <div style={{
             padding:'12px 16px', marginBottom:16,
@@ -692,9 +725,11 @@ function Paso4AP({
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
         {mostrarCuotas && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
         {montoCert  > 0 && <RubroRow label={`Certificado de ${NIVEL_LABEL_A[niv] || niv}`} monto={montoCert} qty={qCert} maxQty={1} onQty={setQCert} />}
-        {montoTitulo > 0 && <RubroRow label="Certificado Programa Completo" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
+        {montoTitulo > 0 && <RubroRow label="Título Programa Completo / INA según proforma" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
         {niv === 'I2' && pendNivel.programa_completo_estado === 'NO_APLICA_NIVELACION' && <div style={{padding:'10px 12px',borderRadius:9,background:'#F4F1EC',color:'#756D65',fontSize:11,fontWeight:700}}>Programa Completo: no aplica por nivel convalidado mediante examen de nivelación.</div>}
         {montoToeic > 0 && <RubroRow label="Prueba TOEIC" monto={montoToeic} qty={qToeic} maxQty={1} onQty={setQToeic} />}
+        {niv === 'I2' && anticipoFuturo && pendNivel.proforma_toeic_confirmado !== true && <div style={{padding:'10px 12px',borderRadius:9,background:'#FFF8E1',color:'#8A5A00',fontSize:11,fontWeight:700}}>No se ha confirmado la selección TOEIC de la proforma individual. El anticipo I2 está bloqueado para evitar un cobro incompleto o indebido.</div>}
+        {niv === 'I2' && anticipoFuturo && pendNivel.proforma_toeic_confirmado === true && pendNivel.toeic_incluido_proforma === false && <div style={{padding:'10px 12px',borderRadius:9,background:'#F1F7FD',fontSize:11}}>TOEIC: no incluido en la proforma financiada del estudiante.</div>}
         {niv === 'I2' && pendNivel.toeic_omitido && <div style={{padding:'10px 12px',borderRadius:9,background:'#E8F5E9',color:'#2E7D32',fontSize:11,fontWeight:700}}>TOEIC omitido administrativamente: no bloquea la mora.</div>}
         {montoOtro > 0 && <RubroRow label={cargoOtro?.CONCEPTO || 'Otro pago'} monto={montoOtro} qty={qOtro} maxQty={1} onQty={setQOtro} />}
         {montoMat === 0 && !mostrarCuotas && montoCert === 0 && montoTitulo === 0 && montoToeic === 0 && montoOtro === 0 && (
@@ -704,6 +739,20 @@ function Paso4AP({
         )}
       </div>
 
+      {anticipoFuturo && (
+        <label style={{display:'block',padding:'14px 16px',marginBottom:16,border:'1px solid #A76A1F',background:'#FFF8E9',borderRadius:10,fontSize:13,color:'#75480B',lineHeight:1.45}}>
+          <strong>Anticipo financiero completo de {NIVEL_LABEL_A[niv]} — CONAPE</strong>
+          <div style={{margin:'8px 0'}}>
+            Se registrará el saldo completo de los rubros financiados de {niv} con recibos y comprobante bancario.{niv==='I2'?' Incluye el título final y TOEIC únicamente si están incluidos en la proforma individual.':''}
+            {nivelPrevio ? (' ' + nivelPrevio + ' permanece CA.') : ' B1 todavía no inicia.'} {niv} permanece PE,
+            sin alterar notas ni generar morosidad anticipada.
+          </div>
+          <span style={{display:'flex',alignItems:'flex-start',gap:8}}>
+            <input type="checkbox" checked={anticipoConfirmado} onChange={e=>setAnticipoConfirmado(e.target.checked)} />
+            Confirmé que el comprobante pertenece a este estudiante y autorizo registrar el anticipo completo de {niv} sin promoverlo.
+          </span>
+        </label>
+      )}
       {/* Total */}
       <div style={{ padding:'16px 18px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:'1px solid var(--line)', marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span style={{ fontWeight:700, fontSize:15 }}>Total a aplicar</span>

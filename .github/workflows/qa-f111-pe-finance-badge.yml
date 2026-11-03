@@ -1,0 +1,24 @@
+name: F111 PE — visualización de anticipos CONAPE
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'tests/qa_f111_pe_finance_badge.cjs'
+      - '.github/workflows/qa-f111-pe-finance-badge.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/admin_students.jsx'
+      - 'tests/qa_f111_pe_finance_badge.cjs'
+permissions:
+  contents: read
+jobs:
+  readonly-pe-finance-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/qa_f111_pe_finance_badge.cjs
+      - run: node tests/qa_f111_pe_finance_badge.cjs

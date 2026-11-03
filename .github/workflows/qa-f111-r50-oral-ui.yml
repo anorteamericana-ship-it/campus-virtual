@@ -1,0 +1,25 @@
+name: F111 R50 — docente solicita, admin autoriza, PDF único
+on:
+  pull_request:
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r50_oral_admin_teacher_ui.cjs'
+      - '.github/workflows/qa-f111-r50-oral-ui.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r50_oral_admin_teacher_ui.cjs'
+permissions:
+  contents: read
+jobs:
+  r50-e1-oral-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/qa_f111_r50_oral_admin_teacher_ui.cjs
+      - run: node tests/qa_f111_r48_oral_historical_teacher_ui.cjs

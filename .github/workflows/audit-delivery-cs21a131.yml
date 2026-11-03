@@ -8,6 +8,8 @@ on:
       - 'src/**'
       - 'styles/**'
       - 'scripts/audit_delivery_surface.mjs'
+      - 'scripts/lib/parse_f96_lazy_map.mjs'
+      - 'scripts/qa_f111_autopass5_lazy_manifest_e1.mjs'
       - 'scripts/test_teacher_delivery_guard_cs21a133.mjs'
       - 'scripts/test_teacher_lesson_book_link_cs21a142.mjs'
       - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
@@ -21,6 +23,8 @@ on:
       - 'src/**'
       - 'styles/**'
       - 'scripts/audit_delivery_surface.mjs'
+      - 'scripts/lib/parse_f96_lazy_map.mjs'
+      - 'scripts/qa_f111_autopass5_lazy_manifest_e1.mjs'
       - 'scripts/test_teacher_delivery_guard_cs21a133.mjs'
       - 'scripts/test_teacher_lesson_book_link_cs21a142.mjs'
       - '00_DOCUMENTACION/BACKEND_OBSERVADO_CS21A131.json'
@@ -53,6 +57,9 @@ jobs:
       - name: Stop on audit failure
         if: steps.delivery_audit.outcome == 'failure'
         run: exit 1
+      - name: Verify F96 lazy manifest parser without executing app source
+        run: |
+          node scripts/qa_f111_autopass5_lazy_manifest_e1.mjs
       - name: Verify teacher delivery guard
         run: |
           node --check src/teacher_delivery_guard_cs21a133.js

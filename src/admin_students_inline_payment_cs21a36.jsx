@@ -3,7 +3,7 @@
 (function(){
 'use strict';
 
-const BUILD='F98.4-Z6-CS21A36';
+const BUILD='F111-TOEIC-PROFORMA-HISTORICA-20261031';
 const LABEL={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 const RUBRO_LABEL={MATRICULA:'Matrícula',CUOTA:'Cuotas',CERTIFICADO:'Certificado',PROGRAMA_COMPLETO:'Programa completo',TOEIC:'TOEIC'};
 const InlinePaymentContext=React.createContext(null);
@@ -203,6 +203,220 @@ function AgIndIntentoFinancieroCS21A36({intento,color,nivel,certificadoRegistro}
   </div>;
 }
 
+// F111: cobro CONAPE en PE desde Consulta individual; mismo aplicarPago que
+// la pantalla de Aplicar Pago. El servidor vuelve a validar TODOS los importes.
+// F111: recuperar proformas anteriores al registro PROSPECTOS 2026.
+// No hace cobros: registra el PDF que Super Admin ya revisó.
+function AgIndProformaLegacy({codigo,referencia}){
+  const ctx=React.useContext(InlinePaymentContext);
+  const [open,setOpen]=React.useState(false),[url,setUrl]=React.useState('');
+  const [choice,setChoice]=React.useState(''),[amount,setAmount]=React.useState(String(referencia||''));
+  const [checked,setChecked]=React.useState(false),[saving,setSaving]=React.useState(false);
+  const [error,setError]=React.useState('');
+  React.useEffect(()=>{
+    const handler=e=>{if(norm(e?.detail?.codigo)===norm(codigo))setOpen(true);};
+    window.addEventListener('an:legacy-proforma-open',handler);
+    return()=>window.removeEventListener('an:legacy-proforma-open',handler);
+  },[codigo]);
+  async function guardar(){
+    if(saving)return;
+    if(!/^(SI|NO)$/.test(choice)){setError('Seleccioná la opción indicada en la proforma.');return;}
+    if(!/^https:\/\/drive\.google\.com\/file\/d\/[-_a-zA-Z0-9]+/.test(url)){
+      setError('Ingresá el enlace del PDF histórico en Google Drive.');return;
+    }
+    if(choice==='SI'&&(!Number.isFinite(Number(amount))||Number(amount)<=0)){
+      setError('Ingresá el valor del TOEIC que figura en la proforma.');return;
+    }
+    if(!checked){setError('Confirmá que revisaste la proforma original.');return;}
+    setSaving(true);setError('');
+    try{
+      await postInline('registrarProformaHistoricaConape',{
+        codigo,toeic_incluido:choice,toeic_monto:choice==='SI'?Number(amount):0,
+        proforma_url:url,documento_revisado:true
+      },55000);
+      setOpen(false);
+      ctx?.refresh?.('Proforma histórica verificada. Actualizando cotización...');
+    }catch(e){setError(inlineFinanceSafeUserError(e?.message||String(e),
+      'No se pudo guardar la verificación documental.','proforma_historica'))}
+    finally{setSaving(false);}
+  }
+  return <div style={{border:'1px solid #E2BD6B',background:'#FFF9EA',borderRadius:10,padding:10,marginBottom:9}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+      <div style={{fontSize:10.5,color:'#78521C',fontWeight:750}}>Proforma histórica CONAPE sin documento vinculado. El precio TOEIC de referencia es <b>{referencia>0?money(referencia):'no disponible'}</b>; falta comprobar si se financió.</div>
+      <button type="button" onClick={()=>setOpen(v=>!v)} style={{border:'1px solid #BD924B',padding:'7px 10px',borderRadius:8,background:'white',color:'#72501A',fontWeight:900,cursor:'pointer'}}>
+        {open?'Cerrar verificación':'Vincular proforma histórica'}
+      </button>
+    </div>
+    {open&&<div style={{display:'grid',gap:8,marginTop:10,maxWidth:620}}>
+      <label style={{fontSize:10,fontWeight:850}}>¿La proforma financiada incluye TOEIC?
+        <select value={choice} onChange={e=>{setChoice(e.target.value);setError('');}} style={{display:'block',width:'100%',padding:8,marginTop:3}}>
+          <option value="">Verificar en PDF...</option><option value="SI">Sí, incluido</option><option value="NO">No, excluido</option>
+        </select>
+      </label>
+      {choice==='SI'&&<label style={{fontSize:10,fontWeight:850}}>TOEIC según proforma (₡)
+        <input type="number" min="1" step="1" value={amount} onChange={e=>setAmount(e.target.value)} style={{display:'block',width:'100%',padding:8,marginTop:3}}/>
+      </label>}
+      <label style={{fontSize:10,fontWeight:850}}>Enlace al PDF original de la proforma
+        <input type="url" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://drive.google.com/file/d/..." style={{display:'block',width:'100%',padding:8,marginTop:3}}/>
+      </label>
+      <label style={{display:'flex',gap:7,fontSize:10,alignItems:'flex-start'}}>
+        <input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)}/>
+        Revisé el PDF original y confirmo que estos importes coinciden con el financiamiento CONAPE del estudiante.
+      </label>
+      {error&&<div role="alert" style={{color:'#B42318',fontSize:10,fontWeight:850}}>{error}</div>}
+      <button type="button" onClick={guardar} disabled={saving||!checked||!choice} style={{padding:'8px 12px',background:'#194872',color:'white',border:0,borderRadius:8,fontWeight:900,cursor:'pointer',opacity:saving?.6:1}}>
+        {saving?'Verificando PDF...':'Guardar verificación de proforma'}
+      </button>
+    </div>}
+  </div>;
+}
+
+function AgIndAnticipoConape({codigo,nivel,color}){
+  const ctx=React.useContext(InlinePaymentContext);
+  const open=ctx?.openLevel===nivel;
+  const [loading,setLoading]=React.useState(false);
+  const [pendingProforma,setPendingProforma]=React.useState(false);
+  const [finance,setFinance]=React.useState(null);
+  const [query,setQuery]=React.useState('');
+  const [receipt,setReceipt]=React.useState(null);
+  const [searching,setSearching]=React.useState(false);
+  const [applying,setApplying]=React.useState(false);
+  const [accepted,setAccepted]=React.useState(false);
+  const [error,setError]=React.useState('');
+  const [success,setSuccess]=React.useState('');
+  const idRef=React.useRef('');
+
+  React.useEffect(()=>{
+    if(!open)return;
+    let alive=true;
+    setFinance(null);setLoading(true);setPendingProforma(false);setError('');setReceipt(null);
+    setAccepted(false);setQuery('');setSuccess('');idRef.current='';
+    postInline('getEstudiante',{codigo},45000).then(data=>{
+      if(!alive)return;
+      const e=data.estudiante||{},levels=data.niveles||{},target=levels[nivel]||{},info=data.pendientes?.por_nivel?.[nivel]||{};
+      const order=['B1','B2','I1','I2'],index=order.indexOf(nivel),previous=index>0?order[index-1]:'';
+      const prevStatus=previous?upper(levels[previous]?.estatus):'';
+      if(upper(e.CONVENIO||e.convenio)!=='CONAPE'||upper(target.estatus)!=='PE'||index<0||(previous&&prevStatus!=='CA'))
+        throw new Error('Solo se anticipa CONAPE del nivel PE inmediatamente siguiente al que está CA.');
+      const n=num(info.n_cuotas_periodo),m=num(info.precio_matricula),q=num(info.precio_cuota),c=num(info.precio_certificado);
+      if(![2,4].includes(n)||m<=0||q<=0||c<=0)throw new Error('El nivel no tiene precios contractuales completos para anticiparlo.');
+      const dueMat=round(Math.max(0,m-num(info.mat_pagada)));
+      const dueQuota=round(Math.max(0,q*n-num(info.cuotas_pagadas)));
+      const dueCert=round(Math.max(0,c-num(info.cert_pagado)));
+      let dueTitle=0,dueToeic=0;
+      if(nivel==='I2'){
+        if(info.proforma_toeic_confirmado!==true){
+          setPendingProforma(true);
+          return;
+        }
+        const title=num(info.precio_programa_completo??info.precio_titulo);
+        if(title<=0)throw new Error('La proforma no tiene precio confirmado para el título final de I2.');
+        dueTitle=round(Math.max(0,title-num(info.programa_completo_pagado??info.titulo_pagado)));
+        if(info.toeic_aplica===true){
+          const precioToeic=num(info.precio_toeic);
+          if(info.toeic_incluido_proforma!==true||precioToeic<=0)
+            throw new Error('La proforma TOEIC no coincide con el importe registrado. Revisá antes de cobrar.');
+          dueToeic=round(Math.max(0,precioToeic-num(info.toeic_pagado)));
+        }
+      }
+      const total=round(dueMat+dueQuota+dueCert+dueTitle+dueToeic);
+      if(total<=.009)throw new Error('Este nivel ya no tiene saldo financiero por anticipar.');
+      const group=norm(info.grupo||target.grupo);
+      if(!group)throw new Error('El nivel PE no tiene grupo financiero asignado.');
+      setFinance({m:dueMat,q:dueQuota,c:dueCert,t:dueTitle,tc:dueToeic,total,group,previous,n,unit:q});
+    }).catch(e=>alive&&setError(inlineFinanceSafeUserError(e?.message||String(e),'No se pudo preparar el anticipo. Actualizá la consulta.','anticipo_futuro')))
+      .finally(()=>alive&&setLoading(false));
+    return()=>{alive=false;};
+  },[open,codigo,nivel]);
+
+  async function buscar(){
+    if(!finance)return;
+    const doc=norm(query);
+    if(!/^\d{4,}$/.test(doc)){setError('Escribí el número exacto del comprobante bancario.');return;}
+    setSearching(true);setError('');setReceipt(null);setAccepted(false);idRef.current='';
+    try{
+      const r=await postInline('getComprobantes',{numero_documento:doc,consulta_en:Date.now()},45000);
+      const found=availableReceipts(r.comprobantes).find(x=>norm(x.doc)===doc);
+      if(!found)throw new Error('El comprobante no existe o no tiene saldo disponible.');
+      setReceipt(found);
+    }catch(e){setError(inlineFinanceSafeUserError(e?.message||String(e),'No se pudo consultar el comprobante.','buscar_anticipo'))}
+    finally{setSearching(false);}
+  }
+
+  async function aplicar(){
+    if(!finance||!receipt||!accepted||applying)return;
+    const saldo=receiptSaldo(receipt);
+    if(saldo+0.01<finance.total){setError('El comprobante no cubre el saldo completo del nivel: '+money(finance.total));return;}
+    const rubros=[
+      {tipo:'MATRICULA',nivel,monto:finance.m,grupo:finance.group},
+      {tipo:'CUOTA',nivel,monto:finance.q,grupo:finance.group},
+      {tipo:'CERTIFICADO',nivel,monto:finance.c,grupo:finance.group},
+      {tipo:'PROGRAMA_COMPLETO',nivel,monto:finance.t||0,grupo:finance.group},
+      {tipo:'TOEIC',nivel,monto:finance.tc||0,grupo:finance.group}
+    ].filter(x=>x.monto>.009);
+    if(!confirm('ANTICIPO CONAPE DESDE CONSULTA INDIVIDUAL\n\nEstudiante: '+codigo+
+      '\nNivel: '+(LABEL[nivel]||nivel)+' (mantiene PE)\nComprobante: '+receipt.doc+
+      '\nMatrícula: '+money(finance.m)+'\nCuotas: '+money(finance.q)+
+      '\nCertificado nivel: '+money(finance.c)+
+      (nivel==='I2'?'\nTítulo final: '+money(finance.t)+'\nTOEIC: '+money(finance.tc):'')+
+      '\nTOTAL PROFORMA: '+money(finance.total)+
+      '\n\n¿Confirmar este pago real?'))return;
+    setApplying(true);setError('');
+    try{
+      const bank=await postInline('getComprobantes',{numero_documento:receipt.doc,consulta_en:Date.now()},45000);
+      const current=availableReceipts(bank.comprobantes).find(x=>norm(x.doc)===norm(receipt.doc));
+      if(!current||receiptSaldo(current)+.01<finance.total)throw new Error('El comprobante ya no tiene saldo suficiente. No se aplicó ningún pago.');
+      if(!idRef.current)idRef.current=requestId();
+      const result=await postInline('aplicarPago',{
+        request_id:idRef.current,doc:receipt.doc,monto_total:finance.total,
+        cod_estudiante:codigo,anticipo_futuro:true,rubros
+      },100000);
+      const synced=result?.conape_sync===true||result?.conape_sync?.ok===true;
+      const msg='Anticipo '+nivel+' registrado: '+money(finance.total)+' · Recibos '+(result.recibos||[]).join(', ')+(synced?' · CONAPE actualizado':' · CONAPE pendiente de conciliación');
+      idRef.current='';setSuccess(msg);setReceipt(null);setAccepted(false);
+      ctx?.refresh?.(msg);
+    }catch(e){
+      // Conservar request_id en fallo incierto para que un reintento sea idempotente.
+      setError(inlineFinanceSafeUserError(e?.message||String(e),
+        'No se confirmó la operación. Revisá su estado antes de intentar nuevamente.','aplicar_anticipo'));
+    }finally{setApplying(false);}
+  }
+
+  if(!open)return null;
+  const saldo=receiptSaldo(receipt),canApply=!!finance&&!!receipt&&accepted&&!applying&&saldo+.01>=finance.total;
+  return <div style={{marginBottom:9,padding:12,borderRadius:11,border:'2px solid #9ABFDE',background:'#F1F7FD'}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+      <b style={{fontSize:12,color:'#14385C'}}>💳 Aplicar anticipo CONAPE de {LABEL[nivel]||nivel}</b>
+      <button type="button" onClick={()=>ctx?.close?.()} disabled={applying} style={{border:'1px solid #B6CDE2',background:'white',padding:'5px 9px',borderRadius:8,cursor:'pointer'}}>Cerrar</button>
+    </div>
+    {loading&&<div style={{fontSize:10,marginTop:8}}>Verificando el nivel y los importes...</div>}
+    {pendingProforma&&<div style={{marginTop:9,padding:10,borderRadius:9,border:'1px solid #E1B45D',background:'#FFF8E5',fontSize:10,color:'#765017'}}><b>El anticipo I2 se puede preparar, pero todavia no cobrar.</b><div style={{marginTop:4}}>Primero vincula la proforma historica para confirmar si CONAPE financio el TOEIC. El servidor no admitira un anticipo incompleto.</div><button type="button" onClick={()=>window.dispatchEvent(new CustomEvent('an:legacy-proforma-open',{detail:{codigo}}))} style={{marginTop:8,padding:'7px 10px',border:'1px solid #A97D36',borderRadius:7,background:'white',fontWeight:900,color:'#765017',cursor:'pointer'}}>Vincular proforma historica</button></div>}
+    {finance&&<div style={{marginTop:9,fontSize:10,color:'#244A7C'}}>
+      <div>Matrícula {money(finance.m)} · {finance.n} cuotas de {money(finance.unit)}: {money(finance.q)} · Certificado {money(finance.c)}{nivel==='I2'&&<> · Título final {money(finance.t)} · TOEIC {finance.tc>0?money(finance.tc):'NO INCLUIDO'}</>}</div>
+      <b style={{fontSize:13}}>Anticipo completo: {money(finance.total)}</b>
+      <div style={{fontSize:9,marginTop:3}}>El nivel continúa PE; no se alteran notas ni morosidad.</div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:9}}>
+        <input value={query} onChange={e=>{setQuery(e.target.value);setReceipt(null);setAccepted(false);idRef.current='';}}
+          onKeyDown={e=>e.key==='Enter'&&buscar()} disabled={applying||searching}
+          placeholder="N.º comprobante bancario" style={{flex:'1 1 190px',minWidth:180,padding:'8px 10px',border:'1px solid #AFC4D6',borderRadius:8}}/>
+        <button type="button" onClick={buscar} disabled={searching||applying} style={{padding:'8px 12px',borderRadius:8,border:'none',background:'#1769A5',color:'white',fontWeight:900,cursor:'pointer'}}>{searching?'Buscando…':'Buscar comprobante'}</button>
+      </div>
+    </div>}
+    {receipt&&finance&&<div style={{marginTop:9,padding:'9px 10px',background:'white',borderRadius:8,fontSize:10}}>
+      <div>Documento <b>{receipt.doc}</b> · saldo disponible <b>{money(saldo)}</b></div>
+      {saldo+.01<finance.total?<b style={{color:'#B42318'}}>Saldo insuficiente para pagar el nivel completo.</b>:<label style={{display:'flex',alignItems:'flex-start',gap:7,marginTop:8}}>
+        <input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/>
+        Confirmé el comprobante y autorizo el anticipo completo de {nivel}, sin activar el nivel académico.
+      </label>}
+      <button type="button" onClick={aplicar} disabled={!canApply} style={{marginTop:9,padding:'9px 13px',borderRadius:8,border:'none',background:canApply?'#0D6B3B':'#D8DDD9',color:canApply?'white':'#667',fontWeight:950,cursor:canApply?'pointer':'not-allowed'}}>
+        {applying?'Aplicando…':'✓ Aplicar '+money(finance.total)}
+      </button>
+    </div>}
+    {error&&<div role="alert" style={{marginTop:8,padding:'8px 9px',borderRadius:8,background:'#FFEBEE',color:'#B42318',fontSize:10,fontWeight:800}}>⚠ {error}</div>}
+    {success&&<div style={{marginTop:8,padding:8,background:'#E8F5E9',color:'#256B36',borderRadius:8,fontSize:10,fontWeight:900}}>✓ {success}</div>}
+  </div>;
+}
+
 function AdminEstudianteResumenIndividualCS21A36(props){
   const codigo=norm(props?.estudianteBase?.codigo||props?.estudianteBase?.rec_m||props?.estudianteBase?.CODIGO);
   const [version,setVersion]=React.useState(0),[openLevel,setOpenLevel]=React.useState(''),[toast,setToast]=React.useState('');
@@ -223,6 +437,8 @@ function apply(){
   OriginalResumen=resumen;OriginalIntento=intento;OriginalAbrirPago=abrir;
   window.AdminEstudianteResumenIndividual=AdminEstudianteResumenIndividualCS21A36;
   window.AgIndIntentoFinanciero=AgIndIntentoFinancieroCS21A36;
+  window.AgIndAnticipoConape=AgIndAnticipoConape;
+  window.AgIndProformaLegacy=AgIndProformaLegacy;
   window.abrirPago=abrirPagoInline;
   try{AdminEstudianteResumenIndividual=AdminEstudianteResumenIndividualCS21A36;}catch(_){ }
   try{AgIndIntentoFinanciero=AgIndIntentoFinancieroCS21A36;}catch(_){ }
