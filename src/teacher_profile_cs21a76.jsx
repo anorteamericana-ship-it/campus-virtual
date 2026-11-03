@@ -440,6 +440,23 @@
               <input ref={cvRef} type="file" accept="application/pdf,.pdf" hidden onChange={event => uploadDocument(event, 'CURRICULUM')} />
               <input ref={inaRef} type="file" accept="application/pdf,.pdf" hidden onChange={event => uploadDocument(event, 'AVAL_INA')} />
             </div>
+            {typeof data.carpeta_docente?.url === 'string' &&
+             /^https:\/\/drive\.google\.com\/drive\/folders\/[a-zA-Z0-9_-]+(?:[/?#]|$)/.test(data.carpeta_docente.url) && (
+              <div className="tp76-archive">
+                <div className="tp76-archive-copy">
+                  <strong>Expediente institucional completo</strong>
+                  <p>Título profesional, TOEIC, constancias de experiencia, colegiatura, certificados, declaraciones y autorización INA, según los documentos disponibles.</p>
+                  <small>Carpeta privada de la Academia. Para abrirla necesitás permiso de Google Drive; no se publica para estudiantes.</small>
+                </div>
+                <a
+                  className="btn btn-primary tp76-archive-link"
+                  href={data.carpeta_docente.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Abrir carpeta privada con atestados docentes"
+                >Abrir carpeta de atestados</a>
+              </div>
+            )}
           </section>
         </div>
       </div>
@@ -448,6 +465,13 @@
 
   const styles = `
     .tp76-page{width:100%;max-width:1440px;margin:0 auto;padding:4px 2px 32px;box-sizing:border-box}
+    .tp76-archive{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:16px;padding:18px 20px;border:1px solid #d6e1ef;border-radius:15px;background:#f6f9fe;flex-wrap:wrap}
+    .tp76-archive-copy{flex:1 1 340px;min-width:0}
+    .tp76-archive-copy strong{font-size:14px;color:#001e47}
+    .tp76-archive-copy p{font-size:12px;line-height:1.55;color:#344054;margin:6px 0}
+    .tp76-archive-copy small{font-size:11px;color:#52647d}
+    .tp76-archive-link{display:inline-flex;text-decoration:none;align-items:center;justify-content:center;min-height:40px;white-space:normal;text-align:center}
+    @media(max-width:620px){.tp76-archive{padding:14px}.tp76-archive-link{width:100%}}
     .tp76-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:0 0 18px}
     .tp76-kicker{font-size:11px;font-weight:950;letter-spacing:.18em;color:#8A1827}
     .tp76-heading h1{font-family:var(--f-serif,Georgia,serif);font-size:42px;font-weight:500;line-height:1;margin:7px 0 6px;color:var(--an-navy-ink,#001E47)}
