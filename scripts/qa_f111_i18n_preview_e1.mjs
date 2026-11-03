@@ -1,0 +1,51 @@
+// F111 bilingual preview source gate. Does not connect to CAMPUS or mutate production.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const core=fs.readFileSync('src/i18n_pilot_f111.js','utf8');
+const shell=fs.readFileSync('src/sidebar.jsx','utf8');
+const nav=fs.readFileSync('src/sidebar_active_state_cs21a69.js','utf8');
+const html=fs.readFileSync('campus.html','utf8');
+const student=fs.readFileSync('src/student_dashboard.jsx','utf8');
+new Function(core);
+const create=(role,search,stamp='100')=>{
+  const map=new Map([['an_usuario',JSON.stringify({rol:role})],['an_login_recent_at',stamp]]);
+  const s={getItem:k=>map.has(k)?map.get(k):null,setItem:(k,v)=>map.set(k,String(v)),removeItem:k=>map.delete(k)};
+  const window={sessionStorage:s,document:{documentElement:{lang:''},title:'Campus Virtual'},location:{search,reloads:0,reload(){this.reloads++;}},AN_I18N_FORCE_ES:false};
+  vm.runInNewContext(core,{window,URLSearchParams});
+  return{window,api:window.AN_I18N,map};
+};
+let x=create('student','');
+assert.equal(x.api.getLang(),'es','ES no cambia fuera del preview');
+assert.equal(x.api.t('Mi Campus'),'Mi Campus');
+assert.equal(x.api.setLang('en'),false,'sin opt-in no cambia idioma');
+x=create('student','?i18n=preview');
+assert.equal(x.api.getLang(),'en');
+assert.equal(x.api.t('Mi Campus'),'My Campus');
+assert.equal(x.api.t('Básico I'),'Basic I');
+assert.equal(x.api.t('17189B1-KJ18-C3-0826'),'17189B1-KJ18-C3-0826','códigos intactos');
+assert.equal(x.api.setLang('es'),true);
+assert.equal(x.api.getLang(),'es');
+assert.equal(x.window.location.reloads,1);
+x.map.set('an_login_recent_at','200');
+assert.equal(x.api.getLang(),'en','nueva entrada restablece inglés');
+x.window.AN_I18N_FORCE_ES=true;
+assert.equal(x.api.getLang(),'es','interruptor de emergencia');
+x=create('teacher','?i18n=preview');
+assert.equal(x.api.getLang(),'en');
+x=create('admin','?i18n=preview');
+assert.equal(x.api.getLang(),'es','admin no se traduce');
+x=create('superadmin','?i18n=preview');
+assert.equal(x.api.getLang(),'es','superadmin no se traduce');
+assert.ok(html.includes('src/i18n_pilot_f111.js?v=F111I18NPREVIEW20261103'));
+assert.ok(html.indexOf('src/i18n_pilot_f111.js')<html.indexOf('src/data.jsx'));
+assert.ok(shell.includes('data-an-nav-label={item.label}'),'nav key estable');
+assert.ok(shell.includes('data-nav-id={item.id}'),'ruta estable');
+assert.ok(shell.includes('window.AN_I18N?.preview'),'selector solo en piloto');
+assert.ok(nav.includes("button.getAttribute('data-an-nav-label')"),'ruteo usa texto original');
+assert.ok(student.includes('window.AN_I18N?.t(value) || value'),'accesos directos sin DOM overwrite');
+for(const bad of ['MutationObserver','createTreeWalker','innerHTML =','eval('])
+ assert.equal(core.includes(bad),false,'sin reescritura peligrosa '+bad);
+for(const sensitive of ['script.google.com','googleapis','APPS_SCRIPT_URL','fetch(','getSessionToken'])
+ assert.equal(core.includes(sensitive),false,'no backend/auth in i18n runtime: '+sensitive);
+console.log('F111 i18n pilot PASS: ES unchanged, opt-in EN student/teacher, admin ES, new login reset, kill switch, stable menu labels, no DOM writes');
