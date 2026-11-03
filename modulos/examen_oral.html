@@ -259,7 +259,7 @@ function setOriginalQuestionF111(unit,idx,checked){
   if(!checked&&exists)lines.splice(lines.indexOf(entry),1);
   const next=lines.join('\n');
   if(next.length>3500){toast('Límite de texto alcanzado: registrá solamente las preguntas aplicadas.');return false;}
-  if(next!==old){field.value=next;oralMarcarCambiosR49();toast('Pregunta '+(checked?'registrada':'retirada')+'. Guardá el borrador para conservar cambios.');}
+  if(next!==old){field.value=next;state.dirty=true;toast('Pregunta '+(checked?'registrada':'retirada')+'. Guardá el borrador para conservar cambios.');}
   return true;
 }
 
