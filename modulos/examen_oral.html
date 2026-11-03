@@ -87,6 +87,7 @@ body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;ba
     </div>
     <aside class="side">
       <section class="panel students-panel"><div class="panel-title"><h2>Estudiantes</h2><span id="student-count">—</span></div><div class="students" id="students"></div></section>
+      <section class="panel" id="r50-admin-panel" style="display:none"><div class="panel-title"><h2>Conciliación académica R50</h2></div><p id="r50-admin-status" style="font-size:12px;color:#314c67">Seleccioná un estudiante para consultar la solicitud.</p><button type="button" class="btn red" id="r50-admin-approve" disabled>Autorizar corrección de cero</button></section>
       <section class="panel questions-panel"><div class="panel-title"><h2>Banco de preguntas</h2><span id="qb-label">—</span></div><div class="qbody" id="qbody"><div class="empty">Cargando preguntas…</div></div><div class="global-other"><div class="field"><label>Otras preguntas aplicadas</label><textarea id="otras-global" placeholder="Preguntas adicionales utilizadas."></textarea></div></div></section>
     </aside>
   </div>
@@ -233,7 +234,54 @@ function oralSyncWarningF111(ev){const box=document.getElementById('warning-box'
 function oralMarcarCambiosR49(){if(!state.selected)return;state.dirty=true;const b=document.getElementById('btn-finalize-saved');if(b)b.disabled=true;renderStudents();}
 function renderStudents(){const box=document.getElementById('students');const evals=state.evaluations||{};const pendientes=[],evaluados=[];state.students.forEach(s=>{const ev=evals[s.codigo]||{};(oralCompletedF111(ev)?evaluados:pendientes).push(s);});function item(s){const ev=evals[s.codigo]||{};const [cls,lbl]=stateTag(ev.ESTADO,ev.NOTA_OFICIAL_ESTADO);const grade=oralSavedGradeR48(ev);const conflict=!!state.reviewConflicts?.[String(s.codigo)];const sinGuardar=!!(state.selected&&String(state.selected.codigo)===String(s.codigo)&&state.dirty);const oficial=oralCompletedF111(ev);const gradeText=grade?(Number.isInteger(grade.nota100)?grade.nota100:grade.nota100.toFixed(1))+'/100':null;return`<button class="student ${cls==='done'?'done':''} ${cls==='draft'&&!sinGuardar?'draft':''} ${state.selected&&state.selected.codigo===s.codigo?'active':''}" data-code="${escF90(s.codigo)}"><span class="tag ${cls}">${conflict?'⚠ Revisar nota':sinGuardar?'✎ Sin guardar':lbl}</span><div class="name">${escF90(s.nombre||s.name||'Sin nombre')}</div><div class="meta">#${escF90(s.codigo)}</div>${gradeText?`<span class="oral-grade ${oficial?'':'pending'}">${escF90(gradeText)} · ${oficial?'NOTA OFICIAL':'NOTA PROVISIONAL'}</span>`:'<span class="oral-grade pending">Sin rúbrica completa</span>'}${conflict?'<span class="oral-review-note">Nota oficial preexistente: requiere conciliación, no volver a cerrar.</span>':''}</button>`}box.innerHTML=`<div class="group-label">Borradores / pendientes (${pendientes.length})</div>${pendientes.map(item).join('')||'<div class="empty">Sin pendientes</div>'}<div class="group-label">Evaluados / cerrados (${evaluados.length})</div>${evaluados.map(item).join('')||'<div class="empty">Sin evaluados</div>'}`;box.querySelectorAll('.student').forEach(b=>b.onclick=()=>selectStudent(b.dataset.code));document.getElementById('student-count').textContent=`${evaluados.length}/${state.students.length} cerrados`;}
 function loadEvaluationIntoForm(ev){state.scores={COMPREHENSION:ev.COMPREHENSION??null,FLUENCY:ev.FLUENCY??null,GRAMMAR:ev.GRAMMAR??null,VOCABULARY:ev.VOCABULARY??null,PRONUNCIATION:ev.PRONUNCIATION??null};try{state.questions=JSON.parse(ev.PREGUNTAS_JSON||'{}')||{};}catch(_){state.questions={};}try{state.otherByUnit=JSON.parse(ev.OTRAS_PREGUNTAS_JSON||'{}')||{};}catch(_){state.otherByUnit={};}document.getElementById('comentarios').value=ev.COMENTARIOS||'';document.getElementById('sugerencias').value=ev.SUGERENCIAS||'';document.getElementById('otras-global').value=ev.OTRAS_PREGUNTAS||'';state.dirty=false;renderScores();renderQBank();}
-function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');if(!interno&&state.dirty&&state.selected&&!confirm('Hay cambios sin guardar. ¿Descartarlos y recargar la ficha seleccionada?'))return;const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();const cerrado=(!!state.panel?.historico&&!oralEditableHistoricalR48(ev))||!!state.panel?.es_reposicion||oralLockedF111(ev)||!!state.uncertainCloseCodes?.[s.codigo];document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=cerrado||state.busy||!!state.panel?.preview;draftBtn.textContent='GUARDAR BORRADOR';const finalizeSaved=document.getElementById('btn-finalize-saved');if(finalizeSaved){const status=String(ev.ESTADO||'').toUpperCase(),sync=String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase();const eligible=state.panel?.historico&&state.panel?.modo_sin_ina&&!state.reviewConflicts?.[String(s.codigo)]&&(status==='BORRADOR'||status==='CERRADO'&&sync==='SINCRONIZADA'||status==='PDF_GENERADO');finalizeSaved.style.display=state.panel?.historico?'':'none';finalizeSaved.disabled=!eligible||state.busy||!!state.dirty;finalizeSaved.textContent=status==='PDF_GENERADO'||status==='CERRADO'?'DESCARGAR PDF':'GUARDAR NOTA OFICIAL';finalizeSaved.title=state.reviewConflicts?.[String(s.codigo)]?'Ya existe nota oficial; requiere conciliación, sin sobrescribir.':'';}const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.style.display=state.panel?.historico?'none':'';pdfBtn.textContent=state.panel?.es_reposicion?'Reposición pendiente de habilitación':ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'GUARDAR NOTA OFICIAL';pdfBtn.disabled=!!state.panel?.historico||!!state.panel?.es_reposicion||oralNeedsReviewF111(ev)||!!state.panel?.preview||!!state.uncertainCloseCodes?.[s.codigo];}}
+function r50EsGrupoF111(){
+ return !!(state.panel?.historico&&state.panel?.modo_sin_ina&&
+  String(state.panel?.cod_grupo)==='B1-LM69-C2-0526'&&
+  String(state.panel?.nivel)==='B2'&&Number(state.panel?.leccion)===9);
+}
+async function r50RefreshAdminF111(){
+ const box=document.getElementById('r50-admin-panel'),status=document.getElementById('r50-admin-status');
+ const btn=document.getElementById('r50-admin-approve');
+ if(!box||!status||!btn)return;
+ const isAdmin=String(getSesion().rol||'').toLowerCase()==='superadmin'&&r50EsGrupoF111();
+ box.style.display=isAdmin?'':'none';if(!isAdmin)return;
+ const student=state.selected;
+ btn.disabled=true;
+ if(!student){status.textContent='Seleccioná un estudiante.';return;}
+ const identity={cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,
+   leccion:Number(state.panel.leccion),cod_estudiante:student.codigo};
+ const selectedCode=String(student.codigo);
+ status.textContent='Consultando nota oficial y solicitud R50…';
+ try{
+  const j=await api('r50EstadoConciliacionOral',identity);
+  if(String(state.selected?.codigo)!==selectedCode)return;
+  const st=String(j.estado||'').toUpperCase();
+  status.textContent=!j.conflicto_previo?'No hay un cero elegible que requiera sustitución.':
+   st==='SIN_SOLICITUD'?'El docente todavía no solicitó revisar esta nota cero.':
+   st==='SOLICITADO'?'Solicitud docente registrada. Verificá su rúbrica y la justificación antes de autorizar.':
+   st==='APROBADO'?'Autorizado. El profesor debe confirmar la nota oficial desde su sesión.':
+   'Estado de revisión: '+st+'. No aplicar otra nota automáticamente.';
+  btn.disabled=!(j.conflicto_previo&&st==='SOLICITADO');
+ }catch(e){if(String(state.selected?.codigo)===selectedCode)
+  status.textContent='No fue posible conciliar el expediente: '+(e.message||String(e));}
+}
+async function r50AprobarAdminF111(){
+ if(String(getSesion().rol||'').toLowerCase()!=='superadmin'||!r50EsGrupoF111()||!state.selected)return;
+ const student={...state.selected};
+ const motivo=prompt('Justificación administrativa para corregir el cero oficial de '+(student.nombre||student.codigo)+' (mínimo 25 caracteres). Sin ella NO se modifica ninguna nota.');
+ if(motivo===null)return;
+ if(motivo.trim().length<25)return toast('La justificación es obligatoria (mínimo 25 caracteres).');
+ if(!confirm('¿CONFIRMÁS que el cero oficial registrado por «reposición no realizada» es incorrecto PARA ESTE ESTUDIANTE y autorizás al docente a cerrar la rúbrica guardada?\\n\\nLa autorización NO reemplaza aún la nota.'))return;
+ const btn=document.getElementById('r50-admin-approve');btn.disabled=true;
+ try{
+  const j=await api('r50AprobarConciliacionOral',{cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,
+    leccion:Number(state.panel.leccion),cod_estudiante:student.codigo,
+    motivo:motivo.trim(),confirmo_cero_incorrecto:true});
+  toast(j.estado==='APROBADO'?'Autorización individual registrada. El docente ya puede confirmar la nota.':'Revisión no confirmada.');
+ }catch(e){toast('No se autorizó ninguna corrección: '+(e.message||String(e)));}
+ finally{await r50RefreshAdminF111();}
+}
+function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');if(!interno&&state.dirty&&state.selected&&!confirm('Hay cambios sin guardar. ¿Descartarlos y recargar la ficha seleccionada?'))return;const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();r50RefreshAdminF111();const cerrado=(!!state.panel?.historico&&!oralEditableHistoricalR48(ev))||!!state.panel?.es_reposicion||oralLockedF111(ev)||!!state.uncertainCloseCodes?.[s.codigo];document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=cerrado||state.busy||!!state.panel?.preview;draftBtn.textContent='GUARDAR BORRADOR';const finalizeSaved=document.getElementById('btn-finalize-saved');if(finalizeSaved){const status=String(ev.ESTADO||'').toUpperCase(),sync=String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase();const eligible=state.panel?.historico&&state.panel?.modo_sin_ina&&!state.reviewConflicts?.[String(s.codigo)]&&(status==='BORRADOR'||status==='CERRADO'&&sync==='SINCRONIZADA'||status==='PDF_GENERADO');finalizeSaved.style.display=state.panel?.historico?'':'none';finalizeSaved.disabled=!eligible||state.busy||!!state.dirty;finalizeSaved.textContent=status==='PDF_GENERADO'||status==='CERRADO'?'DESCARGAR PDF':'GUARDAR NOTA OFICIAL';finalizeSaved.title=state.reviewConflicts?.[String(s.codigo)]?'Ya existe nota oficial; requiere conciliación, sin sobrescribir.':'';}const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.style.display=state.panel?.historico?'none':'';pdfBtn.textContent=state.panel?.es_reposicion?'Reposición pendiente de habilitación':ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'GUARDAR NOTA OFICIAL';pdfBtn.disabled=!!state.panel?.historico||!!state.panel?.es_reposicion||oralNeedsReviewF111(ev)||!!state.panel?.preview||!!state.uncertainCloseCodes?.[s.codigo];}}
 
 // F111: bancos originales de B2, I1 e I2: única fuente transcrita de PDFs docentes.
 function originalBankF111(){
@@ -503,6 +551,26 @@ async function f111FinalizarGuardadoR47(){
      !String(ev.COMENTARIOS||'').trim()||!String(ev.SUGERENCIAS||'').trim())
    return toast('Los cinco criterios, comentarios y sugerencias deben estar guardados antes del cierre.');
   const total=rubric.reduce((n,k)=>n+Number(ev[k]),0);
+  // R50 sólo en B2 L9, con cero oficial verificado: la primera pulsación
+  // solicita revisión, no sobrescribe la nota. Tras aprobación se permite
+  // cerrar el MISMO borrador guardado con la confirmación habitual.
+  if(r50EsGrupoF111()&&String(getSesion().rol||'').toLowerCase()==='teacher'){
+   let preflight;
+   try{preflight=await api('r50EstadoConciliacionOral',ident);}
+   catch(e){return toast('No se pudo verificar la nota previa. No se ejecutó el cierre: '+(e.message||String(e)));}
+   if(preflight.conflicto_previo){
+    const estadoR50=String(preflight.estado||'').toUpperCase();
+    if(estadoR50==='SIN_SOLICITUD'){
+     if(!confirm('El estudiante ya tiene una nota oficial cero registrada posteriormente.\n\n¿Solicitar al superadministrador su revisión individual antes de guardar esta rúbrica como nota oficial?\n\nNo cambia ninguna nota ni genera PDF.'))return;
+     try{await api('r50SolicitarConciliacionOral',ident);toast('Solicitud de conciliación enviada. El borrador sigue guardado y el cero oficial NO se modificó.');}
+     catch(e){toast('Solicitud no confirmada: '+(e.message||String(e)));}
+     return;
+    }
+    if(estadoR50==='SOLICITADO')return toast('La revisión del cero ya fue solicitada. Esperá la autorización del superadministrador.');
+    if(estadoR50!=='APROBADO')return toast('Conciliación '+estadoR50+': requiere revisión administrativa. No se repetirá ninguna nota.');
+    state.r50ApprovedFor=String(student.codigo);
+   }
+  }
   if(!confirm('CONFIRMAR CIERRE OFICIAL INDIVIDUAL\n\n'+(student.nombre||student.codigo)+
     '\nGrupo: '+panel.cod_grupo+' · B2 L'+panel.leccion+
     '\nRúbrica ya guardada: '+total+'/25 · Nota '+(total*4)+'/100 · aporte '+(total*0.6).toFixed(1)+'/15'+
@@ -526,7 +594,8 @@ async function f111FinalizarGuardadoR47(){
     preguntas_json:raw('PREGUNTAS_JSON'),otras_preguntas_json:raw('OTRAS_PREGUNTAS_JSON'),
     otras_preguntas:String(ev.OTRAS_PREGUNTAS||'')};
    cierreSolicitado=true;
-   const closed=await api('oralFinalizarBorradorHistoricoR47',ident);
+   const r50Permitido=state.r50ApprovedFor===String(student.codigo)&&r50EsGrupoF111();
+   const closed=await api(r50Permitido?'r50CerrarOralConciliado':'oralFinalizarBorradorHistoricoR47',r50Permitido?{...ident,confirmar_nota_oficial:true}:ident);
    if(String(closed.evaluacion?.ESTADO)!=='CERRADO'||String(closed.evaluacion?.NOTA_OFICIAL_ESTADO)!=='SINCRONIZADA')
     throw Error('El servidor no confirmó cierre y nota oficial. No se intentará otra escritura.');
    state.evaluations[student.codigo]=closed.evaluacion;
@@ -630,7 +699,7 @@ async function loadPanel(){
          members.length!==1||String(members[0].codigo)!==ORAL_F111_QA_STUDENT)
         throw new Error('QA: respuesta fuera del grupo/alumno sintético; no se mostrará el expediente.');
     }
-    state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;state.uncertainCloseCodes={};state.reviewConflicts={};
+    state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;state.uncertainCloseCodes={};state.reviewConflicts={};state.r50ApprovedFor='';
     // R50: el servidor lee NOTAS_OFICIALES_LOG sin escribir datos. Marcar el
     // conflicto ANTES de cualquier clic de cierre, sin bloquear guardar borrador.
     if(state.panel?.historico){
@@ -660,7 +729,7 @@ async function loadPanel(){
     toast(msg);
   }
 }
-let lastHeightF89=0,heightTimerF89=null;function reportHeightF89(){clearTimeout(heightTimerF89);heightTimerF89=setTimeout(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastHeightF89)<4)return;lastHeightF89=h;try{window.parent.postMessage({type:'an:oral-height',height:h},window.location.origin);}catch(_){ }},60);}if(typeof ResizeObserver!=='undefined'){new ResizeObserver(reportHeightF89).observe(document.body);}window.addEventListener('load',reportHeightF89);window.addEventListener('resize',reportHeightF89);document.getElementById('btn-reload').onclick=resetEvaluationF90;document.getElementById('btn-draft').onclick=saveDraft;document.getElementById('btn-finalize-saved').onclick=f111FinalizarGuardadoR47;['comentarios','sugerencias','otras-global'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(state.selected)oralMarcarCambiosR49();}));document.getElementById('btn-pdf').onclick=generatePdfAndCloseF90;document.getElementById('btn-pdf-close').onclick=closePdfPreviewF90;document.getElementById('btn-pdf-final').onclick=printPdfF90;buildRubric();
+let lastHeightF89=0,heightTimerF89=null;function reportHeightF89(){clearTimeout(heightTimerF89);heightTimerF89=setTimeout(()=>{const h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastHeightF89)<4)return;lastHeightF89=h;try{window.parent.postMessage({type:'an:oral-height',height:h},window.location.origin);}catch(_){ }},60);}if(typeof ResizeObserver!=='undefined'){new ResizeObserver(reportHeightF89).observe(document.body);}window.addEventListener('load',reportHeightF89);window.addEventListener('resize',reportHeightF89);document.getElementById('btn-reload').onclick=resetEvaluationF90;document.getElementById('btn-draft').onclick=saveDraft;document.getElementById('btn-finalize-saved').onclick=f111FinalizarGuardadoR47;document.getElementById('r50-admin-approve').onclick=r50AprobarAdminF111;['comentarios','sugerencias','otras-global'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{if(state.selected)oralMarcarCambiosR49();}));document.getElementById('btn-pdf').onclick=generatePdfAndCloseF90;document.getElementById('btn-pdf-close').onclick=closePdfPreviewF90;document.getElementById('btn-pdf-final').onclick=printPdfF90;buildRubric();
 oralF111QaBanner();
 if(ORAL_F111_ENV_BLOCKED){
   // Nunca dirigir un entorno no reconocido al servidor PROD.
