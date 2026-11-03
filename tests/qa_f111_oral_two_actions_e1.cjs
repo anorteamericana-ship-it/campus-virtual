@@ -12,7 +12,7 @@ includes("const res=await api('oralGeneratePdf',ident)",'PDF institucional exist
 includes("if(estado!=='BORRADOR'&&individualDownload)individualDownload.click()", 'descarga solo tras cerrar');
 includes("if(state.dirty)return toast('Guardá primero", 'obliga guardar cambios antes de cierre');
 includes("state.reviewConflicts[String(student.codigo)]=true",'no duplicar nota');
-includes("if(st==='BORRADOR')return['draft','✓ Borrador guardado']", 'borrador nunca presentado como nota oficial');
+includes("if(st==='BORRADOR')return['draft','◷ Borrador guardado']", 'borrador nunca presentado como nota oficial');
 includes("async function r50RefreshTeacherF111()", 'estado individual R50 desde el servidor');
 includes("const result=await api('r50EstadoConciliacionOral',identity)", 'consulta R50 docente de solo lectura');
 includes("button.textContent='REVISIÓN SOLICITADA';button.disabled=true", 'no repetir solicitud ya registrada');
