@@ -79,6 +79,7 @@ const academicAssetDiffs=[
  ['src/student_menu_academic_cs21a120.jsx?v=F111ENPROFILE20261103','src/student_menu_academic_cs21a120.jsx?v=F111REALMENUI18N20261103'],
  ['src/program_info_shared_cs21a119.jsx?v=F111ENPROGRAM20261103','src/program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121'],
  ['&entry=F111ENPROFILE20261103',''],
+ ['src/student_demo_level_filter_cs21a110.js?v=F111ENBRAND20261103','src/student_demo_level_filter_cs21a110.js?v=F98.4Z6CS21A120'],
  ['&i18n=F111ENPROFILE20261103',''],
 ];
 let mainHtml=mainHtmlRaw;
@@ -97,8 +98,8 @@ assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 // perfil profesional, sin reordenar otros scripts productivos.
 // F111 2026-11-03: the October exact HTML preimage no longer represents main.
 // Compare this PR against the current origin/main byte-for-byte after removing
-// only the five reviewed i18n asset-query changes above. This is stricter than
+// only the six reviewed i18n asset-query changes above. This is stricter than
 // a broad allowlist and still protects all superadmin/exam entrypoints.
 assert.equal(mainHtml,mainBaseline,
-  'Superadmin D1: Campus HTML unchanged versus current main except the five explicit academic language cache changes');
+  'Superadmin D1: Campus HTML unchanged versus current main except the six explicit academic language cache changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
