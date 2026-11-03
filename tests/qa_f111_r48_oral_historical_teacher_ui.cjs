@@ -22,7 +22,8 @@ assert.equal(ctx.edit(base),true,'borrador histórico SIN INA editable para auto
 assert.equal(ctx.edit({...base,ESTADO:'PDF_GENERADO'}),false,'cerrado nunca editable');
 assert.equal(ctx.edit({...base,NOTA_OFICIAL_ESTADO:'CONCILIACION_REQUERIDA'}),false,'conciliación no editable');
 ctx.state.reviewConflicts.QA01=true;
-assert.equal(ctx.edit(base),false,'una nota oficial preexistente bloquea segundo cierre');
+assert.equal(ctx.edit(base),true,'borrador digital editable aunque el cierre oficial esté bloqueado');
+assert.ok(source.includes("!state.reviewConflicts?.[String(s.codigo)]"),'nota oficial previa sigue bloqueando el cierre');
 ctx.state.reviewConflicts.QA01=false;
 ctx.state.panel.modo_sin_ina=false;
 assert.equal(ctx.edit(base),false,'INA no se edita desde historial');
