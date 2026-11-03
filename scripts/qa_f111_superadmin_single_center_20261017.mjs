@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const base='ffd25fc9253e295d0412cf799e51631f37ee6431';
-const source=fs.readFileSync('src/app.jsx','utf8');
+const appSourceF111=fs.readFileSync('src/app.jsx','utf8');
+const academicNewRoute="  const [active, setActive] = useState(() => {\n    // F111: each academic entry starts in the real profile. Never restore the\n    // last saved academic tab; navigation remains free after the profile opens.\n    if (role === 'student') return 'dashboard'; // Native Student My Profile\n    if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76\n    // Preserve the operational state of admin/superadmin (outside bilingual pilot).\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
+const academicOldRoute="  const [active, setActive] = useState(() => {\n    // F96.5 UX: el estudiante SIEMPRE inicia en Mi Campus.\n    // No se hereda la última pantalla porque mañana entran usuarios nuevos y\n    // la primera impresión debe ser clara, estable y orientada al cumplimiento INA.\n    if (role === 'student') return 'dashboard';\n\n    // Admin/docente sí conservan su última pantalla porque trabajan operación diaria.\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
+const academicNewStorage="  useEffect(() => {\n    // Academic navigation is intentionally not remembered across entries.\n    if (role === 'student' || role === 'teacher') return;\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
+const academicOldStorage="  useEffect(() => {\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
+assert.equal(appSourceF111.split(academicNewRoute).length-1,1,'F111 EN entry route is present exactly once');
+assert.equal(appSourceF111.split(academicNewStorage).length-1,1,'F111 EN route is not persisted academically');
+const source=appSourceF111.replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
 const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const anchor="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  const oralSrc=";
 const inject="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del\n  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.\n  // Este último conserva su componente y sus datos fuera de esta vista.\n  if (superadmin) {\n    return <ExamenesIframePanel\n      hideHeader\n      view=\"admin\"\n      screenLabel=\"Superadmin · Centro de exámenes\"\n      iframeTitle=\"Centro de exámenes · Escritos, Orales y Progress Check\"\n    />;\n  }\n  const oralSrc=";
@@ -66,7 +73,19 @@ for(const path of protectedPaths){
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
 }
-const mainHtml=fs.readFileSync('campus.html','utf8');
+const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
+const academicAssetDiffs=[
+ ['src/i18n_pilot_f111.js?v=F111ENDEFAULT20261103C','src/i18n_pilot_f111.js?v=F111I18NCDN20261103B'],
+ ['src/student_menu_academic_cs21a120.jsx?v=F111ENPROFILE20261103','src/student_menu_academic_cs21a120.jsx?v=F111REALMENUI18N20261103'],
+ ['src/program_info_shared_cs21a119.jsx?v=F111ENPROGRAM20261103','src/program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121'],
+ ['&entry=F111ENPROFILE20261103',''],
+ ['&i18n=F111ENPROFILE20261103',''],
+];
+let mainHtml=mainHtmlRaw;
+for (const [current,previous] of academicAssetDiffs){
+ assert.equal(mainHtml.split(current).length-1,1,'Only one expected F111 academic UI asset delta: '+current);
+ mainHtml=mainHtml.replace(current,previous);
+}
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const currentAppSrc=(mainHtml.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
 const baselineAppSrc=(mainBaseline.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
