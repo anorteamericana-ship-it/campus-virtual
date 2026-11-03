@@ -21,7 +21,7 @@ includes("state.r50TeacherStates[String(student.codigo)]='SOLICITADO'", 'confirm
 includes("if(String(state.selected?.codigo)!==code||!result?.conflicto_previo)return", 'respuesta de otro estudiante no contamina UI');
 assert.ok(!html.includes('id="btn-print-saved"'),'sin botón PDF borrador');
 assert.ok(!script.includes('function f111PrintSavedOralR47'),'sin PDF borrador');
-assert.ok(html.includes('.student.draft{background:#e9f7ee'),'guardados en verde');
+assert.ok(html.includes('.student.draft{background:#fff6dc'),'borradores en amarillo');
 const actions=html.match(/aria-label="Dos acciones del examen">([\s\S]*?)<\/div>/)?.[1];
 assert.ok(actions,'barra acciones');
 assert.ok(actions.includes('id="btn-draft"')&&actions.includes('id="btn-finalize-saved"'));
