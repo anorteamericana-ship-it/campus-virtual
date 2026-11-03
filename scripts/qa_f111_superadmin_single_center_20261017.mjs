@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const base='ffd25fc9253e295d0412cf799e51631f37ee6431';
-const source=fs.readFileSync('src/app.jsx','utf8');
+const appSourceF111=fs.readFileSync('src/app.jsx','utf8');
+const academicNewRoute="  const [active, setActive] = useState(() => {\n    // F111: each academic entry starts in the real profile. Never restore the\n    // last saved academic tab; navigation remains free after the profile opens.\n    if (role === 'student') return 'dashboard'; // Native Student My Profile\n    if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76\n    // Preserve the operational state of admin/superadmin (outside bilingual pilot).\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
+const academicOldRoute="  const [active, setActive] = useState(() => {\n    // F96.5 UX: el estudiante SIEMPRE inicia en Mi Campus.\n    // No se hereda la última pantalla porque mañana entran usuarios nuevos y\n    // la primera impresión debe ser clara, estable y orientada al cumplimiento INA.\n    if (role === 'student') return 'dashboard';\n\n    // Admin/docente sí conservan su última pantalla porque trabajan operación diaria.\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
+const academicNewStorage="  useEffect(() => {\n    // Academic navigation is intentionally not remembered across entries.\n    if (role === 'student' || role === 'teacher') return;\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
+const academicOldStorage="  useEffect(() => {\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
+assert.equal(appSourceF111.split(academicNewRoute).length-1,1,'F111 EN entry route is present exactly once');
+assert.equal(appSourceF111.split(academicNewStorage).length-1,1,'F111 EN route is not persisted academically');
+const source=appSourceF111.replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
 const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const anchor="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  const oralSrc=";
 const inject="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del\n  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.\n  // Este último conserva su componente y sus datos fuera de esta vista.\n  if (superadmin) {\n    return <ExamenesIframePanel\n      hideHeader\n      view=\"admin\"\n      screenLabel=\"Superadmin · Centro de exámenes\"\n      iframeTitle=\"Centro de exámenes · Escritos, Orales y Progress Check\"\n    />;\n  }\n  const oralSrc=";
@@ -66,7 +73,20 @@ for(const path of protectedPaths){
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
 }
-const mainHtml=fs.readFileSync('campus.html','utf8');
+const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
+const academicAssetDiffs=[
+ ['src/i18n_pilot_f111.js?v=F111ENDEFAULT20261103C','src/i18n_pilot_f111.js?v=F111I18NCDN20261103B'],
+ ['src/student_menu_academic_cs21a120.jsx?v=F111ENPROFILE20261103','src/student_menu_academic_cs21a120.jsx?v=F111REALMENUI18N20261103'],
+ ['src/program_info_shared_cs21a119.jsx?v=F111ENPROGRAM20261103','src/program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121'],
+ ['&entry=F111ENPROFILE20261103',''],
+ ['src/student_demo_level_filter_cs21a110.js?v=F111ENBRAND20261103','src/student_demo_level_filter_cs21a110.js?v=F98.4Z6CS21A122'],
+ ['&i18n=F111ENPROFILE20261103',''],
+];
+let mainHtml=mainHtmlRaw;
+for (const [current,previous] of academicAssetDiffs){
+ assert.equal(mainHtml.split(current).length-1,1,'Only one expected F111 academic UI asset delta: '+current);
+ mainHtml=mainHtml.replace(current,previous);
+}
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const currentAppSrc=(mainHtml.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
 const baselineAppSrc=(mainBaseline.match(/src[/]app[.]jsx[?]v=[A-Za-z0-9_.-]+/)||[])[0];
@@ -76,51 +96,10 @@ assert(currentSidebarSrc&&baselineSidebarSrc,'Se conserva asset del menú Supera
 assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 // El HTML F111 agrega únicamente el loader del filtro y el asset de
 // perfil profesional, sin reordenar otros scripts productivos.
-const oldProfileScript='<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F98.4Z6CS21A76"></script>';
-const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
-const docEntryParam='&docs=F111DIEGOEXPEDIENTE20261103';
-const htmlForDocEntry=mainHtml.replaceAll(docEntryParam,'');
-assert.equal(htmlForDocEntry.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
-if (mainBaseline.includes(newProfileScript)) {
-  // En el push posterior al merge, origin/main ya contiene la corrección.
-  // Se exige igualdad exacta y se evita revertirla contra sí misma.
-  // Únicamente se permite modificar el cache-bust del punto de entrada:
-  // se mantiene sin alterar el resto del HTML, los motores y los scripts.
-  const expectedApp='src/app.jsx?v=F111PEPAID20261102';
-  const expectedSidebar='src/sidebar.jsx?v=F111ATTEND20261021';
-  assert.equal(currentAppSrc,expectedApp,'F111: app Superadmin con versión de asistencia actual');
-  assert.equal(currentSidebarSrc,expectedSidebar,'F111: sidebar Superadmin con versión de asistencia actual');
-  // El hotfix estudiantil solo cambia caché del aviso PC01 y el menú de
-  // Resumen Académico. Conciliar esos DOS paths exactos sin relajar el contrato D1.
-  const studentNow='src/student_pc01_f111.js?v=F111PC01G1EVAL20261023';
-  const menuNow='src/student_menu_academic_cs21a120.jsx?v=F111PC01G1EVAL20261023';
-  const studentPrev=(mainBaseline.match(new RegExp('src/student_pc01_f111[.]js[?]v=[A-Za-z0-9_.-]+'))||[])[0];
-  const menuPrev=(mainBaseline.match(new RegExp('src/student_menu_academic_cs21a120[.]jsx[?]v=[A-Za-z0-9_.-]+'))||[])[0];
-  assert(studentPrev&&menuPrev,'Fuentes estudiantiles previas preservadas en main');
-  assert.equal(mainHtml.split(studentNow).length-1,1,'Solo un enlace a aviso PC01 actualizado');
-  assert.equal(mainHtml.split(menuNow).length-1,1,'Solo un enlace al menú académico actualizado');
-  const currentWelcomeCss='styles/campus.css?v=F111WELCOMEMOBILE20261023';
-  const baselineWelcomeCss=(mainBaseline.match(/styles[/]campus[.]css[?]v=[A-Za-z0-9_.-]+/)||[])[0];
-  assert(baselineWelcomeCss&&mainHtml.includes(currentWelcomeCss),'caché del modal responsive exacta');
-  const hotfixHtml=mainBaseline.includes('&hotfix=F111ANTICIPOS20261103')
-    ? mainHtml
-    : mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','');
-  const r50Old='r50=F111R50AUTORIZACION20261103',r50New='r50=F111R50ESTADOS20261103';
-  const r50Html=mainBaseline.includes(r50New)?hotfixHtml:hotfixHtml.replace(r50New,r50Old);
-  const b1ReviewParam='&b1review=F111DIEGOPC0208REVIEW20261103';
-  const b1Html=mainBaseline.includes(b1ReviewParam)?r50Html:r50Html.replaceAll(b1ReviewParam,'');
-  const teacherDocsParam='&docs=F111DIEGOEXPEDIENTE20261103';
-  const docsHtml=mainBaseline.includes(teacherDocsParam)?b1Html:b1Html.replaceAll(teacherDocsParam,'');
-  const d1Normalized=docsHtml.replace(currentAppSrc,baselineAppSrc)
-    .replace(currentSidebarSrc,baselineSidebarSrc)
-    .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
-    .replace(currentWelcomeCss,baselineWelcomeCss);
-  assert.equal(d1Normalized,mainBaseline,'D1 preservado; únicamente caché estudiantil y de menú académico actualizada');
-} else {
-  // En el PR original, origin/main todavía no incluía el cambio.
-  // Se mantiene la prueba de inversión exacta de las líneas nuevas.
-  let restoredHtml=mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','').replace(newProfileScript,oldProfileScript);
-  restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
-  assert.equal(restoredHtml,mainBaseline,'HTML conserva fuente original al revertir cambios explícitos F111');
-}
+// F111 2026-11-03: the October exact HTML preimage no longer represents main.
+// Compare this PR against the current origin/main byte-for-byte after removing
+// only the six reviewed i18n asset-query changes above. This is stricter than
+// a broad allowlist and still protects all superadmin/exam entrypoints.
+assert.equal(mainHtml,mainBaseline,
+  'Superadmin D1: Campus HTML unchanged versus current main except the six explicit academic language cache changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');

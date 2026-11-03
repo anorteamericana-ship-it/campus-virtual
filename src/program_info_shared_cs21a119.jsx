@@ -4,6 +4,7 @@
   'use strict';
 
   const BLUE = 'var(--an-navy-ink,#001E47)';
+  const programT = label => window.AN_I18N?.t(label) || label;
 
   function filePreview(id){ return 'https://drive.google.com/file/d/' + id + '/preview'; }
   function fileDownload(id){ return 'https://drive.google.com/uc?export=download&id=' + id; }
@@ -28,16 +29,16 @@
 
   function ProgramInfoHeaderCS21A119(){
     return <div className="pi119-header" style={{ background:'linear-gradient(135deg,#fff 0%,#F8F4EE 100%)', border:'1px solid var(--line,#e5e0d8)', borderRadius:18, padding:'18px 20px', boxShadow:'var(--sh-1,0 6px 22px rgba(0,0,0,.06))', marginBottom:14 }}>
-      <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate,#7A1E2C)' }}>Principal</div>
-      <div style={{ fontSize:31, fontWeight:950, lineHeight:1.08, color:BLUE, marginTop:4 }}>Información General del Programa</div>
-      <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:860, lineHeight:1.5 }}>Seleccioná un recurso para verlo dentro del Campus y descargarlo desde esta misma pantalla.</div>
+      <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate,#7A1E2C)' }}>{programT('Principal')}</div>
+      <div style={{ fontSize:31, fontWeight:950, lineHeight:1.08, color:BLUE, marginTop:4 }}>{programT('Información General del Programa')}</div>
+      <div style={{ fontSize:13, color:'var(--ink-3,#6f6a63)', marginTop:7, maxWidth:860, lineHeight:1.5 }}>{programT('Seleccioná un recurso para verlo dentro del Campus y descargarlo desde esta misma pantalla.')}</div>
     </div>;
   }
 
   function ProgramInfoDocButtonCS21A119({ doc, selected, onClick }){
     return <button type="button" onClick={onClick} className={selected ? 'btn btn-primary' : 'btn'} style={{ textAlign:'left', justifyContent:'flex-start', padding:'10px 11px', height:'auto', whiteSpace:'normal' }}>
       <span style={{ fontFamily:'var(--f-mono,monospace)', fontSize:10, fontWeight:950, marginRight:8, flexShrink:0 }}>{doc.code}</span>
-      <span style={{ fontWeight:900, minWidth:0 }}>{doc.title}</span>
+      <span style={{ fontWeight:900, minWidth:0 }}>{programT(doc.title)}</span>
     </button>;
   }
 
@@ -55,10 +56,10 @@
       <div className="pi119-preview" style={{ background:'#fff', border:'1px solid var(--line,#e5e0d8)', borderRadius:16, overflow:'hidden', minHeight:590 }}>
         <div className="pi119-preview-head" style={{ padding:'14px 16px', borderBottom:'1px solid var(--line,#e5e0d8)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15, overflowWrap:'anywhere' }}>{doc.title}</div>
-            <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{doc.desc}</div>
+            <div style={{ fontSize:22, fontWeight:950, color:BLUE, lineHeight:1.15, overflowWrap:'anywhere' }}>{programT(doc.title)}</div>
+            <div style={{ fontSize:12, color:'var(--ink-3,#6f6a63)', marginTop:4 }}>{programT(doc.desc)}</div>
           </div>
-          <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>Descargar</button>
+          <button type="button" className="btn btn-primary" onClick={()=>openDownload(doc)} style={{ fontWeight:900 }}>{programT('Descargar')}</button>
         </div>
         <iframe title={doc.title} src={doc.preview} style={{ width:'100%', height:'72vh', minHeight:520, border:0, display:'block', background:'#f7f4ef' }} allow="autoplay"></iframe>
       </div>

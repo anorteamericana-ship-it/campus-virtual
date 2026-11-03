@@ -1,5 +1,5 @@
 /* F111 · i18n pilot: role-aware, opt-in, no DOM rewriting.
-   Visible on every authenticated Campus screen; EN is opt-in for student/teacher. Default ES.
+   Visible on every authenticated Campus screen; academic roles default EN at each login. ES remains selectable.
    No persistent data, no Apps Script changes, no translated identifiers. */
 (function (root) {
   'use strict';
@@ -14,6 +14,18 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    'Material obligatorio del programa':'Required Program Materials',
+    'Material obligatorio':'Required Materials',
+    'Antes de empezar tu programa':'Before You Begin Your Program',
+    'Introducción al Campus Virtual y al programa.':'Introduction to Campus and the English program.',
+    'Herramienta principal y de contingencia.':'Primary and backup communication tools.',
+    'Qué hacer ante fallas de audio, video o conexión.':'What to do if audio, video or your connection fails.',
+    'Normas de comportamiento en sesiones virtuales.':'Guidelines for behavior during virtual sessions.',
+    'REQUERIDO · ~20 min':'REQUIRED · ~20 min',
+    'REQUERIDO · ~10 min':'REQUIRED · ~10 min',
+    'REQUERIDO · ~6 min':'REQUIRED · ~6 min',
+    'RECOMENDADO · ~8 min':'RECOMMENDED · ~8 min',
+    'RECOMENDADO · ~5 min':'RECOMMENDED · ~5 min',
     'Menú':'Menu', 'Gestión':'Management', 'Prematrícula':'Pre-enrollment',
     'Principal':'Home', 'Gestión Académica':'Academic Management',
     'Planificación Académica':'Academic Planning', 'Recursos Didácticos':'Learning Resources',
@@ -27,7 +39,66 @@
     'Evaluaciones':'Assessments', 'Exámenes':'Exams',
     'Club I CAN':'Club I CAN', 'Pagos y estado de cuenta':'Payments & Account Statement',
     'Certificados':'Certificates', 'Documentos y ayuda':'Documents & Help',
-    'Mi Perfil':'My Profile', 'Mis Grupos':'My Groups', 'Mis grupos':'My Groups',
+    'Mi Perfil':'My Profile', 'Mi Perfil profesional':'My Professional Profile',
+    'Mis Grupos':'My Groups', 'Mis grupos':'My Groups',
+    'MI CUENTA':'MY ACCOUNT', 'Perfil docente':'Teacher Profile',
+    'Tu identidad profesional dentro de Academia Norteamericana.':'Your professional identity at Academia Norteamericana.',
+    'Docente activo':'Active Teacher', 'Docente inactivo':'Inactive Teacher',
+    'Docente de Inglés Conversacional':'Conversational English Teacher',
+    'Correo':'Email', 'Teléfono':'Phone', 'Cédula':'ID Number', 'Usuario':'Username',
+    'Ocultar':'Hide', 'Mostrar':'Show', 'Cambiar foto':'Change photo', 'Subir foto':'Upload photo',
+    'Subiendo…':'Uploading…', 'No registrado':'Not registered',
+    'PERFIL PROFESIONAL':'PROFESSIONAL PROFILE', 'Presentación':'Introduction',
+    'Editar':'Edit', 'Cancelar':'Cancel', 'Titular profesional':'Professional Title',
+    'Especialidad':'Specialization', 'Experiencia':'Experience', 'Presentación breve':'Short Bio',
+    'Guardar perfil':'Save Profile', 'Guardando…':'Saving…',
+    'EXPEDIENTE PROFESIONAL':'PROFESSIONAL RECORD', 'Documentos':'Documents',
+    'Guardado institucional':'Institutional Storage', 'Currículum':'Résumé',
+    'Trayectoria y formación profesional':'Professional background and education',
+    'Aval INA':'INA Endorsement', 'Respaldo documental del docente':'Teacher supporting documents',
+    'Expediente institucional completo':'Complete Institutional Record',
+    'Abrir carpeta de atestados':'Open Credentials Folder',
+    'Antes de empezar tu programa':'Before You Begin Your Program',
+    'MATERIAL OBLIGATORIO':'REQUIRED MATERIAL',
+    'Reglamento estudiantil':'Student Regulations',
+    'Reglamento de netiqueta':'Netiquette Guidelines',
+    'Video de bienvenida al Programa':'Program Welcome Video',
+    'Guía — Uso de Zoom y Google Meet':'Zoom and Google Meet Guide',
+    'Guía — Contingencias técnicas':'Technical Contingencies Guide',
+    'Datos personales':'Personal Information', 'Datos del programa':'Program Details',
+    'ACTUALIZAR DATOS':'UPDATE INFORMATION', 'DATOS DEL PROGRAMA':'PROGRAM DETAILS',
+    'Nombre completo':'Full Name', 'Correo electrónico actual':'Current Email',
+    'Teléfono actual':'Current Phone', 'Editar contacto':'Edit Contact',
+    'Guardar cambios':'Save Changes', 'Código':'Student Code', 'Programa':'Program',
+    'Avance del nivel':'Level Progress', 'Pendiente':'Pending',
+    'Estudiante':'Student', 'Estudiante activo':'Active Student',
+    'Información del programa':'Program Information',
+    'Disponible':'Available', 'Documento PDF':'PDF Document',
+    'Todavía no hay un PDF cargado.':'No PDF has been uploaded yet.',
+    'Abrir':'Open', 'Cargando…':'Loading…', 'Reemplazar PDF':'Replace PDF',
+    'Cargar PDF':'Upload PDF', 'Reintentar':'Try Again',
+    'Preparando tu perfil profesional…':'Preparing your professional profile…',
+    'No pudimos cargar tu perfil.':'We could not load your profile.',
+    'Mi':'My', 'Perfil':'Profile',
+    'Perfil por completar':'Complete Your Profile',
+    'Agregá una presentación breve para que tu perfil refleje tu experiencia y estilo profesional.':'Add a short bio that reflects your experience and professional approach.',
+    'Ej. Inglés conversacional':'e.g. Conversational English',
+    'Ej. 6 años de experiencia':'e.g. Six years of experience',
+    'Una presentación profesional breve, clara y humana.':'A short, clear and personal professional bio.',
+    'Título profesional, TOEIC, constancias de experiencia, colegiatura, certificados, declaraciones y autorización INA, según los documentos disponibles.':
+      'Professional degree, TOEIC, experience records, professional membership, certificates, declarations and INA authorization, where available.',
+    'Carpeta privada de la Academia. Para abrirla necesitás permiso de Google Drive; no se publica para estudiantes.':
+      'Private Academy folder. Google Drive permission is required; this folder is not shared with students.',
+    'Información General del Programa':'Program Information',
+    'Seleccioná un recurso para verlo dentro del Campus y descargarlo desde esta misma pantalla.':
+      'Select a resource to view it in Campus and download it from this page.',
+    'Descargar':'Download',
+    'Derechos, deberes y conducta académica.':'Rights, responsibilities and academic conduct.',
+    'Normas de comportamiento en sesiones virtuales (Zoom).':'Conduct guidelines for virtual sessions (Zoom).',
+    'Video institucional de bienvenida al programa.':'Institutional welcome video for the program.',
+    'Herramienta principal y contingencia.':'Primary and backup meeting tools.',
+    'Qué hacer ante fallas de audio, video, internet o plataforma.':'What to do when audio, video, internet or the platform fails.',
+    'Reglamento de netiqueta':'Netiquette Guidelines',
     'Biblioteca del Programa':'Program Library',
     'Cronograma Inglés Conversacional':'Conversational English Schedule',
     'Comunicados':'Announcements', 'Mis pendientes':'My To-Dos',
@@ -79,7 +150,7 @@
         return 'en';
       }
     } catch (_) {}
-    return 'es'; // The existing Campus remains Spanish until EN is chosen.
+    return 'en'; // Teacher/student always enter in English; a current-session ES choice remains available.
   }
   function t(value) {
     if (getLang() !== 'en' || typeof value !== 'string') return value;

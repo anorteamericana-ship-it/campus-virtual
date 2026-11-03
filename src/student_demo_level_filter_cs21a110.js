@@ -132,7 +132,7 @@
   if (!document.getElementById(JS_ID)) {
     const script = document.createElement('script');
     script.id = JS_ID;
-    script.src = 'src/campus_brand_material_cs21a117.js?v=F98.4Z6CS21A120';
+    script.src = 'src/campus_brand_material_cs21a117.js?v=F111ENBRAND20261103';
     script.defer = true;
     document.head.appendChild(script);
   }
