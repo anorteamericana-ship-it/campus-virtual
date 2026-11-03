@@ -103,7 +103,9 @@ if (mainBaseline.includes(newProfileScript)) {
   const hotfixHtml=mainBaseline.includes('&hotfix=F111ANTICIPOS20261103')
     ? mainHtml
     : mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','');
-  const d1Normalized=hotfixHtml.replace(currentAppSrc,baselineAppSrc)
+  const r50Old='r50=F111R50AUTORIZACION20261103',r50New='r50=F111R50ESTADOS20261103';
+  const r50Html=mainBaseline.includes(r50New)?hotfixHtml:hotfixHtml.replace(r50New,r50Old);
+  const d1Normalized=r50Html.replace(currentAppSrc,baselineAppSrc)
     .replace(currentSidebarSrc,baselineSidebarSrc)
     .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
     .replace(currentWelcomeCss,baselineWelcomeCss);

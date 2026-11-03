@@ -28,7 +28,7 @@ pass(script.includes("const res=await api('oralGeneratePdf',ident)"),'PDF usa mo
 pass(script.includes("const individualDownload=document.getElementById('f111-pdf-download')"),'descarga reutiliza documento');
 pass(script.includes("if(estado!=='BORRADOR'&&individualDownload)individualDownload.click()"),'descarga solo sobre archivo oficial preexistente');
 pass(script.includes("estado==='BORRADOR'?'Nota oficial confirmada y PDF archivado"),'primer cierre no descarga ni confunde');
-pass(script.includes('r50RefreshAdminF111();const cerrado='),'actualiza control en cada ficha');
+pass(script.includes('r50RefreshAdminF111();r50RefreshTeacherF111();const cerrado='),'actualiza control en cada ficha');
 pass(script.includes("'B1-LM69-C2-0526'"),'solo grupo auditado R50');
 pass(script.includes("String(state.panel?.nivel)==='B2'"),'solo nivel B2');
 pass(script.includes('Number(state.panel?.leccion)===9'),'solo lección 9');
