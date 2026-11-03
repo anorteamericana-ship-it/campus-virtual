@@ -529,8 +529,9 @@ function f111TeacherExamModal(title,url){
  const shell=make('section',null,'f111-tqr-workspace');
  const bar=make('header',null,'f111-tqr-workspace-header');
  const info=make('div');
+ const historialOral=new URL(url,location.href).searchParams.get('historial')==='1';
  info.append(make('small','ACADEMIA NORTEAMERICANA · CAMPUS VIRTUAL'),make('h2',title),
-  make('p','Vista institucional por nivel · La vista previa no crea calificaciones ni entregas.'));
+  make('p',historialOral?'Revisá y guardá cada borrador. La nota oficial preexistente exige conciliación antes del cierre.':'Vista institucional por nivel · La vista previa no crea calificaciones ni entregas.'));
  const close=make('button','CERRAR','f111-tqr-close');close.type='button';
  bar.append(info,close);
  const frame=make('iframe');frame.title=title;frame.src=url;
@@ -547,6 +548,7 @@ function f111TeacherExamModal(title,url){
 function f111ExamPageUrl(path,params){
  const url=new URL(path,new URL('./',location.href));
  for(const [k,v] of Object.entries(params||{}))if(v!=null)url.searchParams.set(k,String(v));
+ if(path==='modulos/examen_oral.html'&&String(params?.historial||'')==='1')url.searchParams.set('ui','F111R48ORAL20261102');
  return url.href;
 }
 function f111TeacherGroups(){
