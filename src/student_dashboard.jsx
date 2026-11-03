@@ -1671,16 +1671,17 @@ function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSel
 }
 
 function AccesosRapidosDashboard({ onNavigate }) {
+  const translate = value => window.AN_I18N?.t(value) || value;
   const items = [
-    ['cronograma_grupo','Cronograma','🗓️','Mi curso'],
-    ['materiales','Materiales','📚','Mi curso'],
-    ['examenes','Evaluaciones','📝','Próximas y activas'],
-    ['notas','Resultados','📊','Notas y retroalimentación'],
+    ['cronograma_grupo',translate('Cronograma'),'🗓️',translate('Mi curso')],
+    ['materiales',translate('Materiales'),'📚',translate('Mi curso')],
+    ['examenes',translate('Evaluaciones'),'📝',translate('Próximas y activas')],
+    ['notas',translate('Resultados'),'📊',translate('Notas y retroalimentación')],
   ];
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Accesos rápidos">
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label={translate("Accesos rápidos")}>
       <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Entradas principales</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>{translate("Entradas principales")}</div>
 
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))', gap:12, padding:16 }}>

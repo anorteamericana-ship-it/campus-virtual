@@ -22,6 +22,9 @@
   }
 
   function menuLabel(button) {
+    // F111 i18n: route matching uses the original stable Spanish label, not translated UI text.
+    const stable = button && button.getAttribute && button.getAttribute('data-an-nav-label');
+    if (stable) return clean(stable);
     return clean(button && button.querySelector && button.querySelector('.sb-label')
       ? button.querySelector('.sb-label').textContent
       : button && button.textContent);
