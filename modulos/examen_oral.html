@@ -487,34 +487,6 @@ async function generatePdfAndCloseF90(){
 }
 function closePdfPreviewF90(){document.getElementById('pdf-modal').classList.remove('open');reportHeightF89();}
 
-function f111PrintSavedOralR47(){
- if(!state.panel?.historico||!state.selected)return toast('Seleccioná una evaluación guardada del historial.');
- const ev=state.evaluations?.[state.selected.codigo]||{},student=state.selected,panel=state.panel;
- if(!ev.ORAL_ID||String(ev.COD_ESTUDIANTE)!==String(student.codigo)||String(ev.COD_GRUPO)!==String(panel.cod_grupo)||String(ev.NIVEL)!==String(panel.nivel)||Number(ev.LECCION)!==Number(panel.leccion))
-  return toast('El servidor no confirmó la identidad de este examen.');
- const keys=[['COMPREHENSION','Comprensión'],['FLUENCY','Fluidez'],['GRAMMAR','Gramática'],['VOCABULARY','Vocabulario'],['PRONUNCIATION','Pronunciación']];
- const vals=keys.map(([k,n])=>({n,v:ev[k]===''||ev[k]==null?NaN:Number(ev[k])}));
- const complete=vals.every(x=>Number.isFinite(x.v)&&x.v>=0&&x.v<=5);
- const total=complete?vals.reduce((n,x)=>n+x.v,0):null;
- const estado=String(ev.ESTADO||'').toUpperCase();
- const disclaimer=estado==='BORRADOR'?'BORRADOR GUARDADO · SIN NOTA OFICIAL · NO ES CERTIFICACIÓN':'COPIA DE REVISIÓN · EL PDF INSTITUCIONAL ES EL DOCUMENTO OFICIAL';
- const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Evaluación oral guardada</title>'+
- '<style>@page{size:A4;margin:16mm}body{font:13px Arial,sans-serif;color:#14314d}h1{color:#073b7a;font-size:22px}h2{color:#073b7a;font-size:15px;margin-top:23px}table{width:100%;border-collapse:collapse;margin:12px 0}td,th{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#edf4fc}.notice{border:2px solid #ba8732;background:#fff4db;color:#67410a;padding:14px;font-weight:bold;margin:15px 0}.answer{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}footer{margin-top:35px;font-size:10px;color:#64748b}.toolbar{text-align:center;background:#eef4fc;padding:12px}.toolbar button{background:#f2c83d;padding:12px 20px;border:0;border-radius:8px;cursor:pointer;font-weight:bold}@media print{.toolbar{display:none}}</style></head><body>'+
- '<div class="toolbar"><button onclick="window.print()">IMPRIMIR / GUARDAR COMO PDF</button></div>'+
- '<small>ACADEMIA NORTEAMERICANA · CAMPUS VIRTUAL</small><h1>Evaluación oral · '+escF90(panel.nivel)+' · Lección '+escF90(panel.leccion)+'</h1>'+
- '<div class="notice">'+escF90(disclaimer)+'</div><p><b>Estudiante:</b> '+escF90(student.nombre||ev.NOMBRE||student.codigo)+'</p>'+
- '<p><b>Código:</b> '+escF90(student.codigo)+' · <b>Grupo:</b> '+escF90(panel.cod_grupo)+'</p>'+
- '<p><b>Docente:</b> '+escF90(panel.docente||ev.DOCENTE_NOMBRE||'')+' · <b>Fecha:</b> '+escF90(ev.FECHA||ev.FECHA_ISO||'')+'</p>'+
- '<h2>Rúbrica guardada</h2><table><tr><th>Criterio</th><th>Puntaje</th></tr>'+
- vals.map(x=>'<tr><td>'+escF90(x.n)+'</td><td>'+(Number.isFinite(x.v)&&x.v>=0&&x.v<=5?escF90(x.v)+' / 5':'Sin registrar')+'</td></tr>').join('')+'</table>'+
- '<p><b>Total de rúbrica:</b> '+(total===null?'Incompleto':total+' / 25 · '+(total*4).toFixed(1)+' / 100')+'</p>'+
- '<h2>Comentarios del docente</h2><div class="answer">'+escF90(ev.COMENTARIOS||'Sin comentario')+'</div>'+
- '<h2>Sugerencias</h2><div class="answer">'+escF90(ev.SUGERENCIAS||'Sin sugerencias')+'</div>'+
- '<footer>'+escF90(disclaimer)+'. Imprimir no escribe ni modifica la nota oficial.</footer></body></html>';
- const popup=window.open('about:blank','_blank');
- if(!popup)return toast('Permití ventanas emergentes para guardar el borrador como PDF.');
- popup.document.open();popup.document.write(html);popup.document.close();popup.focus();
-}
 async function f111FinalizarGuardadoR47(){
  if(!state.panel?.historico||!state.selected||state.busy)return toast('Elegí un expediente del historial.');
  if(state.dirty)return toast('Guardá primero la revisión del borrador; luego confirmá la nota. No se cerró ningún expediente.');
