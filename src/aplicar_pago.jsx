@@ -725,7 +725,7 @@ function Paso4AP({
         {montoMat   > 0 && <RubroRow label="Matrícula"                       monto={montoMat}   qty={qMat}   maxQty={1}       onQty={setQMat}   />}
         {mostrarCuotas && <RubroRow label={`Cuota mensual (máx. ${nCuotas})`} monto={montoCuota} qty={qCuota} maxQty={nCuotas} onQty={setQCuota} subtotalMax={cuotaPendienteTotal} />}
         {montoCert  > 0 && <RubroRow label={`Certificado de ${NIVEL_LABEL_A[niv] || niv}`} monto={montoCert} qty={qCert} maxQty={1} onQty={setQCert} />}
-        {montoTitulo > 0 && <RubroRow label="Título Programa Completo / INA según proforma" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
+        {montoTitulo > 0 && <RubroRow label="Título final del programa (según proforma)" monto={montoTitulo} qty={qTitulo} maxQty={1} onQty={setQTitulo} />}
         {niv === 'I2' && pendNivel.programa_completo_estado === 'NO_APLICA_NIVELACION' && <div style={{padding:'10px 12px',borderRadius:9,background:'#F4F1EC',color:'#756D65',fontSize:11,fontWeight:700}}>Programa Completo: no aplica por nivel convalidado mediante examen de nivelación.</div>}
         {montoToeic > 0 && <RubroRow label="Prueba TOEIC" monto={montoToeic} qty={qToeic} maxQty={1} onQty={setQToeic} />}
         {niv === 'I2' && anticipoFuturo && pendNivel.proforma_toeic_confirmado !== true && <div style={{padding:'10px 12px',borderRadius:9,background:'#FFF8E1',color:'#8A5A00',fontSize:11,fontWeight:700}}>No se ha confirmado la selección TOEIC de la proforma individual. El anticipo I2 está bloqueado para evitar un cobro incompleto o indebido.</div>}
