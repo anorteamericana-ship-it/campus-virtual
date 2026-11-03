@@ -14,6 +14,7 @@ on:
       - 'src/student_pc01_f111.js'
       - 'src/student_b1_progress_f111.js'
       - 'scripts/qa_f111_r10_teacher_student_e1.mjs'
+      - 'scripts/qa_f111_b1_pc02_08_review_e1.mjs'
       - 'src/student_academic_summary_dom_cs21a113.js'
       - 'src/student_menu_academic_cs21a120.jsx'
       - 'scripts/qa_f111_pc01_student_receipt_summary_e1.mjs'
@@ -64,6 +65,8 @@ jobs:
         run: node scripts/qa_f111_pc01_student_evaluations_dom_g1.mjs
       - name: R10 live-DOM-equivalent teacher and student B1 authorization UI (synthetic only)
         run: node scripts/qa_f111_r10_teacher_student_e1.mjs
+      - name: B1 PC02–PC08 docente revisa nota y comentario con readback sintético
+        run: node scripts/qa_f111_b1_pc02_08_review_e1.mjs
       - name: B1 original audio 8 tracks in Chromium with synthetic protected API
         run: node scripts/qa_f111_b1_audio_ui_e1.mjs
       - name: B1 interactive 148 response fields and draft lifecycle in Chromium

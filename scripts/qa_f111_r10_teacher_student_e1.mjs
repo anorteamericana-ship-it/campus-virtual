@@ -73,7 +73,7 @@ try {
  await future.locator('select').selectOption('QA-F111-B1');
  await page.waitForFunction(()=>document.querySelectorAll('.f111-tqr-r9-controls')[1]?.textContent?.includes('No elegible'));
  assert.equal(await future.locator('.f111-tqr-activate').isDisabled(),true,'future lesson fail-closed');
- await first.locator('.f111-tqr-open').click();
+ await first.getByRole('button',{name:'VER PDF + AUDIO DEL GRUPO'}).click();
  await page.waitForSelector('[data-f111-b1-private-preview] iframe');
  const iframe=await page.locator('[data-f111-b1-private-preview] iframe').getAttribute('src');
  assert.match(iframe,/grupo=QA-F111-B1/);
