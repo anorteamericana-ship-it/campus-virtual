@@ -1,0 +1,25 @@
+name: F111 R48 — historial oral docente, revisión y PDF
+on:
+  pull_request:
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r48_oral_historical_teacher_ui.cjs'
+      - '.github/workflows/qa-f111-r48-oral-historical-teacher.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r48_oral_historical_teacher_ui.cjs'
+permissions:
+  contents: read
+jobs:
+  oral-history-readonly-e1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/qa_f111_r48_oral_historical_teacher_ui.cjs
+      - run: node tests/qa_f111_r48_oral_historical_teacher_ui.cjs
