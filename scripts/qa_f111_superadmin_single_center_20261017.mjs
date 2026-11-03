@@ -105,7 +105,9 @@ if (mainBaseline.includes(newProfileScript)) {
     : mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','');
   const r50Old='r50=F111R50AUTORIZACION20261103',r50New='r50=F111R50ESTADOS20261103';
   const r50Html=mainBaseline.includes(r50New)?hotfixHtml:hotfixHtml.replace(r50New,r50Old);
-  const d1Normalized=r50Html.replace(currentAppSrc,baselineAppSrc)
+  const b1ReviewParam='&b1review=F111DIEGOPC0208REVIEW20261103';
+  const b1Html=mainBaseline.includes(b1ReviewParam)?r50Html:r50Html.replaceAll(b1ReviewParam,'');
+  const d1Normalized=b1Html.replace(currentAppSrc,baselineAppSrc)
     .replace(currentSidebarSrc,baselineSidebarSrc)
     .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
     .replace(currentWelcomeCss,baselineWelcomeCss);
