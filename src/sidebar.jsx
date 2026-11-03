@@ -344,6 +344,10 @@ function SidebarMenuIcon({ name, size=18 }){
   return <Icon name={name} size={size} />;
 }
 
+function sidebarPilotTextF111(value) {
+  const locale = window.AN_I18N;
+  return locale && typeof locale.t === 'function' ? locale.t(value) : value;
+}
 function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   // Sesión única — sin fallbacks a claves sueltas.
   const usr = usuario || (typeof getSesion === 'function' ? getSesion() : null);
@@ -597,8 +601,8 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
   const userRole = usr
     ? (usr.rol === 'superadmin' ? 'Superadmin'
       : usr.rol === 'admin'    ? 'Administración'
-      : usr.rol === 'teacher'  ? `Docente${usr.grupo ? ' · ' + sidebarTeacherGroupLabelF88(usr.grupo) : ''}`
-      : (esUsuarioGratis ? 'Prematrícula' : `Estudiante${usr.codigo ? ' · ' + usr.codigo : ''}`))
+      : usr.rol === 'teacher'  ? `${sidebarPilotTextF111('Docente')}${usr.grupo ? ' · ' + sidebarTeacherGroupLabelF88(usr.grupo) : ''}`
+      : (esUsuarioGratis ? sidebarPilotTextF111('Prematrícula') : `${sidebarPilotTextF111('Estudiante')}${usr.codigo ? ' · ' + usr.codigo : ''}`))
     : 'Sin sesión';
   const userInit = userName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || 'AN';
 
@@ -616,7 +620,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
 
       {role === 'student' ? studentSections.map(section => (
         <React.Fragment key={section.label}>
-          <div className="sb-section student-sb-section">{section.label}</div>
+          <div className="sb-section student-sb-section">{sidebarPilotTextF111(section.label)}</div>
           {section.items.map(item => {
             if (item.locked) {
               return (
@@ -627,9 +631,10 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                   aria-disabled="true"
                   title="Se desbloquea al activar matrícula"
                   className="sb-item student-sb-item student-sb-item-free-locked"
-                  data-nav-id={item.id}>
+                  data-nav-id={item.id}
+                  data-an-nav-label={item.label}>
                   <SidebarMenuIcon name={item.icon} size={18} />
-                  <span className="sb-label">{item.label}</span>
+                  <span className="sb-label">{sidebarPilotTextF111(item.label)}</span>
                   <span className="student-sb-soon">Bloqueado</span>
                 </button>
               );
@@ -639,9 +644,10 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
                 key={item.id}
                 className={`sb-item student-sb-item ${active===item.id?'active':''}`}
                 data-nav-id={item.id}
+                data-an-nav-label={item.label}
                 onClick={() => setActive(item.id)}>
                 <SidebarMenuIcon name={item.icon} size={18} />
-                <span className="sb-label">{item.label}</span>
+                <span className="sb-label">{sidebarPilotTextF111(item.label)}</span>
                 {item.badge && <span className="sb-badge">{item.badge}</span>}
               </button>
             );
@@ -649,14 +655,16 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         </React.Fragment>
       )) : role === 'teacher' ? (
         <>
-          <div className="sb-section teacher-sb-section">Menú</div>
+          <div className="sb-section teacher-sb-section">{sidebarPilotTextF111("Menú")}</div>
           {teacherNav.map(item => (
             <button
               key={item.id}
               className={`sb-item teacher-sb-item ${active===item.id?'active':''}`}
+              data-nav-id={item.id}
+              data-an-nav-label={item.label}
               onClick={() => setActive(item.id)}>
               <SidebarMenuIcon name={item.icon} size={18} />
-              <span className="sb-label">{item.label}</span>
+              <span className="sb-label">{sidebarPilotTextF111(item.label)}</span>
               {item.badge && <span className="sb-badge">{item.badge}</span>}
             </button>
           ))}
@@ -698,6 +706,24 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         </>
       )}
 
+      {window.AN_I18N?.preview && (role === 'student' || role === 'teacher') && (
+        <div data-no-translate="true" role="group" aria-label="Language / Idioma"
+             style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'5px 10px',fontSize:12}}>
+          <span style={{color:"var(--ink-3)",fontSize:11}}>Language preview</span>
+          <div style={{display:'flex',gap:4}}>
+            {['en','es'].map(lang => (
+              <button type="button" key={lang} aria-pressed={window.AN_I18N.getLang()===lang}
+                onClick={() => window.AN_I18N.setLang(lang)}
+                style={{border:'1px solid var(--line)',borderRadius:8,padding:'5px 9px',
+                  background:window.AN_I18N.getLang()===lang?'var(--an-navy)':'var(--surface)',
+                  color:window.AN_I18N.getLang()===lang?'#fff':'var(--ink-2)',
+                  fontWeight:700,fontSize:11,minWidth:37}}>
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="sb-user">
         <div className="sb-avatar">{userInit}</div>
         <div style={{ flex:1, minWidth:0 }}>
