@@ -441,7 +441,7 @@
       const raw=String(location.hash||'#dashboard').slice(1).split('/')[0];
       return ({perfil:'dashboard',perfil_estudiante:'dashboard',cronograma_grupo:'mi_curso'})[raw]||raw;
     };
-    const [activeRoute,setActiveRoute]=React.useState(readRoute);
+    const [activeRoute,setActiveRoute]=React.useState(()=>props.active==='dashboard'?'dashboard':readRoute());
     navigationApi.setActive=props.setActive;
     React.useEffect(()=>{
       const sync=()=>setActiveRoute(readRoute());
