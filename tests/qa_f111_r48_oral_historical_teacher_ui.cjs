@@ -36,4 +36,7 @@ assert.ok(source.includes('individualDownload.click()'),'descarga tras PDF ofici
 assert.ok(source.includes("closed=await api('oralFinalizarBorradorHistoricoR47',ident)"),'no saltear guard backend');
 assert.ok(source.includes("const check=await api('oralGetPanelHistorico'"),'readback ante error, no doble cierre');
 assert.ok(source.includes("if(state.panel?.historico&&!oralEditableHistoricalR48("),'solo guardar borrador elegible');
-console.log('F111_R48_HISTORIAL_DOCENTE_E1_PASS cases=22 writes=0 academic_notes_touched=0 PDFs_issued=0');
+const teacher=fs.readFileSync('src/teacher_quiz_review_f111.js','utf8');
+assert.ok(teacher.includes("url.searchParams.set('ui','F111R48ORAL20261102')"),'caché de historial invalidada');
+assert.ok(teacher.includes('historialOral?'), 'cabecera distingue historial de vista previa');
+console.log('F111_R48_HISTORIAL_DOCENTE_E1_PASS cases=24 writes=0 academic_notes_touched=0 PDFs_issued=0');
