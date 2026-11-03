@@ -3,6 +3,8 @@
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_SD = window.APPS_SCRIPT_URL;
+// F111: UI-only labels; never translate personal data, academic codes or server payloads.
+const studentDashT = value => window.AN_I18N?.t(value) || value;
 
 // FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
 async function postStudentDash(fn, payload = {}) {
@@ -1168,7 +1170,7 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
   };
 
   return (
-    <section id="panel-actualizar-datos" className="campus-d-student-section" aria-label="Ficha del estudiante">
+    <section id="panel-actualizar-datos" className="campus-d-student-section" aria-label={studentDashT('Ficha del estudiante')}>
       <div className="campus-d-intro">
         {window.AcademyIdentityHeader && React.createElement(window.AcademyIdentityHeader,{
           kind:'student',
@@ -1176,33 +1178,33 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
             <aside className="campus-d-profile-card">
               <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png,image/webp"
                 hidden onChange={handleFotoSeleccionada} />
-              <button type="button" className="campus-d-photo-button" title={fotoUrl ? 'Cambiar foto' : 'Subir foto'}
-                aria-label={fotoUrl ? 'Cambiar foto' : 'Subir foto'} disabled={subiendoFoto}
+              <button type="button" className="campus-d-photo-button" title={studentDashT(fotoUrl ? 'Cambiar foto' : 'Subir foto')}
+                aria-label={studentDashT(fotoUrl ? 'Cambiar foto' : 'Subir foto')} disabled={subiendoFoto}
                 onClick={() => fotoInputRef.current?.click()}>
                 <img className={fotoUrl ? '' : 'is-placeholder'}
                   src={fotoUrl || 'assets/foto_placeholder.svg'}
-                  alt={fotoUrl ? 'Fotografía del estudiante' : 'Sin fotografía'} />
+                  alt={studentDashT(fotoUrl ? 'Fotografía del estudiante' : 'Sin fotografía')} />
                 <span className="campus-d-camera-icon" aria-hidden="true">
                   {window.AcademyCameraIcon && React.createElement(window.AcademyCameraIcon)}
                 </span>
               </button>
               <span className="campus-d-photo-hint" role="status">
-                {subiendoFoto ? 'Subiendo…' : fotoUrl ? 'Cambiar foto' : 'Subir foto'}
+                {studentDashT(subiendoFoto ? 'Subiendo…' : fotoUrl ? 'Cambiar foto' : 'Subir foto')}
               </span>
             </aside>
           ),
           details:(
             <div className="campus-d-welcome-copy">
-              <div className="campus-d-welcome-name">{nombreCompleto || 'Estudiante'}</div>
-              <div className="campus-d-welcome-chips" aria-label="Estado de matrícula">
-                <span className="campus-d-chip primary">{estadoReal}</span>
-                <span className="campus-d-chip">{codigoVisible ? 'Código '+codigoVisible : 'Código pendiente'}</span>
-                <span className="campus-d-chip">{nivelVisible}</span>
-                <span className="campus-d-chip">{programaReal || 'Programa pendiente'}</span>
+              <div className="campus-d-welcome-name">{nombreCompleto || studentDashT('Estudiante')}</div>
+              <div className="campus-d-welcome-chips" aria-label={studentDashT('Estado de matrícula')}>
+                <span className="campus-d-chip primary">{studentDashT(estadoReal)}</span>
+                <span className="campus-d-chip">{codigoVisible ? studentDashT('Código') + ' ' + codigoVisible : studentDashT('Código pendiente')}</span>
+                <span className="campus-d-chip">{studentDashT(nivelVisible)}</span>
+                <span className="campus-d-chip">{programaReal || studentDashT('Programa pendiente')}</span>
               </div>
               {progresoPct !== null && progresoPct !== undefined && Number.isFinite(Number(progresoPct)) &&
                 <div className="academy-id-progress">
-                  <span className="academy-id-progress-label">Avance del nivel</span>
+                  <span className="academy-id-progress-label">{studentDashT('Avance del nivel')}</span>
                   <ExecutiveProgressRingD pct={progresoPct} cerradas={cerradas} total={totalLecciones} />
                 </div>}
             </div>
@@ -1221,45 +1223,45 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
       })}
       <div className="campus-d-contact-strip">
         <div className="campus-d-contact-item">
-          <div className="campus-d-contact-label">Correo</div>
+          <div className="campus-d-contact-label">{studentDashT("Correo")}</div>
           <div className="campus-d-contact-value" title={contactosVista.correo_principal || ''}>{contactosVista.correo_principal || 'Pendiente'}</div>
         </div>
         <div className="campus-d-contact-item">
-          <div className="campus-d-contact-label">Teléfono</div>
+          <div className="campus-d-contact-label">{studentDashT("Teléfono")}</div>
           <div className="campus-d-contact-value">{contactosVista.telefono_principal || 'Pendiente'}</div>
         </div>
         <div className="campus-d-contact-item">
-          <div className="campus-d-contact-label">Cédula</div>
+          <div className="campus-d-contact-label">{studentDashT("Cédula")}</div>
           <div className="campus-d-contact-value">
             <span>{cedulaVisible ? (cedula || 'Pendiente') : cedulaSegura}</span>
             <button type="button" className="campus-d-id-toggle" aria-pressed={cedulaVisible}
-              onClick={()=>setCedulaVisible(v=>!v)}>{cedulaVisible ? 'Ocultar' : 'Mostrar'}</button>
+              onClick={()=>setCedulaVisible(v=>!v)}>{studentDashT(cedulaVisible ? 'Ocultar' : 'Mostrar')}</button>
           </div>
         </div>
         <div className="campus-d-actions">
           <button type="button" className="btn btn-primary" onClick={() => { setTab(tab === 'personal' ? null : 'personal'); setEditando(false); setMensaje(null); }}>
-            ACTUALIZAR DATOS
+            {studentDashT('ACTUALIZAR DATOS')}
           </button>
           <button type="button" className="btn btn-ghost" onClick={() => { setTab(tab === 'programa' ? null : 'programa'); setEditando(false); setMensaje(null); }}>
-            DATOS DEL PROGRAMA
+            {studentDashT('DATOS DEL PROGRAMA')}
           </button>
         </div>
       </div>
 
       {tab === 'personal' && (
-        <section className="campus-d-panel" aria-label="Datos personales">
+        <section className="campus-d-panel" aria-label={studentDashT('Datos personales')}>
           <div style={{ display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
             <div>
-              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos personales</div>
-              <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:3 }}>Podés actualizar correo electrónico, teléfono y fotografía.</div>
+              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>{studentDashT('Datos personales')}</div>
+              <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:3 }}>{studentDashT('Podés actualizar correo electrónico, teléfono y fotografía.')}</div>
             </div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
               {!editando ? (
-                <button className="btn btn-primary" type="button" style={{ fontSize:11 }} onClick={() => { setEditando(true); setMensaje(null); }}>Editar contacto</button>
+                <button className="btn btn-primary" type="button" style={{ fontSize:11 }} onClick={() => { setEditando(true); setMensaje(null); }}>{studentDashT('Editar contacto')}</button>
               ) : (
                 <>
-                  <button className="btn btn-primary" type="button" style={{ fontSize:11 }} onClick={handleGuardar} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</button>
-                  <button className="btn btn-ghost" type="button" style={{ fontSize:11 }} onClick={resetEdicion} disabled={guardando}>Cancelar</button>
+                  <button className="btn btn-primary" type="button" style={{ fontSize:11 }} onClick={handleGuardar} disabled={guardando}>{studentDashT(guardando ? 'Guardando…' : 'Guardar cambios')}</button>
+                  <button className="btn btn-ghost" type="button" style={{ fontSize:11 }} onClick={resetEdicion} disabled={guardando}>{studentDashT('Cancelar')}</button>
                 </>
               )}
             </div>
@@ -1267,39 +1269,39 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
 
           <div className="campus-d-panel-grid">
             <div className="campus-d-panel-item">
-              <div style={labelStyle}>Nombre completo</div>
+              <div style={labelStyle}>{studentDashT('Nombre completo')}</div>
               <div style={valueStyle}>{nombreCompleto || 'Pendiente'}</div>
             </div>
             <div className="campus-d-panel-item">
-              <div style={labelStyle}>Cédula</div>
+              <div style={labelStyle}>{studentDashT('Cédula')}</div>
               <div style={valueStyle}>{cedulaVisible ? (cedula || 'Pendiente') : cedulaSegura}</div>
             </div>
             <div className="campus-d-panel-item">
-              <div style={labelStyle}>Correo electrónico actual</div>
+              <div style={labelStyle}>{studentDashT('Correo electrónico actual')}</div>
               <div style={{ ...valueStyle, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', wordBreak:'normal', fontSize:12.25 }}>{contactosVista.correo_principal || 'Pendiente'}</div>
-              {adicionales(contactosVista.correos_adicionales, 'No hay correos adicionales registrados.')}
+              {adicionales(contactosVista.correos_adicionales, studentDashT('No hay correos adicionales registrados.'))}
               {editando && (
                 <div style={{ marginTop:10, paddingTop:10, borderTop:'1px dashed var(--line)' }}>
-                  <label style={labelStyle} htmlFor="correo-adicional-estudiante">Correo electrónico adicional</label>
+                  <label style={labelStyle} htmlFor="correo-adicional-estudiante">{studentDashT('Correo electrónico adicional')}</label>
                   <input id="correo-adicional-estudiante" type="email" value={form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_adicional:e.target.value, correo_como_principal:e.target.value ? prev.correo_como_principal : false }))} placeholder="nuevo@correo.com" style={inputStyle} />
                   <label style={{ ...checkStyle, opacity:form.correo_adicional ? 1 : .55 }}>
                     <input type="checkbox" checked={!!form.correo_como_principal} disabled={!form.correo_adicional} onChange={e => setForm(prev => ({ ...prev, correo_como_principal:e.target.checked }))} />
-                    <span><strong>Elegir como correo principal.</strong> El correo actual se conserva como adicional.</span>
+                    <span><strong>{studentDashT('Elegir como correo principal.')}</strong> {studentDashT('El correo actual se conserva como adicional.')}</span>
                   </label>
                 </div>
               )}
             </div>
             <div className="campus-d-panel-item">
-              <div style={labelStyle}>Teléfono actual</div>
+              <div style={labelStyle}>{studentDashT('Teléfono actual')}</div>
               <div style={valueStyle}>{contactosVista.telefono_principal || 'Pendiente'}</div>
-              {adicionales(contactosVista.telefonos_adicionales, 'No hay teléfonos adicionales registrados.')}
+              {adicionales(contactosVista.telefonos_adicionales, studentDashT('No hay teléfonos adicionales registrados.'))}
               {editando && (
                 <div style={{ marginTop:10, paddingTop:10, borderTop:'1px dashed var(--line)' }}>
-                  <label style={labelStyle} htmlFor="telefono-adicional-estudiante">Teléfono adicional</label>
+                  <label style={labelStyle} htmlFor="telefono-adicional-estudiante">{studentDashT('Teléfono adicional')}</label>
                   <input id="telefono-adicional-estudiante" type="tel" value={form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_adicional:e.target.value, telefono_como_principal:e.target.value ? prev.telefono_como_principal : false }))} placeholder="8888-8888" style={inputStyle} />
                   <label style={{ ...checkStyle, opacity:form.telefono_adicional ? 1 : .55 }}>
                     <input type="checkbox" checked={!!form.telefono_como_principal} disabled={!form.telefono_adicional} onChange={e => setForm(prev => ({ ...prev, telefono_como_principal:e.target.checked }))} />
-                    <span><strong>Elegir como teléfono principal.</strong> El teléfono actual se conserva como adicional.</span>
+                    <span><strong>{studentDashT('Elegir como teléfono principal.')}</strong> {studentDashT('El teléfono actual se conserva como adicional.')}</span>
                   </label>
                 </div>
               )}
@@ -1315,12 +1317,12 @@ function DatosAcademicosInicio({ est, grupo, nombreCompleto, codigo, cedula, cod
       )}
 
       {tab === 'programa' && (
-        <section className="campus-d-panel" aria-label="Datos del programa">
-          <div style={{ marginBottom:12, fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Datos del programa</div>
+        <section className="campus-d-panel" aria-label={studentDashT('Datos del programa')}>
+          <div style={{ marginBottom:12, fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>{studentDashT('Datos del programa')}</div>
           <div className="campus-d-panel-grid">
             {programaRows.map(([label, value, sub]) => (
               <div key={label} className="campus-d-panel-item">
-                <div style={labelStyle}>{label}</div>
+                <div style={labelStyle}>{studentDashT(label)}</div>
                 <div style={valueStyle}>{value}</div>
                 {sub ? <div style={subValueStyle}>{sub}</div> : null}
               </div>
