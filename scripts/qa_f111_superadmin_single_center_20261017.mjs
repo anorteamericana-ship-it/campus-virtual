@@ -79,7 +79,7 @@ const academicAssetDiffs=[
  ['src/student_menu_academic_cs21a120.jsx?v=F111ENPROFILE20261103','src/student_menu_academic_cs21a120.jsx?v=F111REALMENUI18N20261103'],
  ['src/program_info_shared_cs21a119.jsx?v=F111ENPROGRAM20261103','src/program_info_shared_cs21a119.jsx?v=F98.4Z6CS21A121'],
  ['&entry=F111ENPROFILE20261103',''],
- ['src/student_demo_level_filter_cs21a110.js?v=F111ENBRAND20261103','src/student_demo_level_filter_cs21a110.js?v=F98.4Z6CS21A120'],
+ ['src/student_demo_level_filter_cs21a110.js?v=F111ENBRAND20261103','src/student_demo_level_filter_cs21a110.js?v=F98.4Z6CS21A122'],
  ['&i18n=F111ENPROFILE20261103',''],
 ];
 let mainHtml=mainHtmlRaw;
