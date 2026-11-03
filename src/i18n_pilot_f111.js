@@ -15,8 +15,8 @@
   }
   const DICTIONARY = Object.freeze({
     'Agregar al expediente profesional':'Add to Professional Record',
-    'Podés agregar otros atestados a tu carpeta institucional privada desde Google Drive. Necesitás permiso de edición; la Academia debe autorizarlo. Esta opción no reemplaza el CV ni el Aval INA.':
-      'You can add supporting documents in your private institutional Google Drive folder. Editing permission must be granted by the Academy. This does not replace your résumé or INA endorsement.',
+    'Carpeta privada de la Academia. Podés agregar otros atestados desde Google Drive con permiso de edición otorgado por la Academia. No reemplaza el CV ni el Aval INA.':
+      'Private Academy folder. Add supporting documents through Google Drive if the Academy grants you editing permission. This does not replace your résumé or INA endorsement.',
     'No hay documento configurado para esta sección.':'No document has been configured for this section.',
     'Syllabus oficial del programa con visor interno y descarga.':'Official program syllabus with in-campus viewer and download.',
     '128 planeamientos oficiales: 32 PDFs por nivel, separados del Cronograma del módulo.':'128 official lesson plans: 32 PDFs per level, separate from the module schedule.',
