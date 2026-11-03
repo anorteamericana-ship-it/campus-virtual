@@ -7,10 +7,12 @@ const SAFE='src/importador_banco_integridad_cs21a114.jsx';
 const AH='scripts/qa_importador_bcr_safe_errors_cs21a210ah.mjs';
 const OLD="  banco: ['src/importador_banco.jsx?v=F96.5G'],";
 const NEW="  banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],";
-const AFTER="  aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP'],";
+// La versión de caché de Aplicar Pago puede cambiar sin alterar la ruta bancaria.
 
 function must(ok,msg){if(!ok)throw new Error(msg);}
 const app=fs.readFileSync(APP,'utf8').replace(/\r\n/g,'\n');
+const AFTER=(app.match(/^  aplicar_pago: \['src\/aplicar_pago\.jsx\?v=[^']+'\],$/m)||[])[0];
+
 const lazy=fs.readFileSync(LAZY,'utf8');
 const base=fs.readFileSync(BASE,'utf8');
 const safe=fs.readFileSync(SAFE,'utf8');
@@ -24,6 +26,7 @@ const PRE_AS_BLOCK=[BEFORE,OLD,AFTER].join('\n');
 
 must((app.split(NEW).length-1)===1,'AS route must load base + integrity exactly once.');
 must(!app.includes(OLD),'Old banco route without integrity file remains.');
+must(!!AFTER && app.split(AFTER).length-1===1,'Aplicar Pago route must remain unique and versioned.');
 must(app.includes(EFFECTIVE_BLOCK),'AS bank route neighborhood changed unexpectedly.');
 must(EFFECTIVE_BLOCK.replace(NEW,OLD)===PRE_AS_BLOCK,'AS local route reversal is not exact.');
 must(app.includes('<LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />'),'Bank route component contract changed.');
