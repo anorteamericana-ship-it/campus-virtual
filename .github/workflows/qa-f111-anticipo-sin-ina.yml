@@ -1,0 +1,27 @@
+name: F111 Hotfix — anticipos PE y grupo SIN_INA
+on:
+  pull_request:
+    paths:
+      - 'src/admin_students.jsx'
+      - 'src/aplicar_pago.jsx'
+      - 'tests/qa_f111_anticipo_i1_i2_sin_ina_e1.cjs'
+      - '.github/workflows/qa-f111-anticipo-sin-ina.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/admin_students.jsx'
+      - 'src/aplicar_pago.jsx'
+      - 'tests/qa_f111_anticipo_i1_i2_sin_ina_e1.cjs'
+permissions:
+  contents: read
+jobs:
+  anti-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/qa_f111_anticipo_i1_i2_sin_ina_e1.cjs
+      - run: node tests/qa_f111_anticipo_i1_i2_sin_ina_e1.cjs
