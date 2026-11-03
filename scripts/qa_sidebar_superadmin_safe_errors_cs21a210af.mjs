@@ -41,7 +41,14 @@ const F111_I18N_PILOT_RESTORED_BLOB='136602c80c36df583a062e4ae71fb787acd63c93';
 const previewMarker=src.includes('function sidebarPilotTextF111(value)') &&
   src.includes('data-an-nav-label={item.label}') &&
   src.includes('window.AN_I18N?.preview');
+const selectorVisibleMarker=src.includes('function sidebarPilotTextF111(value)') &&
+  src.includes('data-an-nav-label={item.label}') &&
+  src.includes('window.AN_I18N?.available') &&
+  src.includes("disabled={role !== 'student' && role !== 'teacher' && lang === 'en'}");
+const F111_I18N_SELECTOR_RESTORED_BLOB='997ee846277488b3d42a639b1db1fc6a89fceab1';
 const restoredHash=blobSha(restored);
-must(restoredHash===BASE_BLOB || (previewMarker && restoredHash===F111_I18N_PILOT_RESTORED_BLOB),
+must(restoredHash===BASE_BLOB ||
+  (previewMarker && restoredHash===F111_I18N_PILOT_RESTORED_BLOB) ||
+  (selectorVisibleMarker && restoredHash===F111_I18N_SELECTOR_RESTORED_BLOB),
   `La reversión AF no reconstruye una preimagen explícitamente validada: ${restoredHash}`);
 console.log('OK: CS21A210AF safe-error boundary + exact preimage or reviewed pilot hash');
