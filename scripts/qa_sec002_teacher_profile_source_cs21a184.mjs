@@ -30,6 +30,11 @@ mustNot(profile, "setNotice(error?.message || String(error))", 'raw teacher noti
 
 // Privacy is deliberately not faked in this source-only cut: direct URL consumers remain blockers.
 must(profile, 'data.foto?.disponible ? data.foto.url :', 'current direct teacher photo URL blocker');
+must(profile, 'data.carpeta_docente?.url', 'private teacher folder is provided by authenticated backend');
+must(profile, 'drive\\.google\\.com\\/drive\\/folders', 'teacher folder restricted to Drive host');
+must(profile, 'rel="noopener noreferrer"', 'teacher document links do not expose opener');
+must(profile, 'Carpeta privada de la Academia.', 'transparent Drive permission notice');
+mustNot(profile, '1IRcjuTrVzNaexa1A5UEBptENYApjyGnK', 'never hardcode named teacher folder IDs');
 must(profile, "window.open(document.vista_url, '_blank', 'noopener,noreferrer')", 'current direct teacher document URL blocker');
 if (contract.status !== 'active_source_confirmed_private_backend_snapshot_pending') throw new Error('Unexpected teacher-profile contract status');
 if (contract.privacy_migration.endpoint_names_resolved !== false) throw new Error('Private endpoint names must remain unresolved before the fresh modular snapshot');
