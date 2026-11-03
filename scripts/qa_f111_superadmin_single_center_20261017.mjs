@@ -95,51 +95,10 @@ assert(currentSidebarSrc&&baselineSidebarSrc,'Se conserva asset del menú Supera
 assert(currentAppSrc&&baselineAppSrc,'Se conserva asset principal del Campus');
 // El HTML F111 agrega únicamente el loader del filtro y el asset de
 // perfil profesional, sin reordenar otros scripts productivos.
-const oldProfileScript='<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F98.4Z6CS21A76"></script>';
-const newProfileScript='<script src="src/teacher_cycle_policy_f111.js?v=F111ARCHIVESEP20261020"></script>\n<script type="text/babel" data-plugins="transform-block-scoping" src="src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020"></script>';
-const docEntryParam='&docs=F111DIEGOEXPEDIENTE20261103';
-const htmlForDocEntry=mainHtml.replaceAll(docEntryParam,'');
-assert.equal(htmlForDocEntry.split(newProfileScript).length-1,1,'F111: activos docentes sólo una vez');
-if (mainBaseline.includes(newProfileScript)) {
-  // En el push posterior al merge, origin/main ya contiene la corrección.
-  // Se exige igualdad exacta y se evita revertirla contra sí misma.
-  // Únicamente se permite modificar el cache-bust del punto de entrada:
-  // se mantiene sin alterar el resto del HTML, los motores y los scripts.
-  const expectedApp='src/app.jsx?v=F111PEPAID20261102';
-  const expectedSidebar='src/sidebar.jsx?v=F111ATTEND20261021';
-  assert.equal(currentAppSrc,expectedApp,'F111: app Superadmin con versión de asistencia actual');
-  assert.equal(currentSidebarSrc,expectedSidebar,'F111: sidebar Superadmin con versión de asistencia actual');
-  // El hotfix estudiantil solo cambia caché del aviso PC01 y el menú de
-  // Resumen Académico. Conciliar esos DOS paths exactos sin relajar el contrato D1.
-  const studentNow='src/student_pc01_f111.js?v=F111PC01G1EVAL20261023';
-  const menuNow='src/student_menu_academic_cs21a120.jsx?v=F111PC01G1EVAL20261023';
-  const studentPrev=(mainBaseline.match(new RegExp('src/student_pc01_f111[.]js[?]v=[A-Za-z0-9_.-]+'))||[])[0];
-  const menuPrev=(mainBaseline.match(new RegExp('src/student_menu_academic_cs21a120[.]jsx[?]v=[A-Za-z0-9_.-]+'))||[])[0];
-  assert(studentPrev&&menuPrev,'Fuentes estudiantiles previas preservadas en main');
-  assert.equal(mainHtml.split(studentNow).length-1,1,'Solo un enlace a aviso PC01 actualizado');
-  assert.equal(mainHtml.split(menuNow).length-1,1,'Solo un enlace al menú académico actualizado');
-  const currentWelcomeCss='styles/campus.css?v=F111WELCOMEMOBILE20261023';
-  const baselineWelcomeCss=(mainBaseline.match(/styles[/]campus[.]css[?]v=[A-Za-z0-9_.-]+/)||[])[0];
-  assert(baselineWelcomeCss&&mainHtml.includes(currentWelcomeCss),'caché del modal responsive exacta');
-  const hotfixHtml=mainBaseline.includes('&hotfix=F111ANTICIPOS20261103')
-    ? mainHtml
-    : mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','');
-  const r50Old='r50=F111R50AUTORIZACION20261103',r50New='r50=F111R50ESTADOS20261103';
-  const r50Html=mainBaseline.includes(r50New)?hotfixHtml:hotfixHtml.replace(r50New,r50Old);
-  const b1ReviewParam='&b1review=F111DIEGOPC0208REVIEW20261103';
-  const b1Html=mainBaseline.includes(b1ReviewParam)?r50Html:r50Html.replaceAll(b1ReviewParam,'');
-  const teacherDocsParam='&docs=F111DIEGOEXPEDIENTE20261103';
-  const docsHtml=mainBaseline.includes(teacherDocsParam)?b1Html:b1Html.replaceAll(teacherDocsParam,'');
-  const d1Normalized=docsHtml.replace(currentAppSrc,baselineAppSrc)
-    .replace(currentSidebarSrc,baselineSidebarSrc)
-    .replace(studentNow,studentPrev).replace(menuNow,menuPrev)
-    .replace(currentWelcomeCss,baselineWelcomeCss);
-  assert.equal(d1Normalized,mainBaseline,'D1 preservado; únicamente caché estudiantil y de menú académico actualizada');
-} else {
-  // En el PR original, origin/main todavía no incluía el cambio.
-  // Se mantiene la prueba de inversión exacta de las líneas nuevas.
-  let restoredHtml=mainHtml.replaceAll('&hotfix=F111ANTICIPOS20261103','').replace(newProfileScript,oldProfileScript);
-  restoredHtml=restoredHtml.replace(currentAppSrc,baselineAppSrc);
-  assert.equal(restoredHtml,mainBaseline,'HTML conserva fuente original al revertir cambios explícitos F111');
-}
+// F111 2026-11-03: the October exact HTML preimage no longer represents main.
+// Compare this PR against the current origin/main byte-for-byte after removing
+// only the five reviewed i18n asset-query changes above. This is stricter than
+// a broad allowlist and still protects all superadmin/exam entrypoints.
+assert.equal(mainHtml,mainBaseline,
+  'Superadmin D1: Campus HTML unchanged versus current main except the five explicit academic language cache changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
