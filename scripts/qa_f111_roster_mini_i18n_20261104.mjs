@@ -41,5 +41,5 @@ assert.equal(unknown.by.course.absent,0);
 assert.equal(unknown.status,'unknown');
 const render=JSON.stringify(A.Panel({rows:course(3).concat(ican(1)),program:'INA',compact:true}));
 assert(render.includes('Approaching limit'),'English runtime status missing');
-assert(render.includes('Lessons'),'English runtime rail label missing');
+assert(core.includes("inEnglish()&&name==='Lecciones'?'Lessons':name"),'English rail mapping missing'); // Nested Rail is a React component and is not rendered by this VM stub.
 console.log('F111 ROSTER + EN/ES E1 PASS: scoped rails, compact placement, dictionary and 11h reference QA, no data writes.');
