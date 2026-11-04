@@ -863,8 +863,8 @@ function StudentDashboard({ toast, onNavigate }) {
       {matriculaPagadaBanner && (
         <div style={{ marginBottom:18, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', background:'color-mix(in srgb, var(--an-gold) 12%, white)', border:'1px solid color-mix(in srgb, var(--an-gold) 35%, white)', borderRadius:'var(--r-lg)', color:'#6B4A00' }}>
           <span style={{ fontSize:22 }}>🗓️</span>
-          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}><strong style={{ color:'var(--an-navy-ink)' }}>Tu cronograma ya está disponible.</strong>{' '}El material se habilitará cuando se registre la primera cuota del nivel.</div>
-          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>Ver cronograma →</button>
+          <div style={{ flex:1, minWidth:220, fontSize:13, lineHeight:1.5 }}><strong style={{ color:'var(--an-navy-ink)' }}>{studentDashT("Tu cronograma ya está disponible.")}</strong>{' '}{studentDashT("El material se habilitará cuando se registre la primera cuota del nivel.")}</div>
+          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => go('cronograma_grupo')}>{studentDashT("Ver cronograma")} →</button>
         </div>
       )}
 
@@ -1644,10 +1644,10 @@ function SoportePruebaViva({ nombreCompleto, codGrupo }) {
 function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSelect }) {
   const STATUS = { CA:'Cursando', APR:'Aprobado', CNV:'Convalidado', PE:'Pendiente', RPB:'Reprobado', REP:'Reprobado' };
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label="Ruta académica">
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden' }} aria-label={studentDashT("Ruta académica")}>
       <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--line)' }}>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>Ruta académica</div>
-        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>Tocá un nivel para consultar su objetivo, nota, asistencia y calendario.</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color:'var(--an-navy-ink)' }}>{studentDashT("Ruta académica")}</div>
+        <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>{studentDashT("Tocá un nivel para consultar su objetivo, nota, asistencia y calendario.")}</div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12, padding:16 }}>
         {(niveles || []).map(item => {
@@ -1904,7 +1904,7 @@ function ResumenAcademico({ nivelReal, programa }) {
   const cefr      = syl.cefr || '';
   const duracion  = syl.totalHours ? `${syl.totalHours} h` : '—';
   const plataforma= syl.platform || 'Zoom';
-  const nivelLbl  = nivelReal ? (NIVEL_NOMBRE[nivelReal] || 'Nivel actual') : 'Nivel actual';
+  const nivelLbl  = nivelReal ? studentDashT(NIVEL_NOMBRE[nivelReal] || 'Nivel actual') : studentDashT('Nivel actual');
   const programaLbl = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
 
   return (
@@ -1945,7 +1945,7 @@ const MOD_STATUS = {
 };
 function StatusPill({ kind, label }) {
   const s = MOD_STATUS[kind] || MOD_STATUS.empty;
-  return <span className={`status-pill ${s.cls}`}><i />{label || s.label}</span>;
+  return <span className={`status-pill ${s.cls}`}><i />{studentDashT(label || s.label)}</span>;
 }
 function ModTile({ icon, emoji, title, status, statusLabel, children, cta = 'Abrir', onClick }) {
   return (
@@ -1956,12 +1956,12 @@ function ModTile({ icon, emoji, title, status, statusLabel, children, cta = 'Abr
           <span style={{ width:30, height:30, borderRadius:8, background:'var(--bg-deep)', color:'var(--ink-2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:18 }}>
             {emoji ? <span aria-hidden="true">{emoji}</span> : <Icon name={icon} size={16} className="" />}
           </span>
-          <span style={{ fontWeight:600, fontSize:14, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{title}</span>
+          <span style={{ fontWeight:600, fontSize:14, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{studentDashT(title)}</span>
         </div>
         <StatusPill kind={status} label={statusLabel} />
       </div>
       <div style={{ fontSize:12.5, color:'var(--ink-2)', lineHeight:1.5 }}>{children}</div>
-      <div className="mod-tile-foot">{cta} →</div>
+      <div className="mod-tile-foot">{studentDashT(cta)} →</div>
     </div>
   );
 }
@@ -1984,7 +1984,7 @@ function ModNotas({ niveles, nivelReal, notaActiva, evaluaciones, onNavigate }) 
             : <div style={{ marginTop:2, color:'var(--ink-3)' }}>{conNota.length} evaluación{conNota.length===1?'':'es'} registrada{conNota.length===1?'':'s'}.</div>}
         </>
       ) : (
-        <span style={{ color:'var(--ink-3)' }}>Aún no tenés evaluaciones registradas.</span>
+        <span style={{ color:'var(--ink-3)' }}>{studentDashT("Aún no tenés evaluaciones registradas.")}</span>
       )}
     </ModTile>
   );
@@ -1993,7 +1993,7 @@ function ModNotas({ niveles, nivelReal, notaActiva, evaluaciones, onNavigate }) 
 function ModTareas({ onNavigate }) {
   return (
     <ModTile icon="homework" title="Tareas" status="soon" cta="Abrir" onClick={() => onNavigate('tareas')}>
-      <span style={{ color:'var(--ink-3)' }}>Aún no hay tareas asignadas. Este módulo se habilitará pronto.</span>
+      <span style={{ color:'var(--ink-3)' }}>{studentDashT("Aún no hay tareas asignadas. Este módulo se habilitará pronto.")}</span>
     </ModTile>
   );
 }
@@ -2013,7 +2013,7 @@ function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
           {docente && <div style={{ color:'var(--ink-3)' }}>Prof. {docente}</div>}
         </div>
       ) : (
-        <span style={{ color:'var(--ink-3)' }}>Los datos de tu grupo aparecerán cuando se asigne.</span>
+        <span style={{ color:'var(--ink-3)' }}>{studentDashT("Los datos de tu grupo aparecerán cuando se asigne.")}</span>
       )}
     </ModTile>
   );
@@ -2045,7 +2045,7 @@ function ModICAN({ esINA, icanData, onNavigate }) {
 function ModMensajes({ onNavigate }) {
   return (
     <ModTile icon="messages" title="Mensajes" status="soon" cta="Abrir" onClick={() => onNavigate('mensajes')}>
-      <span style={{ color:'var(--ink-3)' }}>No hay mensajes por el momento. Módulo de mensajería pendiente.</span>
+      <span style={{ color:'var(--ink-3)' }}>{studentDashT("No hay mensajes por el momento. Módulo de mensajería pendiente.")}</span>
     </ModTile>
   );
 }
@@ -2138,7 +2138,7 @@ function Kicker({ children }) {
 function DashSection({ title, hint }) {
   return (
     <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, margin:'4px 2px 12px' }}>
-      <h2 style={{ fontFamily:'Poppins, system-ui, sans-serif', fontSize:20, fontWeight:800, letterSpacing:'-0.01em', margin:0, color:'#002F6C' }}>{title}</h2>
+      <h2 style={{ fontFamily:'Poppins, system-ui, sans-serif', fontSize:20, fontWeight:800, letterSpacing:'-0.01em', margin:0, color:'#002F6C' }}>{studentDashT(title)}</h2>
       {hint && <span style={{ fontSize:11, color:'var(--ink-3)' }}>{hint}</span>}
     </div>
   );
