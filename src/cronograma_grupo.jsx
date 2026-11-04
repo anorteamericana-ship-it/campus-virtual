@@ -1621,7 +1621,7 @@ function VistaTabsCrono({ vista, setVista }) {
             color: active ? 'var(--ink)' : 'var(--ink-3)',
             fontWeight: active ? 700 : 600, fontSize:13, cursor:'pointer',
             fontFamily:'inherit', transition:'background .15s',
-          }}>{t.label}</button>
+          }}>{cgStudentUiT(t.label)}</button>
         );
       })}
     </div>
@@ -1644,8 +1644,8 @@ function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
       }}>
         <span style={{ fontSize:16 }}>🚫</span>
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#B71C1C' }}>Feriado</div>
-          <div style={{ fontSize:11, color:'#B71C1C', opacity:0.8 }}>No hay clase este día.</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#B71C1C' }}>{cgStudentUiT('Feriado')}</div>
+          <div style={{ fontSize:11, color:'#B71C1C', opacity:0.8 }}>{cgStudentUiT('No hay clase este día.')}</div>
         </div>
       </div>
     );
@@ -1668,22 +1668,22 @@ function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
         }}>
           {(turno || hor) ? (
             <>
-              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {turno}</span>}
+              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {cgStudentUiT(turno)}</span>}
               {hor && <span style={{ color:'var(--ink-3)' }}>· {hor}</span>}
             </>
-          ) : <span style={{ color:'var(--ink-3)' }}>Horario por confirmar</span>}
+          ) : <span style={{ color:'var(--ink-3)' }}>{cgStudentUiT('Horario por confirmar')}</span>}
         </span>
         <span style={{
           padding:'2px 8px', borderRadius:'var(--r-pill)', background:meta.bg, color:meta.color,
           fontSize:10, fontWeight:800, letterSpacing:'0.04em', whiteSpace:'nowrap',
-        }}>{meta.label}</span>
+        }}>{cgStudentUiT(meta.label)}</span>
       </div>
       <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
         <span style={{ fontFamily:'var(--f-mono)', fontSize:14, fontWeight:700, color:'var(--ink)' }}>
-          Lección {String(lec.leccion).padStart(2,'0')}
+          {cgStudentUiT('Lección')} {String(lec.leccion).padStart(2,'0')}
         </span>
         {lec.tipo && lec.tipo !== 'CLASE' && (
-          <span style={{ fontSize:11, color:meta.color, fontWeight:600 }}>{TIPO_LABEL_LARGO[lec.tipo]}</span>
+          <span style={{ fontSize:11, color:meta.color, fontWeight:600 }}>{cgStudentUiT(TIPO_LABEL_LARGO[lec.tipo])}</span>
         )}
       </div>
     </button>
@@ -1705,8 +1705,8 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
     return (
       <div className="card" style={{ padding:'44px 24px', textAlign:'center' }}>
         <div style={{ fontSize:30, opacity:0.4, marginBottom:8 }}>🎓</div>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)' }}>Curso finalizado</div>
-        <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>No hay próximas clases programadas en este nivel.</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)' }}>{cgStudentUiT('Curso finalizado')}</div>
+        <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>{cgStudentUiT('No hay próximas clases programadas en este nivel.')}</div>
       </div>
     );
   }
@@ -1714,10 +1714,10 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
   const lecsDia = lecsDeFecha(safeMapaLecciones, prox.fecha, prox);
   const doble   = lecsDia.length >= 2;
   const dias    = diasEntre(prox.fecha);
-  const cuando  = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : dias > 1 ? `En ${dias} días` : '—';
+  const cuando  = dias === 0 ? cgStudentUiT('Hoy') : dias === 1 ? cgStudentUiT('Mañana') : dias > 1 ? (cgStudentEnglish() ? `In ${dias} days` : `En ${dias} días`) : '—';
   const d       = parseISO(prox.fecha);
-  const diaSem  = d ? ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()] : '';
-  const programaLbl = meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
+  const diaSem  = d ? cgStudentUiT(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()]) : '';
+  const programaLbl = cgStudentUiT(meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'Programa INA' : 'Programa propio');
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -1727,7 +1727,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
           {/* Kicker + cuando */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
             <div style={{ fontSize:11, fontWeight:800, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-              Próxima clase
+              {cgStudentUiT('Próxima clase')}
             </div>
             <span style={{
               padding:'4px 12px', borderRadius:'var(--r-pill)',
@@ -1748,7 +1748,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
           {/* Bloque(s) de lección */}
           {doble && (
             <div style={{ fontSize:11, fontWeight:700, color:accent, letterSpacing:'0.04em', marginTop:14, marginBottom:6 }}>
-              Este día tiene 2 lecciones
+              {cgStudentUiT('Este día tiene 2 lecciones')}
             </div>
           )}
           <div style={{ display:'grid', gridTemplateColumns: doble ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr', gap:10, marginTop: doble ? 0 : 14 }}>
@@ -1774,7 +1774,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
               background:'var(--an-navy, #0B1F3A)', color:'#fff', border:'none',
               borderRadius:'var(--r-md)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
             }}>
-              Ver detalle de la clase →
+              {cgStudentUiT('Ver detalle de la clase')} →
             </button>
           </div>
         </div>
@@ -1789,9 +1789,9 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
         }}>
           <span style={{ width:38, height:38, borderRadius:10, background:'#E65100', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:18 }}>⚡</span>
           <div>
-            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6B4A00' }}>Próximo examen</div>
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6B4A00' }}>{cgStudentUiT('Próximo examen')}</div>
             <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:1 }}>
-              {proxExamen.tipo === 'EVAL_ORAL' ? 'Examen Oral' : 'Examen Escrito'} · Lec {String(proxExamen.leccion).padStart(2,'0')}
+              {cgStudentUiT(proxExamen.tipo === 'EVAL_ORAL' ? 'Examen Oral' : 'Examen Escrito')} · Lec {String(proxExamen.leccion).padStart(2,'0')}
             </div>
             <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:1 }}>{fmtLargo(proxExamen.fecha)}</div>
           </div>
@@ -1803,7 +1803,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
 function ProxMeta({ label, value, mono }) {
   return (
     <div style={{ minWidth:0 }}>
-      <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:3 }}>{label}</div>
+      <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:3 }}>{cgStudentUiT(label)}</div>
       <div style={{ fontSize:13, fontWeight:600, color:'var(--ink)', fontFamily: mono ? 'var(--f-mono)' : 'inherit', overflow:'hidden', textOverflow:'ellipsis' }}>{value}</div>
     </div>
   );
@@ -1842,25 +1842,25 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ fontFamily:'var(--f-sans)', fontWeight:600, fontSize:17, color:'var(--ink)' }}>
-              Semana del {fmtRangoSemana(lunes)}
+              {cgStudentUiT('Semana del')} {fmtRangoSemana(lunes)}
             </div>
             {esActual && (
-              <span style={{ padding:'2px 9px', borderRadius:'var(--r-pill)', background:'#FFF8E1', color:'#9A6A00', fontSize:10, fontWeight:800, letterSpacing:'0.06em' }}>ACTUAL</span>
+              <span style={{ padding:'2px 9px', borderRadius:'var(--r-pill)', background:'#FFF8E1', color:'#9A6A00', fontSize:10, fontWeight:800, letterSpacing:'0.06em' }}>{cgStudentUiT('ACTUAL')}</span>
             )}
           </div>
           <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{lunes.getFullYear()}</div>
         </div>
         <div style={{ display:'flex', gap:6 }}>
-          <button onClick={() => setOff(o => o - 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>← Anterior</button>
-          {!esActual && <button onClick={() => setOff(0)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>Hoy</button>}
-          <button onClick={() => setOff(o => o + 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>Siguiente →</button>
+          <button onClick={() => setOff(o => o - 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>← {cgStudentUiT('Anterior')}</button>
+          {!esActual && <button onClick={() => setOff(0)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>{cgStudentUiT('Hoy')}</button>}
+          <button onClick={() => setOff(o => o + 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>{cgStudentUiT('Siguiente')} →</button>
         </div>
       </div>
 
       {dias.length === 0 ? (
         <div style={{ padding:'40px 16px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
           <div style={{ fontSize:26, opacity:0.4, marginBottom:6 }}>🗓️</div>
-          No hay clases programadas esta semana.
+          {cgStudentUiT('No hay clases programadas esta semana.')}
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -1869,13 +1869,13 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
             return (
               <div key={isoOf(dd)} style={{ display:'grid', gridTemplateColumns:'92px 1fr', gap:14, alignItems:'start' }}>
                 <div style={{ paddingTop:4 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color: hoy ? '#9A6A00' : 'var(--ink-2)' }}>{nom}</div>
+                  <div style={{ fontSize:12, fontWeight:700, color: hoy ? '#9A6A00' : 'var(--ink-2)' }}>{cgStudentUiT(nom)}</div>
                   <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color: hoy ? '#9A6A00' : 'var(--ink)', lineHeight:1 }}>
                     {String(dd.getDate()).padStart(2,'0')}
                   </div>
-                  <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{MES_CORTO[dd.getMonth()]}</div>
+                  <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{cgStudentMonthShort(dd.getMonth())}</div>
                   {lecs.length >= 2 && (
-                    <div style={{ marginTop:4, fontSize:9.5, fontWeight:700, color:'var(--an-granate)' }}>2 lecciones</div>
+                    <div style={{ marginTop:4, fontSize:9.5, fontWeight:700, color:'var(--an-granate)' }}>{cgStudentUiT('2 lecciones')}</div>
                   )}
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns: lecs.length >= 2 ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap:10 }}>
@@ -1925,12 +1925,12 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
               border: esHoy ? '1px solid #F0DDA8' : '1px solid transparent',
             }}>
               <div style={{ textAlign:'center', paddingTop:2 }}>
-                <div style={{ fontSize:10, fontWeight:700, color: esHoy ? '#9A6A00' : 'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{diaSem}</div>
+                <div style={{ fontSize:10, fontWeight:700, color: esHoy ? '#9A6A00' : 'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{cgStudentUiT(diaSem)}</div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color: esHoy ? '#9A6A00' : 'var(--ink)', lineHeight:1.05 }}>
                   {d ? String(d.getDate()).padStart(2,'0') : '—'}
                 </div>
-                <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase' }}>{d ? MES_CORTO[d.getMonth()] : ''}</div>
-                {doble && <div style={{ marginTop:3, fontSize:9, fontWeight:700, color:'var(--an-granate)' }}>2 lec.</div>}
+                <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase' }}>{d ? cgStudentMonthShort(d.getMonth()) : ''}</div>
+                {doble && <div style={{ marginTop:3, fontSize:9, fontWeight:700, color:'var(--an-granate)' }}>{cgStudentUiT('2 lec.')}</div>}
               </div>
               <div style={{ display:'grid', gridTemplateColumns: doble ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap:8 }}>
                 {lecs.map((lec, i) => (
@@ -1960,7 +1960,7 @@ function MesesVistaControl({ valor, setValor, esAlumno = false, fullRangeMonths 
           background: valor === o.n ? 'var(--an-navy)' : 'transparent',
           color: valor === o.n ? '#fff' : 'var(--ink-2)', fontSize:11, fontWeight:900,
           fontFamily:'inherit'
-        }}>{o.t}</button>
+        }}>{cgStudentUiT(o.t)}</button>
       ))}
     </div>
   );
@@ -2194,17 +2194,17 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
     <div style={{ marginBottom: agenda ? 0 : 26 }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:12 }}>
         <div style={{ fontFamily:'var(--f-serif)', fontSize:compacto ? 18 : 20, fontWeight:600, color:'var(--an-navy-ink)' }}>
-          {MESES_NOMBRES[month]} De {year}
+          {cgStudentMonthFull(month)} {cgStudentEnglish() ? '' : 'De '}{year}
         </div>
         {!agenda && (
           <div style={{ padding:'6px 12px', borderRadius:'999px', border:'1px solid var(--line)', background:'#fff', fontSize:11, fontWeight:800, color:'var(--ink-2)' }}>
-            Ver mes →
+            {cgStudentUiT('Ver mes')} →
           </div>
         )}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:4 }}>
         {diasHdr.map(d => (
-          <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:800, color:'var(--ink-3)', padding:'3px 0' }}>{d}</div>
+          <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:800, color:'var(--ink-3)', padding:'3px 0' }}>{cgStudentUiT(d)}</div>
         ))}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
