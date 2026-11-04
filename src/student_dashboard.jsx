@@ -273,7 +273,7 @@ function fmtFechaCorta(iso) {
   if (!iso) return '—';
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(d)) return '—';
-  return `${String(d.getDate()).padStart(2,'0')} ${MES_CORTO_SD[d.getMonth()]}`;
+  return `${String(d.getDate()).padStart(2,'0')} ${window.AN_I18N?.getLang?.()==='en'?d.toLocaleDateString('en-US',{month:'short'}):MES_CORTO_SD[d.getMonth()]}`;
 }
 function diasEntreSD(iso) {
   if (!iso) return null;
