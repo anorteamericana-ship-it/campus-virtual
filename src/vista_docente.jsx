@@ -291,11 +291,11 @@ function CategoriaPendiente({ cat, abierta, onToggle }) {
         }}>{cat.count}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
-            {cat.label}
+            {vdF111MenuT(cat.label)}
           </div>
           {!cat.accionable && (
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>
-              La edición de lecciones cerradas estará disponible próximamente.
+              {vdF111MenuT('La edición de lecciones cerradas estará disponible próximamente.')}
             </div>
           )}
         </div>
@@ -392,6 +392,7 @@ function PendienteItem({ pendiente, accion, accionable, onClick }) {
   );
 }
 
+function vdF111MenuT(label) { return window.AN_I18N?.t(label) || label; }
 function VDTabs({ value, onChange, counts }) {
   const tabs = [
     { id: 'proximas',  label: 'Próximas',    count: counts.proximas },
@@ -416,7 +417,7 @@ function VDTabs({ value, onChange, counts }) {
             borderBottom: active ? '2px solid var(--an-granate)' : '2px solid transparent',
             fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            {t.label}
+            {vdF111MenuT(t.label)}
             <span style={{
               fontSize: 11, fontWeight: 600, padding: '2px 8px',
               borderRadius: 'var(--r-pill)',
