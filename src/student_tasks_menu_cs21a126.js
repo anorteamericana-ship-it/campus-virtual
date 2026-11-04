@@ -3,6 +3,7 @@
   'use strict';
   const VERSION='F98.4-Z6-CS21A126';
   const ROUTE='tareas_estudiante';
+  const F111_HIDE_TASKS_FROM_DEMO = true; // Hide only navigation, do not delete historical work.
   let queued=false;
 
   function ensureCss(){
@@ -62,6 +63,7 @@
   }
 
   function installMenu(){
+    if (F111_HIDE_TASKS_FROM_DEMO) { document.querySelector('[data-nav-id="tareas_estudiante"]')?.remove(); return; }
     const aside=document.querySelector('aside.student-sb');
     const evaluations=aside?.querySelector('[data-nav-id="evaluaciones"]');
     if(!aside||!evaluations)return;
@@ -80,7 +82,9 @@
   },true);
   window.addEventListener('popstate',()=>{if(location.hash==='#'+ROUTE)open(false);else if(document.body.classList.contains('an-student-tasks-open'))close(false);});
   window.addEventListener('an:session-changed',()=>close(false));
-  new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
-  ensureCss();queue();
+  if (!F111_HIDE_TASKS_FROM_DEMO) {
+    new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
+    ensureCss();queue();
+  }
   window.StudentTasksMenuCS21A126={version:VERSION,open,close};
 })();

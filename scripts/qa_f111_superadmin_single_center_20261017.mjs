@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const base='ffd25fc9253e295d0412cf799e51631f37ee6431';
-const appSourceF111=fs.readFileSync('src/app.jsx','utf8');
+const appSourceF111=fs.readFileSync('src/app.jsx','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','');
 const academicNewRoute="  const [active, setActive] = useState(() => {\n    // F111: each academic entry starts in the real profile. Never restore the\n    // last saved academic tab; navigation remains free after the profile opens.\n    if (role === 'student') return 'dashboard'; // Native Student My Profile\n    if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76\n    // Preserve the operational state of admin/superadmin (outside bilingual pilot).\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
 const academicOldRoute="  const [active, setActive] = useState(() => {\n    // F96.5 UX: el estudiante SIEMPRE inicia en Mi Campus.\n    // No se hereda la última pantalla porque mañana entran usuarios nuevos y\n    // la primera impresión debe ser clara, estable y orientada al cumplimiento INA.\n    if (role === 'student') return 'dashboard';\n\n    // Admin/docente sí conservan su última pantalla porque trabajan operación diaria.\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
 const academicNewStorage="  useEffect(() => {\n    // Academic navigation is intentionally not remembered across entries.\n    if (role === 'student' || role === 'teacher') return;\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
@@ -82,14 +82,18 @@ for(const path of protectedPaths){
    assert.equal(sourceProtected.split(attendanceMenu).length-1,1,'Entrada única Asistencia de grupos');
    // Tras el merge, origin/main YA contiene la nueva opción; en un PR aún
    // no fusionado, la preimagen origin/main no la contiene.
-   const normalized=old.includes(attendanceMenu)?sourceProtected:sourceProtected.replace(attendanceMenu,'');
-   assert.equal(normalized,old,'Sidebar histórico preservado salvo ruta aditiva');
+   const withExistingMenu=old.includes(attendanceMenu)?sourceProtected:sourceProtected.replace(attendanceMenu,'');
+   const studentHidden="        ...(false && mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []), // F111 student demo: hidden, teacher/admin unaffected.";
+   const studentOriginal="        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),";
+   assert.equal(withExistingMenu.split(studentHidden).length-1,1,'student demo hides only I CAN menu');
+   const normalized=withExistingMenu.replace(studentHidden,studentOriginal);
+   assert.equal(normalized,old,'Sidebar histórico preservado except student-only navigation item');
  }else{
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
 }
-const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
-const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&rl=F111ROSTER20261104','');
+const mainHtmlRaw=fs.readFileSync('campus.html','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','');
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
 // Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.

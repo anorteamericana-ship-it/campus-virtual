@@ -509,7 +509,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
         { id: 'dashboard', label: 'Mi Campus', icon: 'home' },
         { id: 'mi_curso', label: 'Mi curso', icon: 'materials' },
         { id: 'evaluaciones', label: 'Evaluaciones', icon: 'check' },
-        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),
+        ...(false && mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []), // F111 student demo: hidden, teacher/admin unaffected.
         ...(mostrarAcademiaPlay ? [
           { id: 'academia_play', label: 'English LAB', icon: 'english_lab', badge: 'Piloto' },
           { id: 'english_lab_live', label: 'English LAB Live', icon: 'english_lab', badge: 'Nuevo' },

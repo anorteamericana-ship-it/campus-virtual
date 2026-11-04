@@ -39,7 +39,9 @@ const historyEffect=app.slice(app.indexOf('  useEffect(() => {',app.indexOf('// 
  for(const id of ['recursos_adicionales','libros_audios_estudiante','planeamiento_estudiante','syllabus_estudiante','dashboard']){await page.goBack();await check(id);}
  for(const id of ['syllabus_estudiante','planeamiento_estudiante','libros_audios_estudiante','recursos_adicionales','dashboard']){await page.goForward();await check(id);}
  for(const alias of ['perfil','perfil_estudiante']){await page.evaluate(alias=>{location.hash=alias;},alias);await page.waitForFunction(()=>location.hash==='#dashboard');await check('dashboard');assert.equal(await page.locator('#native').textContent(),'dashboard');}
- for(const id of ['tareas_estudiante','planeamiento_estudiante','tareas_estudiante','syllabus_estudiante','dashboard']){await page.locator(`[data-nav-id="${id}"]`).click();await check(id);assert.equal(await page.locator('#an-student-academic-host-cs21a120, #an-content-access-host-cs21a125, #an-student-tasks-host-cs21a126').count(),id==='dashboard'?0:1);}
+  assert.equal(await page.locator('[data-nav-id="tareas_estudiante"]').count(),0,'Tasks hidden from student demonstration');
+  assert.equal(await page.locator('[data-nav-id="ican"]').count(),0,'I CAN hidden from student demonstration');
+  for(const id of ['planeamiento_estudiante','syllabus_estudiante','dashboard']){await page.locator(`[data-nav-id="${id}"]`).click();await check(id);assert.equal(await page.locator('#an-student-academic-host-cs21a120, #an-content-access-host-cs21a125, #an-student-tasks-host-cs21a126').count(),id==='dashboard'?0:1);}
  await page.locator('[data-nav-id="libros_audios_estudiante"]').click();await check('libros_audios_estudiante');await page.evaluate(()=>qaNavigate('perfil'));await check('dashboard');assert.equal(await page.locator('#an-content-access-host-cs21a125').count(),0);
  assert.deepEqual(errors,[]);console.log('PASS: JSX, profile aliases, unique active menu, repeated clicks, native/custom transitions, Back/Forward (synthetic browser; no production data).');
  }finally{await browser.close();server.close();}
