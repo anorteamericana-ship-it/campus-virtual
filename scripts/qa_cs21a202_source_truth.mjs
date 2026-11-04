@@ -37,7 +37,9 @@ assert(!/\b(?:page|context)\.(?:addScriptTag|addStyleTag)\s*\(/.test(source),
   'No injection of a synthetic application in place of shipped code');
 assert(!/\b(?:route|response)\.fulfill\s*\(\s*\{[^}]*contentType\s*:\s*['"]text\/html/s.test(source),
   'No HTML response substitution');
-assert(!/\b(?:localStorage|sessionStorage)\.setItem\s*\(\s*['"]an_usuario['"]\s*,\s*[^J]/.test(source),
+assert.equal((source.match(/sessionStorage\\.setItem\\(\\s*['"]an_usuario['"]/g)||[]).length,1,
+  'Exactly one synthetic session setup must exist');
+requireText("sessionStorage.setItem('an_usuario', JSON.stringify(session))",
   'Session must be created only from synthetic JSON');
 
 // Student navigation must test both the invariant route ID AND the visible language.
