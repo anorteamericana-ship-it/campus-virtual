@@ -1499,21 +1499,21 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
   if (showICAN) summaryRows.push({ label:'I CAN', value:String(summary?.ican || 0), extra:true });
 
   return (
-    <section id="registro-notas-asistencia" className="campus-d-gradebook" aria-label="Registro de notas y asistencia">
+    <section id="registro-notas-asistencia" className="campus-d-gradebook" aria-label={studentDashT("Registro de notas y asistencia")}>
       <div className="campus-d-gradebook-head">
         <div>
-          <div className="campus-d-gradebook-title">Registro de notas y asistencia</div>
-          <div className="campus-d-gradebook-sub">Las 32 lecciones permanecen en un único calendario movible. La próxima se marca en azul y queda en la penúltima posición visible.</div>
+          <div className="campus-d-gradebook-title">{studentDashT('Registro de notas y asistencia')}</div>
+          <div className="campus-d-gradebook-sub">{studentDashT('Las 32 lecciones permanecen en un único calendario movible. La próxima se marca en azul y queda en la penúltima posición visible.')}</div>
         </div>
         <div className="campus-d-gradebook-nav">
-          <span className="campus-d-gradebook-range">{visibleRange.start || 0}–{visibleRange.end || 0} de {list.length}</span>
-          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(-1)} disabled={!list.length} aria-label="Ver lecciones anteriores">←</button>
-          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(1)} disabled={!list.length} aria-label="Ver siguientes lecciones">→</button>
+          <span className="campus-d-gradebook-range">{visibleRange.start || 0}–{visibleRange.end || 0} {studentDashT('de')} {list.length}</span>
+          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(-1)} disabled={!list.length} aria-label={studentDashT("Ver lecciones anteriores")}>←</button>
+          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(1)} disabled={!list.length} aria-label={studentDashT("Ver siguientes lecciones")}>→</button>
         </div>
       </div>
 
       {window.F111AttendanceLimit&&React.createElement(window.F111AttendanceLimit.Panel,{
-        rows:list,program,label:'Tu límite de ausencias del nivel '+(nivel||'actual')
+        rows:list,program,label:studentDashT('Tu límite de ausencias del nivel')+' '+(nivel||studentDashT('actual'))
       })}
       <div className="campus-d-gradebook-body">
         <div ref={scrollRef} className="campus-d-ledger">
@@ -1522,11 +1522,11 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
               <div className="campus-d-ledger-labels">
                 <div className="campus-d-ledger-student">
                   <div className="campus-d-ledger-student-name">{nombreCompleto || 'Estudiante'}</div>
-                  <div className="campus-d-ledger-student-meta">{codigo ? `Código ${codigo}` : 'Código pendiente'} · Nivel {nivel || '—'}</div>
+                  <div className="campus-d-ledger-student-meta">{codigo ? studentDashT('Código')+' '+codigo : studentDashT('Código pendiente')} · {studentDashT('Nivel')} {nivel || '—'}</div>
                 </div>
-                <div className="campus-d-ledger-row-label attendance">Asistencia</div>
-                <div className="campus-d-ledger-row-label comment">Comentario</div>
-                <div className="campus-d-ledger-row-label grade">Nota</div>
+                <div className="campus-d-ledger-row-label attendance">{studentDashT('Asistencia')}</div>
+                <div className="campus-d-ledger-row-label comment">{studentDashT('Comentario')}</div>
+                <div className="campus-d-ledger-row-label grade">{studentDashT('Nota')}</div>
               </div>
 
               {list.map((row, idx) => {
@@ -1537,14 +1537,14 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
                 return (
                   <div className={`campus-d-lesson-column ${isActive ? 'is-active' : ''} ${focusRequest && isActive ? 'is-focused' : ''}`} key={row.key || `${row.fecha}-${row.actividad}-${idx}`}>
                     <div className="campus-d-lesson-head">
-                      <div className="campus-d-lesson-date">{row.fecha ? fmtFechaCorta(row.fecha) : 'Fecha pendiente'}</div>
-                      <div className="campus-d-lesson-label">{row.actividad || 'Actividad'}</div>
-                      <span className={`campus-d-type-tag ${type.cls}`}>{type.label}</span>
-                      {isActive ? <div className="campus-d-active-lesson-label">{focusRequest ? 'ENCONTRADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA')}</div> : null}
+                      <div className="campus-d-lesson-date">{row.fecha ? fmtFechaCorta(row.fecha) : studentDashT('Fecha pendiente')}</div>
+                      <div className="campus-d-lesson-label">{row.actividad || studentDashT('Actividad')}</div>
+                      <span className={`campus-d-type-tag ${type.cls}`}>{studentDashT(type.label)}</span>
+                      {isActive ? <div className="campus-d-active-lesson-label">{studentDashT(focusRequest ? 'ENCONTRADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA'))}</div> : null}
                     </div>
                     <div className="campus-d-lesson-attendance">
                       <span className="campus-d-attendance" style={{ color:attendance.color }}>
-                        <i className="campus-d-attendance-dot" />{attendance.short}
+                        <i className="campus-d-attendance-dot" />{studentDashT(attendance.short)}
                       </span>
                     </div>
                     <div className="campus-d-lesson-comment">
@@ -1556,15 +1556,15 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
               })}
             </div>
           ) : (
-            <div className="campus-d-gradebook-empty">Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</div>
+            <div className="campus-d-gradebook-empty">{studentDashT('Todavía no hay registros visibles de asistencia o calificaciones para este nivel.')}</div>
           )}
         </div>
 
-        <aside className="campus-d-summary" aria-label="Resumen del nivel">
-          <div className="campus-d-summary-title">Resumen · {nivel || 'Nivel'}</div>
+        <aside className="campus-d-summary" aria-label={studentDashT("Resumen del nivel")}>
+          <div className="campus-d-summary-title">{studentDashT('Resumen')} · {nivel || studentDashT('Nivel')}</div>
           {summaryRows.map(item => (
             <div className={`campus-d-summary-row ${item.extra ? 'extra' : ''}`} key={item.label}>
-              <span className="campus-d-summary-label">{item.label}</span>
+              <span className="campus-d-summary-label">{studentDashT(item.label)}</span>
               <span className="campus-d-summary-value">{item.value}{item.suffix ? <small>{item.suffix}</small> : null}</span>
             </div>
           ))}
@@ -1595,8 +1595,8 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
   };
 
   return (
-    <section className="campus-d-events" aria-label="Resumen de próximos eventos">
-      <div className="campus-d-events-head">Próximos eventos</div>
+    <section className="campus-d-events" aria-label={studentDashT("Resumen de próximos eventos")}>
+      <div className="campus-d-events-head">{studentDashT('Próximos eventos')}</div>
       <div className={`campus-d-event-grid ${items.length <= 3 ? 'cols-3' : 'cols-4'}`}>
         {items.map(([key, meta]) => {
           const ev = meta.data;
@@ -1608,8 +1608,8 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
               disabled={!ev}
               onClick={() => focusEvent(key, ev)}
             >
-              <span className="campus-d-event-title only">{meta.title}</span>
-              <span className="campus-d-event-action pill">Buscar</span>
+              <span className="campus-d-event-title only">{studentDashT(meta.title)}</span>
+              <span className="campus-d-event-action pill">{studentDashT('Buscar')}</span>
             </button>
           );
         })}
@@ -1660,13 +1660,13 @@ function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSel
               style={{ appearance:'none', textAlign:'left', cursor:'pointer', fontFamily:'inherit', border:`2px solid ${selected?color:'var(--line)'}`, borderRadius:16, padding:14, background:selected?`color-mix(in srgb, ${color} 8%, white)`:'#fff', boxShadow:selected?'0 10px 24px rgba(0,30,71,.08)':'none', transition:'transform .16s ease,border-color .16s ease', minWidth:0 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
                 <strong style={{ color, fontSize:17, fontFamily:'var(--f-mono)' }}>{n}</strong>
-                <span style={{ fontSize:9.5, fontWeight:900, color:['APR','CNV'].includes(est)?'var(--ok)':est==='CA'?'var(--an-navy)':est==='RPB'||est==='REP'?'var(--danger)':'var(--ink-3)', textTransform:'uppercase' }}>{active?'ACTUAL · ':''}{STATUS[est]||est}</span>
+                <span style={{ fontSize:9.5, fontWeight:900, color:['APR','CNV'].includes(est)?'var(--ok)':est==='CA'?'var(--an-navy)':est==='RPB'||est==='REP'?'var(--danger)':'var(--ink-3)', textTransform:'uppercase' }}>{active?studentDashT('ACTUAL')+' · ':''}{studentDashT(STATUS[est]||est)}</span>
               </div>
-              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:5 }}>{NIVEL_NOMBRE[n]}</div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:5 }}>{studentDashT(NIVEL_NOMBRE[n])}</div>
               <div style={{ height:7, borderRadius:999, background:'var(--line)', overflow:'hidden', marginTop:12 }}><div style={{ width:`${pct}%`, height:'100%', background:color }} /></div>
-              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:9 }}>Nota: <strong>{item.nota != null ? item.nota : '—'}</strong></div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:9 }}>{studentDashT('Nota:')} <strong>{item.nota != null ? item.nota : '—'}</strong></div>
               <div style={{ fontSize:10.5, color:'var(--ink-3)', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {item.registro ? `Certificado: ${item.registro}` : (['APR','CNV'].includes(est) ? 'Certificado: sin registro oficial' : 'Certificado: no aplica aún')}
+                {item.registro ? studentDashT('Certificado:')+' '+item.registro : (['APR','CNV'].includes(est) ? studentDashT('Certificado: sin registro oficial') : studentDashT('Certificado: no aplica aún'))}
               </div>
             </button>
           );
