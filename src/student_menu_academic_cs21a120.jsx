@@ -265,9 +265,9 @@
         const l=document.createElement('link');l.id=cssId;l.rel='stylesheet';l.href='styles/student_academic_summary_cs21a113.css?v=F98.4Z6CS21A120';document.head.appendChild(l);
       }
       window.anLazyCampus.loadMany([
-        'src/student_portal.jsx?v=F98.4Z6CS21A120',
+        'src/student_portal.jsx?v=F98.4Z6CS21A120&demo=F111STUDENTDEMO20261104',
         'src/student_academic_summary_core_cs21a113.js?v=F98.4Z6CS21A120',
-        'src/student_academic_summary_dom_cs21a113.js?v=F111PC01G1EVAL20261023'
+        'src/student_academic_summary_dom_cs21a113.js?v=F111PC01G1EVAL20261023&demo=F111STUDENTDEMO20261104'
       ]).then(()=>{
         if(typeof window.mountStudentAcademicSummaryCS21A113!=='function') throw new Error('No se pudo preparar Resumen Académico.');
         setState({loading:false,error:''});
