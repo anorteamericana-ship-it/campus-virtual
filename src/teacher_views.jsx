@@ -521,6 +521,7 @@ function nivelLabelDe(code) {
   return NIVEL_LABEL_GRUPO[ini] || ini || '—';
 }
 
+function tvF111Translate(value) { return window.AN_I18N?.t(value) || value; }
 const TV_WEEK_DAYS_F82 = [
   { key:1, label:'LUNES' }, { key:2, label:'MARTES' }, { key:3, label:'MIÉRCOLES' },
   { key:4, label:'JUEVES' }, { key:5, label:'VIERNES' }, { key:6, label:'SÁBADO' },
@@ -588,7 +589,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession, lecciones=
             dayItems.sort((a,b)=>a.start-b.start||String(a.riel).localeCompare(String(b.riel)));
             return (
               <div key={day.key} style={{ minHeight:158, borderRight:'1px solid var(--line)', borderBottom:'1px solid var(--line)', background:'#FFF' }}>
-                <div style={{ padding:'11px 8px', textAlign:'center', fontSize:11, fontWeight:900, letterSpacing:'.08em', color:'var(--ink-2)', borderBottom:'1px solid var(--line)', background:'#F7F3EC' }}>{day.label}</div>
+                <div style={{ padding:'11px 8px', textAlign:'center', fontSize:11, fontWeight:900, letterSpacing:'.08em', color:'var(--ink-2)', borderBottom:'1px solid var(--line)', background:'#F7F3EC' }}>{tvF111Translate(day.label)}</div>
                 <div style={{ display:'grid', gap:7, padding:7 }}>
                   {dayItems.map(({g,riel}) => {
                     const code=tvGroupCode(g), active=String(code)===String(activo), n=tvNivelId(g), pal=nivelPal(n), lab=tvGrupoLabel(g), isIcan=riel==='ican';
@@ -639,15 +640,15 @@ function MatriculadosActivosCardF98({ total=0, activos=0, cerradas=0, threshold=
   const pct = totalN > 0 ? Math.round((activosN / totalN) * 100) : 0;
   const ringBg = `conic-gradient(var(--an-navy) 0 ${pct}%, #E7ECF4 ${pct}% 100%)`;
   const helper = cerradas > 0
-    ? `${activosN} cumplen ${threshold}% o más.`
-    : 'Aún sin clases cerradas.';
+    ? (window.AN_I18N?.getLang()==='en' ? `${activosN} currently meet the ${threshold}% attendance threshold.` : `${activosN} cumplen ${threshold}% o más.`)
+    : tvF111Translate('Aún sin clases cerradas.');
   return (
     <div className="card" style={{ padding:'14px 16px', minWidth:0, overflow:'hidden', minHeight:142, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-      <div style={{ ...vdLabelStyle, marginBottom:8 }}>Matriculados</div>
+      <div style={{ ...vdLabelStyle, marginBottom:8 }}>{tvF111Translate('Matriculados')}</div>
       <div style={{ display:'grid', gridTemplateColumns:'minmax(90px,1fr) 82px', alignItems:'center', gap:10 }}>
         <div style={{ minWidth:0 }}>
           <div style={{ fontSize:31, lineHeight:0.96, fontWeight:900, color:'var(--an-navy)' }}>{activosN}</div>
-          <div style={{ fontSize:11.5, fontWeight:800, color:'var(--ink-2)', marginTop:4 }}>Activos</div>
+          <div style={{ fontSize:11.5, fontWeight:800, color:'var(--ink-2)', marginTop:4 }}>{tvF111Translate('Cumplen asistencia')}</div>
           <div style={{ fontSize:9.5, color:'var(--ink-3)', marginTop:8, lineHeight:1.3 }}>{helper}</div>
         </div>
         <div style={{ justifySelf:'end', width:82, display:'grid', placeItems:'center' }}>
@@ -663,7 +664,7 @@ function MatriculadosActivosCardF98({ total=0, activos=0, cerradas=0, threshold=
       </div>
       <div style={{ marginTop:10, display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap', fontSize:9.2, fontWeight:900, color:'var(--an-navy)' }}>
         <span style={{ width:8, height:8, borderRadius:'50%', background:'var(--an-navy)' }} />
-        <span>{pct}% del grupo cumple el requisito</span>
+        <span>{window.AN_I18N?.getLang()==='en' ? `${pct}% of the group currently meets the threshold` : `${pct}% del grupo cumple el requisito`}</span>
       </div>
     </div>
   );
@@ -1315,7 +1316,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
   },[nextCourseLesson,nextIcanLesson,nextLesson,viewMode]);
   const [selectedStudent,setSelectedStudent]=React.useState(null),[selectedLesson,setSelectedLesson]=React.useState(null);
   const calendarRef=React.useRef(null), topScrollRef=React.useRef(null), positionedRef=React.useRef('');
-  const COL_W=94, LEFT_W=384, RIGHT_W=154, HEADER_H=104, ROW_H=112;
+  const COL_W=94, LEFT_W=384, RIGHT_W=154, HEADER_H=104, ROW_H=168;
 
   React.useEffect(()=>{
     const box=calendarRef.current;
@@ -1351,8 +1352,8 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
     <div className="card teacher-roster-fixed" style={{padding:0,overflow:'hidden',width:'100%',maxWidth:'100%',minWidth:0}}>
       <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--line)'}}>
         <div style={{minWidth:240,flex:'1 1 320px'}}>
-          <div className="card-title">Cronograma del grupo</div>
-          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN, ordenados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.'}</div>
+          <div className="card-title">{tvF111Translate('Cronograma del grupo')}</div>
+          <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{tvF111Translate(viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN, ordenados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.')}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap',flex:'1 1 420px'}}>
           <div role="tablist" aria-label="Filtrar asistencia" style={{display:'inline-flex',gap:5,padding:4,border:'1px solid var(--line)',borderRadius:12,background:'#F7F9FC',flexWrap:'wrap'}}>
@@ -1362,7 +1363,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
               ...(iCanApplies?[{id:'ican',label:'SOLO I CAN',count:icanCount}]:[]),
             ].map(opt=>{
               const active=viewMode===opt.id, purple=opt.id==='ican';
-              return <button key={opt.id} type="button" role="tab" aria-selected={active} onClick={()=>selectView(opt.id)} style={{border:'1px solid '+(active?(purple?'#6A3D91':'var(--an-navy)'):'transparent'),background:active?(purple?'#6A3D91':'var(--an-navy)'):'#FFF',color:active?'#FFF':purple?'#6A3D91':'var(--ink-2)',borderRadius:9,padding:'7px 10px',fontSize:9.5,fontWeight:900,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap'}}>{opt.label} <span style={{opacity:.78}}>({opt.count})</span></button>;
+              return <button key={opt.id} type="button" role="tab" aria-selected={active} onClick={()=>selectView(opt.id)} style={{border:'1px solid '+(active?(purple?'#6A3D91':'var(--an-navy)'):'transparent'),background:active?(purple?'#6A3D91':'var(--an-navy)'):'#FFF',color:active?'#FFF':purple?'#6A3D91':'var(--ink-2)',borderRadius:9,padding:'7px 10px',fontSize:9.5,fontWeight:900,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap'}}>{tvF111Translate(opt.label)} <span style={{opacity:.78}}>({opt.count})</span></button>;
             })}
           </div>
           <div style={{display:'flex',gap:7}}>
@@ -1384,9 +1385,9 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
         <div className="teacher-roster-identity" style={{zIndex:3,borderRight:'1px solid var(--line)',boxShadow:'8px 0 14px -14px rgba(0,0,0,.55)'}}>
           <table className="teacher-roster-fixed-table" style={{...tableBase,width:LEFT_W}}>
             <thead><tr><th style={{...headCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W,textAlign:'left',padding:'9px 12px'}}>
-              <label htmlFor={`teacher-student-search-${groupCode||'grupo'}`} style={{display:'block',fontSize:10.5,fontWeight:900,color:'var(--ink-2)',marginBottom:6}}>Buscar estudiante en lista</label>
-              <input id={`teacher-student-search-${groupCode||'grupo'}`} type="search" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder="Nombre, apellido, cédula o código" aria-label="Buscar estudiante por nombre, apellido, cédula o código" style={{width:'100%',height:34,border:'1.5px solid #B7C3D4',borderRadius:8,padding:'0 10px',fontFamily:'inherit',fontSize:10.5,fontWeight:650,color:'var(--ink)',background:'#FFF',outline:'none'}} />
-              <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:4,fontWeight:750}}>{filteredRoster.length} de {(roster||[]).length} estudiantes</div>
+              <label htmlFor={`teacher-student-search-${groupCode||'grupo'}`} style={{display:'block',fontSize:10.5,fontWeight:900,color:'var(--ink-2)',marginBottom:6}}>{tvF111Translate('Buscar estudiante en lista')}</label>
+              <input id={`teacher-student-search-${groupCode||'grupo'}`} type="search" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder={tvF111Translate('Nombre, apellido, cédula o código')} aria-label="Buscar estudiante por nombre, apellido, cédula o código" style={{width:'100%',height:34,border:'1.5px solid #B7C3D4',borderRadius:8,padding:'0 10px',fontFamily:'inherit',fontSize:10.5,fontWeight:650,color:'var(--ink)',background:'#FFF',outline:'none'}} />
+              <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:4,fontWeight:750}}>{filteredRoster.length} {tvF111Translate('de')} {(roster||[]).length} {tvF111Translate('estudiantes')}</div>
             </th></tr></thead>
             <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],contacto=contactos[r.code]||{};return <tr key={r.code||i}>
               <td title={r.cedula?`Cédula ${r.cedula}`:''} style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W}}>
@@ -1405,8 +1406,25 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
                       <span style={{color:'#48617E',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
                         userSelect:'text',cursor:contacto.correo?'text':'default',display:'inline-block'}}
                         title={contacto.correo?'Doble clic para seleccionar el correo completo':'Correo no registrado'}
-                        onDoubleClick={contacto.correo?tvSelectContactTextF104:undefined}>{contacto.correo||'Sin correo'}</span>
+                        onDoubleClick={contacto.correo?tvSelectContactTextF104:undefined}>{contacto.correo||tvF111Translate('Sin correo')}</span>
                     </div>
+                    {window.F111AttendanceLimit && React.createElement(window.F111AttendanceLimit.Panel,{
+                      rows:allLessons.map(l=>{
+                        const rail=tvLessonRielF97(l), lessonKey=tvLessonKeyF97(l);
+                        // Do not confuse an ordinary lesson with the I CAN session of the same number.
+                        const cell=asistenciaDetalle?.[lessonKey]?.[r.code] ||
+                          (rail==='curso'?asistenciaDetalle?.[String(l.leccion)]?.[r.code]:null);
+                        const rawDuration=Number(l?.duracion_horas||l?.horas_clase||0);
+                        const scheduledDuration=rawDuration>0?rawDuration:
+                          (rail==='ican'&&icanCount===16?2:
+                           rail==='curso'&&courseCount===32?3:
+                           rail==='curso'&&courseCount===16?6:null);
+                        return {riel:rail,leccion:Number(l.leccion),presente:cell?.presente===true?true:cell?.presente===false?false:null,
+                          duracion_horas:scheduledDuration};
+                      }),
+                      program:meta?.programa||meta?.tipo_programa||programa||'',
+                      compact:true,label:tvF111Translate('Estado de asistencia')
+                    })}
                   </div>
                 </div>
               </td>
@@ -1505,7 +1523,7 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
   },[codGrupo,nivel]);
   const sessionCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   React.useEffect(()=>{if(sessionCode&&sessionCode!==String(codGrupo||'')&&lista.some(g=>tvGroupCode(g)===sessionCode))cambiarGrupo(sessionCode);},[sessionCode,codGrupo,lista.length]);
-  if(!lista.length&&!loading)return <div><PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} sub="Grupos asignados"/><ErrorState message={error||'No hay grupos activos asignados en este momento.'} onRetry={recargarPanel}/></div>;
+  if(!lista.length&&!loading)return <div><PageHeader kicker={tvF111Translate("Gestión académica")} title={<>{tvF111Translate("Mis")} <em>{tvF111Translate("Grupos")}</em></>} sub={tvF111Translate("Grupos asignados")}/><ErrorState message={error||'No hay grupos activos asignados en este momento.'} onRetry={recargarPanel}/></div>;
   const promedioGrupo=resumenGrupo?.promedioGrupo,promedioAsistencia=resumenGrupo?.promedioAsistencia;
   const totalMatriculados = Number(resumenGrupo?.totalCA ?? roster.length ?? 0) || 0;
   const cerradas = Number(resumenGrupo?.cerradas || 0) || 0;
@@ -1518,18 +1536,18 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
         : totalMatriculados)
     : 0;
   return <div style={{width:'100%',maxWidth:'100%',minWidth:0,overflow:'hidden'}}>
-    <PageHeader kicker="Gestión académica" title={<>Mis <em>Grupos</em></>} />
+    <PageHeader kicker={tvF111Translate("Gestión académica")} title={<>{tvF111Translate("Mis")} <em>{tvF111Translate("Grupos")}</em></>} />
     <div className="card" style={{padding:'15px 18px',margin:'-6px 0 14px',background:'#FFF',borderRadius:14,border:'1px solid rgba(15,23,42,.07)',boxShadow:'0 10px 24px rgba(12,27,53,.05)'}}>
-      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>Elegí el grupo que querés visualizar.</div>
+      <div style={{fontSize:14,fontWeight:900,color:'var(--ink-2)',letterSpacing:'.01em'}}>{tvF111Translate('Elegí el grupo que querés visualizar.')}</div>
     </div>
     <MisGruposSwitcher grupos={lista} activo={codGrupo} onSelect={cambiarGrupo} activeSession={activeSession} lecciones={lecciones}/>
     {error&&!loading&&<div style={{marginBottom:14}}><ErrorState message={error} onRetry={recargarPanel}/></div>}
     {loading?<LoadingState title="Cargando grupo…" subtitle="Preparando estudiantes, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
         <MatriculadosActivosCardF98 total={totalMatriculados} activos={activos85} cerradas={cerradas} threshold={85}/>
-        <StatF77 label="Nivel actual" value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
-        <StatF77 label="Promedio grupo" value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
-        <StatF77 label="Asistencia" value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
+        <StatF77 label={tvF111Translate("Nivel actual")} value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
+        <StatF77 label={tvF111Translate("Promedio grupo")} value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
+        <StatF77 label={tvF111Translate("Asistencia")} value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
       </div>
       <RosterAcademicoF79 roster={roster} contactos={contactos} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} programa={programa} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     </>}
