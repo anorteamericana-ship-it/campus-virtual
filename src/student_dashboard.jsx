@@ -654,11 +654,11 @@ function StudentDashboard({ toast, onNavigate }) {
   if (!usr) {
     return (
       <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
-        <DashHeader title="Mi Campus" />
+        <DashHeader title={studentDashT('Mi Campus')} />
         <EmptyState
           icon="👤"
-          title="No hay sesión activa"
-          subtitle="Iniciá sesión nuevamente para cargar tu información académica."
+          title={studentDashT('No hay sesión activa')}
+          subtitle={studentDashT('Iniciá sesión nuevamente para cargar tu información académica.')}
         />
       </div>
     );
@@ -666,7 +666,7 @@ function StudentDashboard({ toast, onNavigate }) {
   if (loading && !data) {
     return (
       <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
-        <DashHeader title="Cargando tu información…" />
+        <DashHeader title={studentDashT('Cargando tu información…')} />
         <SkeletonDashboard />
       </div>
     );
@@ -674,7 +674,7 @@ function StudentDashboard({ toast, onNavigate }) {
   if (error && !data) {
     return (
       <div className="campus-d-root" data-screen-label="Estudiante · Mi Campus">
-        <DashHeader title="Mi Campus" />
+        <DashHeader title={studentDashT('Mi Campus')} />
         <ErrorState message={error} onRetry={reload} />
       </div>
     );
