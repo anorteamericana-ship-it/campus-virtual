@@ -59,7 +59,7 @@ const sha=crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${by
 // Auth, access, endpoints, token and Drive invariants above must STILL pass.
 const reviewedStudentEnglishBlob='642e1f1751bc832f5928085180be2b7d22361182';
 const fullBytes=Buffer.from(src,'utf8');
-const fullSha=crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${fullBytes.length}\\0`),fullBytes])).digest('hex');
+const fullSha=crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${fullBytes.length}`),Buffer.from([0]),fullBytes])).digest('hex');
 must(sha==='7f7dd0f75ff25ced26b9a9427bb284c1ed1d9f60'||fullSha===reviewedStudentEnglishBlob,
   `exact legacy preimage or pinned student English UI blob: restored=${sha} source=${fullSha}`);
 
