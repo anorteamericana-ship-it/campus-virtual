@@ -198,6 +198,7 @@
   }
 
   function BookResourcesCS21A60({ studentMode = false, initialType = 'SB' }) {
+    const bookViewerT = value => studentMode ? (window.AN_I18N?.t(value) || value) : value;
     const stored = sessionFromStorage();
     const storedRole = roleOf(stored);
     const canCalibrate = storedRole === 'superadmin';
@@ -293,9 +294,9 @@
         <div ref={hostRef} style={{ width: '100%', background: '#fff', border: '1px solid var(--line,#e5e0d8)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 8px 28px rgba(0,0,0,.06)' }}>
           <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderBottom: '1px solid var(--line,#e5e0d8)' }}>
             <div style={{ minWidth: 220, flex: '1 1 260px' }}>
-              <div style={{ fontSize: 10, fontWeight: 950, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--an-granate,#7A1E2C)' }}>{studentMode ? 'Libro del nivel actual' : 'Recursos Didácticos'}</div>
-              <div style={{ fontSize: 23, fontWeight: 950, color: BLUE, lineHeight: 1.12, marginTop: 2 }}>Libros de texto · {selectedLevel.name}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-3,#6f6a63)', marginTop: 4 }}>{manifest?.title || entry?.title || `${level} · ${bookType}`}{manifest?.page_count_visible ? ` · ${manifest.page_count_visible} hojas` : ''}</div>
+              <div style={{ fontSize: 10, fontWeight: 950, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--an-granate,#7A1E2C)' }}>{studentMode ? bookViewerT('Libro del nivel actual') : 'Recursos Didácticos'}</div>
+              <div style={{ fontSize: 23, fontWeight: 950, color: BLUE, lineHeight: 1.12, marginTop: 2 }}>{bookViewerT('Libros de texto')} · {bookViewerT(selectedLevel.name)}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3,#6f6a63)', marginTop: 4 }}>{manifest?.title || entry?.title || `${level} · ${bookType}`}{manifest?.page_count_visible ? ` · ${manifest.page_count_visible} ${bookViewerT('hojas')}` : ''}</div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <TypeButtons type={bookType} setType={setBookType} allowedTypes={allowedTypes} />
@@ -307,18 +308,18 @@
           {(message || error) && <div role="status" style={{ margin: '9px 12px 0', padding: '9px 12px', borderRadius: 10, border: `1px solid ${error ? '#D66' : '#58A36B'}`, background: error ? '#FFF0F0' : '#EDF9F0', color: error ? '#8D1E1E' : '#1F6333', fontSize: 11, fontWeight: 850 }}>{error || message}</div>}
           <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'rgba(12,18,27,.96)', color: '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button className="btn" type="button" disabled={!canPrevious} onClick={() => setSpreadIndex(index => Math.max(0, index - 2))}>Anterior</button>
-              <strong style={{ fontSize: 12.5 }}>{status === 'ready' ? `Hojas ${leftPage?.display_index || 0}${rightPage ? `–${rightPage.display_index}` : ''} / ${pages.length} · fuente ${leftPage?.source_page || '—'}${rightPage ? `–${rightPage.source_page}` : ''}` : status === 'error' ? 'Carga detenida' : 'Preparando libro…'}</strong>
-              <button className="btn" type="button" disabled={!canNext} onClick={() => setSpreadIndex(index => Math.min(Math.max(0, pages.length - 1), index + 2))}>Siguiente</button>
+              <button className="btn" type="button" disabled={!canPrevious} onClick={() => setSpreadIndex(index => Math.max(0, index - 2))}>{bookViewerT('Anterior')}</button>
+              <strong style={{ fontSize: 12.5 }}>{status === 'ready' ? `${bookViewerT('Hojas')} ${leftPage?.display_index || 0}${rightPage ? `–${rightPage.display_index}` : ''} / ${pages.length} · ${bookViewerT('fuente')} ${leftPage?.source_page || '—'}${rightPage ? `–${rightPage.source_page}` : ''}` : status === 'error' ? bookViewerT('Carga detenida') : bookViewerT('Preparando libro…')}</strong>
+              <button className="btn" type="button" disabled={!canNext} onClick={() => setSpreadIndex(index => Math.min(Math.max(0, pages.length - 1), index + 2))}>{bookViewerT('Siguiente')}</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               {canRefreshDrive && <button className="btn" type="button" disabled={syncingDrive} onClick={refreshDrive}>{syncingDrive ? 'Actualizando Drive…' : 'Actualizar desde Drive'}</button>}
-              <button className="btn" type="button" onClick={() => setZoom(value => Math.max(.72, +(value - .1).toFixed(2)))}>−</button><span style={{ minWidth: 48, textAlign: 'center', fontSize: 11, fontWeight: 900 }}>{Math.round(zoom * 100)}%</span><button className="btn" type="button" onClick={() => setZoom(value => Math.min(1.55, +(value + .1).toFixed(2)))}>+</button><button className="btn" type="button" onClick={toggleFullscreen}>Pantalla completa</button>
+              <button className="btn" type="button" onClick={() => setZoom(value => Math.max(.72, +(value - .1).toFixed(2)))}>−</button><span style={{ minWidth: 48, textAlign: 'center', fontSize: 11, fontWeight: 900 }}>{Math.round(zoom * 100)}%</span><button className="btn" type="button" onClick={() => setZoom(value => Math.min(1.55, +(value + .1).toFixed(2)))}>+</button><button className="btn" type="button" onClick={toggleFullscreen}>{bookViewerT('Pantalla completa')}</button>
             </div>
           </div>
-          {status === 'loading' && <div style={{ minHeight: 520, display: 'grid', placeItems: 'center', background: 'radial-gradient(circle at 50% 12%,#887664 0%,#4B4137 53%,#27231E 100%)', color: '#fff', fontWeight: 900 }}>Cargando las primeras dos hojas…</div>}
-          {status === 'error' && <div style={{ minHeight: 420, display: 'grid', placeItems: 'center', padding: 24, background: 'radial-gradient(circle at 50% 12%,#887664 0%,#4B4137 53%,#27231E 100%)', color: '#fff' }}><button className="btn btn-primary" type="button" onClick={() => load(true)}>Reintentar</button></div>}
-          {status === 'ready' && <div style={{ overflow: 'auto', padding: '22px 18px 34px', background: 'radial-gradient(circle at 50% 12%,#887664 0%,#4B4137 53%,#27231E 100%)' }}><div style={{ width: `${zoom * 100}%`, minWidth: 820, maxWidth: 1900, margin: '0 auto', display: 'flex', gap: 0, alignItems: 'stretch' }}><ImagePage page={leftPage} /><div aria-hidden="true" style={{ width: 20, margin: '0 -10px', zIndex: 3, background: 'linear-gradient(90deg,rgba(0,0,0,.42),rgba(255,255,255,.18),rgba(0,0,0,.42))', boxShadow: '0 0 22px rgba(0,0,0,.46)' }} /><ImagePage page={rightPage} emptyLabel="Fin del libro" /></div></div>}
+          {status === 'loading' && <div style={{ minHeight: 520, display: 'grid', placeItems: 'center', background: 'radial-gradient(circle at 50% 12%,#887664 0%,#4B4137 53%,#27231E 100%)', color: '#fff', fontWeight: 900 }}>{bookViewerT('Cargando las primeras dos hojas…')}</div>}
+          {status === 'error' && <div style={{ minHeight: 420, display: 'grid', placeItems: 'center', padding: 24, background: 'radial-gradient(circle at 50% 12%,#887664 0%,#4B4137 53%,#27231E 100%)', color: '#fff' }}><button className="btn btn-primary" type="button" onClick={() => load(true)}>{bookViewerT('Reintentar')}</button></div>}
+          {status === 'ready' && <div style={{ overflow: 'auto', padding: '22px 18px 34px', background: 'radial-gradient(circle at 50% 12%,#887664 0%,#4B4137 53%,#27231E 100%)' }}><div style={{ width: `${zoom * 100}%`, minWidth: 820, maxWidth: 1900, margin: '0 auto', display: 'flex', gap: 0, alignItems: 'stretch' }}><ImagePage page={leftPage} /><div aria-hidden="true" style={{ width: 20, margin: '0 -10px', zIndex: 3, background: 'linear-gradient(90deg,rgba(0,0,0,.42),rgba(255,255,255,.18),rgba(0,0,0,.42))', boxShadow: '0 0 22px rgba(0,0,0,.46)' }} /><ImagePage page={rightPage} emptyLabel={bookViewerT('Fin del libro')} /></div></div>}
         </div>
       </section>
     );
