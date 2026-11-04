@@ -89,7 +89,7 @@ const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encodi
 // already contains the exact deployed versions.
 const approvedAssetDiffs=[
  ['src/teacher_cs21a_docs_viewer.jsx?v=F111REALDOCSEN20261103','src/teacher_cs21a_docs_viewer.jsx?v=F98.4Z6CS21A6'],
- ['src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103','src/i18n_pilot_f111.js?v=F111ENDEFAULT20261103C'],
+
  ['&record=F111ADDRECORD20261103',''],
  ['src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103','src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103'],
  ['&i18nstudent=F111STUDENTTABS20261103',''],
