@@ -93,6 +93,7 @@ const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encodi
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.
 const approvedAssetDiffs=[
+ ['src/i18n_pilot_f111.js?v=F111HERO20261103B','src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103'],
  ['src/teacher_cs21a_docs_viewer.jsx?v=F111REALDOCSEN20261103','src/teacher_cs21a_docs_viewer.jsx?v=F98.4Z6CS21A6'],
 
  ['&record=F111ADDRECORD20261103',''],
@@ -104,7 +105,6 @@ const approvedAssetDiffs=[
  ['src/att77_view_detail.jsx?v=F111ATTLIMIT20261103A','src/att77_view_detail.jsx?v=F98.4Z6CS21A77'],
  ['&att=F111ATTLIMIT20261103A',''],
  ['styles/academy_identity_card.css?v=F111HERO20261103B','styles/academy_identity_card.css?v=F111UI1'],
- ['src/i18n_pilot_f111.js?v=F111HERO20261103B','src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103'],
  ['&hero=F111HERO20261103B',''],
 ];
 let mainHtml=mainHtmlRaw;
