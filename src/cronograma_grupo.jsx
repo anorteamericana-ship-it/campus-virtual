@@ -2131,7 +2131,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
         <div style={{ fontSize:12, color:'var(--ink-2)' }}>
           {stats.proxima ? (
             <>
-              Próxima:&nbsp;
+              {cgStudentUiT('Próxima:')}&nbsp;
               <strong style={{ color:'var(--an-navy)', fontFamily:'var(--f-mono)' }}>
                 Lec {String(stats.proxima.leccion).padStart(2,'0')}
               </strong>
@@ -2628,7 +2628,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               {feriadoName}
             </div>
             <div style={{ fontSize:11, color:pal.fg, opacity:0.8, marginTop:4 }}>
-              No hay clase este día. La lección se proyecta al siguiente día hábil.
+              {cgStudentUiT('No hay clase este día. La lección se proyecta al siguiente día hábil.')}
             </div>
           </div>
         ) : bloqueado ? (
@@ -2655,11 +2655,10 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600,
               color:'var(--ink)', letterSpacing:'-0.015em', marginBottom:4,
             }}>
-              Nivel bloqueado
+              {cgStudentUiT('Nivel bloqueado')}
             </div>
             <div style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.5, maxWidth:260, margin:'0 auto' }}>
-              Completá los niveles anteriores para acceder al título,
-              temas y material de esta lección.
+              {cgStudentUiT('Completá los niveles anteriores para acceder al título, temas y material de esta lección.')}
             </div>
             <div style={{
               marginTop:12, fontSize:10, color:'var(--ink-3)',
@@ -2697,10 +2696,10 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               fontFamily:'var(--f-serif)', fontSize:14, fontWeight:600,
               color:'var(--ink)', letterSpacing:'-0.01em', marginBottom:4,
             }}>
-              No se pudo cargar el detalle
+              {cgStudentUiT('No se pudo cargar el detalle')}
             </div>
             <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5, maxWidth:240, margin:'0 auto 12px' }}>
-              No recibimos los datos de esta lección. Probá de nuevo en unos segundos.
+              {cgStudentUiT('No recibimos los datos de esta lección. Probá de nuevo en unos segundos.')}
             </div>
             {onRecargar && (
               <button
@@ -2724,7 +2723,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                   <path d="M23 4v6h-6"/>
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                 </svg>
-                Reintentar
+                {cgStudentUiT('Reintentar')}
               </button>
             )}
           </div>
@@ -2750,7 +2749,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                     fontSize:9, fontWeight:700, letterSpacing:'0.12em',
                     textTransform:'uppercase', color:'#1B5E20', marginBottom:2,
                   }}>
-                    Cobertura asignada
+                    {cgStudentUiT('Cobertura asignada')}
                   </div>
                   <div style={{ fontSize:13, color:'var(--ink)', fontWeight:600, lineHeight:1.35 }}>
                     {cobertura.docente_cobertura}
@@ -2760,7 +2759,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                       fontSize:11, color:'var(--ink-3)', marginTop:2,
                       textDecoration:'line-through',
                     }}>
-                      Titular: {cobertura.docente_anterior}
+                      {cgStudentUiT('Titular:')} {cobertura.docente_anterior}
                     </div>
                   )}
                 </div>
@@ -2835,7 +2834,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                 borderRadius:'var(--r-md)', fontSize:12, color:'#6B4A00', lineHeight:1.5,
               }}>
                 <span style={{ color:'#9A6A00', flexShrink:0, marginTop:1 }}><IconoCandado /></span>
-                <span>Material disponible al cancelar la primera cuota.</span>
+                <span>{cgStudentUiT('Material disponible al cancelar la primera cuota.')}</span>
               </div>
             ) : (
               <>
@@ -2978,7 +2977,7 @@ function AccionesClaseEstudiante({ selLec, detalle, nivel, codigoUsr, grupoUsr, 
         <a href={sesionClase.link} target="_blank" rel="noopener noreferrer"
            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#1565C0', color:'#fff', borderRadius:'var(--r-md)', fontSize:13, fontWeight:800, textDecoration:'none', letterSpacing:'0.02em' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          Entrar a clase
+          {cgStudentUiT('Entrar a clase')}
         </a>
       ) : estadoTexto ? (
         <div style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:11.5, color:'var(--ink-3)', textAlign:'center', lineHeight:1.45 }}>
