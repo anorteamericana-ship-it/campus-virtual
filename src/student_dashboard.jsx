@@ -1899,33 +1899,33 @@ function ResumenAcademico({ nivelReal, programa }) {
   const sylKey = nivelReal ? nivelReal.toLowerCase() : '';
   const syl = (typeof SYLLABUS_BY_LEVEL !== 'undefined' && sylKey) ? (SYLLABUS_BY_LEVEL[sylKey] || {}) : {};
   // Fallbacks NEUTROS — nunca quemar Básico I / Interchange Intro.
-  const objetivo  = syl.objective || 'El objetivo de tu nivel aparecerá cuando tu matrícula esté procesada.';
+  const objetivo  = syl.objective || studentDashT('El objetivo de tu nivel aparecerá cuando tu matrícula esté procesada.');
   const libro     = nivelReal ? (NIVEL_LIBRO[nivelReal] || syl.book || 'Libro del curso') : 'Libro del curso';
   const cefr      = syl.cefr || '';
   const duracion  = syl.totalHours ? `${syl.totalHours} h` : '—';
   const plataforma= syl.platform || 'Zoom';
   const nivelLbl  = nivelReal ? studentDashT(NIVEL_NOMBRE[nivelReal] || 'Nivel actual') : studentDashT('Nivel actual');
-  const programaLbl = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
+  const programaLbl = studentDashT(programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio');
 
   return (
     <div className="card" style={{ padding:'18px 22px', marginBottom:18 }}>
       <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:20, alignItems:'start' }}>
         <div>
-          <Kicker>Objetivo general · {nivelLbl}</Kicker>
+          <Kicker>{studentDashT('Objetivo general')} · {nivelLbl}</Kicker>
           <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:5, lineHeight:1.5 }}>{objetivo}</div>
         </div>
         <div>
-          <Kicker>Libro</Kicker>
+          <Kicker>{studentDashT('Libro')}</Kicker>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:4, lineHeight:1.2 }}>{libro}</div>
-          {cefr && <div style={{ fontSize:11, color:'var(--ink-3)' }}>Nivel {cefr} · MCER</div>}
+          {cefr && <div style={{ fontSize:11, color:'var(--ink-3)' }}>{studentDashT('Nivel')} {cefr} · {studentDashT('MCER')}</div>}
         </div>
         <div>
-          <Kicker>Duración</Kicker>
+          <Kicker>{studentDashT('Duración')}</Kicker>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:4 }}>{duracion}</div>
           <div style={{ fontSize:11, color:'var(--ink-3)' }}>{programaLbl}</div>
         </div>
         <div>
-          <Kicker>Plataforma</Kicker>
+          <Kicker>{studentDashT('Plataforma')}</Kicker>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:4 }}>{plataforma}</div>
         </div>
       </div>
@@ -2001,14 +2001,14 @@ function ModTareas({ onNavigate }) {
 function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
   const docente  = grupo.DOCENTE || '';
   const horario  = horarioGrupoCompletoSD(grupo, codGrupo);
-  const modalidad = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio';
+  const modalidad = studentDashT(programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio');
   const hay = !!(codGrupo || docente || horario);
   return (
     <ModTile icon="doc" emoji="📚" title="Mi curso" status={hay ? 'ok' : 'empty'}
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Abrir Mi curso" onClick={() => onNavigate('mi_curso')}>
       {hay ? (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          <div>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Nivel actual'} · {modalidad}</div>
+          <div>{nivelReal ? (studentDashT(NIVEL_NOMBRE[nivelReal] || nivelReal)) : studentDashT('Nivel actual')} · {modalidad}</div>
           {horario && <div style={{ color:'var(--ink-3)' }}>{horario}</div>}
           {docente && <div style={{ color:'var(--ink-3)' }}>Prof. {docente}</div>}
         </div>
@@ -2067,17 +2067,17 @@ function ModEstadoCuenta({ pendientes, niveles = {}, esConape, conapeEstado, onN
   const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (
     <ModTile icon="payments" emoji="💳" title="Pagos y estado de cuenta" status={alDia ? 'ok' : !saldoVerificado ? 'empty' : 'pending'}
-             statusLabel={!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo' : `${total} por cubrir`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
+             statusLabel={!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo' : `${total} ${studentDashT('por cubrir')}`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
       {!saldoVerificado ? (
-        <div style={{ color:'var(--ink-3)' }}>No se pudo verificar el saldo contractual. Intentá actualizar el perfil.</div>
+        <div style={{ color:'var(--ink-3)' }}>{studentDashT('No se pudo verificar el saldo contractual. Intentá actualizar el perfil.')}</div>
       ) : alDia ? (
-        <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ Sin saldo contractual pendiente.</div>
+        <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ {studentDashT('Sin saldo contractual pendiente.')}</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          {matPend && <div>Matrícula — {fmt(pendientes.matricula)}</div>}
-          {cuotasPend > 0 && <div>{cuotasPend} cuota{cuotasPend>1?'s':''} del plan — {fmt(cuotaMonto)} (vencimientos por verificar)</div>}
-          {certPend && <div>Certificado — {fmt(pendientes.certificado)}{!certExigible?' (futuro; aún no exigible)':''}</div>}
-          <div style={{marginTop:5,fontSize:11,color:'var(--ink-3)'}}>Saldo contractual por cubrir; no equivale necesariamente a morosidad.</div>
+          {matPend && <div>{studentDashT('Matrícula')} — {fmt(pendientes.matricula)}</div>}
+          {cuotasPend > 0 && <div>{cuotasPend} {studentDashT(cuotasPend===1?'cuota':'cuotas')} {studentDashT('del plan')} — {fmt(cuotaMonto)} ({studentDashT('vencimientos por verificar')})</div>}
+          {certPend && <div>{studentDashT('Certificado')} — {fmt(pendientes.certificado)}{!certExigible?' ('+studentDashT('futuro; aún no exigible')+')':''}</div>}
+          <div style={{marginTop:5,fontSize:11,color:'var(--ink-3)'}}>{studentDashT('Saldo contractual por cubrir; no equivale necesariamente a morosidad.')}</div>
         </div>
       )}
     </ModTile>
@@ -2090,14 +2090,14 @@ function ModCertificados({ niveles, onNavigate }) {
   const registrados = rows.filter(x => typeof x.raw === 'object' && (x.raw.reg_certificados || x.raw.cert_num));
   const elegibles = rows.filter(x => ['APR','CNV'].includes(x.estatus) && !registrados.includes(x));
   const status = registrados.length ? 'ok' : elegibles.length ? 'pending' : 'empty';
-  const label = registrados.length ? `${registrados.length} registrado${registrados.length>1?'s':''}` : elegibles.length ? 'Revisar emisión' : 'Sin registros';
+  const label = registrados.length ? `${registrados.length} ${studentDashT(registrados.length===1?'registrado':'registrados')}` : elegibles.length ? 'Revisar emisión' : 'Sin registros';
   return (
     <ModTile icon="certificates" emoji="📄" title="Certificados" status={status} statusLabel={label} cta="Consultar estado" onClick={() => onNavigate('certificados')}>
       {registrados.length > 0
-        ? <div>Hay <strong>{registrados.length}</strong> número{registrados.length>1?'s':''} oficial{registrados.length>1?'es':''} registrado{registrados.length>1?'s':''}. La pantalla de certificados verificará si existe PDF y enlace.</div>
+        ? <div>{studentDashT('Hay')} <strong>{registrados.length}</strong> {studentDashT(registrados.length===1?'número oficial registrado':'números oficiales registrados')}. {studentDashT('La pantalla de certificados verificará si existe PDF y enlace.')}</div>
         : elegibles.length > 0
-          ? <div>{elegibles.map(x=>x.n).join(', ')} aprobado/convalidado. La elegibilidad y disponibilidad se verifican por separado.</div>
-          : <span style={{ color:'var(--ink-3)' }}>Aún no hay niveles aprobados o convalidados con registro oficial.</span>}
+          ? <div>{elegibles.map(x=>x.n).join(', ')} {studentDashT('aprobado/convalidado')}. {studentDashT('La elegibilidad y disponibilidad se verifican por separado.')}</div>
+          : <span style={{ color:'var(--ink-3)' }}>{studentDashT('Aún no hay niveles aprobados o convalidados con registro oficial.')}</span>}
     </ModTile>
   );
 }
@@ -2119,11 +2119,11 @@ function ModRetro({ retroData, onNavigate }) {
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver notas" onClick={() => onNavigate('notas')}>
       {hay ? (
         <div>
-          <div style={{ color:'var(--ink-3)', fontSize:11, marginBottom:2 }}>{retroData.total || items.length} comentario{(retroData.total||items.length)>1?'s':''} de tu profe</div>
+          <div style={{ color:'var(--ink-3)', fontSize:11, marginBottom:2 }}>{retroData.total || items.length} {studentDashT((retroData.total||items.length)===1?'comentario':'comentarios')} {studentDashT('de tu profe')}</div>
           <div style={{ display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>“{ultimo.comentario}”</div>
         </div>
       ) : (
-        <span style={{ color:'var(--ink-3)' }}>Aún no hay retroalimentación registrada.</span>
+        <span style={{ color:'var(--ink-3)' }}>{studentDashT('Aún no hay retroalimentación registrada.')}</span>
       )}
     </ModTile>
   );
@@ -2169,7 +2169,7 @@ function NivelChip({ nivel, estatus, activo }) {
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:'var(--r-pill)', background:bg, border:`1.5px solid ${c}`, color:fg, fontSize:11, fontWeight:700, letterSpacing:'0.04em' }}>
       <strong style={{ fontFamily:'var(--f-mono)' }}>{nivel}</strong>
-      <span style={{ opacity: activo ? 1 : 0.85 }}>· {label}</span>
+      <span style={{ opacity: activo ? 1 : 0.85 }}>· {studentDashT(label)}</span>
     </span>
   );
 }
