@@ -21,6 +21,14 @@ const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
 // F111 presentation-only localization for students; teacher/admin strings and data untouched.
 const cgStudentUiT = value => window.AN_I18N?.role?.() === 'student' ? (window.AN_I18N.t(value) || value) : value;
 const cgStudentEnglish = () => window.AN_I18N?.role?.() === 'student' && window.AN_I18N?.getLang?.() === 'en';
+// "Mañana" means Morning in shifts but Tomorrow in the date context.
+const cgStudentShiftT = value => cgStudentEnglish() && value === 'Mañana' ? 'Morning' : cgStudentUiT(value);
+const cgStudentScheduleT = value => {
+  if (!cgStudentEnglish() || typeof value !== 'string') return value;
+  const days = {Lunes:'Monday',Martes:'Tuesday',Miércoles:'Wednesday',Jueves:'Thursday',Viernes:'Friday',Sábado:'Saturday',Domingo:'Sunday'};
+  return value.replace(/Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo/g, day => days[day])
+    .replace(/\s+y\s+/g,' and ').replace(/\s+de\s+/g,' from ').replace(/\s+a\s+/g,' to ');
+};
 const cgStudentMonthShort = index => cgStudentEnglish()
   ? new Date(2026,index,1).toLocaleDateString('en-US',{month:'short'})
   : MES_CORTO[index];
@@ -1103,7 +1111,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
                 fontWeight:800, fontSize:13,
                 color:'var(--ink)', minWidth:260,
               }} title={codGrupo}>
-                {cgStudentUiT(grupoHorarioLabelCG(meta))}
+                {cgStudentScheduleT(grupoHorarioLabelCG(meta))}
               </div>
             </div>
           )}
@@ -1668,7 +1676,7 @@ function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
         }}>
           {(turno || hor) ? (
             <>
-              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {cgStudentUiT(turno)}</span>}
+              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {cgStudentShiftT(turno)}</span>}
               {hor && <span style={{ color:'var(--ink-3)' }}>· {hor}</span>}
             </>
           ) : <span style={{ color:'var(--ink-3)' }}>{cgStudentUiT('Horario por confirmar')}</span>}
@@ -1764,7 +1772,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
           }}>
             <ProxMeta label="Grupo" value={codGrupo} mono />
             <ProxMeta label="Docente" value={meta.docente || '—'} />
-            <ProxMeta label="Días" value={meta.dias || '—'} />
+            <ProxMeta label="Días" value={cgStudentScheduleT(meta.dias || '—')} />
             <ProxMeta label="Modalidad" value={programaLbl} />
           </div>
 
@@ -2532,7 +2540,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
             </div>
             <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3 }}>
               {cgStudentUiT(selLec.dia)}
-              {selLec.turno && <> · {cgStudentUiT(selLec.turno)}</>}
+              {selLec.turno && <> · {cgStudentShiftT(selLec.turno)}</>}
               {dias === 0 ? '' : dias === 1 ? ' · '+cgStudentUiT('mañana') : dias > 1 ? (cgStudentEnglish()?` · in ${dias} days`:` · en ${dias} días`) : (cgStudentEnglish()?` · ${-dias} days ago`:` · hace ${-dias} días`)}
             </div>
           </div>
