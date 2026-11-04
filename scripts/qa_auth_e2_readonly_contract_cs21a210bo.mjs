@@ -38,7 +38,11 @@ expect(/roleRead\('superadmin', 'validarSesion'\)/.test(runner), 'Debe verificar
 expect(/timeout:\s*18000/.test(runner), 'El browser debe dar margen superior al timeout de 14 s de CampusGate.');
 expect(/Validando tu sesi\[oó\]n/.test(runner), 'El browser debe detectar explícitamente el estado Validando tu sesión.');
 expect(/appMounted/.test(runner) && /state\.appMounted/.test(runner), 'El browser debe exigir árbol principal montado.');
-expect(/clickLabel:\s*'Libros y Audios'/.test(runner), 'Libros y Audios debe navegarse desde dashboard como el Campus real.');
+expect(/navId:\s*'libros_audios_estudiante'/.test(runner), 'La biblioteca estudiantil debe seleccionarse por ruta estable.');
+expect(/expectedLabel:\s*'Books & Audio'/.test(runner), 'El E2 debe verificar el rótulo EN de la biblioteca.');
+expect(/button\[data-nav-id=/.test(runner), 'E2 debe usar data-nav-id, no una cadena española fija.');
+expect(/scenario\.expectedLabel/.test(runner), 'Las etiquetas EN/ES se validan de forma independiente a la ruta.');
+expect(!/clickLabel:\s*'Libros y Audios'/.test(runner), 'Prohibido el selector E2 antiguo dependiente del texto ES.');
 expect(/scenario\.role === 'student' \? 'dashboard' : scenario\.route/.test(runner), 'El estudiante debe arrancar en dashboard antes de navegar.');
 
 expect(/real_qa_authenticated_readonly_cs21a210bo\.mjs/.test(manualWorkflow), 'El workflow manual debe usar el runner BO especializado.');
@@ -56,5 +60,5 @@ console.log('- URL QA explícita y PROD rechazada');
 console.log('- identidades QA validadas localmente');
 console.log('- proof nativo CS21A144 pasa antes de transmitir credenciales');
 console.log('- validarSesion se prueba con los tres tokens antes del browser');
-console.log('- browser espera CampusGate, exige App montada y navega Libros y Audios desde dashboard');
+console.log('- browser espera CampusGate, exige App montada y navega biblioteca por ID estable con etiqueta EN verificable');
 console.log('- workflow manual y workflow registrado usan el mismo runner read-only');
