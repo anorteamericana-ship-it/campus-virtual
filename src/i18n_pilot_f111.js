@@ -14,6 +14,14 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    "Ver material": "View Materials",
+    "Marcar revisado en este equipo": "Mark as Reviewed on This Device",
+    "Inscripción firmada": "Signed Enrollment Form",
+    "Tu matrícula vigente.": "Your current enrollment.",
+    "VERIFICANDO…": "VERIFYING…",
+    "REQUERIDO · ~5 min": "REQUIRED · ~5 min",
+    "REQUERIDO": "REQUIRED",
+    "RECOMENDADO": "RECOMMENDED",
     "Ficha del estudiante": "Student Profile",
     "Fotografía del estudiante": "Student Photo",
     "Sin fotografía": "No Photo",
