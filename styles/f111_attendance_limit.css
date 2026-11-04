@@ -29,7 +29,8 @@
 /* F111 · Mis Grupos: compact reference-style semaforo below student identity.
    The common row height is controlled by ROW_H in teacher_views.jsx. */
 .teacher-roster-identity .f111-al-compact{
-  max-width:342px;margin:5px 0 0;padding:4px 6px;border-radius:7px;background:#F8FAFC;
+  /* Inline in student row: no redundant box surrounding the status indicators. */
+  max-width:342px;margin:5px 0 0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;
 }
 .teacher-roster-identity .f111-al-compact .f111-al-top{display:none}
 .teacher-roster-identity .f111-al-compact .f111-al-rails{display:flex;flex-wrap:wrap;gap:2px 9px;margin-bottom:3px}
