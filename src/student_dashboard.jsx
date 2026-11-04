@@ -1766,8 +1766,9 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
     if (preview) {
       try {
         preview.opener = null;
-        preview.document.title = 'Verificando inscripción firmada…';
-        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando inscripción firmada…</p>';
+        preview.document.title = textForRequired('Verificando inscripción firmada…');
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px"></p>';
+        preview.document.body.querySelector('p').textContent = textForRequired('Verificando inscripción firmada…');
       } catch (_) {}
     }
     try {
@@ -1836,7 +1837,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
             className="before-card"
             onClick={abrirInscripcionFirmada}
             disabled={signedBusy}
-            aria-label="Abrir inscripción firmada vigente"
+            aria-label={textForRequired('Abrir inscripción firmada vigente')}
             style={{ opacity:signedBusy ? .72 : 1 }}
           >
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -1880,7 +1881,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
         </div>
       {signedError ? (
         <div role="alert" style={{ margin:'-7px 18px 16px', padding:'10px 12px', borderRadius:10, background:'color-mix(in srgb, var(--danger) 7%, white)', color:'var(--danger)', fontSize:11.5, lineHeight:1.45 }}>
-          {signedError}
+          {studentDashT(signedError)}
         </div>
       ) : null}
     </div>
