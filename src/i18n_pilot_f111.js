@@ -14,6 +14,9 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    "Escrito": "Written",
+    "Existe": "There Is",
+    "Existen": "There Are",
     "Registro de notas y asistencia": "Grades & Attendance Record",
     "Las 32 lecciones permanecen en un único calendario movible. La próxima se marca en azul y queda en la penúltima posición visible.": "All 32 lessons appear in a scrollable calendar. The next lesson is highlighted in blue, just before the final visible slot.",
     "Ver lecciones anteriores": "View Previous Lessons",
