@@ -3,7 +3,8 @@
 (function(){
   'use strict';
 
-  const VERSION = 'F98.4-Z6-CS21A148';
+  const VERSION = 'F111STUDENTDEMOEN20261104';
+  const F111_HIDE_UNREADY_STUDENT_MODULES = true; // Presentation-only nav; route IDs and data preserved.
   const CUSTOM_ROUTES = new Set([
     'info_programa',
     'resumen_academico',
@@ -468,7 +469,7 @@
         {id:'resumen_academico',label:'Resumen Académico',icon:'chart',custom:true},
         {id:'calendario_academico',target:'cronograma_grupo',activeTarget:'mi_curso',label:'Calendario académico',icon:'calendar'},
         {id:'evaluaciones',label:'Evaluaciones',icon:'check'},
-        {id:'ican',label:'Club I CAN',icon:'ican'},
+        ...(F111_HIDE_UNREADY_STUDENT_MODULES ? [] : [{id:'ican',label:'Club I CAN',icon:'ican'}]),
         {id:'academia_play',label:'English LAB',icon:'english_lab'},
       ]},
       {section:'Planificación Académica',items:[
