@@ -45,7 +45,8 @@ function StudentComingSoonF984({ title, body, items = [] }) {
 }
 
 function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, initialLesson=null }) {
-  const allowed = ['cronograma','materiales','tareas'];
+  const showTasksTabF111 = false; // Student demonstration: preserve route/component without exposing the tab.
+  const allowed = ['cronograma','materiales',...(showTasksTabF111?['tareas']:[])];
   const normalized = allowed.includes(initialTab) ? initialTab : 'cronograma';
   const [tab, setTab] = React.useState(normalized);
   React.useEffect(() => setTab(normalized), [normalized]);
@@ -57,7 +58,7 @@ function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, i
       <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label={studentExperienceT('Secciones de Mi curso')}>
         <StudentTabButtonF984 active={tab==='cronograma'} onClick={()=>choose('cronograma')}>Cronograma</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='materiales'} onClick={()=>choose('materiales')}>Materiales</StudentTabButtonF984>
-        <StudentTabButtonF984 active={tab==='tareas'} onClick={()=>choose('tareas')}>Tareas</StudentTabButtonF984>
+        {showTasksTabF111 && <StudentTabButtonF984 active={tab==='tareas'} onClick={()=>choose('tareas')}>{studentExperienceT('Tareas')}</StudentTabButtonF984>}
       </div>
       <div role="tabpanel">
         {tab==='cronograma' && (typeof window.CronogramaGrupo === 'function'
@@ -66,7 +67,7 @@ function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, i
         {tab==='materiales' && (typeof window.MaterialesView === 'function'
           ? <window.MaterialesView initialLesson={initialLesson} onNavigate={onNavigate} />
           : <EmptyState icon="📚" title={studentExperienceT('Materiales no disponibles')} subtitle={studentExperienceT('No fue posible cargar la biblioteca del curso.')} />)}
-        {tab==='tareas' && <StudentComingSoonF984
+        {showTasksTabF111 && tab==='tareas' && <StudentComingSoonF984
           title="Tareas · Próximamente"
           body="Este espacio queda reservado dentro de Mi curso. No se muestran tareas ficticias mientras no exista el flujo completo de publicación, entrega y revisión."
           items={['Grupo, nivel y lección vinculados','Fecha de publicación y fecha límite','Instrucciones y archivos adjuntos','Entrega del estudiante','Revisión docente y retroalimentación','Estados: pendiente, entregada, atrasada y revisada']}
