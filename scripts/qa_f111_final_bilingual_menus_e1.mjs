@@ -26,6 +26,10 @@ assert.equal(teacherApi.getLang(),'en');
 assert.equal(make('admin').api.getLang(),'es','admin is outside bilingual pilot');
 const studentMenu=student.slice(student.indexOf('    const nav=['),student.indexOf('    const name=clean(user?',student.indexOf('    const nav=[')));
 const teacherMenu=teacher.slice(teacher.indexOf('    const nav = ['),teacher.indexOf('    const isActive =',teacher.indexOf('    const nav = [')));
+assert(!teacherMenu.includes("id:'asistencia_docente'"),'Attendance is hidden from teacher sidebar');
+assert(teacher.includes("screen === 'asistencia' && <AsistenciaResumenCS21A"),'attendance summary implementation remains intact');
+assert(teacherMenu.includes("id:'grupos'")&&teacherMenu.includes("id:'cronograma_grupo'"),'groups and academic calendar navigation remain');
+assert(html.includes('src/teacher_cs21a.jsx?v=F111REALMENUI18N20261103&menus=F111MENUSENFINAL20261104A&attnav=F111HIDEATT20261104A'),'teacher sidebar bundle cache refreshed');
 function labels(source) {return [...new Set([...source.matchAll(/(?:\bsection|\blabel)\s*:\s*'([^']+)'/g)].map(m=>m[1]))];}
 const noTranslationNeeded=new Set(['Syllabus','English LAB','I CAN Conversation Club','Club I CAN','']);
 let tested=0;

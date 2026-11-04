@@ -272,7 +272,6 @@
       ]},
       { section:'Gestión Académica', items:[
         { id:'grupos', label:'Mis grupos', icon:'roster' },
-        { id:'asistencia_docente', target:'materiales', intent:'asistencia', label:'Asistencia', icon:'check' },
         { id:'cronograma_grupo', label:'Calendario académico', icon:'calendar' },
       ]},
       { section:'Planificación Académica', items:[
