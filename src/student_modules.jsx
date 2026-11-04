@@ -666,7 +666,7 @@ function PagosView() {
   return (
     <div className="student-page-payments student-payments-responsive">
       <PageHeader
-        title={<>Pagos y <em>estado de cuenta</em></>}
+        title={<>{studentGradesT('Pagos y')} <em>{studentGradesT('estado de cuenta')}</em></>}
       />
       <GuardSesion usr={usr}>
         {loading && !data ? (
@@ -736,7 +736,7 @@ function PagosContenido({ data }) {
           </div>
           <div>
             <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-              Tu estado global
+              {studentGradesT('Tu estado global')}
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontWeight:500,
@@ -744,36 +744,36 @@ function PagosContenido({ data }) {
               color: alDia ? 'var(--ok)' : 'var(--an-granate-ink)',
               marginTop:3,
             }}>
-              {!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo contractual ✓' : (totalPendientes === 1 ? '1 concepto del plan por cubrir' : `${totalPendientes} conceptos del plan por cubrir`)}
+              {!saldoVerificado ? studentGradesT('Saldo por verificar') : alDia ? studentGradesT('Sin saldo contractual ✓') : (totalPendientes === 1 ? studentGradesT('1 concepto del plan por cubrir') : `${totalPendientes} ${studentGradesT('conceptos del plan por cubrir')}`)}
             </div>
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:4 }}>
-              {nivelActivo ? <>Cursando <strong style={{ color:'var(--ink)' }}>{NIVEL_NOMBRE_SM[nivelActivo]}</strong></> : 'Sin nivel activo'}
+              {nivelActivo ? <>{studentGradesT('Cursando')} <strong style={{ color:'var(--ink)' }}>{studentGradesT(NIVEL_NOMBRE_SM[nivelActivo])}</strong></> : studentGradesT('Sin nivel activo')}
             </div>
           </div>
         </div>
       </div>
 
-      <p className="student-payment-finance-notice" style={{fontSize:12.5,color:'var(--ink-2)',background:'var(--surface,#fff)',border:'1px solid var(--line)',borderRadius:12,padding:'12px 16px',margin:'-4px 0 16px',lineHeight:1.55}}>Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.</p>
+      <p className="student-payment-finance-notice" style={{fontSize:12.5,color:'var(--ink-2)',background:'var(--surface,#fff)',border:'1px solid var(--line)',borderRadius:12,padding:'12px 16px',margin:'-4px 0 16px',lineHeight:1.55}}>{studentGradesT('Estos importes son saldos contractuales. No implican por sí solos cuotas vencidas ni morosidad; la exigibilidad se determina por fechas y estado académico.')}</p>
 
       {/* Desglose contractual F106 */}
       <div className="card student-payment-contract" style={{ padding:0, overflow:'hidden', marginBottom:16 }}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--line)' }}>
-          <div className="card-title">Saldo contractual por cubrir</div>
+          <div className="card-title">{studentGradesT('Saldo contractual por cubrir')}</div>
         </div>
         {!saldoVerificado ? (
-          <div style={{ padding:'25px 20px',color:'var(--warn)' }}>No se pudo verificar el saldo. Actualizá tu expediente para consultar los conceptos.</div>
+          <div style={{ padding:'25px 20px',color:'var(--warn)' }}>{studentGradesT('No se pudo verificar el saldo. Actualizá tu expediente para consultar los conceptos.')}</div>
         ) : totalPendientes === 0 ? (
           <div style={{ padding:'32px 20px', textAlign:'center', color:'var(--ok)' }}>
-            ✓ No tenés conceptos pendientes en este momento.
+            ✓ {studentGradesT('No tenés conceptos pendientes en este momento.')}
           </div>
         ) : (
           <div className="student-payment-concept-list" style={{ display:'flex', flexDirection:'column' }}>
             {matPend && (
               <FilaConcepto
-                label="Matrícula"
-                sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
+                label={studentGradesT('Matrícula')}
+                sub={nivelActivo ? studentGradesT(NIVEL_NOMBRE_SM[nivelActivo]) : '—'}
                 monto={fmt(pendientes.matricula)}
-                estado="Por cubrir"
+                estado={studentGradesT('Por cubrir')}
                 fecha={pendientes.matricula_vence || ''}
                 color={nivelColor}
                 accent="warn"
@@ -781,10 +781,10 @@ function PagosContenido({ data }) {
             )}
             {cuotasPend > 0 && (
               <FilaConcepto
-                label={`${cuotasPend} cuota${cuotasPend>1?'s':''} del plan`}
-                sub={nivelActivo ? `Mensualidades de ${NIVEL_NOMBRE_SM[nivelActivo]} · vencimientos por verificar` : 'Mensualidades · vencimientos por verificar'}
+                label={`${cuotasPend} ${studentGradesT(cuotasPend===1?'cuota':'cuotas')} ${studentGradesT('del plan')}`}
+                sub={nivelActivo ? `${studentGradesT('Mensualidades de')} ${studentGradesT(NIVEL_NOMBRE_SM[nivelActivo])} · ${studentGradesT('vencimientos por verificar')}` : `${studentGradesT('Mensualidades')} · ${studentGradesT('vencimientos por verificar')}`}
                 monto={fmt(cuotaMens != null ? cuotaMens * cuotasPend : null)}
-                estado="Por cubrir"
+                estado={studentGradesT('Por cubrir')}
                 fecha={pendientes.cuota_vence || ''}
                 color={nivelColor}
                 accent="warn"
@@ -792,10 +792,10 @@ function PagosContenido({ data }) {
             )}
             {certPend && (
               <FilaConcepto
-                label={certExigible ? 'Certificado del nivel' : 'Certificado futuro · aún no exigible'}
-                sub={nivelActivo ? NIVEL_NOMBRE_SM[nivelActivo] : '—'}
+                label={studentGradesT(certExigible ? 'Certificado del nivel' : 'Certificado futuro · aún no exigible')}
+                sub={nivelActivo ? studentGradesT(NIVEL_NOMBRE_SM[nivelActivo]) : '—'}
                 monto={fmt(pendientes.certificado)}
-                estado={certExigible ? 'Por cubrir' : 'Futuro'}
+                estado={studentGradesT(certExigible ? 'Por cubrir' : 'Futuro')}
                 fecha=""
                 color={nivelColor}
                 accent="neutral"
@@ -808,12 +808,12 @@ function PagosContenido({ data }) {
       {/* Historial de pagos dividido por módulo, como Certificados */}
       <section style={{ marginTop:22 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap', margin:'0 2px 12px' }}>
-          <h2 style={{ fontFamily:'var(--f-serif)', fontSize:24, margin:0, color:'var(--an-navy-ink)' }}>Historial de pagos</h2>
-          {todosPagos.length > 0 && <span style={{ fontSize:11, color:'var(--ink-3)' }}>{todosPagos.length} movimientos</span>}
+          <h2 style={{ fontFamily:'var(--f-serif)', fontSize:24, margin:0, color:'var(--an-navy-ink)' }}>{studentGradesT('Historial de pagos')}</h2>
+          {todosPagos.length > 0 && <span style={{ fontSize:11, color:'var(--ink-3)' }}>{todosPagos.length} {studentGradesT('movimientos')}</span>}
         </div>
         {todosPagos.length === 0 ? (
           <div className="card" style={{ padding:'28px 20px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
-            Sin pagos registrados aún.
+            {studentGradesT('Sin pagos registrados aún.')}
           </div>
         ) : (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,300px),1fr))', gap:16 }}>
@@ -829,8 +829,8 @@ function PagosContenido({ data }) {
         fontSize:13, color:'var(--ink-2)',
       }}>
         <div style={{ flex:1, minWidth:240 }}>
-          <strong style={{ color:'var(--ink)' }}>¿Alguna dificultad este mes?</strong>{' '}
-          Podemos revisar tu caso — escribinos directamente a cobros.
+          <strong style={{ color:'var(--ink)' }}>{studentGradesT('¿Alguna dificultad este mes?')}</strong>{' '}
+          {studentGradesT('Podemos revisar tu caso — escribinos directamente a cobros.')}
         </div>
         {/* STUDENT-CONTACT-ADMIN-002: Estado de cuenta → contacto de COBROS
             dinámico (getContactoCampus tipo='cobros'). Abre WhatsApp solo si hay
@@ -851,8 +851,8 @@ function PagoModuloCardSM({ bloque, fmt }) {
   const nivel = bloque?.nivel || 'OTROS';
   const conocido = PAGO_NIVEL_ORDEN_SM.includes(nivel);
   const color = conocido ? (NIVEL_COLOR_SM[nivel] || 'var(--an-navy)') : 'var(--ink-3)';
-  const titulo = conocido ? (NIVEL_NOMBRE_SM[nivel] || nivel) : 'Otros movimientos';
-  const libro = conocido ? (NIVEL_LIBRO_SM[nivel] || '') : 'Movimientos sin módulo verificable';
+  const titulo = conocido ? studentGradesT(NIVEL_NOMBRE_SM[nivel] || nivel) : studentGradesT('Otros movimientos');
+  const libro = conocido ? (NIVEL_LIBRO_SM[nivel] || '') : studentGradesT('Movimientos sin módulo verificable');
   return (
     <article className="card student-payment-history-card" style={{ padding:0, overflow:'hidden', minWidth:0, maxWidth:'100%', borderTop:`4px solid ${color}` }}>
       <div style={{ padding:'17px 19px', borderBottom:'1px solid var(--line)', background:'linear-gradient(135deg,#fff,#FBF8F2)' }}>
@@ -862,7 +862,7 @@ function PagoModuloCardSM({ bloque, fmt }) {
             <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{libro}</div>
           </div>
           <span style={{ padding:'5px 9px', borderRadius:999, background:'var(--bg-deep)', color:'var(--ink-2)', fontSize:10, fontWeight:900, whiteSpace:'nowrap' }}>
-            {bloque.movimientos} movimiento{bloque.movimientos === 1 ? '' : 's'}
+            {bloque.movimientos} {studentGradesT(bloque.movimientos===1?'movimiento':'movimientos')}
           </span>
         </div>
       </div>
@@ -884,20 +884,20 @@ function PagoModuloCardSM({ bloque, fmt }) {
 }
 
 function PagoComprobanteSM({ grupo, fmt }) {
-  const comprobante = grupo?.comprobante || 'Sin comprobante identificado';
+  const comprobante = grupo?.comprobante || studentGradesT('Sin comprobante identificado');
   const movimientos = grupo?.movimientos || [];
   return (
     <section style={{ border:'1px solid var(--line)', borderRadius:12, overflow:'hidden', background:'#fff' }}>
       <div style={{ padding:'9px 11px', borderBottom:'1px solid var(--line)', background:'var(--surface-2)' }}>
-        <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>Comprobante</div>
+        <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>{studentGradesT('Comprobante')}</div>
         <div style={{ marginTop:3, fontSize:11.5, fontFamily:'var(--f-mono)', fontWeight:700, color:'var(--ink)', wordBreak:'break-word' }}>{comprobante}</div>
       </div>
       <div>
         {movimientos.map((mov, i) => (
           <div key={mov.id} className="student-payment-history-row" style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) auto', gap:12, alignItems:'center', padding:'10px 11px', borderBottom:i < movimientos.length - 1 ? '1px solid var(--line)' : 'none' }}>
             <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:12.5, fontWeight:750, color:'var(--ink)', overflowWrap:'anywhere' }}>{mov.concepto}</div>
-              <div style={{ marginTop:2, fontSize:10.5, color:'var(--ink-3)' }}>{mov.fecha || 'Fecha no registrada'}</div>
+              <div style={{ fontSize:12.5, fontWeight:750, color:'var(--ink)', overflowWrap:'anywhere' }}>{studentGradesT(mov.concepto)}</div>
+              <div style={{ marginTop:2, fontSize:10.5, color:'var(--ink-3)' }}>{mov.fecha || studentGradesT('Fecha no registrada')}</div>
             </div>
             <strong style={{ fontFamily:'var(--f-mono)', fontSize:12.5, color:'var(--ink)', whiteSpace:'nowrap' }}>{fmt(mov.monto)}</strong>
           </div>
@@ -920,14 +920,14 @@ function FilaConcepto({ label, sub, monto, fecha, color, accent, estado = 'Por c
         boxShadow:`0 0 0 3px color-mix(in srgb, ${color} 20%, transparent)`,
       }} />
       <div className="student-payment-concept-description" style={{minWidth:0,overflowWrap:'anywhere'}}>
-        <div style={{ fontWeight:600, fontSize:14 }}>{label}</div>
+        <div style={{ fontWeight:600, fontSize:14 }}>{studentGradesT(label)}</div>
         <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>
-          {sub}{fecha ? ` · vence ${fecha}` : ''}
+          {sub}{fecha ? ` · ${studentGradesT('vence')} ${fecha}` : ''}
         </div>
       </div>
       <div className="student-payment-concept-value" style={{display:'flex',flexDirection:'column',gap:2,alignItems:'flex-end',minWidth:0}}>
         <strong style={{ fontFamily:'var(--f-mono)', fontSize:14, fontWeight:700, color:'var(--ink)', whiteSpace:'nowrap' }}>{monto}</strong>
-        <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.06em', color: accentColor, textTransform:'uppercase' }}>{estado}</span>
+        <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.06em', color: accentColor, textTransform:'uppercase' }}>{studentGradesT(estado)}</span>
       </div>
     </div>
   );
