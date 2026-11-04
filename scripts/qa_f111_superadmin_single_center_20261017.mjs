@@ -93,7 +93,7 @@ for(const path of protectedPaths){
  }
 }
 const mainHtmlRaw=fs.readFileSync('campus.html','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','').replaceAll('&calendar=F111STUDENTCALEN20261104A','').replaceAll('&support=F111SUPPORTEN20261104A','');
-const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','').replaceAll('&calendar=F111STUDENTCALEN20261104A','').replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','').replaceAll('&calendar=F111STUDENTCALEN20261104A','').replaceAll('&support=F111SUPPORTEN20261104A','').replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
 // Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.
@@ -121,5 +121,6 @@ for (const [next,previous] of approvedAssetDiffs){
  assert(occurrences<=1,'Unexpected duplicate F111 asset: '+next);
  if (occurrences===1 && !mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
 }
+assert(!mainHtmlRaw.includes('&support=F111SUPPORTEN20261104A') && !mainBaseline.includes('&support=F111SUPPORTEN20261104A'), 'Student cache key normalized symmetrically before D1 byte comparison');
 assert.equal(mainHtml,mainBaseline,'D1: all superadmin/exam scripts untouched by the reviewed F111 asset version changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
