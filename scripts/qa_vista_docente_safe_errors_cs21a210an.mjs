@@ -111,12 +111,12 @@ must(src.includes('window.ANTeacherCyclePolicyF111'),'F111 cycle policy required
 // F111 EN/ES menu-only changes are audited one-for-one before the immutable AN
 // reconstruction. Any additional change to lesson semantics keeps the SHA red.
 const F111_MENU_UI_REVERSALS = [
-  ["function vdF111MenuT(label) { return window.AN_I18N?.t(label) || label; }\\n", ""],
-  ["            {vdF111MenuT(t.label)}\\n", "            {t.label}\\n"],
-  ["            {vdF111MenuT(cat.label)}\\n", "            {cat.label}\\n"],
-  ["              {vdF111MenuT('La edición de lecciones cerradas estará disponible próximamente.')}\\n",
-   "              La edición de lecciones cerradas estará disponible próximamente.\\n"],
-  ["        {vdF111MenuT(accion)}\\n", "        {accion}\\n"],
+  ["function vdF111MenuT(label) { return window.AN_I18N?.t(label) || label; }\n", ""],
+  ["            {vdF111MenuT(t.label)}\n", "            {t.label}\n"],
+  ["            {vdF111MenuT(cat.label)}\n", "            {cat.label}\n"],
+  ["              {vdF111MenuT('La edición de lecciones cerradas estará disponible próximamente.')}\n",
+   "              La edición de lecciones cerradas estará disponible próximamente.\n"],
+  ["        {vdF111MenuT(accion)}\n", "        {accion}\n"],
   [">{vdF111MenuT('Lec')} {String(pendiente.leccion).padStart(2, '0')}</span>",
    ">Lec {String(pendiente.leccion).padStart(2, '0')}</span>"],
 ];
