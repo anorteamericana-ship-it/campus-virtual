@@ -17,6 +17,8 @@
   ]);
   const LEVEL_NAMES = { B1:'Básico I', B2:'Básico II', I1:'Intermedio I', I2:'Intermedio II' };
   const BOOK_NAMES = { B1:'Interchange Intro', B2:'Interchange 1', I1:'Interchange 2', I2:'Interchange 3' };
+  const studentAcademicT = label => window.AN_I18N?.t(label) || label;
+  const studentAcademicLevel = level => window.AN_I18N?.getLang?.()==='en' ? window.AN_I18N.level(level) : (LEVEL_NAMES[level]||level);
   const PLAN_DOCS = {
     B1:'1yTq26DzSwAwajHqH_I8RfN2Z-DHoM_Jl',
     B2:'1DbJ2-1SGEjxCMccQA2l8YuANehWm8qC9',
@@ -219,19 +221,19 @@
   function ScreenHeader({ eyebrow, title, desc, right }){
     return <div className="sa120-header">
       <div>
-        <div className="sa120-eyebrow">{eyebrow}</div>
-        <h1>{title}</h1>
-        {desc && <p>{desc}</p>}
+        <div className="sa120-eyebrow">{studentAcademicT(eyebrow)}</div>
+        <h1>{studentAcademicT(title)}</h1>
+        {desc && <p>{studentAcademicT(desc)}</p>}
       </div>
       {right || null}
     </div>;
   }
 
   function LoadingCard({ text='Preparando pantalla…' }){
-    return <div className="sa120-state"><strong>{text}</strong></div>;
+    return <div className="sa120-state"><strong>{studentAcademicT(text)}</strong></div>;
   }
   function ErrorCard({ text, onRetry }){
-    return <div className="sa120-state sa120-error"><strong>No se pudo cargar la información</strong><span>{text}</span>{onRetry&&<button className="btn btn-primary" onClick={onRetry}>Reintentar</button>}</div>;
+    return <div className="sa120-state sa120-error"><strong>{studentAcademicT("No se pudo cargar la información")}</strong><span>{studentAcademicT(text)}</span>{onRetry&&<button className="btn btn-primary" onClick={onRetry}>{studentAcademicT("Reintentar")}</button>}</div>;
   }
 
   function AsyncComponentRoute({ files, component, props={} }){
@@ -276,7 +278,7 @@
       if(state.loading||state.error||!ref.current)return undefined;
       return window.mountStudentAcademicSummaryCS21A113(ref.current,{onNavigate});
     },[state.loading,state.error,onNavigate]);
-    if(state.loading)return <LoadingCard text="Cargando Resumen Académico…"/>;
+    if(state.loading)return <LoadingCard text={studentAcademicT("Cargando Resumen Académico…")}/>;
     if(state.error)return <ErrorCard text={state.error} onRetry={load}/>;
     return <div ref={ref}/>;
   }
@@ -285,15 +287,15 @@
     const user=session();
     const level=currentLevel(user);
     const meta = type === 'plan_estudio'
-      ? { eyebrow:'Planificación Académica', title:'Plan de Estudio', desc:`Plan de estudio oficial de ${LEVEL_NAMES[level]}.`, id:PLAN_DOCS[level] }
+      ? { eyebrow:'Planificación Académica', title:'Plan de Estudio', desc:`${studentAcademicT('Plan de estudio oficial de')} ${studentAcademicLevel(level)}.`, id:PLAN_DOCS[level] }
       : DOCS[type];
     const preview = `https://drive.google.com/file/d/${meta.id}/preview`;
     const download = `https://drive.google.com/uc?export=download&id=${meta.id}`;
     return <section className="sa120-page">
-      <ScreenHeader eyebrow={meta.eyebrow} title={meta.title} desc={meta.desc} right={type==='plan_estudio'?<span className="sa120-level-chip">{level} · {LEVEL_NAMES[level]}</span>:null}/>
+      <ScreenHeader eyebrow={meta.eyebrow} title={meta.title} desc={meta.desc} right={type==='plan_estudio'?<span className="sa120-level-chip">{level} · {studentAcademicLevel(level)}</span>:null}/>
       <div className="sa120-doc">
-        <div className="sa120-doc-head"><div><strong>{meta.title}</strong><span>{type==='plan_estudio'?BOOK_NAMES[level]:'Documento institucional oficial'}</span></div><button className="btn btn-primary" onClick={()=>window.open(download,'_blank','noopener,noreferrer')}>Descargar</button></div>
-        <iframe title={meta.title} src={preview} allow="autoplay"/>
+        <div className="sa120-doc-head"><div><strong>{studentAcademicT(meta.title)}</strong><span>{type==='plan_estudio'?BOOK_NAMES[level]:studentAcademicT('Documento institucional oficial')}</span></div><button className="btn btn-primary" onClick={()=>window.open(download,'_blank','noopener,noreferrer')} >{studentAcademicT('Descargar')}</button></div>
+        <iframe title={studentAcademicT(meta.title)} src={preview} allow="autoplay"/>
       </div>
     </section>;
   }
@@ -326,16 +328,16 @@
     const [unitKey,setUnitKey]=React.useState('');
     const [lessonOpen,setLessonOpen]=React.useState(null);
     React.useEffect(()=>{setUnitKey('');setLessonOpen(null);},[data.level]);
-    if(data.loading)return <LoadingCard text="Cargando el planeamiento estudiantil…"/>;
+    if(data.loading)return <LoadingCard text={studentAcademicT("Cargando el planeamiento estudiantil…")}/>;
     if(data.error)return <ErrorCard text={data.error} onRetry={data.load}/>;
     const units=data.catalog?.planeamiento_unidades||[];
     const unit=units.find(item=>String(item.key)===String(unitKey))||null;
     return <section className="sa120-page">
-      <ScreenHeader eyebrow="Planificación Académica" title="Planeamiento por lección" desc="Versión estudiantil del planeamiento oficial de tu nivel." right={<span className="sa120-level-chip">{data.level} · {LEVEL_NAMES[data.level]}</span>}/>
+      <ScreenHeader eyebrow="Planificación Académica" title="Planeamiento por lección" desc="Versión estudiantil del planeamiento oficial de tu nivel." right={<span className="sa120-level-chip">{data.level} · {studentAcademicLevel(data.level)}</span>}/>
       <div className="sa120-card">
-        <label className="sa120-label" htmlFor="sa120-unit">Seleccionar unidad</label>
+        <label className="sa120-label" htmlFor="sa120-unit">{studentAcademicT("Seleccionar unidad")}</label>
         <select id="sa120-unit" value={unitKey} onChange={event=>{setUnitKey(event.target.value);setLessonOpen(null);}}>
-          <option value="">Elegí una unidad</option>
+          <option value="">{studentAcademicT("Elegí una unidad")}</option>
           {units.map(item=><option key={item.key} value={item.key}>{item.label}{item.titulo_unidad?` · ${item.titulo_unidad}`:''}</option>)}
         </select>
         {!units.length&&<div className="sa120-empty">No hay planeamientos publicados para este nivel.</div>}
@@ -346,7 +348,7 @@
           const open=Number(lessonOpen)===Number(lesson.leccion);
           return <article key={lesson.leccion} className="sa120-lesson">
             <button type="button" className="sa120-lesson-head" onClick={()=>setLessonOpen(open?null:lesson.leccion)}>
-              <span><small>{lesson.leccion_label||`LECCIÓN ${String(lesson.leccion).padStart(2,'0')}`}</small><strong>{lesson.titulo_unidad||unit.titulo_unidad||'Planeamiento'}</strong></span><b>{open?'−':'+'}</b>
+              <span><small>{lesson.leccion_label||`${studentAcademicT('LECCIÓN')} ${String(lesson.leccion).padStart(2,'0')}`}</small><strong>{lesson.titulo_unidad||unit.titulo_unidad||studentAcademicT('Planeamiento')}</strong></span><b>{open?'−':'+'}</b>
             </button>
             {open&&<div className="sa120-lesson-body">
               <FieldCS21A120 label="Asignatura" value={lesson.asignatura}/>
@@ -375,7 +377,7 @@
       }).catch(error=>live&&setState({loading:false,error:studentAcademicSafeUserError(error, 'No pudimos cargar el audio. Intentá de nuevo.', 'audio_estudiante'),src:''}));
       return()=>{live=false;if(url)try{URL.revokeObjectURL(url);}catch(_){}};
     },[track.id,level,code,group]);
-    if(state.loading)return <span className="sa120-audio-state">Cargando audio…</span>;
+    if(state.loading)return <span className="sa120-audio-state">{studentAcademicT("Cargando audio…")}</span>;
     if(state.error)return <span className="sa120-audio-state error">{state.error}</span>;
     return <audio controls preload="metadata" src={state.src}/>;
   }
@@ -385,27 +387,27 @@
     const [audioUnit,setAudioUnit]=React.useState('');
     const [track,setTrack]=React.useState(null);
     React.useEffect(()=>{setAudioUnit('');setTrack(null);},[data.level]);
-    if(data.loading)return <LoadingCard text="Cargando libros y audios…"/>;
+    if(data.loading)return <LoadingCard text={studentAcademicT("Cargando libros y audios…")}/>;
     if(data.error)return <ErrorCard text={data.error} onRetry={data.load}/>;
     const books=(data.catalog?.libros||[]).filter(item=>clean(item?.categoria).toLowerCase()!=='teacher_book');
     const units=data.catalog?.audios_unidades||[];
     const unit=units.find((item,index)=>String(item.key??item.label??index)===String(audioUnit))||null;
     return <section className="sa120-page">
-      <ScreenHeader eyebrow="Recursos Didácticos" title="Libros y Audios" desc={`Material oficial de ${LEVEL_NAMES[data.level]}.`} right={<span className="sa120-level-chip">{data.level} · {BOOK_NAMES[data.level]}</span>}/>
+      <ScreenHeader eyebrow="Recursos Didácticos" title="Libros y Audios" desc={`${studentAcademicT('Material oficial de')} ${studentAcademicLevel(data.level)}.`} right={<span className="sa120-level-chip">{data.level} · {BOOK_NAMES[data.level]}</span>}/>
       <div className="sa120-card">
-        <h2>Libros del nivel</h2>
-        <div className="sa120-books">{books.map(item=><a key={item.id||item.nombre} href={item.url} target="_blank" rel="noopener noreferrer"><span>📘</span><div><strong>{item.nombre}</strong><small>{item.categoria_label||'Abrir libro oficial'}</small></div></a>)}</div>
-        {!books.length&&<div className="sa120-empty">No hay libros visibles publicados para este nivel.</div>}
+        <h2>{studentAcademicT("Libros del nivel")}</h2>
+        <div className="sa120-books">{books.map(item=><a key={item.id||item.nombre} href={item.url} target="_blank" rel="noopener noreferrer"><span>📘</span><div><strong>{item.nombre}</strong><small>{item.categoria_label||studentAcademicT('Abrir libro oficial')}</small></div></a>)}</div>
+        {!books.length&&<div className="sa120-empty">{studentAcademicT("No hay libros visibles publicados para este nivel.")}</div>}
       </div>
       <div className="sa120-card">
-        <h2>Audios por unidad</h2>
-        <label className="sa120-label" htmlFor="sa120-audio-unit">Seleccionar unidad</label>
+        <h2>{studentAcademicT("Audios por unidad")}</h2>
+        <label className="sa120-label" htmlFor="sa120-audio-unit">{studentAcademicT("Seleccionar unidad")}</label>
         <select id="sa120-audio-unit" value={audioUnit} onChange={event=>{setAudioUnit(event.target.value);setTrack(null);}}>
-          <option value="">Elegí una unidad</option>
-          {units.map((item,index)=>{const key=String(item.key??item.label??index);return <option key={key} value={key}>{item.label||item.nombre||`Unidad ${index+1}`}</option>;})}
+          <option value="">{studentAcademicT("Elegí una unidad")}</option>
+          {units.map((item,index)=>{const key=String(item.key??item.label??index);return <option key={key} value={key}>{item.label||item.nombre||`${studentAcademicT('Unidad')} ${index+1}`}</option>;})}
         </select>
         {unit&&<div className="sa120-tracks">{(unit.pistas||[]).map(item=><article key={item.id||item.nombre} className={track?.id===item.id?'active':''}><button onClick={()=>setTrack(item)}><span>▶</span><strong>{item.nombre}</strong></button>{track?.id===item.id&&<AudioPlayerCS21A120 track={item} level={data.level} code={data.code} group={data.group}/>}</article>)}</div>}
-        {unit&&!(unit.pistas||[]).length&&<div className="sa120-empty">Esta unidad no tiene audios publicados.</div>}
+        {unit&&!(unit.pistas||[]).length&&<div className="sa120-empty">{studentAcademicT("Esta unidad no tiene audios publicados.")}</div>}
       </div>
     </section>;
   }
@@ -522,7 +524,7 @@
       )}
 
       {nav.map(group=><React.Fragment key={group.section}>{<div className="sb-section teacher-sb-section student-sb-section" style={sectionStyle}>{tr(group.section)}</div>}{group.items.map(item=><button id={item.domId||undefined} key={item.id} type="button" data-nav-id={item.id} data-an-nav-label={item.label} className={'sb-item teacher-sb-item student-sb-item '+(isActive(item)?'active':'')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{fontSize:13,fontWeight:850}}>{tr(item.label)}</span></button>)}</React.Fragment>)}
-      <div className="sb-user"><div className="sb-avatar">{initials}</div><div style={{flex:1,minWidth:0}}><div className="sb-user-t1">{name}</div><div className="sb-user-t2">Estudiante{code?' · '+code:''}</div></div><button title="Cerrar sesión" onClick={async()=>{try{if(typeof window.cerrarSesionServidor==='function')await window.cerrarSesionServidor();else sessionStorage.removeItem('an_usuario');}catch(_){}window.location.href='login.html';}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--ink-3)',padding:4}}>⎋</button></div>
+      <div className="sb-user"><div className="sb-avatar">{initials}</div><div style={{flex:1,minWidth:0}}><div className="sb-user-t1">{name}</div><div className="sb-user-t2">{tr("Estudiante")}{code?' · '+code:''}</div></div><button title={tr("Cerrar sesión")} onClick={async()=>{try{if(typeof window.cerrarSesionServidor==='function')await window.cerrarSesionServidor();else sessionStorage.removeItem('an_usuario');}catch(_){}window.location.href='login.html';}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--ink-3)',padding:4}}>⎋</button></div>
     </aside>;
   }
 
