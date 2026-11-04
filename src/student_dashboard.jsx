@@ -1470,6 +1470,12 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
     box.scrollBy({ left:dir * (mobile ? 288 : 828), behavior:'smooth' });
   };
 
+  // Attendance "Tarde" means Late, never the Afternoon class shift.
+  const studentAttendanceUiLabel = value => {
+    if (window.AN_I18N?.getLang?.() !== 'en') return value;
+    return {'Pres.':'Present','Tarde':'Late','Aus.':'Absent','Just.':'Excused','Reg.':'Recorded','Prog.':'Scheduled','Pend.':'Pending'}[value]
+      || studentDashT(value);
+  };
   const attendanceMeta = (label) => {
     const v = String(label || '').toLowerCase();
     if (v.includes('presente')) return { short:'Pres.', color:'#2E7D32' };
@@ -1544,7 +1550,7 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
                     </div>
                     <div className="campus-d-lesson-attendance">
                       <span className="campus-d-attendance" style={{ color:attendance.color }}>
-                        <i className="campus-d-attendance-dot" />{studentDashT(attendance.short)}
+                        <i className="campus-d-attendance-dot" />{studentAttendanceUiLabel(attendance.short)}
                       </span>
                     </div>
                     <div className="campus-d-lesson-comment">
