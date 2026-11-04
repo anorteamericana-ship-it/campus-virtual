@@ -36,6 +36,10 @@ assert(dashboard.includes('title={textForRequired(') === false, 'no unrecognized
 assert(dashboard.includes('descargarMatriculaFirmadaPrivada'), 'official signed PDF still uses protected endpoint');
 assert(dashboard.includes("window.crypto.subtle.digest('SHA-256', bytes)"), 'signed PDF integrity check intact');
 assert(dashboard.includes('ultimo.comentario'), 'authentic teacher feedback remains unmodified');
+assert(dashboard.includes("studentDashT('Soporte técnico')"),'support panel title respects EN/ES');
+assert(dashboard.includes("studentDashT('Si tenés problemas de acceso"),'support instructions localized without modifying original WA destination');
+assert.equal(app.split('&support=F111SUPPORTEN20261104A').length-1,1,'only student dashboard lazy asset refreshed');
+assert.equal(html.split('&support=F111SUPPORTEN20261104A').length-1,1,'student dictionary script refreshed');
 
 
 for (const name of ['CronogramaGrupo','VistaTabsCrono','LeccionBloque','VistaProxima',
@@ -109,6 +113,8 @@ assert.equal(studentEN.i18n.t('Registro de notas y asistencia'),'Grades & Attend
 assert.equal(studentEN.i18n.t('Escrito'),'Written');
 assert.equal(studentEN.i18n.t('Próximos eventos'),'Upcoming Events');
 assert.equal(studentEN.i18n.t('Existe'),'There Is');
+assert.equal(studentEN.i18n.t('Soporte técnico'),'Technical Support');
+assert.equal(studentES.i18n.t('Soporte técnico'),'Soporte técnico');
 assert.equal(studentES.i18n.t('Registro de notas y asistencia'),'Registro de notas y asistencia');
 
 
