@@ -2096,7 +2096,7 @@ function ModCertificados({ niveles, onNavigate }) {
   return (
     <ModTile icon="certificates" emoji="📄" title="Certificados" status={status} statusLabel={label} cta="Consultar estado" onClick={() => onNavigate('certificados')}>
       {registrados.length > 0
-        ? <div>{studentDashT('Hay')} <strong>{registrados.length}</strong> {studentDashT(registrados.length===1?'número oficial registrado':'números oficiales registrados')}. {studentDashT('La pantalla de certificados verificará si existe PDF y enlace.')}</div>
+        ? <div>{studentDashT(registrados.length===1?'Existe':'Existen')} <strong>{registrados.length}</strong> {studentDashT(registrados.length===1?'número oficial registrado':'números oficiales registrados')}. {studentDashT('La pantalla de certificados verificará si existe PDF y enlace.')}</div>
         : elegibles.length > 0
           ? <div>{elegibles.map(x=>x.n).join(', ')} {studentDashT('aprobado/convalidado')}. {studentDashT('La elegibilidad y disponibilidad se verifican por separado.')}</div>
           : <span style={{ color:'var(--ink-3)' }}>{studentDashT('Aún no hay niveles aprobados o convalidados con registro oficial.')}</span>}
