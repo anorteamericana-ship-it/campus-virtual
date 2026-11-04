@@ -1,5 +1,12 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+> **Actualización de continuidad — 03-nov-2026 (CR), posterior a las PR #717 y #718.**
+> Ver [CORTE REAL F111: porcentajes con denominador, 19 verificaciones pendientes y plan de reanudación](F111_CORTE_REAL_CONTINUIDAD_20261103.md) y la [issue canónica #499](https://github.com/anorteamericana-ship-it/campus-virtual/issues/499).
+> Matriz F111 académica **16/35 = 45,7% histórico, 19 sin certificar**; dos hotfix de UI publicados con readback SHA pero aún sin E2 autenticado para 3 roles. El indicador de idioma **0/23 rutas certificadas totalmente EN/ES E2** NO representa el porcentaje de textos traducidos; traducción global N/D.
+> **Atención a versiones contradictorias**: la cabecera histórica inmediatamente inferior se refiere a CORE **@486**, mientras el corte operativo más reciente de #499 reporta CORE **@487** tras el hotfix CONAPE y Quiz **@477**. Antes de desplegar, revalidar numéricamente Apps Script, re-pin del candidato contra @487 y rollback. No utilizar esta cabecera histórica como fuente de versión efectiva, ni hacer rollback a @486. Los hotfix #717/#718 no movieron Apps Script ni notas/pagos/expedientes.
+> Esta nota es un **puntero a documentación con evidencia**, no una recertificación de flujos académicos.
+
+
 ## F111 · R13 · INTEGRACIÓN BACKEND Y PRUEBAS E2 NEGATIVAS · 02-nov-2026
 
 **EVENTO REAL DE INTEGRACIÓN:** backend PR [#120](https://github.com/anorteamericana-ship-it/campus_backend/pull/120) **MERGED a main**, squash SHA **`30a7e0edebe65a5ea3ffa399fbebff7ac63bb226`**, verificado como HEAD backend/main tras fusión. Contiene #113 cache Panel Maestro, #115 suspensiones/borradores y #116 mejoras Quiz B1, junto a [generador de readbacks CORE/Quiz](https://github.com/anorteamericana-ship-it/campus_backend/blob/main/deploy/F111_R12_Pinned_Release_Builder.mjs) y tests. Las PR [#113](https://github.com/anorteamericana-ship-it/campus_backend/pull/113), [#115](https://github.com/anorteamericana-ship-it/campus_backend/pull/115), [#116](https://github.com/anorteamericana-ship-it/campus_backend/pull/116) se cerraron administrativamente como **reemplazadas por #120** y **NO borraron sus ramas por esta operación**. PR #65 histórica DRAFT separada y #112 seguridad DRAFT/FAIL sin cambios.
