@@ -963,7 +963,7 @@ function certDocumentoMetaF984(row) {
   if (tipo === 'NIVEL') return {
     tipo,
     code:nivel,
-    title:NIVEL_NOMBRE_SM[nivel] || nivel,
+    title:studentGradesT(NIVEL_NOMBRE_SM[nivel] || nivel),
     subtitle:NIVEL_LIBRO_SM[nivel] || '',
     color:NIVEL_COLOR_SM[nivel] || 'var(--an-navy)',
   };
@@ -971,8 +971,8 @@ function certDocumentoMetaF984(row) {
   return {
     tipo,
     code:special.code || nivel || 'DOC',
-    title:String(row?.titulo || special.title || 'Certificado'),
-    subtitle:String(row?.subtitulo || special.subtitle || 'Documento institucional'),
+    title:studentGradesT(String(row?.titulo || special.title || 'Certificado')),
+    subtitle:studentGradesT(String(row?.subtitulo || special.subtitle || 'Documento institucional')),
     color:special.color || 'var(--an-navy)',
   };
 }
@@ -993,7 +993,7 @@ function CertificadosView() {
   return (
     <div>
       <PageHeader
-        title={<>Mis <em>Certificados</em></>}
+        title={<>{studentGradesT('Mis')} <em>{studentGradesT('Certificados')}</em></>}
       />
       <GuardSesion usr={usr}>
         {loading && !data ? <SkeletonGrid /> : error ? <ErrorState message={error} onRetry={reload} /> : <CertificadosContenido data={data} codigo={codigo} />}
@@ -1005,7 +1005,7 @@ function CertificadosView() {
 function CertificadosContenido({ data, codigo }) {
   const rows = Array.isArray(data?.certificados) ? data.certificados : [];
   if (!rows.length) {
-    return <EmptyState icon="🎖️" title="Sin certificados para consultar" subtitle="No fue posible localizar documentos de certificación en tu expediente." />;
+    return <EmptyState icon="🎖️" title={studentGradesT('Sin certificados para consultar')} subtitle={studentGradesT('No fue posible localizar documentos de certificación en tu expediente.')} />;
   }
   return (
     <>
@@ -1030,14 +1030,14 @@ function CertificadosContenido({ data, codigo }) {
       </div>
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:18, padding:'14px 18px', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>¿Necesitás hacer una consulta?</strong> Contactá al área académica con tu código y el documento que necesitás.</div>
+          <div style={{ flex:1, minWidth:230, fontSize:12.5, color:'var(--ink-2)' }}><strong style={{ color:'var(--ink)' }}>{studentGradesT('¿Necesitás hacer una consulta?')}</strong> {studentGradesT('Contactá al área académica con tu código y el documento que necesitás.')}</div>
           <window.ContactoAdmin
             est={Object.assign({}, data?.estudiante || { CODIGO:data?.codigo }, {
               contactos_campus:data?.contactos_campus || {},
               contacto_academico:data?.contacto_academico || data?.contactos_campus?.academico || null,
             })}
             tipo="academico"
-            label="Consultar al Director de profesores"
+            label={studentGradesT('Consultar al Director de profesores')}
           />
         </div>
       )}
@@ -1137,8 +1137,9 @@ function CertificadoEstadoCardF984({ row, codigo }) {
     if (preview) {
       try {
         preview.opener = null;
-        preview.document.title = 'Abriendo certificado…';
-        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando certificado…</p>';
+        preview.document.title = studentGradesT('Abriendo certificado…');
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px"></p>';
+        preview.document.body.querySelector('p').textContent = studentGradesT('Verificando certificado…');
       } catch (_) {}
     }
     try {
@@ -1164,20 +1165,20 @@ function CertificadoEstadoCardF984({ row, codigo }) {
         <div style={{ display:'flex', justifyContent:'space-between', gap:12, alignItems:'flex-start' }}>
           <div>
             <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:docMeta.color }}>{docMeta.code}</div>
-            <h2 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'4px 0 2px', color:'var(--an-navy-ink)' }}>{docMeta.title}</h2>
-            <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{docMeta.subtitle}</div>
+            <h2 style={{ fontFamily:'var(--f-serif)', fontSize:22, margin:'4px 0 2px', color:'var(--an-navy-ink)' }}>{studentGradesT(docMeta.title)}</h2>
+            <div style={{ fontSize:11.5, color:'var(--ink-3)' }}>{studentGradesT(docMeta.subtitle)}</div>
           </div>
-          <span style={{ padding:'5px 9px', borderRadius:999, background:meta.bg, color:meta.fg, fontSize:10, fontWeight:900, textAlign:'center' }}>{meta.label}</span>
+          <span style={{ padding:'5px 9px', borderRadius:999, background:meta.bg, color:meta.fg, fontSize:10, fontWeight:900, textAlign:'center' }}>{studentGradesT(meta.label)}</span>
         </div>
       </div>
       <div style={{ padding:'14px 20px' }}>
-        {checks.map(([label,value]) => <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'7px 0', borderBottom:'1px solid var(--line)', fontSize:11.5 }}><span style={{ color:'var(--ink-3)' }}>{label}</span><strong style={{ color:'var(--ink)', textAlign:'right' }}>{value}</strong></div>)}
+        {checks.map(([label,value]) => <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'7px 0', borderBottom:'1px solid var(--line)', fontSize:11.5 }}><span style={{ color:'var(--ink-3)' }}>{studentGradesT(label)}</span><strong style={{ color:'var(--ink)', textAlign:'right' }}>{studentGradesT(value)}</strong></div>)}
         {disponible ? (
           <>
             <button type="button" className="btn btn-primary" disabled={abriendo} onClick={abrirPrivado} style={{ marginTop:14, width:'100%', justifyContent:'center' }}>
-              <Icon name="download" size={14} className="" /> {abriendo ? 'Verificando…' : 'Abrir Certificado'}
+              <Icon name="download" size={14} className="" /> {studentGradesT(abriendo ? 'Verificando…' : 'Abrir Certificado')}
             </button>
-            {certError ? <div role="alert" style={{ marginTop:8, fontSize:11, lineHeight:1.4, color:'var(--danger)' }}>{certError}</div> : null}
+            {certError ? <div role="alert" style={{ marginTop:8, fontSize:11, lineHeight:1.4, color:'var(--danger)' }}>{studentGradesT(certError)}</div> : null}
           </>
         ) : null}
       </div>
