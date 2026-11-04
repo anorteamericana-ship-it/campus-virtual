@@ -66,7 +66,7 @@ function LazyRoute({ title, component, files, ...props }) {
   return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
 }
 const F96_LAZY = {
-  student_dashboard: ['src/student_dashboard.jsx?v=F111HERO20261103B&demo=F111STUDENTDEMO20261104&calendar=F111STUDENTCALEN20261104A'],
+  student_dashboard: ['src/student_dashboard.jsx?v=F111HERO20261103B&demo=F111STUDENTDEMO20261104&calendar=F111STUDENTCALEN20261104A&support=F111SUPPORTEN20261104A'],
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],

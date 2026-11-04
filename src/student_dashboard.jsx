@@ -1627,13 +1627,13 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
 function SoportePruebaViva({ nombreCompleto, codGrupo }) {
   const waUrl = 'https://wa.me/50689528787?text=' + encodeURIComponent('Hola, necesito soporte técnico con el Campus Virtual. Mi nombre es ' + (nombreCompleto || 'estudiante') + (codGrupo ? ' y mi grupo es ' + codGrupo + '.' : '.'));
   return (
-    <section className="card" style={{ padding:'14px 18px', marginBottom:18, border:'1px solid color-mix(in srgb, var(--an-navy) 16%, white)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }} aria-label="Soporte técnico">
+    <section className="card" style={{ padding:'14px 18px', marginBottom:18, border:'1px solid color-mix(in srgb, var(--an-navy) 16%, white)', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-navy) 5%, white), #fff)' }} aria-label={studentDashT('Soporte técnico')}>
       <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
         <div style={{ width:38, height:38, borderRadius:12, background:'color-mix(in srgb, var(--an-navy) 12%, white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>🛠️</div>
         <div style={{ flex:1, minWidth:240 }}>
-          <div style={{ fontSize:12, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>Soporte técnico</div>
+          <div style={{ fontSize:12, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--an-navy)' }}>{studentDashT('Soporte técnico')}</div>
           <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:3, lineHeight:1.5 }}>
-            Si tenés problemas de acceso, carga, exámenes o visualización, escribí directamente al soporte técnico por WhatsApp.
+            {studentDashT('Si tenés problemas de acceso, carga, exámenes o visualización, escribí directamente al soporte técnico por WhatsApp.')}
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
