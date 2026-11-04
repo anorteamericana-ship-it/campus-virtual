@@ -1,5 +1,5 @@
 /* F111 · Accessible compact attendance risk indicator, read only. */
-.f111-al{box-sizing:border-box;min-width:0;width:100%;padding:9px 11px;margin:7px 0 0;border:1px solid #D9E3EE;border-radius:12px;background:#FFFEFC;color:#18395F;font:inherit}
+.f111-al{display:block;box-sizing:border-box;min-width:0;width:100%;padding:9px 11px;margin:7px 0 0;border:1px solid #D9E3EE;border-radius:12px;background:#FFFEFC;color:#18395F;font:inherit}
 .f111-al *{box-sizing:border-box}
 .f111-al-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 10px;margin-bottom:6px}
 .f111-al-title{font-size:9px;font-weight:900;letter-spacing:.1em;color:#49637E}
@@ -14,7 +14,7 @@
 .f111-al-dot.used{background:var(--al-dot)}
 .f111-al-near .f111-al-dot.used,.f111-al-at .f111-al-dot.used{--al-dot:#C88715!important}
 .f111-al-over .f111-al-dot.used{--al-dot:#A72242!important}
-.f111-al-over{display:inline-flex;color:#9B203A;font-size:9px}
+.f111-al-overcount{display:inline-flex;color:#9B203A;font-size:9px}
 .f111-al-state{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 9px;border:1px solid;border-radius:7px;font-size:10px;font-weight:850;line-height:1.4;white-space:normal}
 .f111-al-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:0 0 auto}
 .f111-al-smallnote,.f111-al-muted{font-size:9px;color:#667A94;line-height:1.45}
