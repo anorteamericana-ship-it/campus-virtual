@@ -14,6 +14,11 @@ on:
       - 'src/admin_students.jsx'
       - 'src/att77_widgets.jsx'
       - 'src/att77_view_detail.jsx'
+      - 'src/teacher_views.jsx'
+      - 'src/app.jsx'
+      - 'src/att77_bridge.js'
+      - 'styles/f111_attendance_limit.css'
+      - 'scripts/qa_f111_roster_mini_i18n_20261104.mjs'
       - 'scripts/qa_f111_attendance_limit_three_roles_e1.mjs'
       - 'src/student_experience.jsx'
       - 'scripts/qa_f111_student_profile_tabs_en_e1.mjs'
@@ -38,6 +43,8 @@ jobs:
           node --check src/f111_attendance_limit_hotfix.js
       - name: Tri-role attendance limits INA 4/2, no data mutations
         run: node scripts/qa_f111_attendance_limit_three_roles_e1.mjs
+      - name: Teacher roster mini semaforo and EN/ES source E1
+        run: node scripts/qa_f111_roster_mini_i18n_20261104.mjs
       - name: Native role-aware preview, stable nav and emergency exit
         run: node scripts/qa_f111_i18n_preview_e1.mjs
       - name: Student hero name contrast, ribbon hover and reviewed-material language E1

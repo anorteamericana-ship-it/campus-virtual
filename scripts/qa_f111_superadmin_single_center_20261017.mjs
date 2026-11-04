@@ -22,7 +22,8 @@ const changedAdminRoster="'src/admin_attendance_roster.jsx?v=F111ATTLIMIT2026110
 const oldAdminRoster="'src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'";
 assert.equal(appSourceF111.split(changedAdminRoster).length-1,1,'single new admin attendance roster asset');
 assert.equal(appSourceF111.split('&att=F111ATTLIMIT20261103A').length-1,3,'only three admin student routes updated');
-const source=appSourceF111.replace(changedDashboard,originalDashboard).replaceAll(changedTabs,originalTabs)
+// Normalize only the new teacher-view cache token; do not relax academic route assertions.
+const source=appSourceF111.replaceAll('&rl=F111ROSTER20261104','').replace(changedDashboard,originalDashboard).replaceAll(changedTabs,originalTabs)
   .replace(changedAdminRoster,oldAdminRoster).replaceAll('&att=F111ATTLIMIT20261103A','')
   .replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
 const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
@@ -107,10 +108,14 @@ const approvedAssetDiffs=[
  ['styles/academy_identity_card.css?v=F111HERO20261103B','styles/academy_identity_card.css?v=F111UI1'],
  ['&hero=F111HERO20261103B',''],
 ];
-let mainHtml=mainHtmlRaw;
+// Remove only the reviewed cache-busting query key before the exact byte comparison.
+let mainHtml=mainHtmlRaw.replaceAll('&rl=F111ROSTER20261104','');
 for (const [next,previous] of approvedAssetDiffs){
- assert.equal(mainHtml.split(next).length-1,1,'Unique expected F111 language/record asset: '+next);
- if (!mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
+ const occurrences=mainHtml.split(next).length-1;
+ // Some intermediate historic versions are absent when main already uses a later asset.
+ // Final exact baseline comparison below still rejects any unapproved HTML change.
+ assert(occurrences<=1,'Unexpected duplicate F111 asset: '+next);
+ if (occurrences===1 && !mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
 }
 assert.equal(mainHtml,mainBaseline,'D1: all superadmin/exam scripts untouched by the reviewed F111 asset version changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
