@@ -61,7 +61,7 @@ const {scopedVersions,isReviewedScopedCache} = guardWithMap(lazyMap);
 const rules = Object.entries(scopedVersions);
 assert.equal(rules.length,4,'only four documented and exact student-scoped versions');
 for(const [file, rule] of rules) {
-  const allowed = new Set([rule.base,rule.base + rule.suffix]);
+  const allowed = new Set([rule.base,rule.studentUrl || (rule.base + rule.suffix)]);
   assert(isReviewedScopedCache('src/app.jsx · F96_LAZY',file,allowed),
     'only exact scoped student and existing legacy route versions accepted: ' + file);
 }
@@ -72,10 +72,10 @@ mutated.student_course[calendarIndex] = scopedVersions['src/cronograma_grupo.jsx
 const tamper = guardWithMap(mutated);
 const rule = scopedVersions['src/cronograma_grupo.jsx'];
 assert.equal(tamper.isReviewedScopedCache('src/app.jsx · F96_LAZY','src/cronograma_grupo.jsx',
-  new Set([rule.base,rule.base + rule.suffix])),false,
+  new Set([rule.base,rule.studentUrl || (rule.base + rule.suffix)])),false,
   'student route losing scoped version must remain a P2');
 assert.equal(isReviewedScopedCache('campus.html','src/cronograma_grupo.jsx',
-  new Set([rule.base,rule.base + rule.suffix])),false,
+  new Set([rule.base,rule.studentUrl || (rule.base + rule.suffix)])),false,
   'whitelist may never hide unexpected version differences in HTML');
 
 console.log('F111 CR DAY + CACHE SCOPE E1 PASS: 10 date boundary assertions, 4 exact approved cache pairs, unexpected variants remain P2, zero backend writes.');
