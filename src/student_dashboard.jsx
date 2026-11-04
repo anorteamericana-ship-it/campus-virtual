@@ -1348,7 +1348,7 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
   const labelStyle = { fontSize:9.5, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)' };
   const valueStyle = { marginTop:3, fontSize:12.5, fontWeight:850, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' };
   return (
-    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'2px solid color-mix(in srgb, var(--an-gold) 55%, white)' }} aria-label={studentDashT('Orientación inicial del campus')}">
+    <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'2px solid color-mix(in srgb, var(--an-gold) 55%, white)' }} aria-label={studentDashT('Orientación inicial del campus')}>
       <div style={{ padding:'16px 20px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-gold) 16%, white), #fff)', borderBottom:'1px solid var(--line)' }}>
         <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A4E00' }}>{studentDashT('Primer ingreso · orientación obligatoria')}</div>
         <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>{studentDashT('Antes de avanzar, verificá tus datos')}</div>
