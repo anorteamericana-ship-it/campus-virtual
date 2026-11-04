@@ -836,6 +836,7 @@ function StudentDashboard({ toast, onNavigate }) {
         nombreCompleto={nombreCompleto}
         codigo={codigo}
         focusRequest={registroFocus}
+        program={programa}
       />
 
       {/* 11. Resumen de próximos eventos con calendario focalizado. */}
@@ -1379,7 +1380,7 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
 
 
 
-function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, codigo, focusRequest }) {
+function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, codigo, focusRequest, program }) {
   const showICAN = Number(summary?.ican || 0) > 0;
   const list = Array.isArray(rows) ? rows.filter(r => showICAN || r.kind !== 'ICAN') : [];
   const scrollRef = React.useRef(null);
@@ -1511,6 +1512,9 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
         </div>
       </div>
 
+      {window.F111AttendanceLimit&&React.createElement(window.F111AttendanceLimit.Panel,{
+        rows:list,program,label:'Tu límite de ausencias del nivel '+(nivel||'actual')
+      })}
       <div className="campus-d-gradebook-body">
         <div ref={scrollRef} className="campus-d-ledger">
           {list.length ? (
