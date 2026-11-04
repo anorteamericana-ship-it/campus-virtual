@@ -102,11 +102,12 @@
     textTransform:'none',
   };
 
+  const teacherMenuT = value => window.AN_I18N?.t(value) || value;
   function Header({ eyebrow, title, desc }){
     return <div style={{ background:'linear-gradient(135deg,#fff 0%,#F8F4EE 100%)', border:'1px solid var(--line)', borderRadius:18, padding:'20px 22px', boxShadow:'var(--sh-1)', marginBottom:14 }}>
-      <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate)' }}>{eyebrow}</div>
-      <div style={titleStyle}>{title}</div>
-      {desc && <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:8, maxWidth:820, lineHeight:1.5 }}>{desc}</div>}
+      <div style={{ fontSize:11, fontWeight:950, letterSpacing:'.16em', textTransform:'uppercase', color:'var(--an-granate)' }}>{teacherMenuT(eyebrow)}</div>
+      <div style={titleStyle}>{teacherMenuT(title)}</div>
+      {desc && <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:8, maxWidth:820, lineHeight:1.5 }}>{teacherMenuT(desc)}</div>}
     </div>;
   }
 
@@ -115,13 +116,13 @@
       <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
         <div style={{ fontFamily:'var(--f-mono)', fontSize:13, fontWeight:950, color:'var(--an-granate)', minWidth:34 }}>{item.code}</div>
         <div style={{ flex:1 }}>
-          <div style={subTitleStyle}>{item.title}</div>
-          {item.desc && <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginTop:6 }}>{item.desc}</div>}
+          <div style={subTitleStyle}>{teacherMenuT(item.title)}</div>
+          {item.desc && <div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginTop:6 }}>{teacherMenuT(item.desc)}</div>}
         </div>
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:14 }}>
-        <button type="button" className="btn btn-primary" onClick={()=>openUrl(item.url)} style={{ fontSize:12 }}>Abrir</button>
-        <button type="button" className="btn" onClick={()=>openUrl(item.download || item.url)} style={{ fontSize:12 }}>Descargar</button>
+        <button type="button" className="btn btn-primary" onClick={()=>openUrl(item.url)} style={{ fontSize:12 }}>{teacherMenuT('Abrir')}</button>
+        <button type="button" className="btn" onClick={()=>openUrl(item.download || item.url)} style={{ fontSize:12 }}>{teacherMenuT('Descargar')}</button>
       </div>
     </div>;
   }
@@ -180,20 +181,20 @@
     return <div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
         {groups.map(g=>{ const code=groupCode(g); const lvl=LEVELS[levelIdFromCode(code)] || LEVELS.b1; return <button key={code} type="button" onClick={()=>r.select(code)} className={r.selected===code?'btn btn-primary':'btn'} style={{ fontSize:12 }}><span style={{ display:'inline-block', width:9, height:9, borderRadius:99, background:lvl.color, marginRight:6 }}></span>{code}</button>; })}
-        <button type="button" className="btn" onClick={r.reload} style={{ fontSize:12 }}>Recargar</button>
+        <button type="button" className="btn" onClick={r.reload} style={{ fontSize:12 }}>{teacherMenuT('Recargar')}</button>
       </div>
-      {r.loading && <div style={{ padding:18, border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>Cargando resumen real de asistencia…</div>}
+      {r.loading && <div style={{ padding:18, border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>{teacherMenuT('Cargando resumen real de asistencia…')}</div>}
       {r.error && <div style={{ padding:18, border:'1px solid #F0B9B9', borderRadius:14, background:'#FDECEA', color:'#8B1F1F' }}>{r.error}</div>}
       {!r.loading && !r.error && <>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:10, marginBottom:12 }}>
-          {[['Grupo activo', r.selected], ['Estudiantes', estudiantes.length], ['Asistencia promedio', pct(prom)], ['Lecciones cerradas', `${cerradas}/32`]].map(([a,b])=><div key={a} style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:14, padding:13 }}><div style={{ fontSize:11, fontWeight:950, color:BLUE, letterSpacing:'.06em' }}>{a}</div><div style={{ fontSize:24, fontWeight:950, color:BLUE, marginTop:4 }}>{b}</div></div>)}
+          {[['Grupo activo', r.selected], ['Estudiantes', estudiantes.length], ['Asistencia promedio', pct(prom)], ['Lecciones cerradas', `${cerradas}/32`]].map(([a,b])=><div key={a} style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:14, padding:13 }}><div style={{ fontSize:11, fontWeight:950, color:BLUE, letterSpacing:'.06em' }}>{teacherMenuT(a)}</div><div style={{ fontSize:24, fontWeight:950, color:BLUE, marginTop:4 }}>{b}</div></div>)}
         </div>
         <div style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:16, overflow:'hidden' }}>
           <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--line)', display:'flex', justifyContent:'space-between', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-            <div><div style={subTitleStyle}>Estudiantes · asistencia y notas</div><div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4 }}>Resumen de lectura. La edición sigue desde Mis grupos al cerrar cada lección.</div></div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}><button className="btn btn-primary" onClick={()=>onNavigate&&onNavigate('grupos')}>Editar en Mis grupos</button><button className="btn" onClick={()=>onNavigate&&onNavigate('cronograma_grupo')}>Ver calendario</button></div>
+            <div><div style={subTitleStyle}>{teacherMenuT('Estudiantes · asistencia y notas')}</div><div style={{ fontSize:12, color:'var(--ink-3)', marginTop:4 }}>{teacherMenuT('Resumen de lectura. La edición sigue desde Mis grupos al cerrar cada lección.')}</div></div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}><button className="btn btn-primary" onClick={()=>onNavigate&&onNavigate('grupos')}>{teacherMenuT('Editar en Mis grupos')}</button><button className="btn" onClick={()=>onNavigate&&onNavigate('cronograma_grupo')}>{teacherMenuT('Ver calendario')}</button></div>
           </div>
-          <div style={{ overflowX:'auto' }}><table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}><thead><tr style={{ background:'#F8F4EE' }}><th style={th}>Estudiante</th><th style={th}>Código</th><th style={th}>Asistencia</th><th style={th}>Nota</th><th style={th}>Comentario</th></tr></thead><tbody>{estudiantes.map(e=>{ const code=String(e.code||e.codigo||e.CODIGO||'').trim(); const a=asistencia[code]||{}; const n=notas[code]||{}; const c=comentarios[code]||{}; return <tr key={code||e.nombre} style={{ borderTop:'1px solid var(--line)' }}><td style={td}>{fmt(e.name||e.nombre||e.NOMBRE)}</td><td style={tdMono}>{fmt(code)}</td><td style={td}>{pct(a.pct)}</td><td style={td}>{n.tiene_notas ? fmt(n.nota_total) : '—'}</td><td style={td}>{fmt(c.ultimo || c.comentario || c.texto || '')}</td></tr>; })}{!estudiantes.length&&<tr><td colSpan="5" style={{...td, textAlign:'center', color:'var(--ink-3)', padding:18}}>No hay estudiantes cargados para este grupo.</td></tr>}</tbody></table></div>
+          <div style={{ overflowX:'auto' }}><table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}><thead><tr style={{ background:'#F8F4EE' }}><th style={th}>{teacherMenuT('Estudiante')}</th><th style={th}>{teacherMenuT('Código')}</th><th style={th}>{teacherMenuT('Asistencia')}</th><th style={th}>{teacherMenuT('Nota')}</th><th style={th}>{teacherMenuT('Comentario')}</th></tr></thead><tbody>{estudiantes.map(e=>{ const code=String(e.code||e.codigo||e.CODIGO||'').trim(); const a=asistencia[code]||{}; const n=notas[code]||{}; const c=comentarios[code]||{}; return <tr key={code||e.nombre} style={{ borderTop:'1px solid var(--line)' }}><td style={td}>{fmt(e.name||e.nombre||e.NOMBRE)}</td><td style={tdMono}>{fmt(code)}</td><td style={td}>{pct(a.pct)}</td><td style={td}>{n.tiene_notas ? fmt(n.nota_total) : '—'}</td><td style={td}>{fmt(c.ultimo || c.comentario || c.texto || '')}</td></tr>; })}{!estudiantes.length&&<tr><td colSpan="5" style={{...td, textAlign:'center', color:'var(--ink-3)', padding:18}}>{teacherMenuT('No hay estudiantes cargados para este grupo.')}</td></tr>}</tbody></table></div>
         </div>
       </>}
     </div>;
@@ -215,8 +216,8 @@
     }[type] || {};
     return <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:12 }}>
       {levels.map(id=>{ const l=LEVELS[id] || LEVELS.b1; return <div key={id} style={{ border:'1px solid var(--line)', borderRadius:16, background:'#fff', overflow:'hidden' }}>
-        <div style={{ padding:'15px 16px', borderBottom:'1px solid var(--line)', display:'flex', gap:10, alignItems:'center' }}><span style={{ width:12, height:12, borderRadius:99, background:l.color }}></span><div><div style={subTitleStyle}>{l.name}</div><div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>{l.book}</div></div></div>
-        <div style={{ padding:14 }}><div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>{config.desc}</div><button className="btn btn-primary" onClick={()=>config.nav ? onNavigate&&onNavigate(config.nav) : openUrl(config.url(l))}>{config.button}</button></div>
+        <div style={{ padding:'15px 16px', borderBottom:'1px solid var(--line)', display:'flex', gap:10, alignItems:'center' }}><span style={{ width:12, height:12, borderRadius:99, background:l.color }}></span><div><div style={subTitleStyle}>{teacherMenuT(l.name)}</div><div style={{ fontSize:12, color:'var(--ink-3)', marginTop:3 }}>{l.book}</div></div></div>
+        <div style={{ padding:14 }}><div style={{ fontSize:13, color:'var(--ink-3)', lineHeight:1.45, marginBottom:12 }}>{teacherMenuT(config.desc)}</div><button className="btn btn-primary" onClick={()=>config.nav ? onNavigate&&onNavigate(config.nav) : openUrl(config.url(l))}>{teacherMenuT(config.button)}</button></div>
       </div>;})}
     </div>;
   }
@@ -320,7 +321,7 @@
       )}
 
       {nav.map(group=><React.Fragment key={group.section || 'main-actions'}>{group.section && <div className="sb-section teacher-sb-section" style={sectionStyle}>{tr(group.section)}</div>}{group.items.map(item=><button key={item.id} type="button" data-nav-id={item.id} data-an-nav-label={item.label} className={'sb-item teacher-sb-item ' + (isActive(item) ? 'active' : '')} onClick={()=>go(item)}>{iconNode(item.icon)}<span className="sb-label" style={{ fontSize:13, fontWeight:850 }}>{tr(item.label)}</span>{item.badge && <span className="sb-badge">{item.badge}</span>}</button>)}</React.Fragment>)}
-      <div className="sb-user"><div className="sb-avatar">{init}</div><div style={{ flex:1, minWidth:0 }}><div className="sb-user-t1">{name}</div><div className="sb-user-t2">Docente · CS21A4</div></div><button title="Cerrar sesión" onClick={async()=>{ try { if(typeof window.cerrarSesionServidor==='function') await window.cerrarSesionServidor(); else sessionStorage.removeItem('an_usuario'); } catch(_){} if(onLogout) onLogout(); else window.location.href='login.html'; }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-3)', padding:4 }}>⎋</button></div>
+      <div className="sb-user"><div className="sb-avatar">{init}</div><div style={{ flex:1, minWidth:0 }}><div className="sb-user-t1">{name}</div><div className="sb-user-t2">{teacherMenuT('Docente')}</div></div><button title={teacherMenuT('Cerrar sesión')} onClick={async()=>{ try { if(typeof window.cerrarSesionServidor==='function') await window.cerrarSesionServidor(); else sessionStorage.removeItem('an_usuario'); } catch(_){} if(onLogout) onLogout(); else window.location.href='login.html'; }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--ink-3)', padding:4 }}>⎋</button></div>
     </aside>;
   }
   function SidebarCS21A(props){ if(props && props.role === 'teacher') return <TeacherSidebarCS21A {...props}/>; return OldSidebar ? <OldSidebar {...props}/> : null; }
