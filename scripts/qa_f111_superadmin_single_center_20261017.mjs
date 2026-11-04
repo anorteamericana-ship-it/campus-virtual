@@ -89,7 +89,7 @@ for(const path of protectedPaths){
  }
 }
 const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
-const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&rl=F111ROSTER20261104','');
 // Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.
