@@ -65,4 +65,5 @@
 - **Pruebas/guardas:** `scripts/virtual_review_static.mjs`, `scripts/qa_f111_cr_day_and_scoped_cache_e1.mjs`, `scripts/qa_f111_0826_student_canonical.mjs`, `scripts/qa_f111_superadmin_single_center_20261017.mjs`, workflow E1.
 - **Documentación:** este anexo y issue #499.
 - **No tocado:** Apps Script, pagos, notas, asistencia real, matrículas, PDFs, comentarios docentes, grupos INA/SIN INA, roles, ACL, bases de datos.
-- **Estado de despliegue de ESTE corte:** pendiente de CI/merge/readback al momento de redactar. Añadir aquí la evidencia final; nunca escribir “en vivo” antes de verificar el dominio.
+- **PR de este corte:** [#731](https://github.com/anorteamericana-ship-it/campus-virtual/pull/731), branch `fix/f111-cr-date-boundaries-and-static-triage-20261104`, primer HEAD `80bb3712d7243fed53e45c253b38b77ba7744bac`.
+- **Estado de ESTE corte a su apertura:** CI, merge y readback **pendientes**. Los resultados anteriores 17/17 pertenecen a otras PR y no certifican esta versión. La fuente de verdad del cierre será la actualización de issue #499 con run/commit verificables.
