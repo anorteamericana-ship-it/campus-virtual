@@ -12,6 +12,12 @@ const studentTabs=read('src/student_experience.jsx');
 const groups=read('src/vista_docente.jsx');
 const roster=read('src/teacher_views.jsx');
 const app=read('src/app.jsx'),html=read('campus.html');
+const adminIndividual=read('src/admin_students.jsx');
+assert(adminIndividual.includes('CONAPE · Matrícula anticipada pagada'),'paid CONAPE advance shown separately under real grade');
+assert(adminIndividual.includes('Reporte externo pendiente'),'external status is not misrepresented as synchronized');
+assert(adminIndividual.includes("Number(pendienteNivel?.mat_pagada||0)+0.01>=cotizacion.matricula"),'badge requires complete paid matriculation');
+assert.equal((app.match(/&coadvance=F111CONAPEADVANCEREADONLY20261104A/g)||[]).length,3,'three affected admin student lazy assets refreshed');
+assert(html.includes('src/app.jsx?v=F111PEPAID20261102')&&html.includes('&coadvance=F111CONAPEADVANCEREADONLY20261104A'),'campus refreshes app lazy asset map');
 const key='&menus=F111MENUSENFINAL20261104A';
 function make(role) {
   const cache=new Map([['an_usuario',JSON.stringify({rol:role})],['an_login_recent_at','last-pass']]);
