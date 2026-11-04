@@ -118,14 +118,14 @@ const scopedVersions = Object.freeze({
   'src/solicitudes_unificadas.jsx': { base:'src/solicitudes_unificadas.jsx?v=F98.4A', scopes:['student_evaluations'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
   'src/student_modules.jsx': { base:'src/student_modules.jsx?v=F111PROFILECANONICAL20261020', scopes:['student_evaluations','student_documents'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
   'src/syllabus_views.jsx': { base:'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023', scopes:['student_course','student_documents'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
-  'src/cronograma_grupo.jsx': { base:'src/cronograma_grupo.jsx?v=F111ATTEND20261021', scopes:['student_course'], suffix:'&calendar=F111STUDENTCALEN20261104A' },
+  'src/cronograma_grupo.jsx': { base:'src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A', scopes:['student_course'], studentUrl:'src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A&crday=F111CRDAY20261104A' },
 });
 const reviewedScopedCache = [];
 function isReviewedScopedCache(source, file, refs) {
   if (source !== 'src/app.jsx · F96_LAZY') return false;
   const rule = scopedVersions[file];
   if (!rule || refs.size !== 2) return false;
-  const scopedUrl = rule.base + rule.suffix;
+  const scopedUrl = rule.studentUrl || (rule.base + rule.suffix);
   if (!refs.has(rule.base) || !refs.has(scopedUrl)) return false;
   const observedScopes = new Set();
   for (const [route, urls] of Object.entries(lazyMap)) {
