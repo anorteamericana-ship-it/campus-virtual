@@ -71,13 +71,13 @@
     const open = document.createElement('button');
     open.type = 'button';
     open.className = 'btn';
-    open.textContent = 'Abrir PDF';
+    open.textContent = window.AN_I18N?.t('Abrir PDF') || 'Abrir PDF';
     open.addEventListener('click', () => openBook(viewer, false));
 
     const download = document.createElement('button');
     download.type = 'button';
     download.className = 'btn btn-primary';
-    download.textContent = 'Descargar PDF';
+    download.textContent = window.AN_I18N?.t('Descargar PDF') || 'Descargar PDF';
     download.addEventListener('click', () => openBook(viewer, true));
 
     box.append(open, download);
