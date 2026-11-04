@@ -1398,13 +1398,13 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
               <input id={`teacher-student-search-${groupCode||'grupo'}`} type="search" value={studentSearch} onChange={e=>setStudentSearch(e.target.value)} placeholder={tvF111Translate('Nombre, apellido, cédula o código')} aria-label="Buscar estudiante por nombre, apellido, cédula o código" style={{width:'100%',height:34,border:'1.5px solid #B7C3D4',borderRadius:8,padding:'0 10px',fontFamily:'inherit',fontSize:10.5,fontWeight:650,color:'var(--ink)',background:'#FFF',outline:'none'}} />
               <div style={{fontSize:8.5,color:'var(--ink-3)',marginTop:4,fontWeight:750}}>{filteredRoster.length} {tvF111Translate('de')} {(roster||[]).length} {tvF111Translate('estudiantes')}</div>
             </th></tr></thead>
-            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const att=asistenciaGrupo?.[r.code],contacto=contactos[r.code]||{};return <tr key={r.code||i}>
+            <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const contacto=contactos[r.code]||{};return <tr key={r.code||i}>
               <td title={r.cedula?`Cédula ${r.cedula}`:''} style={{...bodyCell,width:LEFT_W,minWidth:LEFT_W,maxWidth:LEFT_W}}>
                 <div style={{display:'flex',gap:9,alignItems:'center'}}>
                   <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontWeight:750,lineHeight:1.2,fontSize:12,whiteSpace:'normal'}}>{r.name}</div>
-                    <div title={att?.pct==null?'Todavía no hay asistencia oficial cerrada para calcular el porcentaje. El borrador no cambia esto hasta cerrar la clase.':'Porcentaje basado en asistencia oficial'} style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>{tvF111Translate('Código')} {r.code} · {att?.pct!=null?`${tvF111Translate('Asistencia')} ${att.pct}%`:tvF111Translate('Sin asistencia registrada')}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
+                    <div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>{tvF111Translate('Código')} {r.code}</div>
                     <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:5,fontSize:10,color:'#405776'}}>
                       <span>{tvF111Translate('Edad')}: <b>{Number.isInteger(contacto.edad)?contacto.edad+' '+tvF111Translate('años'):'—'}</b></span>
                       <span>{tvF111Translate('Tel')}: <b title={contacto.telefono?'Doble clic para seleccionar el teléfono':'Teléfono no registrado'}

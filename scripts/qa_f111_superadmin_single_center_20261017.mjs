@@ -23,7 +23,7 @@ const oldAdminRoster="'src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'"
 assert.equal(appSourceF111.split(changedAdminRoster).length-1,1,'single new admin attendance roster asset');
 assert.equal(appSourceF111.split('&att=F111ATTLIMIT20261103A').length-1,3,'only three admin student routes updated');
 // Normalize only the new teacher-view cache token; do not relax academic route assertions.
-const source=appSourceF111.replaceAll('&rl=F111ROSTER20261104','').replace(changedDashboard,originalDashboard).replaceAll(changedTabs,originalTabs)
+const source=appSourceF111.replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','').replace(changedDashboard,originalDashboard).replaceAll(changedTabs,originalTabs)
   .replace(changedAdminRoster,oldAdminRoster).replaceAll('&att=F111ATTLIMIT20261103A','')
   .replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
 const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
@@ -89,7 +89,7 @@ for(const path of protectedPaths){
  }
 }
 const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
-const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&rl=F111ROSTER20261104','');
 // Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.
@@ -109,7 +109,7 @@ const approvedAssetDiffs=[
  ['&hero=F111HERO20261103B',''],
 ];
 // Remove only the reviewed cache-busting query key before the exact byte comparison.
-let mainHtml=mainHtmlRaw.replaceAll('&rl=F111ROSTER20261104','');
+let mainHtml=mainHtmlRaw.replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
 for (const [next,previous] of approvedAssetDiffs){
  const occurrences=mainHtml.split(next).length-1;
  // Some intermediate historic versions are absent when main already uses a later asset.

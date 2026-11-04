@@ -19,6 +19,8 @@ for (const needle of [
   "tvF111Translate('Cumplen asistencia')"
 ]) assert(teacher.includes(needle),'missing teacher integration: '+needle);
 assert(css.includes('teacher-roster-identity .f111-al-compact .f111-al-top{display:none}'),'compact layout');
+assert(css.includes('padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;'),'indicator has no surrounding box');
+assert(!teacher.includes('att?.pct==null?'),'old student percentage no longer repeated');
 assert(css.includes('teacher-roster-identity .f111-al-compact .f111-al-rails'),'rails visible');
 for (const key of ['Gestión académica','Grupos','Elegí el grupo que querés visualizar.','LUNES',
   'MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO','DOMINGO','Cumplen asistencia',
