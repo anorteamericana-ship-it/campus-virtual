@@ -1353,7 +1353,7 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
         <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A4E00' }}>{studentDashT('Primer ingreso · orientación obligatoria')}</div>
         <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>{studentDashT('Antes de avanzar, verificá tus datos')}</div>
         <div style={{ fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5, marginTop:4 }}>
-          El Campus inicia en <strong>Mi Campus</strong> para que tengás a mano tu información académica, horario, grupo y material de lectura obligatorio solicitado para el programa. Esta guía aparece en el primer ingreso de este equipo y queda disponible desde el material del programa.
+          {studentDashT('El Campus inicia en Mi Campus para que tengás a mano tu información académica, horario, grupo y material de lectura obligatorio solicitado para el programa. Esta guía aparece en el primer ingreso de este equipo y queda disponible desde el material del programa.')}
         </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10, padding:16, background:'color-mix(in srgb, var(--bg-deep) 30%, white)' }}>
@@ -1365,7 +1365,7 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
       </div>
       <div style={{ padding:'14px 16px', display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', background:'#fff' }}>
         <div style={{ fontSize:12, color:'var(--ink-3)', lineHeight:1.45, maxWidth:620 }}>
-          <strong style={{ color:'var(--ink)' }}>{studentDashT('Checklist inicial:')}</strong> verificá tus datos, abrí el material obligatorio y guardá esta información. Si algo no coincide con tu grupo real, reportalo antes de hacer exámenes o registrar asistencia.
+          <strong style={{ color:'var(--ink)' }}>{studentDashT('Checklist inicial:')}</strong> {studentDashT('Verificá tus datos, abrí el material obligatorio y guardá esta información. Si algo no coincide con tu grupo real, reportalo antes de hacer exámenes o registrar asistencia.')}
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <button className="btn btn-ghost" type="button" onClick={() => onNavigate && onNavigate('info_programa')}>{studentDashT('Ver material obligatorio')}</button>
