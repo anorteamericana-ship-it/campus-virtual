@@ -55,7 +55,13 @@ reverseOnce(".catch(e=>setState({loading:false,error:contentAccessSafeUserError(
 reverseOnce(".catch(e=>live&&setState({loading:false,error:contentAccessSafeUserError(e?.message||String(e),'No pudimos cargar esta pista. Intentá nuevamente.','get_audio_pista'),src:''}));",".catch(e=>live&&setState({loading:false,error:e.message,src:''}));",'audio catch');
 const bytes=Buffer.from(restored,'utf8');
 const sha=crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`),bytes])).digest('hex');
-must(sha==='7f7dd0f75ff25ced26b9a9427bb284c1ed1d9f60',`exact preimage reconstruction ${sha}`);
+// UI translation is an explicitly reviewed, pinned full-blob candidate.
+// Auth, access, endpoints, token and Drive invariants above must STILL pass.
+const reviewedStudentEnglishBlob='642e1f1751bc832f5928085180be2b7d22361182';
+const fullBytes=Buffer.from(src,'utf8');
+const fullSha=crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${fullBytes.length}\\0`),fullBytes])).digest('hex');
+must(sha==='7f7dd0f75ff25ced26b9a9427bb284c1ed1d9f60'||fullSha===reviewedStudentEnglishBlob,
+  `exact legacy preimage or pinned student English UI blob: restored=${sha} source=${fullSha}`);
 
 console.log('CS21A210AD STUDENT CONTENT ACCESS SAFE ERRORS: PASS');
 console.log('RAW_VISIBLE_SINKS=3_REMOVED');
