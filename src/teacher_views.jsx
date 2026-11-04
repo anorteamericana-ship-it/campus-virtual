@@ -1404,12 +1404,12 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
                   <div style={{width:33,height:33,flex:'0 0 33px',borderRadius:'50%',background:'var(--an-navy)',color:'#FFF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800}}>{(r.name||'').split(' ').slice(0,2).map(w=>w[0]).join('')}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontWeight:750,lineHeight:1.2,fontSize:12,whiteSpace:'normal'}}>{r.name}</div>
-                    <div title={att?.pct==null?'Todavía no hay asistencia oficial cerrada para calcular el porcentaje. El borrador no cambia esto hasta cerrar la clase.':'Porcentaje basado en asistencia oficial'} style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>Código {r.code} · {att?.pct!=null?`Asistencia ${att.pct}%`:'Sin asistencia registrada'}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
+                    <div title={att?.pct==null?'Todavía no hay asistencia oficial cerrada para calcular el porcentaje. El borrador no cambia esto hasta cerrar la clase.':'Porcentaje basado en asistencia oficial'} style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>{tvF111Translate('Código')} {r.code} · {att?.pct!=null?`${tvF111Translate('Asistencia')} ${att.pct}%`:tvF111Translate('Sin asistencia registrada')}{notasGrupo?.[r.code]?.componentes?.ICAN?` · I CAN ${Number(notasGrupo[r.code].componentes.ICAN.puntos||0)}/20`:''}</div>
                     <div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:5,fontSize:10,color:'#405776'}}>
-                      <span>Edad: <b>{Number.isInteger(contacto.edad)?contacto.edad+' años':'—'}</b></span>
-                      <span>Tel: <b title={contacto.telefono?'Doble clic para seleccionar el teléfono':'Teléfono no registrado'}
+                      <span>{tvF111Translate('Edad')}: <b>{Number.isInteger(contacto.edad)?contacto.edad+' '+tvF111Translate('años'):'—'}</b></span>
+                      <span>{tvF111Translate('Tel')}: <b title={contacto.telefono?'Doble clic para seleccionar el teléfono':'Teléfono no registrado'}
                         onDoubleClick={contacto.telefono?tvSelectContactTextF104:undefined}
-                        style={{userSelect:'text',cursor:contacto.telefono?'text':'default',display:'inline-block'}}>{contacto.telefono||'Sin dato'}</b></span>
+                        style={{userSelect:'text',cursor:contacto.telefono?'text':'default',display:'inline-block'}} >{contacto.telefono||tvF111Translate('Sin dato')}</b></span>
                     </div>
                     <div style={{display:'flex',gap:6,alignItems:'center',marginTop:4,fontSize:10,minWidth:0}}>
                       <span style={{color:'#48617E',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
@@ -1469,12 +1469,12 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
 
         <div className="teacher-roster-final-note" style={{zIndex:3,borderLeft:'1px solid var(--line)',boxShadow:'-8px 0 14px -14px rgba(0,0,0,.55)'}}>
           <table className="teacher-roster-fixed-table" style={{...tableBase,width:RIGHT_W}}>
-            <thead><tr><th style={{...headCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W,textAlign:'left'}}>Nota completa</th></tr></thead>
+            <thead><tr><th style={{...headCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W,textAlign:'left'}} >{tvF111Translate('Nota completa')}</th></tr></thead>
             <tbody>{filteredRoster.length?filteredRoster.map((r,i)=>{const note=notasGrupo?.[r.code]||r.note;return <tr key={r.code||i}>
               <td style={{...bodyCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:7}}>
                   <div><div style={{fontSize:20,fontWeight:900,color:note?.tiene_notas?'var(--an-navy)':'var(--ink-3)'}}>{note?.tiene_notas?note.nota_total:'—'}</div><div style={{fontSize:8.5,color:'var(--ink-3)'}}>{note?.tiene_notas?'acumulada':'sin notas'}</div></div>
-                  <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{padding:'5px 6px',fontSize:8.8,whiteSpace:'nowrap'}}>Ver detalle</button>
+                  <button type="button" className="btn btn-ghost" onClick={()=>setSelectedStudent(r)} style={{padding:'5px 6px',fontSize:8.8,whiteSpace:'nowrap'}} >{tvF111Translate('Ver detalle')}</button>
                 </div>
               </td>
             </tr>;}) : <tr><td style={{...bodyCell,width:RIGHT_W,minWidth:RIGHT_W,maxWidth:RIGHT_W,height:ROW_H}} /></tr>}</tbody>
