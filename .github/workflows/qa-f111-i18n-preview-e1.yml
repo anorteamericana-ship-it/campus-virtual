@@ -15,6 +15,15 @@ on:
       - 'src/att77_widgets.jsx'
       - 'src/att77_view_detail.jsx'
       - 'src/teacher_views.jsx'
+      - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_menu_academic_guard_cs21a120.js'
+      - 'src/student_content_access_cs21a125.jsx'
+      - 'src/student_tasks_menu_cs21a126.js'
+      - 'src/student_experience.jsx'
+      - 'src/student_dashboard.jsx'
+      - 'src/student_academic_summary_dom_cs21a113.js'
+      - 'src/student_portal.jsx'
+      - 'scripts/qa_f111_student_demo_english_e1.mjs'
       - 'src/app.jsx'
       - 'src/att77_bridge.js'
       - 'styles/f111_attendance_limit.css'
@@ -45,6 +54,8 @@ jobs:
         run: node scripts/qa_f111_attendance_limit_three_roles_e1.mjs
       - name: Teacher roster mini semaforo and EN/ES source E1
         run: node scripts/qa_f111_roster_mini_i18n_20261104.mjs
+      - name: Student demo English default and non-ready modules hidden
+        run: node scripts/qa_f111_student_demo_english_e1.mjs
       - name: Native role-aware preview, stable nav and emergency exit
         run: node scripts/qa_f111_i18n_preview_e1.mjs
       - name: Student hero name contrast, ribbon hover and reviewed-material language E1
