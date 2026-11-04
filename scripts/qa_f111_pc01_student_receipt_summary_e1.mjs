@@ -23,7 +23,7 @@ assert(academic.includes("v.estado==='REVISADO'&&v.nota!=null"),'do not show dia
 assert(academic.includes("q.estado==='REVISADO'"),'reviewed only with its teacher comment');
 assert(academic.includes("const quizRetro=d.pc01?.estado==='REVISADO'"),'recent feedback only after teacher review');
 assert(academic.includes("pc01Points(score)"),'25-point conversion');
-assert(academic.includes('Ponderación oficial 0%'),'explicit formative weight');
+assert(academic.includes('st113("Ponderación oficial")')&&academic.includes(' 0%</p>'),'explicit formative weight shown in localized UI');
 assert(academic.includes("return null;} //".split(' //')[0]),'backend failure is never treated as successful review');
 assert(academic.includes('esc(q.comentario'),'teacher comments HTML escaped');
 assert(campus.includes('student_pc01_f111.js?v=F111PC01G1EVAL20261023'),'student cache bust');
