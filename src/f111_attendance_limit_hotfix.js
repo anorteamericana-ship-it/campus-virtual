@@ -110,21 +110,21 @@
   function Panel({rows,program,compact=false,label='Estado de asistencia'}){
     const s=summarize({rows,program}),c=tone[s.status],hasIcan=s.by.ican.events>0;
     return h('span',{className:'f111-al '+(compact?'f111-al-compact ':'')+'f111-al-'+s.status,
-      'data-f111-att-limit':s.kind,role:'status','aria-label':label},
-      h('div',{className:'f111-al-top'},
+      'data-f111-att-limit':s.kind,role:'group','aria-label':label},
+      h('span',{className:'f111-al-top'},
         h('span',{className:'f111-al-title'},'AUSENCIAS · SEGUIMIENTO'),
         h('span',{className:'f111-al-program'},s.kind==='INA'?'INA · 4 lecciones / 2 I CAN':
           s.kind==='SIN_INA'?'SIN INA · asistencia mínima 70%':'Programa por confirmar')),
-      h('div',{className:'f111-al-rails'},
+      h('span',{className:'f111-al-rails'},
         h(Rail,{name:'Lecciones',stats:s.by.course,limit:s.limits.course,kind:'course'}),
         s.kind==='INA'?h(Rail,{name:'I CAN',stats:s.by.ican,limit:s.limits.ican,kind:'ican'}):
           hasIcan?h(Rail,{name:'I CAN',stats:s.by.ican,limit:null,kind:'ican'}):null),
-      h('div',{className:'f111-al-state',style:{background:c.bg,color:c.fg,borderColor:c.border}},
+      h('span',{className:'f111-al-state',style:{background:c.bg,color:c.fg,borderColor:c.border}},
         h('span',{className:'f111-al-status-dot',style:{background:c.dot},'aria-hidden':true}),
         s.kind==='INA'?c.label:s.available?
           s.kind==='SIN_INA'?'Asistencia: revisar requisito mínimo del 70%':'Programa sin regla de límite verificada':
           'Sin registro suficiente · no se asume ausencia'),
-      !s.by.ican.events&&s.kind==='INA'?h('div',{className:'f111-al-smallnote'},'I CAN: aún sin registros en esta consulta'):null
+      !s.by.ican.events&&s.kind==='INA'?h('span',{className:'f111-al-smallnote'},'I CAN: aún sin registros en esta consulta'):null
     );
   }
   root.F111AttendanceLimit={VERSION,present,rail,duration,normalize,programKind,summarize,Panel};
