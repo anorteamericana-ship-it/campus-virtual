@@ -46,5 +46,5 @@ requireText('scenario.expectedLabel','Visible EN/ES label must be asserted');
 requireText("lang === 'es' || lang === 'en'","Selected UI locale must be testable");
 requireText("state.icanStandaloneMenuCount","Unfinished I CAN navigation must stay hidden");
 requireText("state.tasksStandaloneMenuCount","Unfinished Tasks navigation must stay hidden");
-requireText("const failures =","Browser review must retain failure tracking");
+requireText("const findings = []","Browser review must retain failure tracking");
 console.log('CS21A202 SOURCE TRUTH PASS: isolated synthetic sessions, Apps Script intercepted, no served HTML injection, route-ID + EN/ES assertions; English LAB app unchanged.');
