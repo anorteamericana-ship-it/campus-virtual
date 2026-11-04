@@ -98,14 +98,14 @@ const F96_LAZY = {
   solicitudes: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
     'src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F111ATTEND20261021',
-    'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104'
+    'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023&deep=F111STUDENTDEEPTABS20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A'
   ],
   student_evaluations: [
-    'src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A',
-    'src/student_modules.jsx?v=F111PROFILECANONICAL20261020','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104'
+    'src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A&deep=F111STUDENTDEEPTABS20261104A',
+    'src/student_modules.jsx?v=F111PROFILECANONICAL20261020&deep=F111STUDENTDEEPTABS20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A'
   ],
   student_documents: [
-    'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023','src/student_modules.jsx?v=F111PROFILECANONICAL20261020','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104'
+    'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023&deep=F111STUDENTDEEPTABS20261104A','src/student_modules.jsx?v=F111PROFILECANONICAL20261020&deep=F111STUDENTDEEPTABS20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A'
   ],
 };
 // F96.2-LAZY-E · expone el mapa para prueba controlada en navegador.
