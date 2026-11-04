@@ -105,7 +105,7 @@
       limit!=null?h('span',{className:'f111-al-dots'},...dots):null,
       h('small',null,stats.absent+' '+(limit!=null?'de '+limit:'faltas registradas')+
         (limit!=null?' · ':' · ')+readableHours(stats)),
-      limit!=null&&stats.absent>limit?h('strong',{className:'f111-al-over'},'+'+(stats.absent-limit)):null);
+      limit!=null&&stats.absent>limit?h('strong',{className:'f111-al-overcount'},'+'+(stats.absent-limit)):null);
   }
   function Panel({rows,program,compact=false,label='Estado de asistencia'}){
     const s=summarize({rows,program}),c=tone[s.status],hasIcan=s.by.ican.events>0;
