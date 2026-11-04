@@ -25,3 +25,18 @@
 .f111-al-compact .f111-al-dot{width:8px;height:8px}
 .f111-al-compact .f111-al-state{font-size:8.5px}
 @media(max-width:640px){.f111-al{padding:9px}.f111-al-rails{gap:6px}.f111-al-program{font-size:8px}}
+
+/* F111 · Mis Grupos: compact reference-style semaforo below student identity.
+   The common row height is controlled by ROW_H in teacher_views.jsx. */
+.teacher-roster-identity .f111-al-compact{
+  max-width:342px;margin:5px 0 0;padding:4px 6px;border-radius:7px;background:#F8FAFC;
+}
+.teacher-roster-identity .f111-al-compact .f111-al-top{display:none}
+.teacher-roster-identity .f111-al-compact .f111-al-rails{display:flex;flex-wrap:wrap;gap:2px 9px;margin-bottom:3px}
+.teacher-roster-identity .f111-al-compact .f111-al-rail{gap:3px;line-height:1.25}
+.teacher-roster-identity .f111-al-compact .f111-al-rail b{font-size:8px}
+.teacher-roster-identity .f111-al-compact .f111-al-rail small{font-size:8px}
+.teacher-roster-identity .f111-al-compact .f111-al-dots{gap:2px}
+.teacher-roster-identity .f111-al-compact .f111-al-dot{width:8px;height:8px}
+.teacher-roster-identity .f111-al-compact .f111-al-state{padding:2px 6px;font-size:8px;line-height:1.3}
+.teacher-roster-identity .f111-al-compact .f111-al-smallnote{font-size:8px}
