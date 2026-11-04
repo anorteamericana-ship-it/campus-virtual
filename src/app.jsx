@@ -385,6 +385,15 @@ function ExamenesAdminPanel() {
   </section>;
 }
 
+// F111: Student assessment presentation only. Official exam IDs, grades and dates stay unchanged.
+const f111StudentExamT = value => window.AN_I18N?.t(value) || value;
+function f111StudentExamDate(value) {
+  if (window.AN_I18N?.getLang?.() !== 'en') return fechaF91(value);
+  const s = String(value || '').slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return fechaF91(value);
+  const d = new Date(s+'T12:00:00');
+  return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});
+}
 const APP_ORAL_DEFS_F927 = [
   {key:'ORAL_1',leccion:9,titulo:'1.er Examen Oral'},
   {key:'ORAL_2',leccion:17,titulo:'2.º Examen Oral'},
@@ -413,21 +422,21 @@ function appStudentEvaluationRowsF984N(defs,state,level,activeRepos){
     const ev=state.evals.find(e=>String(e.nivel||'').toUpperCase()===level&&appEvaluationTypeF984N(e)===def.key)||{};
     const rep=activeRepos.find(r=>String(r.NIVEL||'').toUpperCase()===level&&Number(r.LECCION||0)===def.leccion)||null;
     const registered=ev.registrada===true||String(ev.estado||'').toUpperCase()==='REGISTRADA';
-    let label='Sin nota registrada',tone='#991B1B',bg='#FDECEA';
-    if(registered){label=`Nota ${Number(ev.nota||0)}/${Number(ev.max||15)}`;tone='#176B36';bg='#E7F4EA';}
+    let label=f111StudentExamT('Sin nota registrada'),tone='#991B1B',bg='#FDECEA';
+    if(registered){label=`${f111StudentExamT('Nota')} ${Number(ev.nota||0)}/${Number(ev.max||15)}`;tone='#176B36';bg='#E7F4EA';}
     else if(rep){
       const st=String(rep.ESTADO||'').toUpperCase(),sol=String(rep.SOLICITUD_ESTADO||'').toUpperCase();
-      if(['JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','AUTORIZADA','PROGRAMADA'].includes(st)){label=rep.FECHA_PROGRAMADA?`Fecha tentativa: ${fechaF91(rep.FECHA_PROGRAMADA)}`:'Autorizada · pendiente de coordinar';tone='#0C4F86';bg='#E7F1FA';}
-      else if(sol==='ENVIADA'||sol==='PAGO_REPORTADO'){label='Solicitud en proceso';tone='#805500';bg='#FFF4D6';}
-      else {label='Reposición pendiente';tone='#805500';bg='#FFF4D6';}
-    } else if(ev.fecha){label=`Programado: ${fechaF91(ev.fecha)}`;tone='#40516A';bg='#EEF2F7';}
+      if(['JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','AUTORIZADA','PROGRAMADA'].includes(st)){label=rep.FECHA_PROGRAMADA?`${f111StudentExamT('Fecha tentativa:')} ${f111StudentExamDate(rep.FECHA_PROGRAMADA)}`:f111StudentExamT('Autorizada · pendiente de coordinar');tone='#0C4F86';bg='#E7F1FA';}
+      else if(sol==='ENVIADA'||sol==='PAGO_REPORTADO'){label=f111StudentExamT('Solicitud en proceso');tone='#805500';bg='#FFF4D6';}
+      else {label=f111StudentExamT('Reposición pendiente');tone='#805500';bg='#FFF4D6';}
+    } else if(ev.fecha){label=`${f111StudentExamT('Programado:')} ${f111StudentExamDate(ev.fecha)}`;tone='#40516A';bg='#EEF2F7';}
     return {...def,ev,rep,label,tone,bg};
   });
 }
 function StudentEvaluationSectionF984N({kicker,title,rows,loading,error,onReload,loadingText}){
   return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}>
-    <div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{kicker}</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>{title}</div></div>{error&&<button className="btn btn-ghost" onClick={onReload}>Recargar</button>}</div>
-    {loading?<div style={{padding:18,color:'var(--ink-3)'}}>{loadingText}</div>:error?<div style={{padding:18,color:'#991B1B'}}>{error}</div>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:10,padding:12}}>{rows.map(r=><div key={r.key} style={{border:'1px solid var(--line)',borderRadius:12,padding:13}}><div style={{fontSize:12.5,fontWeight:850}}>{r.titulo}</div><div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>Lección {String(r.leccion).padStart(2,'0')}</div><span style={{display:'inline-flex',marginTop:9,padding:'5px 8px',borderRadius:999,background:r.bg,color:r.tone,fontSize:10,fontWeight:900}}>{r.label}</span></div>)}</div>}
+    <div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{f111StudentExamT(kicker)}</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>{title}</div></div>{error&&<button className="btn btn-ghost" onClick={onReload}>{f111StudentExamT('Recargar')}</button>}</div>
+    {loading?<div style={{padding:18,color:'var(--ink-3)'}}>{f111StudentExamT(loadingText)}</div>:error?<div style={{padding:18,color:'#991B1B'}}>{f111StudentExamT(error)}</div>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:10,padding:12}}>{rows.map(r=><div key={r.key} style={{border:'1px solid var(--line)',borderRadius:12,padding:13}}><div style={{fontSize:12.5,fontWeight:850}}>{f111StudentExamT(r.titulo)}</div><div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{f111StudentExamT('Lección')} {String(r.leccion).padStart(2,'0')}</div><span style={{display:'inline-flex',marginTop:9,padding:'5px 8px',borderRadius:999,background:r.bg,color:r.tone,fontSize:10,fontWeight:900}}>{r.label}</span></div>)}</div>}
   </div>;
 }
 function StudentEvaluationsOverviewF984N(){
@@ -461,8 +470,8 @@ function StudentEvaluationsOverviewF984N(){
   const oralRows=appStudentEvaluationRowsF984N(APP_ORAL_DEFS_F927,state,level,activeRepos);
   const writtenRows=appStudentEvaluationRowsF984N(APP_WRITTEN_DEFS_F984N,state,level,activeRepos);
   return <>
-    <StudentEvaluationSectionF984N kicker="EVALUACIONES ORALES" title={`Exámenes orales · ${level||'nivel actual'}`} rows={oralRows} loading={state.loading} error={state.error} onReload={load} loadingText="Consultando evaluaciones orales…" />
-    <StudentEvaluationSectionF984N kicker="EVALUACIONES ESCRITAS" title={`Exámenes escritos · ${level||'nivel actual'}`} rows={writtenRows} loading={state.loading} error={state.error} onReload={load} loadingText="Consultando evaluaciones escritas…" />
+    <StudentEvaluationSectionF984N kicker="EVALUACIONES ORALES" title={`${f111StudentExamT('Exámenes orales')} · ${level||f111StudentExamT('nivel actual')}`} rows={oralRows} loading={state.loading} error={state.error} onReload={load} loadingText="Consultando evaluaciones orales…" />
+    <StudentEvaluationSectionF984N kicker="EVALUACIONES ESCRITAS" title={`${f111StudentExamT('Exámenes escritos')} · ${level||f111StudentExamT('nivel actual')}`} rows={writtenRows} loading={state.loading} error={state.error} onReload={load} loadingText="Consultando evaluaciones escritas…" />
   </>;
 }
 
