@@ -319,7 +319,7 @@ function PlaneamientoUnidadCombobox({ options, query, selectedKey, onQueryChange
         onFocus={e => { setAbierto(true); if (selected) requestAnimationFrame(() => e.target.select()); }}
         onClick={e => { setAbierto(true); if (selected) e.currentTarget.select(); }}
         onChange={e => { onQueryChange(e.target.value); setAbierto(true); }}
-        placeholder="Escribí o seleccioná una unidad"
+        placeholder={window.AN_I18N?.t("Escribí o seleccioná una unidad") || "Escribí o seleccioná una unidad"}
         autoComplete="off"
         aria-expanded={abierto ? 'true' : 'false'}
         aria-controls="planeamiento-unidad-menu"
@@ -768,7 +768,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
             <div style={{ marginTop:5, fontSize:13, fontWeight:800, color:'var(--ink)', lineHeight:1.4, wordBreak:'break-word' }}>{audioSeleccionado.pista.nombre}</div>
             {audioEstado === 'loading' ? (
               <div style={{ marginTop:10, padding:'13px 14px', border:'1px dashed var(--line)', borderRadius:12, color:'var(--ink-3)', fontSize:12, textAlign:'center' }}>
-                Cargando la pista seleccionada…
+                {catalogoT("Cargando la pista seleccionada…")}
               </div>
             ) : audioEstado === 'error' ? (
               <div style={{ marginTop:10, padding:'12px 14px', border:'1px solid color-mix(in srgb, var(--danger) 32%, white)', borderRadius:12, background:'color-mix(in srgb, var(--danger) 7%, white)', color:'var(--danger)', fontSize:12, lineHeight:1.45 }}>
@@ -783,7 +783,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
                 style={{ width:'100%', height:42, marginTop:10 }}
                 onError={() => { setAudioEstado('error'); setAudioError('El navegador no pudo reproducir esta pista.'); }}
               >
-                Tu navegador no puede reproducir este audio.
+                {catalogoT("Tu navegador no puede reproducir este audio.")}
               </audio>
             ) : null}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:8 }}>
