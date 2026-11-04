@@ -522,6 +522,15 @@ function nivelLabelDe(code) {
 }
 
 function tvF111Translate(value) { return window.AN_I18N?.t(value) || value; }
+function tvF111ScheduleText(value) {
+  if (window.AN_I18N?.getLang?.()!=='en') return value;
+  return String(value||'')
+    .replace(/Lunes y miércoles/g,'Monday and Wednesday')
+    .replace(/Martes y jueves/g,'Tuesday and Thursday')
+    .replace(/Lunes a jueves/g,'Monday through Thursday')
+    .replace(/Sábado/g,'Saturday')
+    .replace(/ de /g,' at ');
+}
 const TV_WEEK_DAYS_F82 = [
   { key:1, label:'LUNES' }, { key:2, label:'MARTES' }, { key:3, label:'MIÉRCOLES' },
   { key:4, label:'JUEVES' }, { key:5, label:'VIERNES' }, { key:6, label:'SÁBADO' },
@@ -597,9 +606,9 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession, lecciones=
                     const sessionHere=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA'&&String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'')===String(code)&&activeRiel===riel;
                     const isNextTile=active&&!!nextEvent&&day.key===nextWeekDay&&tvLessonRielF97(nextEvent)===riel;
                     const dark=isIcan?'#57217F':pal.dark, light=isIcan?'#EADCF5':pal.light;
-                    const daysLabel=isIcan?'Club I CAN':lab.dias;
+                    const daysLabel=isIcan?'Club I CAN':tvF111ScheduleText(lab.dias);
                     const hourLabel=isIcan?tvIcanHoraLabelF82(g):lab.hora;
-                    const title=isIcan?`Club I CAN · ${tvDiasLabel(g?.dias_ican||'')} de ${hourLabel} - ${lab.ciclo}`:lab.full;
+                    const title=isIcan?`Club I CAN · ${tvF111ScheduleText(tvDiasLabel(g?.dias_ican||''))} · ${hourLabel} - ${lab.ciclo}`:tvF111ScheduleText(lab.full);
                     return <button key={`${day.key}-${code}-${riel}`} type="button" onClick={()=>onSelect(code)} title={title} style={{
                       border:`1.5px solid ${sessionHere?'#C62828':active?dark:'var(--line)'}`, borderLeft:`4px solid ${sessionHere?'#C62828':dark}`,
                       background:sessionHere?'#FDECEA':active?light:'#FFF', borderRadius:10,
@@ -607,11 +616,11 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession, lecciones=
                       boxShadow:active?(isIcan?'0 0 0 3px rgba(87,33,127,.18), 0 8px 18px rgba(87,33,127,.12)':'0 0 0 2px rgba(7,59,122,.10)'):(isIcan?'0 4px 12px rgba(87,33,127,.12)':'0 2px 8px rgba(8,30,60,.05)'), position:'relative', minHeight:68,
                     }}>
                       <div style={{ fontSize:10.5, fontWeight:900, color:isIcan?dark:'var(--ink)', lineHeight:1.15 }}>{daysLabel}</div>
-                      <div style={{ fontSize:15, fontWeight:900, color:isIcan?dark:'var(--an-navy)', lineHeight:1.1, marginTop:3 }}>{hourLabel||'Horario pendiente'}</div>
+                      <div style={{ fontSize:15, fontWeight:900, color:isIcan?dark:'var(--an-navy)', lineHeight:1.1, marginTop:3 }}>{hourLabel||tvF111Translate('Horario pendiente')}</div>
                       <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                         <span style={{ fontSize:9.5, fontWeight:900, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{lab.ciclo}</span>
                         <span style={{ fontSize:8, fontWeight:900, color:dark, background:light, borderRadius:999, padding:'1px 5px' }}>{isIcan?'I CAN':n}</span>
-                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>SESIÓN ACTIVA</span> : isNextTile ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#16834A', borderRadius:999, padding:'2px 5px' }}>PRÓXIMA</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }}>SELECCIONADO</span>}
+                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>{tvF111Translate('SESIÓN ACTIVA')}</span> : isNextTile ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#16834A', borderRadius:999, padding:'2px 5px' }}>{tvF111Translate('PRÓXIMA')}</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }} >{tvF111Translate('SELECCIONADO')}</span>}
                       </div>
                     </button>;
                   })}
@@ -1545,9 +1554,9 @@ function GruposView({ onNavigate, activeSession, activeSessionReady=true, active
     {loading?<LoadingState title="Cargando grupo…" subtitle="Preparando estudiantes, cronograma, asistencia y notas oficiales"/>:<>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(210px,100%),1fr))',gap:14,marginBottom:20,width:'100%'}}>
         <MatriculadosActivosCardF98 total={totalMatriculados} activos={activos85} cerradas={cerradas} threshold={85}/>
-        <StatF77 label={tvF111Translate("Nivel actual")} value={tvNivelLabel(meta)} sub={tvGrupoLabel(meta).full} color={nivelPal(nivel).dark}/>
-        <StatF77 label={tvF111Translate("Promedio grupo")} value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`:'Sin notas oficiales registradas'} color="var(--an-navy)"/>
-        <StatF77 label={tvF111Translate("Asistencia")} value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?`${resumenGrupo?.cerradas||0} clases cerradas`:'Sin registro aún'} color="var(--warn)"/>
+        <StatF77 label={tvF111Translate("Nivel actual")} value={window.AN_I18N?.getLang?.()==='en'?window.AN_I18N.level(nivel):tvNivelLabel(meta)} sub={tvF111ScheduleText(tvGrupoLabel(meta).full)} color={nivelPal(nivel).dark}/>
+        <StatF77 label={tvF111Translate("Promedio grupo")} value={promedioGrupo!=null?promedioGrupo:'—'} sub={promedioGrupo!=null?(window.AN_I18N?.getLang?.()==='en'?`${resumenGrupo?.estudiantesConNotas||0} students with grades`:`${resumenGrupo?.estudiantesConNotas||0} estudiantes con notas`):tvF111Translate('Sin notas oficiales registradas')} color="var(--an-navy)"/>
+        <StatF77 label={tvF111Translate("Asistencia")} value={promedioAsistencia!=null?`${promedioAsistencia}%`:'—'} sub={promedioAsistencia!=null?(window.AN_I18N?.getLang?.()==='en'?`${resumenGrupo?.cerradas||0} closed lessons`:`${resumenGrupo?.cerradas||0} clases cerradas`):tvF111Translate('Sin registro aún')} color="var(--warn)"/>
       </div>
       <RosterAcademicoF79 roster={roster} contactos={contactos} lecciones={lecciones} asistenciaDetalle={asistenciaDetalle} asistenciaGrupo={asistenciaGrupo} comentariosDetalle={comentariosDetalle} notasGrupo={notasGrupo} meta={meta} programa={programa} docenteNombre={nombre} leccionHoy={leccionHoy} onSaved={recargarPanel} onNavigate={onNavigate} activeSession={activeSession} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     </>}
