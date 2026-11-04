@@ -75,7 +75,12 @@
       if(x.hours===null)b.hoursKnown=false;else b.hours+=x.hours;
     });
     const available=known.length>0;
-    const limits=kind==='INA'?maxINA:{course:null,ican:null};
+    // SIN INA requires >=70% attendance. Derive an absence cap only when the
+    // official scheduled course has an entire known 16- or 32-lesson rail.
+    // Do not use the count of completed rows as a fake full-course denominator.
+    const fullCourse=[16,32].includes(by.course.events)?by.course.events:null;
+    const maxNonINA=fullCourse===null?null:fullCourse-Math.ceil(fullCourse*.70);
+    const limits=kind==='INA'?maxINA:{course:kind==='SIN_INA'?maxNonINA:null,ican:null};
     let status=available?'other':'unknown';
     if(kind==='INA'&&available){
       const {course,ican}=by;
@@ -84,6 +89,14 @@
       else if(used.some((n,i)=>n===[limits.course,limits.ican][i]))status='at';
       else if(used.some((n,i)=>n>=[limits.course-1,limits.ican-1][i]))status='near';
       else if(course.absent+ican.absent===0)status='good';
+      else status='safe';
+    }
+    if(kind==='SIN_INA'&&available&&maxNonINA!==null){
+      const n=by.course.absent,max=maxNonINA;
+      if(n>max)status='over';
+      else if(n===max)status='at';
+      else if(n===max-1)status='near';
+      else if(n===0)status='good';
       else status='safe';
     }
     // No success banner if the entire course has no attendance records.
@@ -121,8 +134,8 @@
           hasIcan?h(Rail,{name:'I CAN',stats:s.by.ican,limit:null,kind:'ican'}):null),
       h('span',{className:'f111-al-state',style:{background:c.bg,color:c.fg,borderColor:c.border}},
         h('span',{className:'f111-al-status-dot',style:{background:c.dot},'aria-hidden':true}),
-        s.kind==='INA'?c.label:s.available?
-          s.kind==='SIN_INA'?'Asistencia: revisar requisito mínimo del 70%':'Programa sin regla de límite verificada':
+        (s.kind==='INA'||s.kind==='SIN_INA'&&s.limits.course!==null)?c.label:s.available?
+          s.kind==='SIN_INA'?'Asistencia mínima 70% · calendario por confirmar':'Programa sin regla de límite verificada':
           'Sin registro suficiente · no se asume ausencia'),
       !s.by.ican.events&&s.kind==='INA'?h('span',{className:'f111-al-smallnote'},'I CAN: aún sin registros en esta consulta'):null
     );
