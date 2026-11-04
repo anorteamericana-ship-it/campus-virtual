@@ -389,6 +389,7 @@ function extraerUnitDeNombreAudio(nombre) {
 }
 
 function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicial, modoDocente=false }) {
+  const catalogoT = value => modoDocente ? value : (window.AN_I18N?.t(value) || value);
   const [estado, setEstado] = React.useState('load');
   const [catalogo, setCatalogo] = React.useState(null);
   const [error, setError] = React.useState('');
@@ -539,13 +540,13 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
   }, [unidadPlanActiva]);
 
   if (estado === 'load') {
-    return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title="Cargando planeamiento, libros y audios del nivel…" /></div>;
+    return <div className="card" style={{ padding:18, marginBottom:18 }}><LoadingState title={catalogoT("Cargando planeamiento, libros y audios del nivel…")} /></div>;
   }
   if (estado === 'error' || estado === 'blocked') {
     return (
       <div className="card" style={{ padding:18, marginBottom:18, borderStyle:'dashed' }}>
-        <div style={{ fontWeight:800, color:'var(--ink)' }}>Biblioteca del nivel no disponible</div>
-        <div style={{ marginTop:5, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>{error}</div>
+        <div style={{ fontWeight:800, color:'var(--ink)' }}>{catalogoT("Biblioteca del nivel no disponible")}</div>
+        <div style={{ marginTop:5, fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5 }}>{catalogoT(error)}</div>
       </div>
     );
   }
@@ -616,7 +617,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     if (!value) return null;
     return (
       <div style={{ padding:'11px 12px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' }}>
-        <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>{label}</div>
+        <div style={{ fontSize:9.5, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--ink-3)' }}>{catalogoT(label)}</div>
         <div style={{ marginTop:5, fontSize:12.2, lineHeight:1.5, color:'var(--ink)' }}>{value}</div>
       </div>
     );
@@ -626,12 +627,12 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
     <div style={{ display:'grid', gap:18, marginBottom:20 }}>
       <section id="biblioteca-planeamiento" className="card" style={{ padding:'18px 20px', scrollMarginTop:20, borderLeft:'4px solid var(--an-navy)' }}>
         <div>
-          <BiblioKicker icon="calendar">Planeamiento académico</BiblioKicker>
-          <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>PLANEAMIENTO POR UNIDAD</div>
+          <BiblioKicker icon="calendar">{catalogoT("Planeamiento académico")}</BiblioKicker>
+          <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)' }}>{catalogoT("PLANEAMIENTO POR UNIDAD")}</div>
         </div>
 
         <div style={{ marginTop:14 }}>
-          <label htmlFor="planeamiento-unidad-combobox" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Buscar planeamiento por unidad</label>
+          <label htmlFor="planeamiento-unidad-combobox" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>{catalogoT("Buscar planeamiento por unidad")}</label>
           <PlaneamientoUnidadCombobox
             options={unidadPlanOptions}
             query={unidadPlanQuery}
@@ -639,13 +640,13 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
             onQueryChange={handleUnidadPlanQuery}
             onSelect={handleUnidadPlanSelect}
           />
-          <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>Seleccioná una unidad para desplegar únicamente sus lecciones y campos académicos.</div>
+          <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>{catalogoT("Seleccioná una unidad para desplegar únicamente sus lecciones y campos académicos.")}</div>
         </div>
 
         {!unidadesPlan.length ? (
-          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>No se encontró planeamiento para este nivel.</div>
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>{catalogoT("No se encontró planeamiento para este nivel.")}</div>
         ) : !unidadPlan ? (
-          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>Buscá y seleccioná una unidad para abrir el planeamiento.</div>
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:14, color:'var(--ink-3)', textAlign:'center' }}>{catalogoT("Buscá y seleccioná una unidad para abrir el planeamiento.")}</div>
         ) : (
           <div style={{ marginTop:16 }}>
             <div style={{ padding:'16px 18px', borderRadius:14, background:'color-mix(in srgb, var(--an-navy) 6%, white)', border:'1px solid color-mix(in srgb, var(--an-navy) 18%, white)', textAlign:'center' }}>
@@ -654,7 +655,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
                 <div style={{ marginTop:4, fontSize:14, fontWeight:700, color:'var(--ink)' }}>{unidadPlan.titulo_unidad}</div>
               ) : null}
               <div style={{ marginTop:7, fontSize:11.5, fontWeight:700, color:'var(--ink-3)' }}>
-                {(unidadPlan.lecciones || []).map(lec => lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`).join(' · ')}
+                {(unidadPlan.lecciones || []).map(lec => lec.leccion_label || `${catalogoT("LECCIÓN")} ${String(lec.leccion).padStart(2,'0')}`).join(' · ')}
               </div>
             </div>
 
@@ -665,12 +666,12 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
                   <article key={`${unidadPlan.key}-${lec.leccion}`} style={{ border:'1px solid var(--line)', borderRadius:16, background:'var(--surface)', overflow:'hidden' }}>
                     <div style={{ padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', borderBottom:abierta?'1px solid var(--line)':'none', background:'var(--surface-2)' }}>
                       <div>
-                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-granate)' }}>{lec.leccion_label || `LECCIÓN ${String(lec.leccion).padStart(2,'0')}`}</div>
+                        <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-granate)' }}>{lec.leccion_label || `${catalogoT("LECCIÓN")} ${String(lec.leccion).padStart(2,'0')}`}</div>
                         <div style={{ marginTop:3, fontFamily:'var(--f-serif)', fontSize:18, fontWeight:800, color:'var(--an-navy-ink)' }}>{lec.titulo_unidad || unidadPlan.titulo_unidad}</div>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                        <button type="button" className={abierta?'btn btn-ghost':'btn btn-primary'} onClick={()=>setLeccionPlanAbierta(abierta?null:lec.leccion)} style={{ fontSize:11, padding:'8px 12px' }}>{abierta?'Ocultar planeamiento':'Ver planeamiento'}</button>
-                        <span style={{ padding:'4px 10px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 9%, white)', color:'var(--an-navy)', fontSize:10, fontWeight:900, letterSpacing:'.07em' }}>{lec.tipo || 'TEÓRICA'}</span>
+                        <button type="button" className={abierta?'btn btn-ghost':'btn btn-primary'} onClick={()=>setLeccionPlanAbierta(abierta?null:lec.leccion)} style={{ fontSize:11, padding:'8px 12px' }}>{catalogoT(abierta?'Ocultar planeamiento':'Ver planeamiento')}</button>
+                        <span style={{ padding:'4px 10px', borderRadius:999, background:'color-mix(in srgb, var(--an-navy) 9%, white)', color:'var(--an-navy)', fontSize:10, fontWeight:900, letterSpacing:'.07em' }}>{catalogoT(lec.tipo || 'TEÓRICA')}</span>
                       </div>
                     </div>
 
@@ -679,7 +680,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
                         {campo('Asignatura', lec.asignatura)}
                         {lec.tema_objetivo_general ? (
                           <div style={{ padding:'12px 14px', border:'1px solid var(--line)', borderRadius:12, background:'#fff' }}>
-                            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Tema / Objetivo general</div>
+                            <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>{catalogoT("Tema / Objetivo general")}</div>
                             <div style={{ marginTop:6, fontSize:13, fontWeight:700, lineHeight:1.55, color:'var(--ink)' }}>{lec.tema_objetivo_general}</div>
                           </div>
                         ) : null}
@@ -703,10 +704,10 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       <section id="biblioteca-libros" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
           <div>
-            <BiblioKicker icon="book">Libros por modulo</BiblioKicker>
-            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>{modoDocente ? 'Libros, sílabus y planeamiento oficial' : 'Student Book y Workbook'}</div>
+            <BiblioKicker icon="book">{catalogoT("Libros por modulo")}</BiblioKicker>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>{modoDocente ? 'Libros, sílabus y planeamiento oficial' : catalogoT('Student Book y Workbook')}</div>
           </div>
-          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{libros.length} archivos oficiales</span>
+          <span style={{ fontSize:11, color:'var(--ink-3)' }}>{libros.length} {catalogoT('archivos oficiales')}</span>
         </div>
         <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))', gap:10 }}>
           {libros.map(item => (
@@ -714,7 +715,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
               <span style={{ fontSize:22 }}>{item.categoria==='teacher_book'?'📕':item.categoria==='silabus'?'📄':item.categoria==='planeamiento'?'🗂️':'📘'}</span>
               <span style={{ minWidth:0 }}>
                 <strong style={{ display:'block', fontSize:12.5, lineHeight:1.35 }}>{item.nombre}</strong>
-                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>{item.categoria_label || 'Abrir en Drive'}</span>
+                <span style={{ display:'block', marginTop:3, fontSize:10.5, color:'var(--ink-3)' }}>{item.categoria_label || catalogoT('Abrir en Drive')}</span>
               </span>
             </a>
           ))}
@@ -724,23 +725,23 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
       <section id="biblioteca-audios" className="card" style={{ padding:'18px 20px', scrollMarginTop:20 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:12, flexWrap:'wrap' }}>
           <div>
-            <BiblioKicker icon="materials">Audios por unidad</BiblioKicker>
-            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>Reproductor individual por unidad</div>
+            <BiblioKicker icon="materials">{catalogoT("Audios por unidad")}</BiblioKicker>
+            <div style={{ marginTop:5, fontFamily:'var(--f-serif)', fontSize:19, color:'var(--an-navy-ink)' }}>{catalogoT("Reproductor individual por unidad")}</div>
           </div>
           <span style={{ fontSize:11, color:'var(--ink-3)' }}>
-            {unidadPlan ? `${audioOptions.length} pistas · ${unidadPlan.label}` : `${catalogo?.totales?.audios || 0} pistas · ${unidadesAudio.length} unidades`}
+            {unidadPlan ? `${audioOptions.length} ${catalogoT('pistas')} · ${unidadPlan.label}` : `${catalogo?.totales?.audios || 0} ${catalogoT('pistas')} · ${unidadesAudio.length} ${catalogoT('unidades')}`}
           </span>
         </div>
 
         <div style={{ marginTop:14 }}>
-          <label htmlFor="audio-combobox-biblioteca" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>Buscar audio por unidad</label>
+          <label htmlFor="audio-combobox-biblioteca" style={{ display:'block', marginBottom:6, fontSize:10, fontWeight:900, letterSpacing:'.11em', textTransform:'uppercase', color:'var(--an-navy)' }}>{catalogoT("Buscar audio por unidad")}</label>
           <input
             id="audio-combobox-biblioteca"
             type="search"
             list="biblioteca-audio-opciones"
             value={audioQuery}
             onChange={e => handleAudioQuery(e.target.value)}
-            placeholder={unidadPlan ? 'Escribí o seleccioná una pista de esta unidad' : 'Primero seleccioná una unidad en Planeamiento'}
+            placeholder={catalogoT(unidadPlan ? 'Escribí o seleccioná una pista de esta unidad' : 'Primero seleccioná una unidad en Planeamiento')}
             autoComplete="off"
             disabled={!unidadPlan || !audioOptions.length}
             style={{ width:'100%', border:'1px solid var(--line)', borderRadius:12, padding:'11px 13px', background:(!unidadPlan || !audioOptions.length) ? 'var(--surface-2)' : '#fff', color:'var(--ink)', fontSize:13 }}
@@ -750,17 +751,17 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
           </datalist>
           <div style={{ marginTop:6, fontSize:11, color:'var(--ink-3)' }}>
             {unidadPlan
-              ? 'Solo se muestran las pistas que corresponden a la unidad seleccionada arriba.'
-              : 'Seleccioná una unidad en Planeamiento por unidad para ver únicamente sus audios.'}
+              ? catalogoT('Solo se muestran las pistas que corresponden a la unidad seleccionada arriba.')
+              : catalogoT('Seleccioná una unidad en Planeamiento por unidad para ver únicamente sus audios.')}
           </div>
         </div>
 
         {!unidadPlan ? (
-          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Seleccioná una unidad en Planeamiento por unidad para filtrar sus audios.</div>
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>{catalogoT("Seleccioná una unidad en Planeamiento por unidad para filtrar sus audios.")}</div>
         ) : !audioOptions.length ? (
-          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Esta unidad no tiene audios registrados en la biblioteca.</div>
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>{catalogoT("Esta unidad no tiene audios registrados en la biblioteca.")}</div>
         ) : !audioSeleccionado ? (
-          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>Seleccioná una pista de {unidadPlan.label} para abrir el reproductor.</div>
+          <div style={{ marginTop:14, padding:20, border:'1px dashed var(--line)', borderRadius:'var(--r-md)', color:'var(--ink-3)', textAlign:'center' }}>{catalogoT('Seleccioná una pista de')} {unidadPlan.label} {catalogoT('para abrir el reproductor.')}</div>
         ) : (
           <div style={{ marginTop:14, padding:'14px 15px', border:'1px solid var(--line)', borderRadius:14, background:'#fff' }}>
             <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--an-navy)' }}>{audioSeleccionado.unidad}</div>
@@ -771,7 +772,7 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
               </div>
             ) : audioEstado === 'error' ? (
               <div style={{ marginTop:10, padding:'12px 14px', border:'1px solid color-mix(in srgb, var(--danger) 32%, white)', borderRadius:12, background:'color-mix(in srgb, var(--danger) 7%, white)', color:'var(--danger)', fontSize:12, lineHeight:1.45 }}>
-                {audioError || 'No se pudo cargar la pista.'}
+                {catalogoT(audioError || 'No se pudo cargar la pista.')}
               </div>
             ) : audioSrc ? (
               <audio
@@ -786,8 +787,8 @@ function BibliotecaCatalogoNivel({ nivelCode, codigoUsr, codGrupo, leccionInicia
               </audio>
             ) : null}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:8 }}>
-              <a href={audioSeleccionado.pista.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--an-navy)' }}>Abrir pista en Drive</a>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11, padding:'6px 10px' }} onClick={() => { setAudioQuery(''); setAudioSeleccionado(null); }}>Limpiar selección</button>
+              <a href={audioSeleccionado.pista.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--an-navy)' }}>{catalogoT("Abrir pista en Drive")}</a>
+              <button type="button" className="btn btn-ghost" style={{ fontSize:11, padding:'6px 10px' }} onClick={() => { setAudioQuery(''); setAudioSeleccionado(null); }}>{catalogoT("Limpiar selección")}</button>
             </div>
           </div>
         )}
