@@ -189,8 +189,8 @@
 /* Retrace the decorative ribbon on every new pointer/focus interaction.
    It does not intercept links, camera controls or academic operations. */
 @keyframes academy-a-interactive-retrace{
-  0%{clip-path:inset(0 100% 0 0);opacity:.05}
-  100%{clip-path:inset(0 0 0 0);opacity:1}
+  0%{clip-path:inset(0 100% 0 0)}
+  100%{clip-path:inset(0 0 0 0)}
 }
 .academy-id-header:is(:hover,:focus-within) .academy-id-mark .academy-a__swoosh{
   animation:academy-a-interactive-retrace 1.1s ease-in-out 1 both;
