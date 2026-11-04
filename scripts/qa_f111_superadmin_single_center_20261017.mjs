@@ -12,7 +12,7 @@ assert.equal(appSourceF111.split(academicNewRoute).length-1,1,'F111 EN entry rou
 assert.equal(appSourceF111.split(academicNewStorage).length-1,1,'F111 EN route is not persisted academically');
 // Preserve the October exact D1 rollback check after subtracting only the new
 // student component cache keys. These are assets, not changes to exam behavior.
-const changedDashboard="'src/student_dashboard.jsx?v=F111ATTLIMIT20261103A'";
+const changedDashboard="'src/student_dashboard.jsx?v=F111HERO20261103B'";
 const originalDashboard="'src/student_dashboard.jsx?v=F1110826DOCT20261020'";
 const changedTabs="'src/student_experience.jsx?v=F111STUDENTTABSEN20261103'";
 const originalTabs="'src/student_experience.jsx?v=F98.4N'";
@@ -103,6 +103,9 @@ const approvedAssetDiffs=[
  ['src/att77_widgets.jsx?v=F111ATTLIMIT20261103A','src/att77_widgets.jsx?v=F98.4Z6CS21A77'],
  ['src/att77_view_detail.jsx?v=F111ATTLIMIT20261103A','src/att77_view_detail.jsx?v=F98.4Z6CS21A77'],
  ['&att=F111ATTLIMIT20261103A',''],
+ ['styles/academy_identity_card.css?v=F111HERO20261103B','styles/academy_identity_card.css?v=F111UI1'],
+ ['src/i18n_pilot_f111.js?v=F111HERO20261103B','src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103'],
+ ['&hero=F111HERO20261103B',''],
 ];
 let mainHtml=mainHtmlRaw;
 for (const [next,previous] of approvedAssetDiffs){
