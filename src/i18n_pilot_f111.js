@@ -14,6 +14,7 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    "Si tenés problemas de acceso, carga, exámenes o visualización, escribí directamente al soporte técnico por WhatsApp.": "If you have trouble accessing the Campus, loading content, taking exams or viewing pages, contact technical support directly through WhatsApp.",
     "Escrito": "Written",
     "Existe": "There Is",
     "Existen": "There Are",
