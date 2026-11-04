@@ -360,7 +360,7 @@ function PendienteItem({ pendiente, accion, accionable, onClick }) {
       <span style={{
         fontFamily: 'var(--f-mono)', fontSize: 12, fontWeight: 700,
         color: 'var(--ink)', flexShrink: 0,
-      }}>Lec {String(pendiente.leccion).padStart(2, '0')}</span>
+      }}>{vdF111MenuT('Lec')} {String(pendiente.leccion).padStart(2, '0')}</span>
       <span style={{
         fontSize: 11, color: 'var(--ink-3)',
         fontFamily: 'var(--f-mono)', flex: '1 1 auto', minWidth: 0,
@@ -382,7 +382,7 @@ function PendienteItem({ pendiente, accion, accionable, onClick }) {
         color: accionable ? 'var(--an-granate)' : 'var(--ink-3)',
         display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
       }}>
-        {accion}
+        {vdF111MenuT(accion)}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="9 6 15 12 9 18" />
