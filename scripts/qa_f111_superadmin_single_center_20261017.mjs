@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const base='ffd25fc9253e295d0412cf799e51631f37ee6431';
-const appSourceF111=fs.readFileSync('src/app.jsx','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','');
+const appSourceF111=fs.readFileSync('src/app.jsx','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','').replaceAll('&calendar=F111STUDENTCALEN20261104A','');
 const academicNewRoute="  const [active, setActive] = useState(() => {\n    // F111: each academic entry starts in the real profile. Never restore the\n    // last saved academic tab; navigation remains free after the profile opens.\n    if (role === 'student') return 'dashboard'; // Native Student My Profile\n    if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76\n    // Preserve the operational state of admin/superadmin (outside bilingual pilot).\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
 const academicOldRoute="  const [active, setActive] = useState(() => {\n    // F96.5 UX: el estudiante SIEMPRE inicia en Mi Campus.\n    // No se hereda la última pantalla porque mañana entran usuarios nuevos y\n    // la primera impresión debe ser clara, estable y orientada al cumplimiento INA.\n    if (role === 'student') return 'dashboard';\n\n    // Admin/docente sí conservan su última pantalla porque trabajan operación diaria.\n    const roleKey = 'an_active_' + (role || 'unknown');\n    const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';\n    return saved === 'portal_estudiante' ? 'dashboard' : saved;\n  });\n";
 const academicNewStorage="  useEffect(() => {\n    // Academic navigation is intentionally not remembered across entries.\n    if (role === 'student' || role === 'teacher') return;\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
@@ -92,7 +92,7 @@ for(const path of protectedPaths){
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
 }
-const mainHtmlRaw=fs.readFileSync('campus.html','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','');
+const mainHtmlRaw=fs.readFileSync('campus.html','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','').replaceAll('&deep=F111STUDENTDEEPTABS20261104A','').replaceAll('&calendar=F111STUDENTCALEN20261104A','');
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','').replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
 // Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
