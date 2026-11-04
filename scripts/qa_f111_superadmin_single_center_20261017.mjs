@@ -86,14 +86,14 @@ for(const path of protectedPaths){
    const studentHidden="        ...(false && mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []), // F111 student demo: hidden, teacher/admin unaffected.";
    const studentOriginal="        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),";
    assert.equal(withExistingMenu.split(studentHidden).length-1,1,'student demo hides only I CAN menu');
-   const normalized=withExistingMenu.replace(studentHidden,studentOriginal);
+   const normalized=old.includes(studentHidden)?withExistingMenu:withExistingMenu.replace(studentHidden,studentOriginal);
    assert.equal(normalized,old,'Sidebar histórico preservado except student-only navigation item');
  }else{
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
 }
-const mainHtmlRaw=fs.readFileSync('campus.html','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','');
-const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
+const mainHtmlRaw=fs.readFileSync('campus.html','utf8').replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&fb=F111STUDENTFEEDBACK20261104A','');
+const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024}).replaceAll('&demo=F111STUDENTDEMO20261104','').replaceAll('&rl=F111ROSTER20261104CLEAN','').replaceAll('&rl=F111ROSTER20261104','');
 // Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.

@@ -12,6 +12,7 @@ const course=read('src/student_experience.jsx');
 const dashboard=read('src/student_dashboard.jsx');
 const content=read('src/student_content_access_cs21a125.jsx');
 const summary=read('src/student_academic_summary_dom_cs21a113.js');
+const summaryCss=read('styles/student_academic_summary_cs21a113.css');
 const html=read('campus.html');
 const app=read('src/app.jsx');
 assert(menu.includes('F111_HIDE_UNREADY_STUDENT_MODULES ? []'), 'I CAN student navigation hidden');
@@ -26,6 +27,15 @@ assert(content.includes('studentContentT("Lección")'), 'translated lesson tiles
 assert(menu.includes('studentAcademicT(eyebrow)')&&menu.includes('studentAcademicT(title)'), 'general schedule and study plan titles translated');
 assert(summary.includes('st113(title)')&&summary.includes('st113("Expediente académico consolidado")'), 'academic summary translated');
 assert(summary.includes('esc(r?.comentario)'), 'authentic teacher feedback untouched');
+assert(summary.includes("lessonFeedbackSection(courseFeedbackRows,32,'L')"), 'lesson comments placed below 32 attendance tiles');
+assert(summary.includes("lessonFeedbackSection(icanFeedbackRows,16,'I')"), 'I CAN session comments only in I CAN attendance panel');
+assert(summary.includes("panel('Club I CAN'"), 'I CAN attendance matrix remains visible in academic summary');
+assert(!summary.includes("d.isINA?'ican':''"), 'no button navigates to unfinished standalone I CAN screen');
+assert(summary.includes("esc(r?.comentario)"), 'teacher comments escaped, never translated or modified');
+assert(summaryCss.includes('.as113-lesson-comments-grid')&&summaryCss.includes('@media(max-width:620px)'), 'lesson feedback responsive');
+assert(html.includes('fb=F111STUDENTFEEDBACK20261104A'), 'student UI cache-bust applied');
+assert(lang.includes('"Comentarios por lección": "Feedback by Lesson"'), 'new feedback labels translated');
+
 for(const asset of [html,app,guard,menu])assert(asset.includes('F111STUDENTDEMO20261104'),'missing cache refresh marker');
 const state=new Map([['an_usuario',JSON.stringify({rol:'student'})],['an_login_recent_at','demo-student']]);
 const sessionStorage={getItem:k=>state.get(k)??null,setItem:(k,v)=>state.set(k,String(v)),removeItem:k=>state.delete(k)};
@@ -39,7 +49,9 @@ for(const [es,en] of [
  ['Contenido académico autorizado','Authorized Academic Content'],
  ['Plan de Estudio','Study Plan'],
  ['Planeamiento por lección','Lesson Plan'],
- ['Lección','Lesson']
+ ['Lección','Lesson'],
+ ['Comentarios por lección','Feedback by Lesson'],
+ ['Comentarios por sesión I CAN','I CAN Session Feedback']
 ]) assert.equal(window.AN_I18N.t(es),en,'English translation: '+es);
 assert.equal(window.AN_I18N.setLang('es'),true);
 assert.equal(window.AN_I18N.getLang(),'es','ES remains selectable');
