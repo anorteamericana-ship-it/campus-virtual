@@ -809,6 +809,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   const rol = sesion?.rol || 'student';
   const esTeacher = rol === 'teacher';
   const esStudentBiblio = rol === 'student';
+  const materialesT = value => esStudentBiblio ? (window.AN_I18N?.t(value) || value) : value;
   const codigoBiblio = esStudentBiblio ? (sesion?.codigo || sesion?.cedula || '') : '';
   const accBiblioState = window.useStudentAccess(codigoBiblio, '');
   const accBiblio = accBiblioState.access;
@@ -838,18 +839,18 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   ];
   const irCronograma = () => { if (onNavigate) onNavigate('cronograma_grupo'); };
 
-  if (loading) return <LoadingState title={esTeacher ? "Cargando Biblioteca del Programa…" : "Cargando la biblioteca de tu curso…"} />;
+  if (loading) return <LoadingState title={materialesT(esTeacher ? "Cargando Biblioteca del Programa…" : "Cargando la biblioteca de tu curso…")} />;
   if (error || !grupoInfo || !grupo) {
     const msg = error === 'autoriz'
       ? 'No pudimos cargar tu biblioteca. Verificá tu sesión o contactá a la administración.'
       : (esTeacher ? 'No pudimos cargar la Biblioteca del Programa. Intentá de nuevo o contactá a la administración.' : 'No pudimos cargar la biblioteca de tu curso. Intentá de nuevo o contactá a la administración.');
-    return <div><PageHeader title={esTeacher ? <>Biblioteca del Programa</> : <>Biblioteca del curso</>} /><ErrorState message={msg} onRetry={reload} /></div>;
+    return <div><PageHeader title={esTeacher ? <>Biblioteca del Programa</> : <>{materialesT('Biblioteca del curso')}</>} /><ErrorState message={materialesT(msg)} onRetry={reload} /></div>;
   }
 
   if (esStudentBiblio && accBiblio && accBiblio.determinado) {
     if (accBiblio.flags.accountOnly) return <BibliotecaBloqueo variante="mora" mensaje={accBiblio.mensaje} onNavigate={onNavigate} />;
     if (!accBiblio.flags.canBiblioteca) {
-      return <BibliotecaBloqueo variante="cuota" mensaje="La biblioteca se habilitará con la primera cuota del nivel." nivelNombre={grupoInfo.nivel || ''} onNavigate={onNavigate} />;
+      return <BibliotecaBloqueo variante="cuota" mensaje={materialesT('La biblioteca se habilitará con la primera cuota del nivel.')} nivelNombre={grupoInfo.nivel || ''} onNavigate={onNavigate} />;
     }
   }
 
@@ -869,7 +870,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
   return (
     <div>
       <PageHeader
-        title={esTeacher ? <>Biblioteca del Programa · <em>{nivelNombre}</em></> : <>Biblioteca del curso · <em>{nivelNombre}</em></>}
+        title={esTeacher ? <>Biblioteca del Programa · <em>{nivelNombre}</em></> : <>{materialesT('Biblioteca del curso')} · <em>{materialesT(nivelNombre)}</em></>}
         sub={esTeacher ? 'Seleccioná cualquiera de los cuatro niveles. El planeamiento, libros, sílabus, audios y documentos se actualizan sin salir de esta pantalla.' : undefined}
         right={selectorNivel}
       />
@@ -885,7 +886,7 @@ function MaterialesView({ initialLesson = null, onNavigate } = {}) {
       />
 
       <div style={{ marginTop:18, display:'flex', justifyContent:'center' }}>
-        <button className="btn btn-ghost" onClick={irCronograma}>{esTeacher ? "← Volver al Cronograma Inglés Conversacional" : "← Volver al Cronograma académico"}</button>
+        <button className="btn btn-ghost" onClick={irCronograma}>{esTeacher ? "← Volver al Cronograma Inglés Conversacional" : "← " + materialesT("Volver al Cronograma académico")}</button>
       </div>
     </div>
   );
@@ -1704,6 +1705,7 @@ function WelcomeBanner({ onClose }) {
 // condicional. (Bug "Rendered more hooks" ya hizo crashear MaterialesView
 // antes — no repetir el patrón.)
 // ─────────────────────────────────────────────────────────────────────────
+const studentInfoT = text => window.AN_I18N?.t(text) || text;
 function InfoProgramaView() {
   const [docs, setDocs]       = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -1742,10 +1744,10 @@ function InfoProgramaView() {
   // ── render ─────────────────────────────────────────────────────────────
   const header = (
     <PageHeader
-      kicker="Documentos institucionales"
-      title="Información del Programa"
-      sub="Reglamentos, guías y video de bienvenida — material institucional para todos los estudiantes"
-      right={<Chip tone="navy">Info general</Chip>}
+      kicker={studentInfoT('Documentos institucionales')}
+      title={studentInfoT('Información del Programa')}
+      sub={studentInfoT('Reglamentos, guías y video de bienvenida — material institucional para todos los estudiantes')}
+      right={<Chip tone="navy">{studentInfoT('Info general')}</Chip>}
     />
   );
 
@@ -1753,7 +1755,7 @@ function InfoProgramaView() {
     return (
       <div>
         {header}
-        <LoadingState title="Cargando documentos del programa…" />
+        <LoadingState title={studentInfoT('Cargando documentos del programa…')} />
       </div>
     );
   }
@@ -1762,7 +1764,7 @@ function InfoProgramaView() {
     return (
       <div>
         {header}
-        <ErrorState message={error} onRetry={cargar} />
+        <ErrorState message={studentInfoT(error)} onRetry={cargar} />
       </div>
     );
   }
@@ -1772,7 +1774,7 @@ function InfoProgramaView() {
       <div>
         {header}
         <div style={{ padding:'40px 20px', textAlign:'center', color:'var(--ink-2)', background:'white', border:'1px solid var(--line)', borderRadius:'var(--r-lg)' }}>
-          No hay documentos disponibles en este momento.
+          {studentInfoT('No hay documentos disponibles en este momento.')}
         </div>
       </div>
     );
@@ -1792,9 +1794,9 @@ function InfoProgramaView() {
       {typeof window.ContactoAdmin === 'function' && (
         <div className="card" style={{ marginTop:14, padding:'14px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ flex:1, minWidth:220, fontSize:13, color:'var(--ink-2)' }}>
-            <strong style={{ color:'var(--ink)' }}>¿Dudas sobre el reglamento o el proceso académico?</strong>
+            <strong style={{ color:'var(--ink)' }}>{studentInfoT('¿Dudas sobre el reglamento o el proceso académico?')}</strong>
           </div>
-          <window.ContactoAdmin tipo="academico" hideWhenPending />
+          <window.ContactoAdmin tipo="academico" label={studentInfoT('Contactar al área académica')} hideWhenPending />
         </div>
       )}
     </div>
@@ -1813,15 +1815,15 @@ function RevisadoSesionBtn() {
   return (
     <div className="card" style={{ marginTop:18, padding:'16px 18px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', borderStyle:'dashed' }}>
       <div style={{ flex:1, minWidth:220 }}>
-        <div style={{ fontWeight:600, fontSize:14, color:'var(--ink)' }}>Confirmación de lectura</div>
+        <div style={{ fontWeight:600, fontSize:14, color:'var(--ink)' }}>{studentInfoT('Confirmación de lectura')}</div>
         <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2, lineHeight:1.5 }}>
-          Esta acción no sustituye el registro oficial; queda guardada solo en esta sesión.
+          {studentInfoT('Esta acción no sustituye el registro oficial; queda guardada solo en esta sesión.')}
         </div>
       </div>
       {ok ? (
-        <span style={{ display:'inline-flex', alignItems:'center', gap:6, color:'var(--ok)', fontWeight:600, fontSize:13 }}>✓ Revisado en esta sesión</span>
+        <span style={{ display:'inline-flex', alignItems:'center', gap:6, color:'var(--ok)', fontWeight:600, fontSize:13 }}>✓ {studentInfoT('Revisado en esta sesión')}</span>
       ) : (
-        <button className="btn btn-primary" onClick={marcar}>Ya lo revisé en esta sesión</button>
+        <button className="btn btn-primary" onClick={marcar}>{studentInfoT('Ya lo revisé en esta sesión')}</button>
       )}
     </div>
   );
@@ -1853,7 +1855,7 @@ function InfoProgramaCard({ doc }) {
         </div>
         <div style={{ flex:1, minWidth:200 }}>
           <div style={{ fontSize:11, fontFamily:'var(--font-mono, monospace)', color:'var(--ink-2)', letterSpacing:'0.04em' }}>
-            {doc.codigo ? `${doc.codigo} · ` : ''}{esVideo ? 'Video institucional' : 'Documento PDF'}
+            {doc.codigo ? `${doc.codigo} · ` : ''}{studentInfoT(esVideo ? 'Video institucional' : 'Documento PDF')}
           </div>
           <div style={{ fontWeight:700, fontSize:16, color:'var(--an-navy)', marginTop:2 }}>
             {doc.seccion}
@@ -1870,7 +1872,7 @@ function InfoProgramaCard({ doc }) {
             className="btn btn-primary"
             style={{ fontSize:13, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}
           >
-            Abrir <Icon name="arrow" size={14} />
+            {studentInfoT('Abrir')} <Icon name="arrow" size={14} />
           </a>
         )}
       </div>
