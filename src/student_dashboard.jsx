@@ -1752,14 +1752,9 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
   const [oculto, setOculto] = React.useState(() => {
     try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
   });
-  // First visit stays in Spanish. After a local "reviewed" confirmation,
-  // the NEXT mounting of this block may use the selected interface language.
-  // This is a device preference, never an official reading certificate.
-  const [reviewedBeforeEntry] = React.useState(() => {
-    try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
-  });
-  const textForRequired = label => reviewedBeforeEntry && window.AN_I18N?.getLang() === 'en'
-    ? window.AN_I18N.t(label) : label;
+  // F111: Mandatory onboarding UI follows EN/ES from the first entry.
+  // Document contents and local review/hide state remain unchanged.
+  const textForRequired = label => studentDashT(label);
   const [signedBusy, setSignedBusy] = React.useState(false);
   const [signedError, setSignedError] = React.useState('');
 
@@ -1900,7 +1895,7 @@ function ResumenAcademico({ nivelReal, programa }) {
   const syl = (typeof SYLLABUS_BY_LEVEL !== 'undefined' && sylKey) ? (SYLLABUS_BY_LEVEL[sylKey] || {}) : {};
   // Fallbacks NEUTROS — nunca quemar Básico I / Interchange Intro.
   const objetivo  = syl.objective || studentDashT('El objetivo de tu nivel aparecerá cuando tu matrícula esté procesada.');
-  const libro     = nivelReal ? (NIVEL_LIBRO[nivelReal] || syl.book || 'Libro del curso') : 'Libro del curso';
+  const libro     = nivelReal ? (NIVEL_LIBRO[nivelReal] || syl.book || studentDashT('Libro del curso')) : studentDashT('Libro del curso');
   const cefr      = syl.cefr || '';
   const duracion  = syl.totalHours ? `${syl.totalHours} h` : '—';
   const plataforma= syl.platform || 'Zoom';
