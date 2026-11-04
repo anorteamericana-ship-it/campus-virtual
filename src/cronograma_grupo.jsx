@@ -2125,7 +2125,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
             {stats.cerradas + stats.hoy}
           </span>
           <span style={{ fontSize:14, color:'var(--ink-3)', marginLeft:6 }}>
-            {nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas'}
+            {cgStudentUiT(nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas')}
           </span>
         </div>
         <div style={{ fontSize:12, color:'var(--ink-2)' }}>
@@ -2137,12 +2137,12 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
               </strong>
               &nbsp;·&nbsp;{fmtLargo(stats.proxima.fecha)}
               <span style={{ color:'var(--ink-3)' }}>
-                &nbsp;({diasEntre(stats.proxima.fecha) === 0 ? 'hoy' :
-                       diasEntre(stats.proxima.fecha) === 1 ? 'mañana' :
-                       `en ${diasEntre(stats.proxima.fecha)} días`})
+                &nbsp;({diasEntre(stats.proxima.fecha) === 0 ? cgStudentUiT('hoy') :
+                       diasEntre(stats.proxima.fecha) === 1 ? cgStudentUiT('mañana') :
+                       cgStudentEnglish() ? `in ${diasEntre(stats.proxima.fecha)} days` : `en ${diasEntre(stats.proxima.fecha)} días`})
               </span>
             </>
-          ) : <span style={{ color:'var(--ink-3)' }}>Curso finalizado</span>}
+          ) : <span style={{ color:'var(--ink-3)' }}>{cgStudentUiT('Curso finalizado')}</span>}
         </div>
       </div>
 
@@ -2153,7 +2153,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
           {unicas.map(l => (
             <div key={l.leccion}
                  onClick={() => onClickSeg(l)}
-                 title={`${etiquetaEvaluacionCG(l.tipo, l.leccion, true) || `Lección ${l.leccion}`} · ${fmtDDMMM(l.fecha)} · ${l.estado}`}
+                 title={`${etiquetaEvaluacionCG(l.tipo, l.leccion, true) || `${cgStudentUiT('Lección')} ${l.leccion}`} · ${fmtDDMMM(l.fecha)} · ${cgStudentUiT(l.estado)}`}
                  style={{
                    flex:1, height:'100%', borderRadius:2,
                    background: colorProgreso(l.estado, l.tipo, nivel),
@@ -2330,7 +2330,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
         )}
       </div>
       {isFeriado ? (
-        <div style={{ fontSize:9.5, color:pal.fg, fontWeight:700, lineHeight:1.1 }}>Fer.</div>
+        <div style={{ fontSize:9.5, color:pal.fg, fontWeight:700, lineHeight:1.1 }}>{cgStudentUiT('Fer.')}</div>
       ) : agenda ? (
         <div style={{ fontSize:9.2, color:pal.fg, opacity:0.92, fontWeight:800, lineHeight:1.1, whiteSpace:'nowrap' }}>
           {cgHoraLabel(lec)}
@@ -2425,7 +2425,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
       <div className="card" style={{ padding: agendaDocente ? 10 : 16, overflow:'hidden', position:'relative' }}>
         <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:nivelColor }} />
         <div style={{ marginTop:4 }}>
-          <div style={labelStyle}>Nivel activo</div>
+          <div style={labelStyle}>{cgStudentUiT('Nivel activo')}</div>
           <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
             <span style={{
               fontFamily:'var(--f-mono)', fontSize: agendaDocente ? 18 : 22, fontWeight:700, color:nivelColor,
@@ -2433,7 +2433,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
             <span style={{
               fontFamily:'var(--f-serif)', fontWeight:500, fontSize: agendaDocente ? 13 : 15,
               color:'var(--ink)', letterSpacing:'-0.015em',
-            }}>{NIVEL_LABEL_CG[nivel]}</span>
+            }}>{cgStudentUiT(NIVEL_LABEL_CG[nivel])}</span>
             {bloqueado && (
               <span style={{
                 marginLeft:'auto', padding:'2px 8px', fontSize:10, fontWeight:700,
@@ -2446,7 +2446,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
                   <rect x="3" y="11" width="18" height="11" rx="2"/>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                BLOQUEADO
+                {cgStudentUiT('BLOQUEADO')}
               </span>
             )}
           </div>
@@ -2455,9 +2455,9 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
           display:'grid', gridTemplateColumns:'repeat(3, 1fr)',
           gap:6, marginTop: agendaDocente ? 8 : 12, textAlign:'center',
         }}>
-          <MiniStat n={stats.cerradas + stats.hoy} l="dadas" c="#2E7D32" />
-          <MiniStat n={stats.feriados}             l="feriados" c="#C67100" />
-          <MiniStat n={stats.calculadas}           l="por venir" c="#1565C0" />
+          <MiniStat n={stats.cerradas + stats.hoy} l={cgStudentUiT('dadas')} c="#2E7D32" />
+          <MiniStat n={stats.feriados}             l={cgStudentUiT('feriados')} c="#C67100" />
+          <MiniStat n={stats.calculadas}           l={cgStudentUiT('por venir')} c="#1565C0" />
         </div>
       </div>
 
@@ -2489,7 +2489,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
         <div className="card" style={{ padding:'24px 18px', textAlign:'center' }}>
           <div style={{ fontSize:30, marginBottom:6, opacity:0.4 }}>📅</div>
           <div style={{ fontSize:12, color:'var(--ink-3)' }}>
-            Seleccioná una lección del calendario para ver el detalle.
+            {cgStudentUiT('Seleccioná una lección del calendario para ver el detalle.')}
           </div>
         </div>
       )}
@@ -2522,7 +2522,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
           <div>
             <div style={{ ...labelStyle, marginBottom:4 }}>
-              {isFeriado ? 'Feriado' : selLec.leccion ? `${etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || `Lección ${String(selLec.leccion).padStart(2,'0')}`} · ${idLeccion(nivel, selLec.leccion)}` : 'Sin lección asignada'}
+              {isFeriado ? cgStudentUiT('Feriado') : selLec.leccion ? `${cgStudentUiT(etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || `${cgStudentUiT('Lección')} ${String(selLec.leccion).padStart(2,'0')}`)} · ${idLeccion(nivel, selLec.leccion)}` : cgStudentUiT('Sin lección asignada')}
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontSize: rol === 'teacher' ? 18 : 20, fontWeight:500,
@@ -2531,9 +2531,9 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               {fmtLargo(selLec.fecha)}
             </div>
             <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3 }}>
-              {selLec.dia}
-              {selLec.turno && <> · {selLec.turno}</>}
-              {dias === 0 ? '' : dias === 1 ? ' · mañana' : dias > 1 ? ` · en ${dias} días` : ` · hace ${-dias} días`}
+              {cgStudentUiT(selLec.dia)}
+              {selLec.turno && <> · {cgStudentUiT(selLec.turno)}</>}
+              {dias === 0 ? '' : dias === 1 ? ' · '+cgStudentUiT('mañana') : dias > 1 ? (cgStudentEnglish()?` · in ${dias} days`:` · en ${dias} días`) : (cgStudentEnglish()?` · ${-dias} days ago`:` · hace ${-dias} días`)}
             </div>
           </div>
           <button onClick={onCerrar} title="Cerrar"
@@ -2556,7 +2556,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
           fontSize:11, fontWeight:700, letterSpacing:'0.04em',
           borderRadius:'var(--r-pill)',
         }}>
-          {estadoLabel}
+          {cgStudentUiT(estadoLabel)}
         </div>
         {!isFeriado && selLec.tipo !== 'CLASE' && !bloqueado && (() => {
           const tipoExtraLabel = etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || TIPO_LABEL_LARGO[selLec.tipo] || '';
@@ -2567,7 +2567,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               fontSize:11, fontWeight:700, letterSpacing:'0.04em',
               borderRadius:'var(--r-pill)',
             }}>
-              {tipoExtraLabel}
+              {cgStudentUiT(tipoExtraLabel)}
             </div>
           ) : null;
         })()}
@@ -2782,7 +2782,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                 color:'var(--ink)', lineHeight:1.25, letterSpacing:'-0.015em',
                 marginTop:2,
               }}>
-                {detalle.titulo || 'Sin título registrado'}
+                {detalle.titulo || cgStudentUiT('Sin título registrado')}
               </div>
             </div>
 
@@ -2815,13 +2815,13 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
 
             {/* Objetivo */}
             {detalle.objetivo && (
-              <Bloque titulo="Objetivo" texto={detalle.objetivo} />
+              <Bloque titulo={cgStudentUiT('Objetivo')} texto={detalle.objetivo} />
             )}
 
             {/* Temas */}
             {detalle.speaking      && <Bloque titulo="Speaking"      texto={detalle.speaking} compact />}
             {detalle.grammar       && <Bloque titulo="Grammar"       texto={detalle.grammar} compact />}
-            {detalle.pronunciacion && <Bloque titulo="Pronunciación" texto={detalle.pronunciacion} compact />}
+            {detalle.pronunciacion && <Bloque titulo={cgStudentUiT('Pronunciación')} texto={detalle.pronunciacion} compact />}
             {detalle.writing       && <Bloque titulo="Writing"       texto={detalle.writing} compact />}
 
             {/* STUDENT-ACCESS-CALENDAR-001: en CALENDAR_ONLY (matrícula pagada
@@ -2923,7 +2923,7 @@ function Bloque({ titulo, texto, compact }) {
       <div style={{
         fontSize:9, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase',
         color:'var(--ink-3)', marginBottom:3,
-      }}>{titulo}</div>
+      }}>{cgStudentUiT(titulo)}</div>
       <div style={{
         fontSize: compact ? 11.5 : 12.4,
         color:'var(--ink-2)', lineHeight:1.38,
@@ -2982,16 +2982,16 @@ function AccionesClaseEstudiante({ selLec, detalle, nivel, codigoUsr, grupoUsr, 
         </a>
       ) : estadoTexto ? (
         <div style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:11.5, color:'var(--ink-3)', textAlign:'center', lineHeight:1.45 }}>
-          {estadoTexto}
+          {cgStudentUiT(estadoTexto)}
         </div>
       ) : null}
 
       {onNavigate && selLec?.leccion && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          <button type="button" onClick={() => irBiblioteca('libros')} style={studentActionButtonStyleCG('#073B7A')}>📘 Libros y workbook</button>
-          <button type="button" onClick={() => irBiblioteca('audios')} style={studentActionButtonStyleCG('#6B4BA1')}>🎧 Audios por unidad</button>
-          <button type="button" onClick={() => irBiblioteca('recursos')} style={studentActionButtonStyleCG('#2E7D32')}>📚 Recursos adicionales</button>
-          <button type="button" onClick={() => irBiblioteca('leccion')} style={studentActionButtonStyleCG('#8B1A10')}>▶ Biblioteca de la lección</button>
+          <button type="button" onClick={() => irBiblioteca('libros')} style={studentActionButtonStyleCG('#073B7A')}>📘 {cgStudentUiT('Libros y workbook')}</button>
+          <button type="button" onClick={() => irBiblioteca('audios')} style={studentActionButtonStyleCG('#6B4BA1')}>🎧 {cgStudentUiT('Audios por unidad')}</button>
+          <button type="button" onClick={() => irBiblioteca('recursos')} style={studentActionButtonStyleCG('#2E7D32')}>📚 {cgStudentUiT('Recursos adicionales')}</button>
+          <button type="button" onClick={() => irBiblioteca('leccion')} style={studentActionButtonStyleCG('#8B1A10')}>▶ {cgStudentUiT('Biblioteca de la lección')}</button>
         </div>
       )}
     </div>
@@ -3065,7 +3065,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
           animation:'an-spin .8s linear infinite',
           display:'inline-block',
         }} />
-        Verificando material…
+        {cgStudentUiT('Verificando material…')}
       </div>
     );
   }
@@ -3080,16 +3080,16 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
           target="_blank" rel="noopener noreferrer"
           style={btnPDFActivo}>
           <IconoPDF />
-          Ver planeamiento PDF
+          {cgStudentUiT('Ver planeamiento PDF')}
         </a>
       );
     }
     return (
       <button type="button" disabled
-        title="No se pudo verificar el planeamiento. Reintentá más tarde."
+        title={cgStudentUiT('No se pudo verificar el planeamiento. Reintentá más tarde.')}
         style={btnPDFDisabled}>
         <IconoPDF />
-        Planeamiento no disponible
+        {cgStudentUiT('Planeamiento no disponible')}
       </button>
     );
   }
@@ -3102,7 +3102,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         title={motivo}
         style={btnPDFDisabled}>
         <IconoCandado />
-        Material disponible al rematricularte
+        {cgStudentUiT('Material disponible al rematricularte')}
       </button>
     );
   }
@@ -3115,7 +3115,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
       return (
         <button type="button" disabled style={btnPDFDisabled}>
           <IconoPDF />
-          Planeamiento no disponible
+          {cgStudentUiT('Planeamiento no disponible')}
         </button>
       );
     }
@@ -3127,12 +3127,12 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         style={btnPDFActivo}
       >
         <IconoPDF />
-        Ver planeamiento PDF
+        {cgStudentUiT('Ver planeamiento PDF')}
         <span style={{
           marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
           background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
           letterSpacing:'0.08em', textTransform:'uppercase',
-        }}>Estudiante</span>
+        }}>{cgStudentUiT('Estudiante')}</span>
       </a>
     );
   }
@@ -3145,13 +3145,13 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         onClick={() => setAbierto(true)}
         style={{ ...btnPDFActivo, border:'none', cursor:'pointer', fontFamily:'inherit' }}>
         <IconoPDF />
-        Ver planeamiento PDF
+        {cgStudentUiT('Ver planeamiento PDF')}
         {mat.tipo_pdf === 'estudiante' && (
           <span style={{
             marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
             background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
             letterSpacing:'0.08em', textTransform:'uppercase',
-          }}>Estudiante</span>
+          }}>{cgStudentUiT('Estudiante')}</span>
         )}
         {mat.tipo_pdf === 'profe' && (
           <span style={{
@@ -3443,7 +3443,7 @@ function Leyenda({ nivel = 'B1' }) {
             width:14, height:14, borderRadius:4,
             background:it.bg, border:`1.5px solid ${it.accent}`,
           }} />
-          {it.l}
+          {cgStudentUiT(it.l)}
         </span>
       ))}
     </div>
