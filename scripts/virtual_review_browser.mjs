@@ -9,7 +9,11 @@ fs.mkdirSync(shotsDir, { recursive: true });
 
 const scenarios = [
   { role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 } },
-  { role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
+  // Use stable route IDs; the visible label changes with EN/ES.
+  { role: 'student', route: 'libros_audios_estudiante', lang: 'en', navId: 'libros_audios_estudiante', expectedLabel: 'Books & Audio', viewport: { width: 1440, height: 900 } },
+  { role: 'student', route: 'libros_audios_estudiante', lang: 'es', navId: 'libros_audios_estudiante', expectedLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
+  { role: 'student', route: 'resumen_academico', lang: 'en', navId: 'resumen_academico', expectedLabel: 'Academic Summary', viewport: { width: 1440, height: 900 } },
+  { role: 'student', route: 'calendario_academico', lang: 'en', navId: 'calendario_academico', expectedLabel: 'Academic Calendar', viewport: { width: 390, height: 844 } },
   { role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 } },
   { role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 } },
@@ -84,17 +88,18 @@ const add = (severity, scenario, title, evidence) => findings.push({
 
 const browser = await chromium.launch({ headless: true });
 for (const scenario of scenarios) {
-  const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
+  const key = `${scenario.role}-${scenario.route}-${scenario.lang || 'default'}-${scenario.viewport.width}`;
   const context = await browser.newContext({ viewport: scenario.viewport, ignoreHTTPSErrors: true });
   const session = syntheticSession(scenario.role);
-  await context.addInitScript(({ session, route }) => {
+  await context.addInitScript(({ session, route, lang }) => {
     sessionStorage.setItem('an_usuario', JSON.stringify(session));
     sessionStorage.removeItem('an_just_logged_in');
+    if (lang === 'es' || lang === 'en') sessionStorage.setItem('an_i18n_pilot_lang', lang);
     const uiRole = session.rol === 'superadmin' || session.rol === 'admin' ? 'admin' : session.rol;
     localStorage.setItem('an_role', uiRole);
     localStorage.setItem(`an_active_${uiRole}`, route);
     localStorage.setItem('an_active', route);
-  }, { session, route: scenario.role === 'student' ? 'dashboard' : scenario.route });
+  }, { session, route: scenario.role === 'student' ? 'dashboard' : scenario.route, lang: scenario.lang });
 
   const page = await context.newPage();
   const consoleErrors = [];
@@ -137,13 +142,18 @@ for (const scenario of scenarios) {
     await page.goto(`${baseURL}/campus.html`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(4500);
 
-    if (scenario.clickLabel) {
-      const locator = page.getByText(scenario.clickLabel, { exact: true }).last();
-      if (await locator.count()) {
-        await locator.click({ timeout: 5000 });
+    if (scenario.navId) {
+      const button = page.locator('button[data-nav-id="' + scenario.navId + '"]').first();
+      if (await button.count() && await button.isVisible()) {
+        const label = (await button.locator('.sb-label').innerText()).trim();
+        if (label !== scenario.expectedLabel) {
+          add('P2', key, 'Etiqueta del menú distinta al idioma esperado',
+            'route=' + scenario.navId + ', expected=' + scenario.expectedLabel + ', observed=' + label);
+        }
+        await button.click({ timeout: 5000 });
         await page.waitForTimeout(3000);
       } else {
-        add('P2', key, 'No se encontró el control de navegación esperado', scenario.clickLabel);
+        add('P2', key, 'Ruta estudiantil no encontrada en menú', scenario.navId);
       }
     }
 
@@ -155,11 +165,23 @@ for (const scenario of scenarios) {
       hash: location.hash,
       path: location.pathname,
       appMounted: Boolean(document.querySelector('.app')),
+      language: window.AN_I18N?.getLang?.() || null,
+      icanStandaloneMenuCount: document.querySelectorAll('aside[data-role="student"] button[data-nav-id="ican"]').length,
+      tasksStandaloneMenuCount: document.querySelectorAll('aside[data-role="student"] button[data-nav-id="tareas"], aside[data-role="student"] button[data-nav-id="tareas_estudiante"]').length,
     }));
 
     if (/login\.html$/i.test(state.path)) add('P1', key, 'La sesión sintética fue rechazada', state.path);
     if (state.bodyText.length < 20 || state.rootHtml.length < 20) add('P1', key, 'Pantalla vacía o aplicación no montada', `body=${state.bodyText.length}, root=${state.rootHtml.length}`);
     if (!state.appMounted) add('P1', key, 'El árbol principal del Campus no fue montado', `path=${state.path}, hash=${state.hash}`);
+    if (scenario.role === 'student') {
+      if (state.language !== (scenario.lang || 'en')) {
+        add('P1', key, 'Idioma seleccionado no se conserva', 'expected=' + (scenario.lang || 'en') + ', observed=' + state.language);
+      }
+      if (state.icanStandaloneMenuCount > 0 || state.tasksStandaloneMenuCount > 0) {
+        add('P2', key, 'Menú demo muestra módulo independiente sin terminar',
+          'I CAN=' + state.icanStandaloneMenuCount + ', Tasks=' + state.tasksStandaloneMenuCount);
+      }
+    }
     if (state.overflow > 24) add('P2', key, 'Desbordamiento horizontal', `${state.overflow}px fuera del viewport.`);
     if (!state.labels.length) add('P3', key, 'Pantalla sin etiqueta de diagnóstico', `path=${state.path}, hash=${state.hash}`);
     for (const error of pageErrors) add('P1', key, 'Excepción no controlada en navegador', error);
