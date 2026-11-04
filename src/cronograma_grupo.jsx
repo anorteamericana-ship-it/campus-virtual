@@ -22,11 +22,15 @@ const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
 const cgStudentUiT = value => window.AN_I18N?.role?.() === 'student' ? (window.AN_I18N.t(value) || value) : value;
 const cgStudentEnglish = () => window.AN_I18N?.role?.() === 'student' && window.AN_I18N?.getLang?.() === 'en';
 // "Mañana" means Morning in shifts but Tomorrow in the date context.
-const cgStudentShiftT = value => cgStudentEnglish() && value === 'Mañana' ? 'Morning' : cgStudentUiT(value);
+const cgStudentShiftT = value => {
+  if (!cgStudentEnglish()) return value;
+  const shifts = {'mañana':'Morning','tarde':'Afternoon','noche':'Evening'};
+  return shifts[String(value||'').trim().toLocaleLowerCase('es')] || cgStudentUiT(value);
+};
 const cgStudentScheduleT = value => {
   if (!cgStudentEnglish() || typeof value !== 'string') return value;
-  const days = {Lunes:'Monday',Martes:'Tuesday',Miércoles:'Wednesday',Jueves:'Thursday',Viernes:'Friday',Sábado:'Saturday',Domingo:'Sunday'};
-  return value.replace(/Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo/g, day => days[day])
+  const days = {lunes:'Monday',martes:'Tuesday',miércoles:'Wednesday',jueves:'Thursday',viernes:'Friday',sábado:'Saturday',domingo:'Sunday'};
+  return value.replace(/lunes|martes|miércoles|jueves|viernes|sábado|domingo/gi, day => days[day.toLocaleLowerCase('es')])
     .replace(/\s+y\s+/g,' and ').replace(/\s+de\s+/g,' from ').replace(/\s+a\s+/g,' to ');
 };
 const cgStudentMonthShort = index => cgStudentEnglish()
@@ -2307,7 +2311,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
   const evalLabel = etiquetaEvaluacionCG(lec.tipo, lec.leccion);
   const badgeText = lec.tipo === 'ICAN'
     ? 'ICAN'
-    : (evalLabel ? evalLabel.replace(/\s+/g, ' ') : `${String((lec.nivel || nivel || '')).toUpperCase()} L${String(lec.leccion).padStart(2,'0')}`);
+    : (evalLabel ? cgStudentUiT(evalLabel.replace(/\s+/g, ' ')) : `${String((lec.nivel || nivel || '')).toUpperCase()} L${String(lec.leccion).padStart(2,'0')}`);
   const isFeriado = lec.estado === 'FERIADO';
   return (
     <div
