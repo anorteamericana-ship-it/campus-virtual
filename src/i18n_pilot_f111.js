@@ -14,6 +14,16 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    "Sin notas oficiales registradas": "No official grades recorded",
+    "Sin registro aún": "No records yet",
+    "No hay grupos activos asignados en este momento.": "No active groups are assigned right now.",
+    "Edad": "Age",
+    "años": "years",
+    "Tel": "Phone",
+    "Sin dato": "Not provided",
+    "Sin asistencia registrada": "No attendance recorded",
+    "Nota completa": "Final Grade",
+    "Ver detalle": "View Details",
     "Gestión académica": "Academic Management",
     "Mis": "My",
     "Grupos": "Groups",
