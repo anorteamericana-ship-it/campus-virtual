@@ -11,7 +11,7 @@ const i18n=fs.readFileSync('src/i18n_pilot_f111.js','utf8');
 const requiredAssets=[
  'src/teacher_cs21a_docs_viewer.jsx?v=F111REALDOCSEN20261103',
  'src/teacher_profile_cs21a76.jsx?v=F111PROFILECANONICAL20261020&docs=F111DIEGOEXPEDIENTE20261103&i18n=F111ENPROFILE20261103&record=F111ADDRECORD20261103',
- 'src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103',
+ 'src/i18n_pilot_f111.js?v=F111HERO20261103B',
 ];
 for(const file of requiredAssets)assert(html.includes(file),'exact production resource '+file);
 assert(html.indexOf('src/i18n_pilot_f111.js')<html.indexOf('src/teacher_cs21a_docs_viewer.jsx'),'language runtime loaded before real teacher viewer');
