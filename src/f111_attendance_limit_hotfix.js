@@ -15,6 +15,12 @@
     unknown:{label:'Datos de asistencia por verificar',bg:'#F2F5FA',border:'#D6DEEB',fg:'#586B85',dot:'#98A6BA'},
     other:{label:'Seguimiento según asistencia mínima',bg:'#F2F5FA',border:'#D6DEEB',fg:'#475F7C',dot:'#7C92B0'}
   };
+  const inEnglish=()=>root.AN_I18N?.getLang?.()==='en';
+  const englishStatus={
+    good:'Perfect attendance',safe:'Within limit',near:'Approaching limit',
+    at:'At limit · follow-up',over:'Over limit · urgent follow-up',
+    unknown:'Attendance not yet verified',other:'Attendance follow-up'
+  };
   const str=x=>String(x==null?'':x).trim();
   const upper=x=>str(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[\s-]+/g,'_');
   const programKind=raw=>{
@@ -114,10 +120,10 @@
         'aria-hidden':true});
     }):[];
     return h('span',{className:'f111-al-rail'},
-      h('b',null,name),
+      h('b',null,inEnglish()&&name==='Lecciones'?'Lessons':name),
       limit!=null?h('span',{className:'f111-al-dots'},...dots):null,
-      h('small',null,stats.absent+' '+(limit!=null?'de '+limit:'faltas registradas')+
-        (limit!=null?' · ':' · ')+readableHours(stats)),
+      h('small',null,stats.absent+' '+(limit!=null?(inEnglish()?'of ':'de ')+limit:(inEnglish()?'recorded absences':'faltas registradas'))+
+        ' · '+readableHours(stats)),
       limit!=null&&stats.absent>limit?h('strong',{className:'f111-al-overcount'},'+'+(stats.absent-limit)):null);
   }
   function Panel({rows,program,compact=false,label='Estado de asistencia'}){
@@ -125,19 +131,19 @@
     return h('span',{className:'f111-al '+(compact?'f111-al-compact ':'')+'f111-al-'+s.status,
       'data-f111-att-limit':s.kind,role:'group','aria-label':label},
       h('span',{className:'f111-al-top'},
-        h('span',{className:'f111-al-title'},'AUSENCIAS · SEGUIMIENTO'),
-        h('span',{className:'f111-al-program'},s.kind==='INA'?'INA · 4 lecciones / 2 I CAN':
-          s.kind==='SIN_INA'?'SIN INA · asistencia mínima 70%':'Programa por confirmar')),
+        h('span',{className:'f111-al-title'},inEnglish()?'ABSENCES · STATUS':'AUSENCIAS · SEGUIMIENTO'),
+        h('span',{className:'f111-al-program'},s.kind==='INA'?(inEnglish()?'INA · 4 lessons / 2 I CAN':'INA · 4 lecciones / 2 I CAN'):
+          s.kind==='SIN_INA'?(inEnglish()?'NON-INA · min. 70% attendance':'SIN INA · asistencia mínima 70%'):(inEnglish()?'Program not confirmed':'Programa por confirmar'))),
       h('span',{className:'f111-al-rails'},
         h(Rail,{name:'Lecciones',stats:s.by.course,limit:s.limits.course,kind:'course'}),
         s.kind==='INA'?h(Rail,{name:'I CAN',stats:s.by.ican,limit:s.limits.ican,kind:'ican'}):
           hasIcan?h(Rail,{name:'I CAN',stats:s.by.ican,limit:null,kind:'ican'}):null),
       h('span',{className:'f111-al-state',style:{background:c.bg,color:c.fg,borderColor:c.border}},
         h('span',{className:'f111-al-status-dot',style:{background:c.dot},'aria-hidden':true}),
-        (s.kind==='INA'||s.kind==='SIN_INA'&&s.limits.course!==null)?c.label:s.available?
-          s.kind==='SIN_INA'?'Asistencia mínima 70% · calendario por confirmar':'Programa sin regla de límite verificada':
-          'Sin registro suficiente · no se asume ausencia'),
-      !s.by.ican.events&&s.kind==='INA'?h('span',{className:'f111-al-smallnote'},'I CAN: aún sin registros en esta consulta'):null
+        (s.kind==='INA'||s.kind==='SIN_INA'&&s.limits.course!==null)?(inEnglish()?englishStatus[s.status]:c.label):s.available?
+          s.kind==='SIN_INA'?(inEnglish()?'Min. attendance 70% · schedule pending':'Asistencia mínima 70% · calendario por confirmar'):(inEnglish()?'No verified program threshold':'Programa sin regla de límite verificada'):
+          (inEnglish()?'Not enough records · absence not assumed':'Sin registro suficiente · no se asume ausencia')),
+      !s.by.ican.events&&s.kind==='INA'?h('span',{className:'f111-al-smallnote'},inEnglish()?'I CAN: no records in this view yet':'I CAN: aún sin registros en esta consulta'):null
     );
   }
   root.F111AttendanceLimit={VERSION,present,rail,duration,normalize,programKind,summarize,Panel};
