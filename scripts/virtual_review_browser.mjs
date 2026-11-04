@@ -143,6 +143,14 @@ for (const scenario of scenarios) {
     await page.waitForTimeout(4500);
 
     if (scenario.navId) {
+      // On mobile the sidebar is intentionally closed until the hamburger opens it.
+      if (scenario.viewport.width <= 640) {
+        const menuToggle = page.locator('.an-mobile-nav-toggle').first();
+        if (await menuToggle.count() && await menuToggle.isVisible()) {
+          await menuToggle.click({timeout: 5000});
+          await page.waitForTimeout(200);
+        }
+      }
       const button = page.locator('button[data-nav-id="' + scenario.navId + '"]').first();
       if (await button.count() && await button.isVisible()) {
         const label = (await button.locator('.sb-label').innerText()).trim();
