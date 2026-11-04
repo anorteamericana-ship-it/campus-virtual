@@ -1,5 +1,7 @@
 # F111 — Corte comprobable, 19 casillas pendientes y continuidad
 **Fecha de corte:** 03-nov-2026 (America/Costa_Rica), después de hotfix #717 y #718.
+**CORTE INA 0826 ACTUALIZADO (03-nov, 22:31+ CR):** [contingencia INA 0826, nueve criterios de alistamiento (65,9%), 18 archivos, matriz P0 y continuidad](F111_CONTINGENCIA_INA_0826_CORTE_20261103.md). **Este 65,9% NO modifica 16/35 F111.** Los enlaces privados de estudiantes permanecen exclusivamente en el índice de Drive `CONTROL 0826`.
+
 **Fuente única de seguimiento:** [issue F111 #499](https://github.com/anorteamericana-ship-it/campus-virtual/issues/499). **Documento de snapshot**, no autorización para ejecutar cambios de datos. Atribuir siempre fecha de evidencia a cada afirmación.
 **Regla principal:** no sumar porcentajes de distintas bases; `MERGED`, `CI PASS`, `Pages PASS`, `origen HTTP PASS`, `E2 sesión autenticada` y `E4 escritura aislada` son estados distintos. Nadie debe reinterpretar un PASS sintético como aceptación académica.
 
