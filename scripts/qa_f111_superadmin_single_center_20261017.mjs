@@ -111,8 +111,11 @@ const approvedAssetDiffs=[
 // Remove only the reviewed cache-busting query key before the exact byte comparison.
 let mainHtml=mainHtmlRaw.replaceAll('&rl=F111ROSTER20261104','');
 for (const [next,previous] of approvedAssetDiffs){
- assert.equal(mainHtml.split(next).length-1,1,'Unique expected F111 language/record asset: '+next);
- if (!mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
+ const occurrences=mainHtml.split(next).length-1;
+ // Some intermediate historic versions are absent when main already uses a later asset.
+ // Final exact baseline comparison below still rejects any unapproved HTML change.
+ assert(occurrences<=1,'Unexpected duplicate F111 asset: '+next);
+ if (occurrences===1 && !mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
 }
 assert.equal(mainHtml,mainBaseline,'D1: all superadmin/exam scripts untouched by the reviewed F111 asset version changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
