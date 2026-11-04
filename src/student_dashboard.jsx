@@ -856,7 +856,7 @@ function StudentDashboard({ toast, onNavigate }) {
         <ModEstadoCuenta pendientes={pendientes} niveles={niveles} esConape={esConape} conapeEstado={conapeEstado} onNavigate={go} />
         <ModCertificados niveles={niveles} onNavigate={go} />
         <ModRetro retroData={retroData} onNavigate={go} />
-        {esINA && <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />}
+        {false && esINA && <ModICAN esINA={esINA} icanData={icanData} onNavigate={go} />}{/* F111: hide non-ready I CAN tile for student demo; keep underlying records. */}
       </div>
 
       {/* 13. Elementos adicionales útiles: bloqueo parcial, verificación y ayuda. */}
