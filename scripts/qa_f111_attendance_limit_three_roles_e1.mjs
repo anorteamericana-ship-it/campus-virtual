@@ -32,7 +32,14 @@ assert.equal(sum(course(2).concat(ican(1))).by.ican.hours,2,'I CAN source durati
 assert.equal(sum(course(2,false)).by.course.hoursKnown,false,'unknown duration does not invent hours');
 assert.equal(sum(course(2).concat(course(2))).by.course.absent,2,'repeated lesson is not double-counted');
 assert.equal(sum([{riel:'curso',leccion:1,p:null},{riel:'curso',leccion:1,p:false}]).by.course.absent,1,'prefer actual A over missing');
-assert.equal(sum(course(5),'SIN_INA').status,'other','SIN INA cannot be labeled INA over-limit');
+assert.equal(sum(course(5),'SIN_INA').status,'other','partial SIN INA calendar cannot be labeled INA over-limit');
+const makeNonINA=(absences,scheduled)=>Array.from({length:scheduled},(_,i)=>({riel:'curso',leccion:i+1,p:i<absences?false:null}));
+assert.equal(sum(makeNonINA(3,16),'SIN_INA').limits.course,4,'16-session course allows at most 4 absences for 70% attendance');
+assert.equal(sum(makeNonINA(3,16),'SIN_INA').status,'near','SIN INA 3 of 4 amber warning');
+assert.equal(sum(makeNonINA(4,16),'SIN_INA').status,'at','SIN INA 4 of 4 at limit');
+assert.equal(sum(makeNonINA(5,16),'SIN_INA').status,'over','SIN INA 5 of 4 over limit');
+assert.equal(sum(makeNonINA(10,32),'SIN_INA').status,'over','SIN INA 32-session course allows 9 missed sessions');
+assert.equal(sum(makeNonINA(1,10),'SIN_INA').status,'other','unknown full lesson count cannot give fabricated limits');
 assert.equal(sum(course(5),'SIN_INA').limits.course,null,'no false 4-absence cap in non INA');
 assert.equal(sum(course(5),'').status,'other','unknown program must not be mistaken as INA');
 assert.equal(A.programKind('CON_INA'),'INA');
