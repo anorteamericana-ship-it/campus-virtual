@@ -18,6 +18,27 @@
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
+// F111 presentation-only localization for students; teacher/admin strings and data untouched.
+const cgStudentUiT = value => window.AN_I18N?.role?.() === 'student' ? (window.AN_I18N.t(value) || value) : value;
+const cgStudentEnglish = () => window.AN_I18N?.role?.() === 'student' && window.AN_I18N?.getLang?.() === 'en';
+// "Mañana" means Morning in shifts but Tomorrow in the date context.
+const cgStudentShiftT = value => {
+  if (!cgStudentEnglish()) return value;
+  const shifts = {'mañana':'Morning','tarde':'Afternoon','noche':'Evening'};
+  return shifts[String(value||'').trim().toLocaleLowerCase('es')] || cgStudentUiT(value);
+};
+const cgStudentScheduleT = value => {
+  if (!cgStudentEnglish() || typeof value !== 'string') return value;
+  const days = {lunes:'Monday',martes:'Tuesday',miércoles:'Wednesday',jueves:'Thursday',viernes:'Friday',sábado:'Saturday',domingo:'Sunday'};
+  return value.replace(/lunes|martes|miércoles|jueves|viernes|sábado|domingo/gi, day => days[day.toLocaleLowerCase('es')])
+    .replace(/\s+y\s+/g,' and ').replace(/\s+de\s+/g,' from ').replace(/\s+a\s+/g,' to ');
+};
+const cgStudentMonthShort = index => cgStudentEnglish()
+  ? new Date(2026,index,1).toLocaleDateString('en-US',{month:'short'})
+  : MES_CORTO[index];
+const cgStudentMonthFull = index => cgStudentEnglish()
+  ? new Date(2026,index,1).toLocaleDateString('en-US',{month:'long'})
+  : MESES_NOMBRES[index];
 const CG_GRUPOS_CACHE_AN = window.__AN_CAL_GRUPOS_CACHE || { at:0, data:null };
 window.__AN_CAL_GRUPOS_CACHE = CG_GRUPOS_CACHE_AN;
 
@@ -228,11 +249,11 @@ function parseISO(iso) { return iso ? new Date(iso + 'T00:00:00') : null; }
 function isoOf(d) { return d.toISOString().slice(0,10); }
 function fmtDDMMM(iso) {
   const d = parseISO(iso); if (!d) return '—';
-  return `${String(d.getDate()).padStart(2,'0')}/${MES_CORTO[d.getMonth()]}`;
+  return `${String(d.getDate()).padStart(2,'0')}/${cgStudentMonthShort(d.getMonth())}`;
 }
 function fmtLargo(iso) {
   const d = parseISO(iso); if (!d) return '—';
-  return `${String(d.getDate()).padStart(2,'0')}/${MES_CORTO[d.getMonth()]}/${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2,'0')}/${cgStudentMonthShort(d.getMonth())}/${d.getFullYear()}`;
 }
 function diasEntre(iso) {
   const d = parseISO(iso); if (!d) return null;
@@ -1014,7 +1035,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
           border:'2.5px solid var(--line)', borderTopColor:'var(--ink)',
           animation:'an-spin .8s linear infinite',
         }} />
-        Cargando calendario académico…
+        {cgStudentUiT('Cargando calendario académico…')}
       </div>
     );
   }
@@ -1023,9 +1044,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     return (
       <div data-screen-label="Cronograma de grupo" style={{ padding:24 }}>
         <div style={errorBoxStyle}>
-          <span>⚠ {errorGrupos || 'No hay grupos disponibles para mostrar.'}</span>
+          <span>⚠ {cgStudentUiT(errorGrupos || 'No hay grupos disponibles para mostrar.')}</span>
           <button onClick={cargarGrupos} className="btn btn-ghost"
-                  style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
+                  style={{ padding:'6px 12px', fontSize:12 }}>{cgStudentUiT('Reintentar')}</button>
         </div>
       </div>
     );
@@ -1051,7 +1072,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
             fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.025em',
             fontSize:32, lineHeight:1.05, margin:0, color:'var(--ink)',
           }}>
-            {rol === 'student' ? 'Mis lecciones' : rol === 'teacher' ? 'Agenda docente' : 'Cronograma de grupo'}
+            {rol === 'student' ? cgStudentUiT('Mis lecciones') : rol === 'teacher' ? 'Agenda docente' : 'Cronograma de grupo'}
           </h1>
           {!esStudent && (
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>
@@ -1094,7 +1115,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
                 fontWeight:800, fontSize:13,
                 color:'var(--ink)', minWidth:260,
               }} title={codGrupo}>
-                {grupoHorarioLabelCG(meta)}
+                {cgStudentScheduleT(grupoHorarioLabelCG(meta))}
               </div>
             </div>
           )}
@@ -1109,19 +1130,19 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
         )
       ) : studentAccountOnly ? (
         <CronoAccesoBloqueo
-          badge="Acceso limitado · mora" badgeColor="#B71C1C"
+          badge={cgStudentUiT('Acceso limitado · mora')} badgeColor="#B71C1C"
           icon={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}
-          titulo="Cronograma temporalmente limitado"
+          titulo={cgStudentUiT('Cronograma temporalmente limitado')}
           mensaje={acc.mensaje}
-          accionLabel="Ir a Estado de cuenta"
+          accionLabel={cgStudentUiT('Ir a Estado de cuenta')}
           onAccion={() => onNavigate && onNavigate('pagos')} />
       ) : studentSinCalendario ? (
         <CronoAccesoBloqueo
           badge={acc.label} badgeColor="#9A6A00"
           icon={<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>}
-          titulo="Tu cronograma todavía no está disponible"
+          titulo={cgStudentUiT('Tu cronograma todavía no está disponible')}
           mensaje={acc.mensaje}
-          accionLabel="Ver estado de inscripción"
+          accionLabel={cgStudentUiT('Ver estado de inscripción')}
           onAccion={() => onNavigate && onNavigate('dashboard')} />
       ) : (
       <React.Fragment>
@@ -1149,11 +1170,11 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
                 <span style={{ width:10, height:10, borderRadius:3, background:c,
                                flexShrink:0, opacity: active ? 1 : 0.5 }} />
                 <span style={{ fontFamily:'var(--f-mono)', fontWeight:700 }}>{n}</span>
-                <span style={{ opacity: active ? 1 : 0.7 }}>· {NIVEL_LABEL_CG[n]}</span>
+                <span style={{ opacity: active ? 1 : 0.7 }}>· {cgStudentUiT(NIVEL_LABEL_CG[n])}</span>
                 {locked && (
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                       style={{ marginLeft:2, color:'var(--ink-3)' }} aria-label="Bloqueado">
+                       style={{ marginLeft:2, color:'var(--ink-3)' }} aria-label={cgStudentUiT("Bloqueado")}>
                     <rect x="3" y="11" width="18" height="11" rx="2"/>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
@@ -1208,9 +1229,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
 
       {errorVista && (
         <div style={errorBoxStyle}>
-          <span>⚠ {errorVista}</span>
+          <span>⚠ {cgStudentUiT(errorVista)}</span>
           <button onClick={cargar} className="btn btn-ghost"
-                  style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
+                  style={{ padding:'6px 12px', fontSize:12 }}>{cgStudentUiT('Reintentar')}</button>
         </div>
       )}
 
@@ -1223,7 +1244,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
           borderRadius:'var(--r-md)', fontSize:13, color:'#6B4A00', lineHeight:1.5,
         }}>
           <span style={{ fontSize:18 }}>🗓️</span>
-          <span>{acc.mensaje}</span>
+          <span>{cgStudentUiT(acc.mensaje)}</span>
         </div>
       )}
 
@@ -1543,7 +1564,7 @@ function addDaysCG(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); re
 function weeksBetweenCG(a, b) { return Math.round((b - a) / (7 * 86400000)); }
 function fmtRangoSemana(lunes) {
   const dom = addDaysCG(lunes, 6);
-  const f = d => `${String(d.getDate()).padStart(2,'0')} ${MES_CORTO[d.getMonth()]}`;
+  const f = d => `${String(d.getDate()).padStart(2,'0')} ${cgStudentMonthShort(d.getMonth())}`;
   return `${f(lunes)} – ${f(dom)}`;
 }
 
@@ -1612,7 +1633,7 @@ function VistaTabsCrono({ vista, setVista }) {
             color: active ? 'var(--ink)' : 'var(--ink-3)',
             fontWeight: active ? 700 : 600, fontSize:13, cursor:'pointer',
             fontFamily:'inherit', transition:'background .15s',
-          }}>{t.label}</button>
+          }}>{cgStudentUiT(t.label)}</button>
         );
       })}
     </div>
@@ -1635,8 +1656,8 @@ function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
       }}>
         <span style={{ fontSize:16 }}>🚫</span>
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#B71C1C' }}>Feriado</div>
-          <div style={{ fontSize:11, color:'#B71C1C', opacity:0.8 }}>No hay clase este día.</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#B71C1C' }}>{cgStudentUiT('Feriado')}</div>
+          <div style={{ fontSize:11, color:'#B71C1C', opacity:0.8 }}>{cgStudentUiT('No hay clase este día.')}</div>
         </div>
       </div>
     );
@@ -1659,22 +1680,22 @@ function LeccionBloque({ lec, nivel, onSelect, selected, dense }) {
         }}>
           {(turno || hor) ? (
             <>
-              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {turno}</span>}
+              {turno && <span>{turno === 'Mañana' ? '☀' : turno === 'Tarde' ? '🌙' : '◷'} {cgStudentShiftT(turno)}</span>}
               {hor && <span style={{ color:'var(--ink-3)' }}>· {hor}</span>}
             </>
-          ) : <span style={{ color:'var(--ink-3)' }}>Horario por confirmar</span>}
+          ) : <span style={{ color:'var(--ink-3)' }}>{cgStudentUiT('Horario por confirmar')}</span>}
         </span>
         <span style={{
           padding:'2px 8px', borderRadius:'var(--r-pill)', background:meta.bg, color:meta.color,
           fontSize:10, fontWeight:800, letterSpacing:'0.04em', whiteSpace:'nowrap',
-        }}>{meta.label}</span>
+        }}>{cgStudentUiT(meta.label)}</span>
       </div>
       <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
         <span style={{ fontFamily:'var(--f-mono)', fontSize:14, fontWeight:700, color:'var(--ink)' }}>
-          Lección {String(lec.leccion).padStart(2,'0')}
+          {cgStudentUiT('Lección')} {String(lec.leccion).padStart(2,'0')}
         </span>
         {lec.tipo && lec.tipo !== 'CLASE' && (
-          <span style={{ fontSize:11, color:meta.color, fontWeight:600 }}>{TIPO_LABEL_LARGO[lec.tipo]}</span>
+          <span style={{ fontSize:11, color:meta.color, fontWeight:600 }}>{cgStudentUiT(TIPO_LABEL_LARGO[lec.tipo])}</span>
         )}
       </div>
     </button>
@@ -1696,8 +1717,8 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
     return (
       <div className="card" style={{ padding:'44px 24px', textAlign:'center' }}>
         <div style={{ fontSize:30, opacity:0.4, marginBottom:8 }}>🎓</div>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)' }}>Curso finalizado</div>
-        <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>No hay próximas clases programadas en este nivel.</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--ink)' }}>{cgStudentUiT('Curso finalizado')}</div>
+        <div style={{ fontSize:13, color:'var(--ink-3)', marginTop:6 }}>{cgStudentUiT('No hay próximas clases programadas en este nivel.')}</div>
       </div>
     );
   }
@@ -1705,10 +1726,10 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
   const lecsDia = lecsDeFecha(safeMapaLecciones, prox.fecha, prox);
   const doble   = lecsDia.length >= 2;
   const dias    = diasEntre(prox.fecha);
-  const cuando  = dias === 0 ? 'Hoy' : dias === 1 ? 'Mañana' : dias > 1 ? `En ${dias} días` : '—';
+  const cuando  = dias === 0 ? cgStudentUiT('Hoy') : dias === 1 ? cgStudentUiT('Mañana') : dias > 1 ? (cgStudentEnglish() ? `In ${dias} days` : `En ${dias} días`) : '—';
   const d       = parseISO(prox.fecha);
-  const diaSem  = d ? ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()] : '';
-  const programaLbl = meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
+  const diaSem  = d ? cgStudentUiT(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()]) : '';
+  const programaLbl = cgStudentUiT(meta.programa === 'INA' || meta.programa === 'CON_INA' ? 'Programa INA' : 'Programa propio');
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -1718,7 +1739,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
           {/* Kicker + cuando */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
             <div style={{ fontSize:11, fontWeight:800, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--ink-3)' }}>
-              Próxima clase
+              {cgStudentUiT('Próxima clase')}
             </div>
             <span style={{
               padding:'4px 12px', borderRadius:'var(--r-pill)',
@@ -1739,7 +1760,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
           {/* Bloque(s) de lección */}
           {doble && (
             <div style={{ fontSize:11, fontWeight:700, color:accent, letterSpacing:'0.04em', marginTop:14, marginBottom:6 }}>
-              Este día tiene 2 lecciones
+              {cgStudentUiT('Este día tiene 2 lecciones')}
             </div>
           )}
           <div style={{ display:'grid', gridTemplateColumns: doble ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr', gap:10, marginTop: doble ? 0 : 14 }}>
@@ -1755,7 +1776,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
           }}>
             <ProxMeta label="Grupo" value={codGrupo} mono />
             <ProxMeta label="Docente" value={meta.docente || '—'} />
-            <ProxMeta label="Días" value={meta.dias || '—'} />
+            <ProxMeta label="Días" value={cgStudentScheduleT(meta.dias || '—')} />
             <ProxMeta label="Modalidad" value={programaLbl} />
           </div>
 
@@ -1765,7 +1786,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
               background:'var(--an-navy, #0B1F3A)', color:'#fff', border:'none',
               borderRadius:'var(--r-md)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
             }}>
-              Ver detalle de la clase →
+              {cgStudentUiT('Ver detalle de la clase')} →
             </button>
           </div>
         </div>
@@ -1780,9 +1801,9 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
         }}>
           <span style={{ width:38, height:38, borderRadius:10, background:'#E65100', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:18 }}>⚡</span>
           <div>
-            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6B4A00' }}>Próximo examen</div>
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6B4A00' }}>{cgStudentUiT('Próximo examen')}</div>
             <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:1 }}>
-              {proxExamen.tipo === 'EVAL_ORAL' ? 'Examen Oral' : 'Examen Escrito'} · Lec {String(proxExamen.leccion).padStart(2,'0')}
+              {cgStudentUiT(proxExamen.tipo === 'EVAL_ORAL' ? 'Examen Oral' : 'Examen Escrito')} · Lec {String(proxExamen.leccion).padStart(2,'0')}
             </div>
             <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:1 }}>{fmtLargo(proxExamen.fecha)}</div>
           </div>
@@ -1794,7 +1815,7 @@ function VistaProxima({ lecciones, mapaLecciones, stats, nivel, meta, codGrupo, 
 function ProxMeta({ label, value, mono }) {
   return (
     <div style={{ minWidth:0 }}>
-      <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:3 }}>{label}</div>
+      <div style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:3 }}>{cgStudentUiT(label)}</div>
       <div style={{ fontSize:13, fontWeight:600, color:'var(--ink)', fontFamily: mono ? 'var(--f-mono)' : 'inherit', overflow:'hidden', textOverflow:'ellipsis' }}>{value}</div>
     </div>
   );
@@ -1833,25 +1854,25 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ fontFamily:'var(--f-sans)', fontWeight:600, fontSize:17, color:'var(--ink)' }}>
-              Semana del {fmtRangoSemana(lunes)}
+              {cgStudentUiT('Semana del')} {fmtRangoSemana(lunes)}
             </div>
             {esActual && (
-              <span style={{ padding:'2px 9px', borderRadius:'var(--r-pill)', background:'#FFF8E1', color:'#9A6A00', fontSize:10, fontWeight:800, letterSpacing:'0.06em' }}>ACTUAL</span>
+              <span style={{ padding:'2px 9px', borderRadius:'var(--r-pill)', background:'#FFF8E1', color:'#9A6A00', fontSize:10, fontWeight:800, letterSpacing:'0.06em' }}>{cgStudentUiT('ACTUAL')}</span>
             )}
           </div>
           <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:2 }}>{lunes.getFullYear()}</div>
         </div>
         <div style={{ display:'flex', gap:6 }}>
-          <button onClick={() => setOff(o => o - 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>← Anterior</button>
-          {!esActual && <button onClick={() => setOff(0)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>Hoy</button>}
-          <button onClick={() => setOff(o => o + 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>Siguiente →</button>
+          <button onClick={() => setOff(o => o - 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>← {cgStudentUiT('Anterior')}</button>
+          {!esActual && <button onClick={() => setOff(0)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>{cgStudentUiT('Hoy')}</button>}
+          <button onClick={() => setOff(o => o + 1)} className="btn btn-ghost" style={{ padding:'7px 12px', fontSize:12 }}>{cgStudentUiT('Siguiente')} →</button>
         </div>
       </div>
 
       {dias.length === 0 ? (
         <div style={{ padding:'40px 16px', textAlign:'center', color:'var(--ink-3)', fontSize:13 }}>
           <div style={{ fontSize:26, opacity:0.4, marginBottom:6 }}>🗓️</div>
-          No hay clases programadas esta semana.
+          {cgStudentUiT('No hay clases programadas esta semana.')}
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -1860,13 +1881,13 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
             return (
               <div key={isoOf(dd)} style={{ display:'grid', gridTemplateColumns:'92px 1fr', gap:14, alignItems:'start' }}>
                 <div style={{ paddingTop:4 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color: hoy ? '#9A6A00' : 'var(--ink-2)' }}>{nom}</div>
+                  <div style={{ fontSize:12, fontWeight:700, color: hoy ? '#9A6A00' : 'var(--ink-2)' }}>{cgStudentUiT(nom)}</div>
                   <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color: hoy ? '#9A6A00' : 'var(--ink)', lineHeight:1 }}>
                     {String(dd.getDate()).padStart(2,'0')}
                   </div>
-                  <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{MES_CORTO[dd.getMonth()]}</div>
+                  <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{cgStudentMonthShort(dd.getMonth())}</div>
                   {lecs.length >= 2 && (
-                    <div style={{ marginTop:4, fontSize:9.5, fontWeight:700, color:'var(--an-granate)' }}>2 lecciones</div>
+                    <div style={{ marginTop:4, fontSize:9.5, fontWeight:700, color:'var(--an-granate)' }}>{cgStudentUiT('2 lecciones')}</div>
                   )}
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns: lecs.length >= 2 ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap:10 }}>
@@ -1916,12 +1937,12 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
               border: esHoy ? '1px solid #F0DDA8' : '1px solid transparent',
             }}>
               <div style={{ textAlign:'center', paddingTop:2 }}>
-                <div style={{ fontSize:10, fontWeight:700, color: esHoy ? '#9A6A00' : 'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{diaSem}</div>
+                <div style={{ fontSize:10, fontWeight:700, color: esHoy ? '#9A6A00' : 'var(--ink-3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{cgStudentUiT(diaSem)}</div>
                 <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:600, color: esHoy ? '#9A6A00' : 'var(--ink)', lineHeight:1.05 }}>
                   {d ? String(d.getDate()).padStart(2,'0') : '—'}
                 </div>
-                <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase' }}>{d ? MES_CORTO[d.getMonth()] : ''}</div>
-                {doble && <div style={{ marginTop:3, fontSize:9, fontWeight:700, color:'var(--an-granate)' }}>2 lec.</div>}
+                <div style={{ fontSize:10, color:'var(--ink-3)', textTransform:'uppercase' }}>{d ? cgStudentMonthShort(d.getMonth()) : ''}</div>
+                {doble && <div style={{ marginTop:3, fontSize:9, fontWeight:700, color:'var(--an-granate)' }}>{cgStudentUiT('2 lec.')}</div>}
               </div>
               <div style={{ display:'grid', gridTemplateColumns: doble ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap:8 }}>
                 {lecs.map((lec, i) => (
@@ -1951,7 +1972,7 @@ function MesesVistaControl({ valor, setValor, esAlumno = false, fullRangeMonths 
           background: valor === o.n ? 'var(--an-navy)' : 'transparent',
           color: valor === o.n ? '#fff' : 'var(--ink-2)', fontSize:11, fontWeight:900,
           fontFamily:'inherit'
-        }}>{o.t}</button>
+        }}>{cgStudentUiT(o.t)}</button>
       ))}
     </div>
   );
@@ -2116,24 +2137,24 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
             {stats.cerradas + stats.hoy}
           </span>
           <span style={{ fontSize:14, color:'var(--ink-3)', marginLeft:6 }}>
-            {nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas'}
+            {cgStudentUiT(nivel === 'ICAN' ? 'de 16 sesiones I CAN realizadas' : 'de 32 lecciones dadas')}
           </span>
         </div>
         <div style={{ fontSize:12, color:'var(--ink-2)' }}>
           {stats.proxima ? (
             <>
-              Próxima:&nbsp;
+              {cgStudentUiT('Próxima:')}&nbsp;
               <strong style={{ color:'var(--an-navy)', fontFamily:'var(--f-mono)' }}>
                 Lec {String(stats.proxima.leccion).padStart(2,'0')}
               </strong>
               &nbsp;·&nbsp;{fmtLargo(stats.proxima.fecha)}
               <span style={{ color:'var(--ink-3)' }}>
-                &nbsp;({diasEntre(stats.proxima.fecha) === 0 ? 'hoy' :
-                       diasEntre(stats.proxima.fecha) === 1 ? 'mañana' :
-                       `en ${diasEntre(stats.proxima.fecha)} días`})
+                &nbsp;({diasEntre(stats.proxima.fecha) === 0 ? cgStudentUiT('hoy') :
+                       diasEntre(stats.proxima.fecha) === 1 ? cgStudentUiT('mañana') :
+                       cgStudentEnglish() ? `in ${diasEntre(stats.proxima.fecha)} days` : `en ${diasEntre(stats.proxima.fecha)} días`})
               </span>
             </>
-          ) : <span style={{ color:'var(--ink-3)' }}>Curso finalizado</span>}
+          ) : <span style={{ color:'var(--ink-3)' }}>{cgStudentUiT('Curso finalizado')}</span>}
         </div>
       </div>
 
@@ -2144,7 +2165,7 @@ function ProgressBar32({ lecciones, stats, loading, onClickSeg, selLec, nivel })
           {unicas.map(l => (
             <div key={l.leccion}
                  onClick={() => onClickSeg(l)}
-                 title={`${etiquetaEvaluacionCG(l.tipo, l.leccion, true) || `Lección ${l.leccion}`} · ${fmtDDMMM(l.fecha)} · ${l.estado}`}
+                 title={`${etiquetaEvaluacionCG(l.tipo, l.leccion, true) || `${cgStudentUiT('Lección')} ${l.leccion}`} · ${fmtDDMMM(l.fecha)} · ${cgStudentUiT(l.estado)}`}
                  style={{
                    flex:1, height:'100%', borderRadius:2,
                    background: colorProgreso(l.estado, l.tipo, nivel),
@@ -2185,17 +2206,17 @@ function Mes({ mes, mapaLecciones, selLec, nivel, agenda = false, compacto = fal
     <div style={{ marginBottom: agenda ? 0 : 26 }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:12 }}>
         <div style={{ fontFamily:'var(--f-serif)', fontSize:compacto ? 18 : 20, fontWeight:600, color:'var(--an-navy-ink)' }}>
-          {MESES_NOMBRES[month]} De {year}
+          {cgStudentMonthFull(month)} {cgStudentEnglish() ? '' : 'De '}{year}
         </div>
         {!agenda && (
           <div style={{ padding:'6px 12px', borderRadius:'999px', border:'1px solid var(--line)', background:'#fff', fontSize:11, fontWeight:800, color:'var(--ink-2)' }}>
-            Ver mes →
+            {cgStudentUiT('Ver mes')} →
           </div>
         )}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:4 }}>
         {diasHdr.map(d => (
-          <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:800, color:'var(--ink-3)', padding:'3px 0' }}>{d}</div>
+          <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:800, color:'var(--ink-3)', padding:'3px 0' }}>{cgStudentUiT(d)}</div>
         ))}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4 }}>
@@ -2290,7 +2311,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
   const evalLabel = etiquetaEvaluacionCG(lec.tipo, lec.leccion);
   const badgeText = lec.tipo === 'ICAN'
     ? 'ICAN'
-    : (evalLabel ? evalLabel.replace(/\s+/g, ' ') : `${String((lec.nivel || nivel || '')).toUpperCase()} L${String(lec.leccion).padStart(2,'0')}`);
+    : (evalLabel ? cgStudentUiT(evalLabel.replace(/\s+/g, ' ')) : `${String((lec.nivel || nivel || '')).toUpperCase()} L${String(lec.leccion).padStart(2,'0')}`);
   const isFeriado = lec.estado === 'FERIADO';
   return (
     <div
@@ -2321,7 +2342,7 @@ function BloqueLeccion({ lec, diaNum, selected, onClick, nivel, agenda = false, 
         )}
       </div>
       {isFeriado ? (
-        <div style={{ fontSize:9.5, color:pal.fg, fontWeight:700, lineHeight:1.1 }}>Fer.</div>
+        <div style={{ fontSize:9.5, color:pal.fg, fontWeight:700, lineHeight:1.1 }}>{cgStudentUiT('Fer.')}</div>
       ) : agenda ? (
         <div style={{ fontSize:9.2, color:pal.fg, opacity:0.92, fontWeight:800, lineHeight:1.1, whiteSpace:'nowrap' }}>
           {cgHoraLabel(lec)}
@@ -2416,7 +2437,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
       <div className="card" style={{ padding: agendaDocente ? 10 : 16, overflow:'hidden', position:'relative' }}>
         <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:nivelColor }} />
         <div style={{ marginTop:4 }}>
-          <div style={labelStyle}>Nivel activo</div>
+          <div style={labelStyle}>{cgStudentUiT('Nivel activo')}</div>
           <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
             <span style={{
               fontFamily:'var(--f-mono)', fontSize: agendaDocente ? 18 : 22, fontWeight:700, color:nivelColor,
@@ -2424,7 +2445,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
             <span style={{
               fontFamily:'var(--f-serif)', fontWeight:500, fontSize: agendaDocente ? 13 : 15,
               color:'var(--ink)', letterSpacing:'-0.015em',
-            }}>{NIVEL_LABEL_CG[nivel]}</span>
+            }}>{cgStudentUiT(NIVEL_LABEL_CG[nivel])}</span>
             {bloqueado && (
               <span style={{
                 marginLeft:'auto', padding:'2px 8px', fontSize:10, fontWeight:700,
@@ -2437,7 +2458,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
                   <rect x="3" y="11" width="18" height="11" rx="2"/>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                BLOQUEADO
+                {cgStudentUiT('BLOQUEADO')}
               </span>
             )}
           </div>
@@ -2446,9 +2467,9 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
           display:'grid', gridTemplateColumns:'repeat(3, 1fr)',
           gap:6, marginTop: agendaDocente ? 8 : 12, textAlign:'center',
         }}>
-          <MiniStat n={stats.cerradas + stats.hoy} l="dadas" c="#2E7D32" />
-          <MiniStat n={stats.feriados}             l="feriados" c="#C67100" />
-          <MiniStat n={stats.calculadas}           l="por venir" c="#1565C0" />
+          <MiniStat n={stats.cerradas + stats.hoy} l={cgStudentUiT('dadas')} c="#2E7D32" />
+          <MiniStat n={stats.feriados}             l={cgStudentUiT('feriados')} c="#C67100" />
+          <MiniStat n={stats.calculadas}           l={cgStudentUiT('por venir')} c="#1565C0" />
         </div>
       </div>
 
@@ -2480,7 +2501,7 @@ function PanelDetalle({ agendaDocente = false, selLec, detalle, cargando, nivelC
         <div className="card" style={{ padding:'24px 18px', textAlign:'center' }}>
           <div style={{ fontSize:30, marginBottom:6, opacity:0.4 }}>📅</div>
           <div style={{ fontSize:12, color:'var(--ink-3)' }}>
-            Seleccioná una lección del calendario para ver el detalle.
+            {cgStudentUiT('Seleccioná una lección del calendario para ver el detalle.')}
           </div>
         </div>
       )}
@@ -2513,7 +2534,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
           <div>
             <div style={{ ...labelStyle, marginBottom:4 }}>
-              {isFeriado ? 'Feriado' : selLec.leccion ? `${etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || `Lección ${String(selLec.leccion).padStart(2,'0')}`} · ${idLeccion(nivel, selLec.leccion)}` : 'Sin lección asignada'}
+              {isFeriado ? cgStudentUiT('Feriado') : selLec.leccion ? `${cgStudentUiT(etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || `${cgStudentUiT('Lección')} ${String(selLec.leccion).padStart(2,'0')}`)} · ${idLeccion(nivel, selLec.leccion)}` : cgStudentUiT('Sin lección asignada')}
             </div>
             <div style={{
               fontFamily:'var(--f-serif)', fontSize: rol === 'teacher' ? 18 : 20, fontWeight:500,
@@ -2522,9 +2543,9 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               {fmtLargo(selLec.fecha)}
             </div>
             <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:3 }}>
-              {selLec.dia}
-              {selLec.turno && <> · {selLec.turno}</>}
-              {dias === 0 ? '' : dias === 1 ? ' · mañana' : dias > 1 ? ` · en ${dias} días` : ` · hace ${-dias} días`}
+              {cgStudentUiT(selLec.dia)}
+              {selLec.turno && <> · {cgStudentShiftT(selLec.turno)}</>}
+              {dias === 0 ? '' : dias === 1 ? ' · '+cgStudentUiT('mañana') : dias > 1 ? (cgStudentEnglish()?` · in ${dias} days`:` · en ${dias} días`) : (cgStudentEnglish()?` · ${-dias} days ago`:` · hace ${-dias} días`)}
             </div>
           </div>
           <button onClick={onCerrar} title="Cerrar"
@@ -2547,7 +2568,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
           fontSize:11, fontWeight:700, letterSpacing:'0.04em',
           borderRadius:'var(--r-pill)',
         }}>
-          {estadoLabel}
+          {cgStudentUiT(estadoLabel)}
         </div>
         {!isFeriado && selLec.tipo !== 'CLASE' && !bloqueado && (() => {
           const tipoExtraLabel = etiquetaEvaluacionCG(selLec.tipo, selLec.leccion, true) || TIPO_LABEL_LARGO[selLec.tipo] || '';
@@ -2558,7 +2579,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               fontSize:11, fontWeight:700, letterSpacing:'0.04em',
               borderRadius:'var(--r-pill)',
             }}>
-              {tipoExtraLabel}
+              {cgStudentUiT(tipoExtraLabel)}
             </div>
           ) : null;
         })()}
@@ -2619,7 +2640,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               {feriadoName}
             </div>
             <div style={{ fontSize:11, color:pal.fg, opacity:0.8, marginTop:4 }}>
-              No hay clase este día. La lección se proyecta al siguiente día hábil.
+              {cgStudentUiT('No hay clase este día. La lección se proyecta al siguiente día hábil.')}
             </div>
           </div>
         ) : bloqueado ? (
@@ -2646,11 +2667,10 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               fontFamily:'var(--f-serif)', fontSize:16, fontWeight:600,
               color:'var(--ink)', letterSpacing:'-0.015em', marginBottom:4,
             }}>
-              Nivel bloqueado
+              {cgStudentUiT('Nivel bloqueado')}
             </div>
             <div style={{ fontSize:12, color:'var(--ink-2)', lineHeight:1.5, maxWidth:260, margin:'0 auto' }}>
-              Completá los niveles anteriores para acceder al título,
-              temas y material de esta lección.
+              {cgStudentUiT('Completá los niveles anteriores para acceder al título, temas y material de esta lección.')}
             </div>
             <div style={{
               marginTop:12, fontSize:10, color:'var(--ink-3)',
@@ -2688,10 +2708,10 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
               fontFamily:'var(--f-serif)', fontSize:14, fontWeight:600,
               color:'var(--ink)', letterSpacing:'-0.01em', marginBottom:4,
             }}>
-              No se pudo cargar el detalle
+              {cgStudentUiT('No se pudo cargar el detalle')}
             </div>
             <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.5, maxWidth:240, margin:'0 auto 12px' }}>
-              No recibimos los datos de esta lección. Probá de nuevo en unos segundos.
+              {cgStudentUiT('No recibimos los datos de esta lección. Probá de nuevo en unos segundos.')}
             </div>
             {onRecargar && (
               <button
@@ -2715,7 +2735,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                   <path d="M23 4v6h-6"/>
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                 </svg>
-                Reintentar
+                {cgStudentUiT('Reintentar')}
               </button>
             )}
           </div>
@@ -2741,7 +2761,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                     fontSize:9, fontWeight:700, letterSpacing:'0.12em',
                     textTransform:'uppercase', color:'#1B5E20', marginBottom:2,
                   }}>
-                    Cobertura asignada
+                    {cgStudentUiT('Cobertura asignada')}
                   </div>
                   <div style={{ fontSize:13, color:'var(--ink)', fontWeight:600, lineHeight:1.35 }}>
                     {cobertura.docente_cobertura}
@@ -2751,7 +2771,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                       fontSize:11, color:'var(--ink-3)', marginTop:2,
                       textDecoration:'line-through',
                     }}>
-                      Titular: {cobertura.docente_anterior}
+                      {cgStudentUiT('Titular:')} {cobertura.docente_anterior}
                     </div>
                   )}
                 </div>
@@ -2773,7 +2793,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                 color:'var(--ink)', lineHeight:1.25, letterSpacing:'-0.015em',
                 marginTop:2,
               }}>
-                {detalle.titulo || 'Sin título registrado'}
+                {detalle.titulo || cgStudentUiT('Sin título registrado')}
               </div>
             </div>
 
@@ -2806,13 +2826,13 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
 
             {/* Objetivo */}
             {detalle.objetivo && (
-              <Bloque titulo="Objetivo" texto={detalle.objetivo} />
+              <Bloque titulo={cgStudentUiT('Objetivo')} texto={detalle.objetivo} />
             )}
 
             {/* Temas */}
             {detalle.speaking      && <Bloque titulo="Speaking"      texto={detalle.speaking} compact />}
             {detalle.grammar       && <Bloque titulo="Grammar"       texto={detalle.grammar} compact />}
-            {detalle.pronunciacion && <Bloque titulo="Pronunciación" texto={detalle.pronunciacion} compact />}
+            {detalle.pronunciacion && <Bloque titulo={cgStudentUiT('Pronunciación')} texto={detalle.pronunciacion} compact />}
             {detalle.writing       && <Bloque titulo="Writing"       texto={detalle.writing} compact />}
 
             {/* STUDENT-ACCESS-CALENDAR-001: en CALENDAR_ONLY (matrícula pagada
@@ -2826,7 +2846,7 @@ function DetalleLeccion({ selLec, detalle, cargando, nivel, bloqueado, soloFecha
                 borderRadius:'var(--r-md)', fontSize:12, color:'#6B4A00', lineHeight:1.5,
               }}>
                 <span style={{ color:'#9A6A00', flexShrink:0, marginTop:1 }}><IconoCandado /></span>
-                <span>Material disponible al cancelar la primera cuota.</span>
+                <span>{cgStudentUiT('Material disponible al cancelar la primera cuota.')}</span>
               </div>
             ) : (
               <>
@@ -2914,7 +2934,7 @@ function Bloque({ titulo, texto, compact }) {
       <div style={{
         fontSize:9, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase',
         color:'var(--ink-3)', marginBottom:3,
-      }}>{titulo}</div>
+      }}>{cgStudentUiT(titulo)}</div>
       <div style={{
         fontSize: compact ? 11.5 : 12.4,
         color:'var(--ink-2)', lineHeight:1.38,
@@ -2969,20 +2989,20 @@ function AccionesClaseEstudiante({ selLec, detalle, nivel, codigoUsr, grupoUsr, 
         <a href={sesionClase.link} target="_blank" rel="noopener noreferrer"
            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 14px', background:'#1565C0', color:'#fff', borderRadius:'var(--r-md)', fontSize:13, fontWeight:800, textDecoration:'none', letterSpacing:'0.02em' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          Entrar a clase
+          {cgStudentUiT('Entrar a clase')}
         </a>
       ) : estadoTexto ? (
         <div style={{ padding:'9px 12px', background:'var(--surface-2)', border:'1px dashed var(--line-2)', borderRadius:'var(--r-md)', fontSize:11.5, color:'var(--ink-3)', textAlign:'center', lineHeight:1.45 }}>
-          {estadoTexto}
+          {cgStudentUiT(estadoTexto)}
         </div>
       ) : null}
 
       {onNavigate && selLec?.leccion && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          <button type="button" onClick={() => irBiblioteca('libros')} style={studentActionButtonStyleCG('#073B7A')}>📘 Libros y workbook</button>
-          <button type="button" onClick={() => irBiblioteca('audios')} style={studentActionButtonStyleCG('#6B4BA1')}>🎧 Audios por unidad</button>
-          <button type="button" onClick={() => irBiblioteca('recursos')} style={studentActionButtonStyleCG('#2E7D32')}>📚 Recursos adicionales</button>
-          <button type="button" onClick={() => irBiblioteca('leccion')} style={studentActionButtonStyleCG('#8B1A10')}>▶ Biblioteca de la lección</button>
+          <button type="button" onClick={() => irBiblioteca('libros')} style={studentActionButtonStyleCG('#073B7A')}>📘 {cgStudentUiT('Libros y workbook')}</button>
+          <button type="button" onClick={() => irBiblioteca('audios')} style={studentActionButtonStyleCG('#6B4BA1')}>🎧 {cgStudentUiT('Audios por unidad')}</button>
+          <button type="button" onClick={() => irBiblioteca('recursos')} style={studentActionButtonStyleCG('#2E7D32')}>📚 {cgStudentUiT('Recursos adicionales')}</button>
+          <button type="button" onClick={() => irBiblioteca('leccion')} style={studentActionButtonStyleCG('#8B1A10')}>▶ {cgStudentUiT('Biblioteca de la lección')}</button>
         </div>
       )}
     </div>
@@ -3056,7 +3076,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
           animation:'an-spin .8s linear infinite',
           display:'inline-block',
         }} />
-        Verificando material…
+        {cgStudentUiT('Verificando material…')}
       </div>
     );
   }
@@ -3071,16 +3091,16 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
           target="_blank" rel="noopener noreferrer"
           style={btnPDFActivo}>
           <IconoPDF />
-          Ver planeamiento PDF
+          {cgStudentUiT('Ver planeamiento PDF')}
         </a>
       );
     }
     return (
       <button type="button" disabled
-        title="No se pudo verificar el planeamiento. Reintentá más tarde."
+        title={cgStudentUiT('No se pudo verificar el planeamiento. Reintentá más tarde.')}
         style={btnPDFDisabled}>
         <IconoPDF />
-        Planeamiento no disponible
+        {cgStudentUiT('Planeamiento no disponible')}
       </button>
     );
   }
@@ -3093,7 +3113,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         title={motivo}
         style={btnPDFDisabled}>
         <IconoCandado />
-        Material disponible al rematricularte
+        {cgStudentUiT('Material disponible al rematricularte')}
       </button>
     );
   }
@@ -3106,7 +3126,7 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
       return (
         <button type="button" disabled style={btnPDFDisabled}>
           <IconoPDF />
-          Planeamiento no disponible
+          {cgStudentUiT('Planeamiento no disponible')}
         </button>
       );
     }
@@ -3118,12 +3138,12 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         style={btnPDFActivo}
       >
         <IconoPDF />
-        Ver planeamiento PDF
+        {cgStudentUiT('Ver planeamiento PDF')}
         <span style={{
           marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
           background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
           letterSpacing:'0.08em', textTransform:'uppercase',
-        }}>Estudiante</span>
+        }}>{cgStudentUiT('Estudiante')}</span>
       </a>
     );
   }
@@ -3136,13 +3156,13 @@ function BotonMaterialPDF({ selLec, nivel, rol, codigoUsr, grupoUsr, detalle }) 
         onClick={() => setAbierto(true)}
         style={{ ...btnPDFActivo, border:'none', cursor:'pointer', fontFamily:'inherit' }}>
         <IconoPDF />
-        Ver planeamiento PDF
+        {cgStudentUiT('Ver planeamiento PDF')}
         {mat.tipo_pdf === 'estudiante' && (
           <span style={{
             marginLeft:6, padding:'2px 7px', borderRadius:'var(--r-pill)',
             background:'rgba(255,255,255,0.18)', fontSize:10, fontWeight:700,
             letterSpacing:'0.08em', textTransform:'uppercase',
-          }}>Estudiante</span>
+          }}>{cgStudentUiT('Estudiante')}</span>
         )}
         {mat.tipo_pdf === 'profe' && (
           <span style={{
@@ -3434,7 +3454,7 @@ function Leyenda({ nivel = 'B1' }) {
             width:14, height:14, borderRadius:4,
             background:it.bg, border:`1.5px solid ${it.accent}`,
           }} />
-          {it.l}
+          {cgStudentUiT(it.l)}
         </span>
       ))}
     </div>

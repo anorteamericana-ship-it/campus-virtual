@@ -273,7 +273,7 @@ function fmtFechaCorta(iso) {
   if (!iso) return '—';
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(d)) return '—';
-  return `${String(d.getDate()).padStart(2,'0')} ${MES_CORTO_SD[d.getMonth()]}`;
+  return `${String(d.getDate()).padStart(2,'0')} ${window.AN_I18N?.getLang?.()==='en'?d.toLocaleDateString('en-US',{month:'short'}):MES_CORTO_SD[d.getMonth()]}`;
 }
 function diasEntreSD(iso) {
   if (!iso) return null;
@@ -1470,6 +1470,12 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
     box.scrollBy({ left:dir * (mobile ? 288 : 828), behavior:'smooth' });
   };
 
+  // Attendance "Tarde" means Late, never the Afternoon class shift.
+  const studentAttendanceUiLabel = value => {
+    if (window.AN_I18N?.getLang?.() !== 'en') return value;
+    return {'Pres.':'Present','Tarde':'Late','Aus.':'Absent','Just.':'Excused','Reg.':'Recorded','Prog.':'Scheduled','Pend.':'Pending'}[value]
+      || studentDashT(value);
+  };
   const attendanceMeta = (label) => {
     const v = String(label || '').toLowerCase();
     if (v.includes('presente')) return { short:'Pres.', color:'#2E7D32' };
@@ -1499,21 +1505,21 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
   if (showICAN) summaryRows.push({ label:'I CAN', value:String(summary?.ican || 0), extra:true });
 
   return (
-    <section id="registro-notas-asistencia" className="campus-d-gradebook" aria-label="Registro de notas y asistencia">
+    <section id="registro-notas-asistencia" className="campus-d-gradebook" aria-label={studentDashT("Registro de notas y asistencia")}>
       <div className="campus-d-gradebook-head">
         <div>
-          <div className="campus-d-gradebook-title">Registro de notas y asistencia</div>
-          <div className="campus-d-gradebook-sub">Las 32 lecciones permanecen en un único calendario movible. La próxima se marca en azul y queda en la penúltima posición visible.</div>
+          <div className="campus-d-gradebook-title">{studentDashT('Registro de notas y asistencia')}</div>
+          <div className="campus-d-gradebook-sub">{studentDashT('Las 32 lecciones permanecen en un único calendario movible. La próxima se marca en azul y queda en la penúltima posición visible.')}</div>
         </div>
         <div className="campus-d-gradebook-nav">
-          <span className="campus-d-gradebook-range">{visibleRange.start || 0}–{visibleRange.end || 0} de {list.length}</span>
-          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(-1)} disabled={!list.length} aria-label="Ver lecciones anteriores">←</button>
-          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(1)} disabled={!list.length} aria-label="Ver siguientes lecciones">→</button>
+          <span className="campus-d-gradebook-range">{visibleRange.start || 0}–{visibleRange.end || 0} {studentDashT('de')} {list.length}</span>
+          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(-1)} disabled={!list.length} aria-label={studentDashT("Ver lecciones anteriores")}>←</button>
+          <button className="campus-d-arrow" type="button" onClick={() => scrollByBlock(1)} disabled={!list.length} aria-label={studentDashT("Ver siguientes lecciones")}>→</button>
         </div>
       </div>
 
       {window.F111AttendanceLimit&&React.createElement(window.F111AttendanceLimit.Panel,{
-        rows:list,program,label:'Tu límite de ausencias del nivel '+(nivel||'actual')
+        rows:list,program,label:studentDashT('Tu límite de ausencias del nivel')+' '+(nivel||studentDashT('actual'))
       })}
       <div className="campus-d-gradebook-body">
         <div ref={scrollRef} className="campus-d-ledger">
@@ -1522,11 +1528,11 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
               <div className="campus-d-ledger-labels">
                 <div className="campus-d-ledger-student">
                   <div className="campus-d-ledger-student-name">{nombreCompleto || 'Estudiante'}</div>
-                  <div className="campus-d-ledger-student-meta">{codigo ? `Código ${codigo}` : 'Código pendiente'} · Nivel {nivel || '—'}</div>
+                  <div className="campus-d-ledger-student-meta">{codigo ? studentDashT('Código')+' '+codigo : studentDashT('Código pendiente')} · {studentDashT('Nivel')} {nivel || '—'}</div>
                 </div>
-                <div className="campus-d-ledger-row-label attendance">Asistencia</div>
-                <div className="campus-d-ledger-row-label comment">Comentario</div>
-                <div className="campus-d-ledger-row-label grade">Nota</div>
+                <div className="campus-d-ledger-row-label attendance">{studentDashT('Asistencia')}</div>
+                <div className="campus-d-ledger-row-label comment">{studentDashT('Comentario')}</div>
+                <div className="campus-d-ledger-row-label grade">{studentDashT('Nota')}</div>
               </div>
 
               {list.map((row, idx) => {
@@ -1537,14 +1543,14 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
                 return (
                   <div className={`campus-d-lesson-column ${isActive ? 'is-active' : ''} ${focusRequest && isActive ? 'is-focused' : ''}`} key={row.key || `${row.fecha}-${row.actividad}-${idx}`}>
                     <div className="campus-d-lesson-head">
-                      <div className="campus-d-lesson-date">{row.fecha ? fmtFechaCorta(row.fecha) : 'Fecha pendiente'}</div>
-                      <div className="campus-d-lesson-label">{row.actividad || 'Actividad'}</div>
-                      <span className={`campus-d-type-tag ${type.cls}`}>{type.label}</span>
-                      {isActive ? <div className="campus-d-active-lesson-label">{focusRequest ? 'ENCONTRADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA')}</div> : null}
+                      <div className="campus-d-lesson-date">{row.fecha ? fmtFechaCorta(row.fecha) : studentDashT('Fecha pendiente')}</div>
+                      <div className="campus-d-lesson-label">{row.actividad || studentDashT('Actividad')}</div>
+                      <span className={`campus-d-type-tag ${type.cls}`}>{studentDashT(type.label)}</span>
+                      {isActive ? <div className="campus-d-active-lesson-label">{studentDashT(focusRequest ? 'ENCONTRADA' : (isNext ? 'PRÓXIMA' : 'ACTIVA'))}</div> : null}
                     </div>
                     <div className="campus-d-lesson-attendance">
                       <span className="campus-d-attendance" style={{ color:attendance.color }}>
-                        <i className="campus-d-attendance-dot" />{attendance.short}
+                        <i className="campus-d-attendance-dot" />{studentAttendanceUiLabel(attendance.short)}
                       </span>
                     </div>
                     <div className="campus-d-lesson-comment">
@@ -1556,15 +1562,15 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
               })}
             </div>
           ) : (
-            <div className="campus-d-gradebook-empty">Todavía no hay registros visibles de asistencia o calificaciones para este nivel.</div>
+            <div className="campus-d-gradebook-empty">{studentDashT('Todavía no hay registros visibles de asistencia o calificaciones para este nivel.')}</div>
           )}
         </div>
 
-        <aside className="campus-d-summary" aria-label="Resumen del nivel">
-          <div className="campus-d-summary-title">Resumen · {nivel || 'Nivel'}</div>
+        <aside className="campus-d-summary" aria-label={studentDashT("Resumen del nivel")}>
+          <div className="campus-d-summary-title">{studentDashT('Resumen')} · {nivel || studentDashT('Nivel')}</div>
           {summaryRows.map(item => (
             <div className={`campus-d-summary-row ${item.extra ? 'extra' : ''}`} key={item.label}>
-              <span className="campus-d-summary-label">{item.label}</span>
+              <span className="campus-d-summary-label">{studentDashT(item.label)}</span>
               <span className="campus-d-summary-value">{item.value}{item.suffix ? <small>{item.suffix}</small> : null}</span>
             </div>
           ))}
@@ -1595,8 +1601,8 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
   };
 
   return (
-    <section className="campus-d-events" aria-label="Resumen de próximos eventos">
-      <div className="campus-d-events-head">Próximos eventos</div>
+    <section className="campus-d-events" aria-label={studentDashT("Resumen de próximos eventos")}>
+      <div className="campus-d-events-head">{studentDashT('Próximos eventos')}</div>
       <div className={`campus-d-event-grid ${items.length <= 3 ? 'cols-3' : 'cols-4'}`}>
         {items.map(([key, meta]) => {
           const ev = meta.data;
@@ -1608,8 +1614,8 @@ function ProximaAccionCampus({ proximaLeccion, proximoICAN, proximoOral, proximo
               disabled={!ev}
               onClick={() => focusEvent(key, ev)}
             >
-              <span className="campus-d-event-title only">{meta.title}</span>
-              <span className="campus-d-event-action pill">Buscar</span>
+              <span className="campus-d-event-title only">{studentDashT(meta.title)}</span>
+              <span className="campus-d-event-action pill">{studentDashT('Buscar')}</span>
             </button>
           );
         })}
@@ -1660,13 +1666,13 @@ function RutaAcademicaDashboard({ niveles, nivelActivo, nivelSeleccionado, onSel
               style={{ appearance:'none', textAlign:'left', cursor:'pointer', fontFamily:'inherit', border:`2px solid ${selected?color:'var(--line)'}`, borderRadius:16, padding:14, background:selected?`color-mix(in srgb, ${color} 8%, white)`:'#fff', boxShadow:selected?'0 10px 24px rgba(0,30,71,.08)':'none', transition:'transform .16s ease,border-color .16s ease', minWidth:0 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
                 <strong style={{ color, fontSize:17, fontFamily:'var(--f-mono)' }}>{n}</strong>
-                <span style={{ fontSize:9.5, fontWeight:900, color:['APR','CNV'].includes(est)?'var(--ok)':est==='CA'?'var(--an-navy)':est==='RPB'||est==='REP'?'var(--danger)':'var(--ink-3)', textTransform:'uppercase' }}>{active?'ACTUAL · ':''}{STATUS[est]||est}</span>
+                <span style={{ fontSize:9.5, fontWeight:900, color:['APR','CNV'].includes(est)?'var(--ok)':est==='CA'?'var(--an-navy)':est==='RPB'||est==='REP'?'var(--danger)':'var(--ink-3)', textTransform:'uppercase' }}>{active?studentDashT('ACTUAL')+' · ':''}{studentDashT(STATUS[est]||est)}</span>
               </div>
-              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:5 }}>{NIVEL_NOMBRE[n]}</div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:5 }}>{studentDashT(NIVEL_NOMBRE[n])}</div>
               <div style={{ height:7, borderRadius:999, background:'var(--line)', overflow:'hidden', marginTop:12 }}><div style={{ width:`${pct}%`, height:'100%', background:color }} /></div>
-              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:9 }}>Nota: <strong>{item.nota != null ? item.nota : '—'}</strong></div>
+              <div style={{ fontSize:12, color:'var(--ink-2)', marginTop:9 }}>{studentDashT('Nota:')} <strong>{item.nota != null ? item.nota : '—'}</strong></div>
               <div style={{ fontSize:10.5, color:'var(--ink-3)', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {item.registro ? `Certificado: ${item.registro}` : (['APR','CNV'].includes(est) ? 'Certificado: sin registro oficial' : 'Certificado: no aplica aún')}
+                {item.registro ? studentDashT('Certificado:')+' '+item.registro : (['APR','CNV'].includes(est) ? studentDashT('Certificado: sin registro oficial') : studentDashT('Certificado: no aplica aún'))}
               </div>
             </button>
           );
@@ -1752,14 +1758,9 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
   const [oculto, setOculto] = React.useState(() => {
     try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
   });
-  // First visit stays in Spanish. After a local "reviewed" confirmation,
-  // the NEXT mounting of this block may use the selected interface language.
-  // This is a device preference, never an official reading certificate.
-  const [reviewedBeforeEntry] = React.useState(() => {
-    try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
-  });
-  const textForRequired = label => reviewedBeforeEntry && window.AN_I18N?.getLang() === 'en'
-    ? window.AN_I18N.t(label) : label;
+  // F111: Mandatory onboarding UI follows EN/ES from the first entry.
+  // Document contents and local review/hide state remain unchanged.
+  const textForRequired = label => studentDashT(label);
   const [signedBusy, setSignedBusy] = React.useState(false);
   const [signedError, setSignedError] = React.useState('');
 
@@ -1771,8 +1772,9 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
     if (preview) {
       try {
         preview.opener = null;
-        preview.document.title = 'Verificando inscripción firmada…';
-        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando inscripción firmada…</p>';
+        preview.document.title = textForRequired('Verificando inscripción firmada…');
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px"></p>';
+        preview.document.body.querySelector('p').textContent = textForRequired('Verificando inscripción firmada…');
       } catch (_) {}
     }
     try {
@@ -1841,7 +1843,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
             className="before-card"
             onClick={abrirInscripcionFirmada}
             disabled={signedBusy}
-            aria-label="Abrir inscripción firmada vigente"
+            aria-label={textForRequired('Abrir inscripción firmada vigente')}
             style={{ opacity:signedBusy ? .72 : 1 }}
           >
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -1885,7 +1887,7 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
         </div>
       {signedError ? (
         <div role="alert" style={{ margin:'-7px 18px 16px', padding:'10px 12px', borderRadius:10, background:'color-mix(in srgb, var(--danger) 7%, white)', color:'var(--danger)', fontSize:11.5, lineHeight:1.45 }}>
-          {signedError}
+          {studentDashT(signedError)}
         </div>
       ) : null}
     </div>
@@ -1899,33 +1901,33 @@ function ResumenAcademico({ nivelReal, programa }) {
   const sylKey = nivelReal ? nivelReal.toLowerCase() : '';
   const syl = (typeof SYLLABUS_BY_LEVEL !== 'undefined' && sylKey) ? (SYLLABUS_BY_LEVEL[sylKey] || {}) : {};
   // Fallbacks NEUTROS — nunca quemar Básico I / Interchange Intro.
-  const objetivo  = syl.objective || 'El objetivo de tu nivel aparecerá cuando tu matrícula esté procesada.';
-  const libro     = nivelReal ? (NIVEL_LIBRO[nivelReal] || syl.book || 'Libro del curso') : 'Libro del curso';
+  const objetivo  = syl.objective || studentDashT('El objetivo de tu nivel aparecerá cuando tu matrícula esté procesada.');
+  const libro     = nivelReal ? (NIVEL_LIBRO[nivelReal] || syl.book || studentDashT('Libro del curso')) : studentDashT('Libro del curso');
   const cefr      = syl.cefr || '';
   const duracion  = syl.totalHours ? `${syl.totalHours} h` : '—';
   const plataforma= syl.platform || 'Zoom';
   const nivelLbl  = nivelReal ? studentDashT(NIVEL_NOMBRE[nivelReal] || 'Nivel actual') : studentDashT('Nivel actual');
-  const programaLbl = programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio';
+  const programaLbl = studentDashT(programa === 'INA' || programa === 'CON_INA' ? 'Programa INA' : 'Programa propio');
 
   return (
     <div className="card" style={{ padding:'18px 22px', marginBottom:18 }}>
       <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:20, alignItems:'start' }}>
         <div>
-          <Kicker>Objetivo general · {nivelLbl}</Kicker>
+          <Kicker>{studentDashT('Objetivo general')} · {nivelLbl}</Kicker>
           <div style={{ fontSize:12.5, color:'var(--ink-2)', marginTop:5, lineHeight:1.5 }}>{objetivo}</div>
         </div>
         <div>
-          <Kicker>Libro</Kicker>
+          <Kicker>{studentDashT('Libro')}</Kicker>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:4, lineHeight:1.2 }}>{libro}</div>
-          {cefr && <div style={{ fontSize:11, color:'var(--ink-3)' }}>Nivel {cefr} · MCER</div>}
+          {cefr && <div style={{ fontSize:11, color:'var(--ink-3)' }}>{studentDashT('Nivel')} {cefr} · {studentDashT('MCER')}</div>}
         </div>
         <div>
-          <Kicker>Duración</Kicker>
+          <Kicker>{studentDashT('Duración')}</Kicker>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:4 }}>{duracion}</div>
           <div style={{ fontSize:11, color:'var(--ink-3)' }}>{programaLbl}</div>
         </div>
         <div>
-          <Kicker>Plataforma</Kicker>
+          <Kicker>{studentDashT('Plataforma')}</Kicker>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:16, fontWeight:500, color:'var(--an-navy-ink)', marginTop:4 }}>{plataforma}</div>
         </div>
       </div>
@@ -2001,14 +2003,14 @@ function ModTareas({ onNavigate }) {
 function ModInfoCurso({ nivelReal, codGrupo, grupo, programa, onNavigate }) {
   const docente  = grupo.DOCENTE || '';
   const horario  = horarioGrupoCompletoSD(grupo, codGrupo);
-  const modalidad = programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio';
+  const modalidad = studentDashT(programa === 'INA' || programa === 'CON_INA' ? 'INA' : 'Programa propio');
   const hay = !!(codGrupo || docente || horario);
   return (
     <ModTile icon="doc" emoji="📚" title="Mi curso" status={hay ? 'ok' : 'empty'}
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Abrir Mi curso" onClick={() => onNavigate('mi_curso')}>
       {hay ? (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          <div>{nivelReal ? (NIVEL_NOMBRE[nivelReal] || nivelReal) : 'Nivel actual'} · {modalidad}</div>
+          <div>{nivelReal ? (studentDashT(NIVEL_NOMBRE[nivelReal] || nivelReal)) : studentDashT('Nivel actual')} · {modalidad}</div>
           {horario && <div style={{ color:'var(--ink-3)' }}>{horario}</div>}
           {docente && <div style={{ color:'var(--ink-3)' }}>Prof. {docente}</div>}
         </div>
@@ -2067,17 +2069,17 @@ function ModEstadoCuenta({ pendientes, niveles = {}, esConape, conapeEstado, onN
   const fmt = n => '₡' + Number(n||0).toLocaleString('es-CR');
   return (
     <ModTile icon="payments" emoji="💳" title="Pagos y estado de cuenta" status={alDia ? 'ok' : !saldoVerificado ? 'empty' : 'pending'}
-             statusLabel={!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo' : `${total} por cubrir`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
+             statusLabel={!saldoVerificado ? 'Saldo por verificar' : alDia ? 'Sin saldo' : `${total} ${studentDashT('por cubrir')}`} cta="Ver detalle" onClick={() => onNavigate('pagos')}>
       {!saldoVerificado ? (
-        <div style={{ color:'var(--ink-3)' }}>No se pudo verificar el saldo contractual. Intentá actualizar el perfil.</div>
+        <div style={{ color:'var(--ink-3)' }}>{studentDashT('No se pudo verificar el saldo contractual. Intentá actualizar el perfil.')}</div>
       ) : alDia ? (
-        <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ Sin saldo contractual pendiente.</div>
+        <div style={{ color:'var(--ok)', fontWeight:600 }}>✓ {studentDashT('Sin saldo contractual pendiente.')}</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          {matPend && <div>Matrícula — {fmt(pendientes.matricula)}</div>}
-          {cuotasPend > 0 && <div>{cuotasPend} cuota{cuotasPend>1?'s':''} del plan — {fmt(cuotaMonto)} (vencimientos por verificar)</div>}
-          {certPend && <div>Certificado — {fmt(pendientes.certificado)}{!certExigible?' (futuro; aún no exigible)':''}</div>}
-          <div style={{marginTop:5,fontSize:11,color:'var(--ink-3)'}}>Saldo contractual por cubrir; no equivale necesariamente a morosidad.</div>
+          {matPend && <div>{studentDashT('Matrícula')} — {fmt(pendientes.matricula)}</div>}
+          {cuotasPend > 0 && <div>{cuotasPend} {studentDashT(cuotasPend===1?'cuota':'cuotas')} {studentDashT('del plan')} — {fmt(cuotaMonto)} ({studentDashT('vencimientos por verificar')})</div>}
+          {certPend && <div>{studentDashT('Certificado')} — {fmt(pendientes.certificado)}{!certExigible?' ('+studentDashT('futuro; aún no exigible')+')':''}</div>}
+          <div style={{marginTop:5,fontSize:11,color:'var(--ink-3)'}}>{studentDashT('Saldo contractual por cubrir; no equivale necesariamente a morosidad.')}</div>
         </div>
       )}
     </ModTile>
@@ -2090,14 +2092,14 @@ function ModCertificados({ niveles, onNavigate }) {
   const registrados = rows.filter(x => typeof x.raw === 'object' && (x.raw.reg_certificados || x.raw.cert_num));
   const elegibles = rows.filter(x => ['APR','CNV'].includes(x.estatus) && !registrados.includes(x));
   const status = registrados.length ? 'ok' : elegibles.length ? 'pending' : 'empty';
-  const label = registrados.length ? `${registrados.length} registrado${registrados.length>1?'s':''}` : elegibles.length ? 'Revisar emisión' : 'Sin registros';
+  const label = registrados.length ? `${registrados.length} ${studentDashT(registrados.length===1?'registrado':'registrados')}` : elegibles.length ? 'Revisar emisión' : 'Sin registros';
   return (
     <ModTile icon="certificates" emoji="📄" title="Certificados" status={status} statusLabel={label} cta="Consultar estado" onClick={() => onNavigate('certificados')}>
       {registrados.length > 0
-        ? <div>Hay <strong>{registrados.length}</strong> número{registrados.length>1?'s':''} oficial{registrados.length>1?'es':''} registrado{registrados.length>1?'s':''}. La pantalla de certificados verificará si existe PDF y enlace.</div>
+        ? <div>{studentDashT(registrados.length===1?'Existe':'Existen')} <strong>{registrados.length}</strong> {studentDashT(registrados.length===1?'número oficial registrado':'números oficiales registrados')}. {studentDashT('La pantalla de certificados verificará si existe PDF y enlace.')}</div>
         : elegibles.length > 0
-          ? <div>{elegibles.map(x=>x.n).join(', ')} aprobado/convalidado. La elegibilidad y disponibilidad se verifican por separado.</div>
-          : <span style={{ color:'var(--ink-3)' }}>Aún no hay niveles aprobados o convalidados con registro oficial.</span>}
+          ? <div>{elegibles.map(x=>x.n).join(', ')} {studentDashT('aprobado/convalidado')}. {studentDashT('La elegibilidad y disponibilidad se verifican por separado.')}</div>
+          : <span style={{ color:'var(--ink-3)' }}>{studentDashT('Aún no hay niveles aprobados o convalidados con registro oficial.')}</span>}
     </ModTile>
   );
 }
@@ -2119,11 +2121,11 @@ function ModRetro({ retroData, onNavigate }) {
              statusLabel={hay ? 'Disponible' : 'Sin registros'} cta="Ver notas" onClick={() => onNavigate('notas')}>
       {hay ? (
         <div>
-          <div style={{ color:'var(--ink-3)', fontSize:11, marginBottom:2 }}>{retroData.total || items.length} comentario{(retroData.total||items.length)>1?'s':''} de tu profe</div>
+          <div style={{ color:'var(--ink-3)', fontSize:11, marginBottom:2 }}>{retroData.total || items.length} {studentDashT((retroData.total||items.length)===1?'comentario':'comentarios')} {studentDashT('de tu profe')}</div>
           <div style={{ display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>“{ultimo.comentario}”</div>
         </div>
       ) : (
-        <span style={{ color:'var(--ink-3)' }}>Aún no hay retroalimentación registrada.</span>
+        <span style={{ color:'var(--ink-3)' }}>{studentDashT('Aún no hay retroalimentación registrada.')}</span>
       )}
     </ModTile>
   );
@@ -2169,7 +2171,7 @@ function NivelChip({ nivel, estatus, activo }) {
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:'var(--r-pill)', background:bg, border:`1.5px solid ${c}`, color:fg, fontSize:11, fontWeight:700, letterSpacing:'0.04em' }}>
       <strong style={{ fontFamily:'var(--f-mono)' }}>{nivel}</strong>
-      <span style={{ opacity: activo ? 1 : 0.85 }}>· {label}</span>
+      <span style={{ opacity: activo ? 1 : 0.85 }}>· {studentDashT(label)}</span>
     </span>
   );
 }

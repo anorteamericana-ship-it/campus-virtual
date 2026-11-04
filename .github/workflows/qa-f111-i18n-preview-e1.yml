@@ -24,6 +24,8 @@ on:
       - 'src/student_academic_summary_dom_cs21a113.js'
       - 'src/student_portal.jsx'
       - 'scripts/qa_f111_student_demo_english_e1.mjs'
+      - 'src/cronograma_grupo.jsx'
+      - 'scripts/qa_f111_student_calendar_en_e1.mjs'
       - 'src/app.jsx'
       - 'src/att77_bridge.js'
       - 'styles/f111_attendance_limit.css'
@@ -62,5 +64,7 @@ jobs:
         run: node scripts/qa_f111_student_hero_language_visual_e1.mjs
       - name: Student profile and tabs bilingual E1 (synthetic)
         run: node scripts/qa_f111_student_profile_tabs_en_e1.mjs
+      - name: Student calendar EN/ES, I CAN visibility and teacher/admin safety E1
+        run: node scripts/qa_f111_student_calendar_en_e1.mjs
       - name: Real teacher document viewer and professional record regression
         run: node scripts/qa_f111_real_teacher_docs_record_e1.mjs

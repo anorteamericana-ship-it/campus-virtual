@@ -22,12 +22,12 @@ assert(mark.includes("className:'academy-id-mark'"),'real shared mark is interac
 assert(mark.includes("variant:'watermark'"),'do not change logo or its source');
 assert(!css.includes('pointer-events:auto'),'interactive animation does not intercept camera/photo actions');
 
-assert(student.includes("const [reviewedBeforeEntry] = React.useState"),'reviewed-state snapshot on entry');
-assert(student.includes("localStorage.getItem(KEY) === '1'"),'next entry determines language, no hidden backend reading state');
-assert(student.includes("reviewedBeforeEntry && window.AN_I18N?.getLang() === 'en'"),'new login EN only after the on-device marker');
-assert(student.includes("textForRequired('Material obligatorio')"),'initial Spanish mandatory material title');
-assert(student.includes("textForRequired('Antes de empezar tu programa')"),'initial Spanish welcome phrase');
-assert(student.includes("textForRequired(oculto ? 'Ver material' : 'Marcar revisado en este equipo')"),'review button can translate on subsequent entry');
+assert(student.includes("const textForRequired = label => studentDashT(label);"), 'mandatory onboarding UI follows selected language immediately');
+assert(!student.includes('reviewedBeforeEntry'), 'no Spanish-first override while EN is selected');
+assert(student.includes("localStorage.getItem(KEY) === '1'"), 'existing local hide marker remains on device only');
+assert(student.includes("textForRequired('Material obligatorio')"),'mandatory material heading uses selected language');
+assert(student.includes("textForRequired('Antes de empezar tu programa')"),'mandatory welcome heading uses selected language');
+assert(student.includes("textForRequired(oculto ? 'Ver material' : 'Marcar revisado en este equipo')"),'review button translates on first entry');
 assert(student.includes("onClick={abrirInscripcionFirmada}"),'official enrollment document handler unchanged');
 assert(student.includes("item.title")&&student.includes("item.desc"),'original documentary cards intact');
 
@@ -48,10 +48,10 @@ for(const [spanish,english] of [
  ['Marcar revisado en este equipo','Mark as Reviewed on This Device'],
  ['Ver material','View Materials'],
  ['REQUERIDO','REQUIRED'],['RECOMENDADO','RECOMMENDED']
-]) assert.equal(en.t(spanish),english,spanish+' translated after review only');
+]) assert.equal(en.t(spanish),english,spanish+' translated on first entry');
 
 assert(html.includes('styles/academy_identity_card.css?v=F111HERO20261103B'),'hero css cache invalidated');
 assert(html.includes('src/i18n_pilot_f111.js?v=F111HERO20261103B'),'dictionary cache invalidated');
 assert(html.includes('&hero=F111HERO20261103B'),'actual app script reloaded');
 assert(app.includes('src/student_dashboard.jsx?v=F111HERO20261103B'),'actual student dashboard lazy script reloaded');
-console.log('F111 HERO VISUAL / REVIEWED MATERIAL E1 PASS: white name, replayable decorative A, reduced-motion and Spanish-first English-after-review, official PDF intact');
+console.log('F111 HERO VISUAL / REVIEWED MATERIAL E1 PASS: white name, replayable decorative A, reduced-motion and EN/ES from first entry, official PDF intact');
