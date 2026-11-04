@@ -10,7 +10,16 @@ const academicNewStorage="  useEffect(() => {\n    // Academic navigation is int
 const academicOldStorage="  useEffect(() => {\n    try {\n      localStorage.setItem('an_active', active);\n      localStorage.setItem('an_active_' + (role || 'unknown'), active);\n    } catch (_) {}\n  }, [active, role]);\n";
 assert.equal(appSourceF111.split(academicNewRoute).length-1,1,'F111 EN entry route is present exactly once');
 assert.equal(appSourceF111.split(academicNewStorage).length-1,1,'F111 EN route is not persisted academically');
-const source=appSourceF111.replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
+// Preserve the October exact D1 rollback check after subtracting only the new
+// student component cache keys. These are assets, not changes to exam behavior.
+const changedDashboard="'src/student_dashboard.jsx?v=F111STUDENTPROFILEEN20261103'";
+const originalDashboard="'src/student_dashboard.jsx?v=F1110826DOCT20261020'";
+const changedTabs="'src/student_experience.jsx?v=F111STUDENTTABSEN20261103'";
+const originalTabs="'src/student_experience.jsx?v=F98.4N'";
+assert.equal(appSourceF111.split(changedDashboard).length-1,1,'single new student profile asset');
+assert.equal(appSourceF111.split(changedTabs).length-1,3,'three identical student tab assets');
+const source=appSourceF111.replace(changedDashboard,originalDashboard).replaceAll(changedTabs,originalTabs)
+  .replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
 const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const anchor="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  const oralSrc=";
 const inject="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  // F111 D1 LIVE HOTFIX · El Centro C es la ÚNICA pantalla de Exámenes del\n  // superadmin: no duplicar tabs/encabezado y no montar el reporte de reposiciones.\n  // Este último conserva su componente y sus datos fuera de esta vista.\n  if (superadmin) {\n    return <ExamenesIframePanel\n      hideHeader\n      view=\"admin\"\n      screenLabel=\"Superadmin · Centro de exámenes\"\n      iframeTitle=\"Centro de exámenes · Escritos, Orales y Progress Check\"\n    />;\n  }\n  const oralSrc=";
@@ -75,18 +84,20 @@ for(const path of protectedPaths){
 }
 const mainHtmlRaw=fs.readFileSync('campus.html','utf8');
 const mainBaseline=execFileSync('git',['show','origin/main:campus.html'],{encoding:'utf8',maxBuffer:24*1024*1024});
-// Normalize only the three changed asset URLs in this review; no backend/exam
+// Normalize only the reviewed asset URLs in this release; no backend/exam
 // script changes are permitted. Also passes after squash when origin/main
 // already contains the exact deployed versions.
 const approvedAssetDiffs=[
  ['src/teacher_cs21a_docs_viewer.jsx?v=F111REALDOCSEN20261103','src/teacher_cs21a_docs_viewer.jsx?v=F98.4Z6CS21A6'],
  ['src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103','src/i18n_pilot_f111.js?v=F111ENDEFAULT20261103C'],
  ['&record=F111ADDRECORD20261103',''],
+ ['src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103','src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103'],
+ ['&i18nstudent=F111STUDENTTABS20261103',''],
 ];
 let mainHtml=mainHtmlRaw;
 for (const [next,previous] of approvedAssetDiffs){
  assert.equal(mainHtml.split(next).length-1,1,'Unique expected F111 language/record asset: '+next);
  if (!mainBaseline.includes(next)) mainHtml=mainHtml.replace(next,previous);
 }
-assert.equal(mainHtml,mainBaseline,'D1: all superadmin/exam scripts untouched by the three approved F111 asset version changes');
+assert.equal(mainHtml,mainBaseline,'D1: all superadmin/exam scripts untouched by the reviewed F111 asset version changes');
 console.log('F111 SINGLE-CENTER PASS: único Centro C superadmin, no reposiciones en su vista, admin legacy intacto, 5 archivos protegidos idénticos.');
