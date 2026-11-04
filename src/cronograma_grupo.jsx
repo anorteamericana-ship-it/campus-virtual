@@ -18,6 +18,15 @@
 
 // URL del Apps Script: fuente única en data.jsx → window.APPS_SCRIPT_URL
 const SCRIPT_URL_CG = window.APPS_SCRIPT_URL;
+// F111 presentation-only localization for students; teacher/admin strings and data untouched.
+const cgStudentUiT = value => window.AN_I18N?.role?.() === 'student' ? (window.AN_I18N.t(value) || value) : value;
+const cgStudentEnglish = () => window.AN_I18N?.role?.() === 'student' && window.AN_I18N?.getLang?.() === 'en';
+const cgStudentMonthShort = index => cgStudentEnglish()
+  ? new Date(2026,index,1).toLocaleDateString('en-US',{month:'short'})
+  : MES_CORTO[index];
+const cgStudentMonthFull = index => cgStudentEnglish()
+  ? new Date(2026,index,1).toLocaleDateString('en-US',{month:'long'})
+  : MESES_NOMBRES[index];
 const CG_GRUPOS_CACHE_AN = window.__AN_CAL_GRUPOS_CACHE || { at:0, data:null };
 window.__AN_CAL_GRUPOS_CACHE = CG_GRUPOS_CACHE_AN;
 
@@ -228,11 +237,11 @@ function parseISO(iso) { return iso ? new Date(iso + 'T00:00:00') : null; }
 function isoOf(d) { return d.toISOString().slice(0,10); }
 function fmtDDMMM(iso) {
   const d = parseISO(iso); if (!d) return '—';
-  return `${String(d.getDate()).padStart(2,'0')}/${MES_CORTO[d.getMonth()]}`;
+  return `${String(d.getDate()).padStart(2,'0')}/${cgStudentMonthShort(d.getMonth())}`;
 }
 function fmtLargo(iso) {
   const d = parseISO(iso); if (!d) return '—';
-  return `${String(d.getDate()).padStart(2,'0')}/${MES_CORTO[d.getMonth()]}/${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2,'0')}/${cgStudentMonthShort(d.getMonth())}/${d.getFullYear()}`;
 }
 function diasEntre(iso) {
   const d = parseISO(iso); if (!d) return null;
@@ -1014,7 +1023,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
           border:'2.5px solid var(--line)', borderTopColor:'var(--ink)',
           animation:'an-spin .8s linear infinite',
         }} />
-        Cargando calendario académico…
+        {cgStudentUiT('Cargando calendario académico…')}
       </div>
     );
   }
@@ -1023,9 +1032,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
     return (
       <div data-screen-label="Cronograma de grupo" style={{ padding:24 }}>
         <div style={errorBoxStyle}>
-          <span>⚠ {errorGrupos || 'No hay grupos disponibles para mostrar.'}</span>
+          <span>⚠ {cgStudentUiT(errorGrupos || 'No hay grupos disponibles para mostrar.')}</span>
           <button onClick={cargarGrupos} className="btn btn-ghost"
-                  style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
+                  style={{ padding:'6px 12px', fontSize:12 }}>{cgStudentUiT('Reintentar')}</button>
         </div>
       </div>
     );
@@ -1051,7 +1060,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
             fontFamily:'var(--f-serif)', fontWeight:500, letterSpacing:'-0.025em',
             fontSize:32, lineHeight:1.05, margin:0, color:'var(--ink)',
           }}>
-            {rol === 'student' ? 'Mis lecciones' : rol === 'teacher' ? 'Agenda docente' : 'Cronograma de grupo'}
+            {rol === 'student' ? cgStudentUiT('Mis lecciones') : rol === 'teacher' ? 'Agenda docente' : 'Cronograma de grupo'}
           </h1>
           {!esStudent && (
             <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>
@@ -1094,7 +1103,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
                 fontWeight:800, fontSize:13,
                 color:'var(--ink)', minWidth:260,
               }} title={codGrupo}>
-                {grupoHorarioLabelCG(meta)}
+                {cgStudentUiT(grupoHorarioLabelCG(meta))}
               </div>
             </div>
           )}
@@ -1109,19 +1118,19 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
         )
       ) : studentAccountOnly ? (
         <CronoAccesoBloqueo
-          badge="Acceso limitado · mora" badgeColor="#B71C1C"
+          badge={cgStudentUiT('Acceso limitado · mora')} badgeColor="#B71C1C"
           icon={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}
-          titulo="Cronograma temporalmente limitado"
+          titulo={cgStudentUiT('Cronograma temporalmente limitado')}
           mensaje={acc.mensaje}
-          accionLabel="Ir a Estado de cuenta"
+          accionLabel={cgStudentUiT('Ir a Estado de cuenta')}
           onAccion={() => onNavigate && onNavigate('pagos')} />
       ) : studentSinCalendario ? (
         <CronoAccesoBloqueo
           badge={acc.label} badgeColor="#9A6A00"
           icon={<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>}
-          titulo="Tu cronograma todavía no está disponible"
+          titulo={cgStudentUiT('Tu cronograma todavía no está disponible')}
           mensaje={acc.mensaje}
-          accionLabel="Ver estado de inscripción"
+          accionLabel={cgStudentUiT('Ver estado de inscripción')}
           onAccion={() => onNavigate && onNavigate('dashboard')} />
       ) : (
       <React.Fragment>
@@ -1149,11 +1158,11 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
                 <span style={{ width:10, height:10, borderRadius:3, background:c,
                                flexShrink:0, opacity: active ? 1 : 0.5 }} />
                 <span style={{ fontFamily:'var(--f-mono)', fontWeight:700 }}>{n}</span>
-                <span style={{ opacity: active ? 1 : 0.7 }}>· {NIVEL_LABEL_CG[n]}</span>
+                <span style={{ opacity: active ? 1 : 0.7 }}>· {cgStudentUiT(NIVEL_LABEL_CG[n])}</span>
                 {locked && (
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                       style={{ marginLeft:2, color:'var(--ink-3)' }} aria-label="Bloqueado">
+                       style={{ marginLeft:2, color:'var(--ink-3)' }} aria-label={cgStudentUiT("Bloqueado")}>
                     <rect x="3" y="11" width="18" height="11" rx="2"/>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
@@ -1208,9 +1217,9 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
 
       {errorVista && (
         <div style={errorBoxStyle}>
-          <span>⚠ {errorVista}</span>
+          <span>⚠ {cgStudentUiT(errorVista)}</span>
           <button onClick={cargar} className="btn btn-ghost"
-                  style={{ padding:'6px 12px', fontSize:12 }}>Reintentar</button>
+                  style={{ padding:'6px 12px', fontSize:12 }}>{cgStudentUiT('Reintentar')}</button>
         </div>
       )}
 
@@ -1223,7 +1232,7 @@ function CronogramaGrupo({ rol = 'admin', onNavigate, grupoInicial, seguimientoI
           borderRadius:'var(--r-md)', fontSize:13, color:'#6B4A00', lineHeight:1.5,
         }}>
           <span style={{ fontSize:18 }}>🗓️</span>
-          <span>{acc.mensaje}</span>
+          <span>{cgStudentUiT(acc.mensaje)}</span>
         </div>
       )}
 
@@ -1543,7 +1552,7 @@ function addDaysCG(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); re
 function weeksBetweenCG(a, b) { return Math.round((b - a) / (7 * 86400000)); }
 function fmtRangoSemana(lunes) {
   const dom = addDaysCG(lunes, 6);
-  const f = d => `${String(d.getDate()).padStart(2,'0')} ${MES_CORTO[d.getMonth()]}`;
+  const f = d => `${String(d.getDate()).padStart(2,'0')} ${cgStudentMonthShort(d.getMonth())}`;
   return `${f(lunes)} – ${f(dom)}`;
 }
 
