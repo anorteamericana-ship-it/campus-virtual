@@ -251,9 +251,9 @@ function StudentDocumentsHelpView({ initialTab='programa', onTabChange }) {
     <div className="student-page student-page-documents" data-screen-label="Estudiante · Documentos y ayuda" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
       <StudentSectionHeaderF984 kicker={studentExperienceT('Gestión')} title={studentExperienceT('Documentos y ayuda')} sub={studentExperienceT('Información institucional, avisos y contactos reales configurados para tu perfil.')} />
       <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label={studentExperienceT('Secciones de Documentos y ayuda')}>
-        <StudentTabButtonF984 active={tab==='programa'} onClick={()=>choose('programa')}>Programa y documentos</StudentTabButtonF984>
-        <StudentTabButtonF984 active={tab==='avisos'} onClick={()=>choose('avisos')}>Avisos</StudentTabButtonF984>
-        <StudentTabButtonF984 active={tab==='ayuda'} onClick={()=>choose('ayuda')}>Ayuda y contactos</StudentTabButtonF984>
+        <StudentTabButtonF984 active={tab==='programa'} onClick={()=>choose('programa')}>{studentExperienceT('Programa y documentos')}</StudentTabButtonF984>
+        <StudentTabButtonF984 active={tab==='avisos'} onClick={()=>choose('avisos')}>{studentExperienceT('Avisos')}</StudentTabButtonF984>
+        <StudentTabButtonF984 active={tab==='ayuda'} onClick={()=>choose('ayuda')}>{studentExperienceT('Ayuda y contactos')}</StudentTabButtonF984>
       </div>
       <div role="tabpanel">
         {tab==='programa' && <>
