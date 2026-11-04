@@ -62,6 +62,24 @@ revertTeacher("'src/vista_docente.jsx?v=F111ARCHIVESEP20261020'","'src/vista_doc
 // La nueva pantalla sustituye la ruta duplicada sin alterar exámenes.
 revertTeacher("      asistencia_grupos: <LazyRoute title=\"Asistencia de grupos\" component=\"AttendanceGroupsSuperadminView\" files={F96_LAZY.asistencia_grupos} />,\n",'',1,'pantalla independiente de asistencia');
 revertTeacher("  asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'],\n",'',1,'loader aislado de asistencia');
+// F111: Strictly reverse the 14 audited student-only EN/ES presentation replacements
+// and the exact helper before the legacy D1 bytewise check. Neither the exam data
+// model nor any teacher/admin route gets masked or excused by this normalization.
+const pinnedExamSource=execFileSync('git',['show','a42941b9fc7dc481d20a761ffe2dfabc0a49db56:src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
+const originalExamFrom='const APP_ORAL_DEFS_F927 = [';
+const studentExamFrom='// F111: Student assessment presentation only.';
+const examTo='function TeacherWrittenPreviewModalF950(';
+const originalExamBlock=pinnedExamSource.slice(pinnedExamSource.indexOf(originalExamFrom),pinnedExamSource.indexOf(examTo));
+const currentExamBegin=restoredTeacher.indexOf(studentExamFrom),currentExamEnd=restoredTeacher.indexOf(examTo,currentExamBegin);
+assert(currentExamBegin>=0&&currentExamEnd>currentExamBegin,'student exam UI strictly bounded');
+let expectedExamBlock="// F111: Student assessment presentation only. Official exam IDs, grades and dates stay unchanged.\nconst f111StudentExamT = value => window.AN_I18N?.t(value) || value;\nfunction f111StudentExamDate(value) {\n  if (window.AN_I18N?.getLang?.() !== 'en') return fechaF91(value);\n  const s = String(value || '').slice(0,10);\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return fechaF91(value);\n  const d = new Date(s+'T12:00:00');\n  return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'});\n}\n"+originalExamBlock;
+const allowedExamUiReplacements=[["let label='Sin nota registrada'","let label=f111StudentExamT('Sin nota registrada')"],["label=`Nota ${Number(ev.nota||0)}/${Number(ev.max||15)}`","label=`${f111StudentExamT('Nota')} ${Number(ev.nota||0)}/${Number(ev.max||15)}`"],["label=rep.FECHA_PROGRAMADA?`Fecha tentativa: ${fechaF91(rep.FECHA_PROGRAMADA)}`:'Autorizada · pendiente de coordinar'","label=rep.FECHA_PROGRAMADA?`${f111StudentExamT('Fecha tentativa:')} ${f111StudentExamDate(rep.FECHA_PROGRAMADA)}`:f111StudentExamT('Autorizada · pendiente de coordinar')"],["label='Solicitud en proceso'","label=f111StudentExamT('Solicitud en proceso')"],["label='Reposición pendiente'","label=f111StudentExamT('Reposición pendiente')"],["label=`Programado: ${fechaF91(ev.fecha)}`","label=`${f111StudentExamT('Programado:')} ${f111StudentExamDate(ev.fecha)}`"],["{kicker}</div>","{f111StudentExamT(kicker)}</div>"],[">Recargar</button>",">{f111StudentExamT('Recargar')}</button>"],["{loadingText}</div>","{f111StudentExamT(loadingText)}</div>"],["{error}</div>","{f111StudentExamT(error)}</div>"],["{r.titulo}</div>","{f111StudentExamT(r.titulo)}</div>"],[">Lección {String(r.leccion).padStart(2,'0')}</div>",">{f111StudentExamT('Lección')} {String(r.leccion).padStart(2,'0')}</div>"],["kicker=\"EVALUACIONES ORALES\" title={`Exámenes orales · ${level||'nivel actual'}`}","kicker=\"EVALUACIONES ORALES\" title={`${f111StudentExamT('Exámenes orales')} · ${level||f111StudentExamT('nivel actual')}`}"],["kicker=\"EVALUACIONES ESCRITAS\" title={`Exámenes escritos · ${level||'nivel actual'}`}","kicker=\"EVALUACIONES ESCRITAS\" title={`${f111StudentExamT('Exámenes escritos')} · ${level||f111StudentExamT('nivel actual')}`}"]];
+for(const [before,after] of allowedExamUiReplacements){
+ assert.equal(expectedExamBlock.split(before).length-1,1,'student exam source anchor is unique: '+before.slice(0,55));
+ expectedExamBlock=expectedExamBlock.replace(before,after);
+}
+assert.equal(restoredTeacher.slice(currentExamBegin,currentExamEnd),expectedExamBlock,'only approved student exam translations changed; official exam logic unchanged');
+restoredTeacher=restoredTeacher.slice(0,currentExamBegin)+originalExamBlock+restoredTeacher.slice(currentExamEnd);
 assert.equal(restoredTeacher.replaceAll('&hotfix=F111ANTICIPOS20261103','').replaceAll(newStudentsAsset,previousStudentsAsset),baseline.replace(anchor,inject),'Motor de exámenes conservado tras revertir exactamente el cambio docente F111');
 const adminStart=source.indexOf('function ExamenesAdminPanel()');
 const adminEnd=source.indexOf('const APP_ORAL_DEFS_F927',adminStart);
