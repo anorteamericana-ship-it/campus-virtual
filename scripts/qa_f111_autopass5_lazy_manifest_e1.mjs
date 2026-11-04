@@ -32,7 +32,7 @@ assert.equal(Object.keys(live).length, 33, '33 canonical lazy routes'); checks++
 const refs = Object.values(live).flat();
 assert.equal(refs.length, 68, '68 route references'); checks++;
 assert.equal(new Set(refs.map(x => x.split(/[?#]/)[0])).size, 41, '41 unique files'); checks++;
-assert(live.teacher_views.includes('src/vista_docente.jsx?v=F111ARCHIVESEP20261020')); checks++;
+assert.equal(live.teacher_views[0],'src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','teacher lazy route must use exact approved bilingual version'); checks++;
 const audit = fs.readFileSync(new URL('./audit_delivery_surface.mjs', import.meta.url), 'utf8');
 assert(audit.includes('parseF96LazyMap(app)') && !audit.includes('Function('), 'audit must not evaluate app.jsx'); checks++;
 console.log('F111_AUTOPASS5_LAZY_STATIC_E1_PASS checks=' + checks + ' routes=33 refs=68 files=41');
