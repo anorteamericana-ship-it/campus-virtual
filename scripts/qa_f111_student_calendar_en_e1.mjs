@@ -88,7 +88,7 @@ assert.equal(studentEN.i18n.getLang(),'en','student defaults to EN');
 assert.equal(studentES.i18n.getLang(),'es','student can select ES');
 assert.equal(teacherEN.i18n.getLang(),'en','teacher language preference preserved');
 assert.equal(admin.i18n.getLang(),'es','admin remains ES');
-assert.equal(studentEN.cgStudentUiT('Próxima clase'),'Next Class');
+assert.equal(studentEN.cgStudentUiT('Próxima clase'),'Next Lesson');
 assert.equal(studentES.cgStudentUiT('Próxima clase'),'Próxima clase');
 assert.equal(teacherEN.cgStudentUiT('Próxima clase'),'Próxima clase','teacher shared calendar remains original');
 assert.equal(studentEN.cgStudentShiftT('Mañana'),'Morning','class shift uses morning');
