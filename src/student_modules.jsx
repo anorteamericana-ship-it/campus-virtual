@@ -340,7 +340,7 @@ function _smFechaLarga_(iso) {
   const s = raw.slice(0,10);
   const d = new Date(s + 'T12:00:00');
   if (isNaN(d)) return raw;
-  return d.toLocaleDateString('es-CR', { day:'2-digit', month:'long', year:'numeric' });
+  return d.toLocaleDateString(window.AN_I18N?.getLang?.()==='en'?'en-US':'es-CR', { day:'2-digit', month:'long', year:'numeric' });
 }
 function _smChipToneByStatus_(status) {
   const s = String(status || '').toUpperCase();
@@ -370,7 +370,7 @@ function _smReposExamLabel_(row) {
   };
   const tipo = String(row?.TIPO_EXAMEN || '').toUpperCase();
   const fallback = tipo === 'ESCRITO' ? 'Examen Escrito' : tipo === 'ORAL' ? 'Examen Oral' : 'Evaluación';
-  return `${labels[leccion] || fallback}${leccion ? ` · Lección ${String(leccion).padStart(2,'0')}` : ''}`;
+  return `${studentGradesT(labels[leccion] || fallback)}${leccion ? ` · ${studentGradesT('Lección')} ${String(leccion).padStart(2,'0')}` : ''}`;
 }
 function _smEvalRegistrada_(e) {
   return !!e && (e.registrada === true || (e.registrada == null && e.nota != null && String(e.estado || '').toUpperCase() !== 'SIN_NOTA'));
@@ -408,12 +408,12 @@ function _smStatusTone_(row) {
   return { bg:'#FFF4D6', color:'#805500' };
 }
 function _smEvalDateText_(row) {
-  if (row?.fecha_programada) return `Tentativa: ${_smFechaLarga_(row.fecha_programada)}`;
+  if (row?.fecha_programada) return `${studentGradesT('Tentativa:')} ${_smFechaLarga_(row.fecha_programada)}`;
   const s = String(row?.estado || '').toUpperCase();
   const base = row?.fecha_clase || row?.fecha || row?.fecha_original || '';
-  if (!base) return row?.key === 'SOCIAL' ? 'Cierre del nivel' : '—';
-  if (!row?.registrada && s === 'PROGRAMADA') return `Programada: ${_smFechaLarga_(base)}`;
-  if (row?.es_reposicion || row?.reposicion_id) return `Clase original: ${_smFechaLarga_(row?.fecha_original || base)}`;
+  if (!base) return row?.key === 'SOCIAL' ? studentGradesT('Cierre del nivel') : '—';
+  if (!row?.registrada && s === 'PROGRAMADA') return `${studentGradesT('Programada:')} ${_smFechaLarga_(base)}`;
+  if (row?.es_reposicion || row?.reposicion_id) return `${studentGradesT('Clase original:')} ${_smFechaLarga_(row?.fecha_original || base)}`;
   return _smFechaLarga_(base);
 }
 function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
