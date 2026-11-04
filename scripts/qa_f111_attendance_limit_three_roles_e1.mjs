@@ -60,7 +60,7 @@ assert(admin.includes('readonly=!isSuper'),'admin read-only access unchanged');
 assert(adminFicha.includes('window.F111AttendanceLimit.Panel')&&adminFicha.includes('function TabAsistenciaPanel({ est, detalle })'),'admin student detail unchanged');
 assert(student.includes('window.F111AttendanceLimit.Panel')&&student.includes('program={programa}'),'student own gradebook');
 assert(student.includes('function RegistroNotasAsistenciaCampus('),'student gradebook remains');
-for(const x of ['src/student_dashboard.jsx?v=F111ATTLIMIT20261103A',
+for(const x of ['src/student_dashboard.jsx?v=F111HERO20261103B',
   'src/admin_attendance_roster.jsx?v=F111ATTLIMIT20261103A',
   'src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A'])
  assert(app.includes(x),'lazy asset version '+x);
