@@ -24,9 +24,9 @@ function StudentTabButtonF984({ active, children, onClick }) {
 function StudentSectionHeaderF984({ kicker, title, sub }) {
   return (
     <div className="student-section-header" style={{ marginBottom:20 }}>
-      {kicker ? <div className="student-section-kicker" style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}{studentExperienceT(kicker)}</div> : null}
-      <h1 className="student-section-title" style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}{studentExperienceT(title)}</h1>
-      {sub && <p className="student-section-subtitle" style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}{studentExperienceT(sub)}</p>}
+      {kicker ? <div className="student-section-kicker" style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{studentExperienceT(kicker)}</div> : null}
+      <h1 className="student-section-title" style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}>{studentExperienceT(title)}</h1>
+      {sub && <p className="student-section-subtitle" style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}>{studentExperienceT(sub)}</p>}
     </div>
   );
 }
@@ -35,8 +35,8 @@ function StudentComingSoonF984({ title, body, items = [] }) {
   return (
     <section className="card" style={{ padding:'22px 24px', border:'1px dashed var(--line-2)', background:'linear-gradient(135deg,#fff,var(--bg-deep))' }}>
       <div style={{ display:'inline-flex', padding:'4px 9px', borderRadius:999, background:'color-mix(in srgb,var(--an-gold) 15%,white)', color:'#7A4E00', fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase' }}>{studentExperienceT('Próximamente')}</div>
-      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'10px 0 6px', fontSize:24 }}{studentExperienceT(title)}</h2>
-      <p style={{ margin:'0 0 12px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}{studentExperienceT(body)}</p>
+      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'10px 0 6px', fontSize:24 }}>{studentExperienceT(title)}</h2>
+      <p style={{ margin:'0 0 12px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>{studentExperienceT(body)}</p>
       {items.length > 0 && <ul style={{ margin:'0 0 0 18px', padding:0, color:'var(--ink-3)', fontSize:12.5, lineHeight:1.65 }}>
         {items.map(x => <li key={x}>{studentExperienceT(x)}</li>)}
       </ul>}
@@ -118,7 +118,7 @@ function StudentHelpContactsF984() {
   const { data, loading, error, reload } = typeof useEstudiante === 'function'
     ? useEstudiante(codigo)
     : { data:null, loading:false, error:'No se pudo cargar la ficha.', reload:()=>{} };
-  if (loading && !data) return <div className="card" style={{ padding:24 }}{studentExperienceT('Cargando contactos configurados…')}</div>;
+  if (loading && !data) return <div className="card" style={{ padding:24 }}>{studentExperienceT('Cargando contactos configurados…')}</div>;
   if (error && !data) return <ErrorState message={error} onRetry={reload} />;
   const est = data?.estudiante || {};
   const contactos = data?.contactos_campus || {};
@@ -137,11 +137,11 @@ function StudentHelpContactsF984() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))', gap:14 }}>
           {cards.map(([label,tipo]) => (
             <div key={tipo} className="card" style={{ padding:20 }}>
-              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', color:'var(--an-granate)', textTransform:'uppercase' }}{studentExperienceT(label)}</div>
+              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', color:'var(--an-granate)', textTransform:'uppercase' }}>{studentExperienceT(label)}</div>
               <div style={{ marginTop:10 }}>
                 {typeof window.ContactoAdmin === 'function'
                   ? <window.ContactoAdmin est={est} usr={usr} tipo={tipo} label={`Contactar ${label.toLowerCase()}`} hideWhenPending />
-                  : <span style={{ color:'var(--ink-3)', fontSize:12 }}{studentExperienceT('Contacto no disponible.')}</span>}
+                  : <span style={{ color:'var(--ink-3)', fontSize:12 }}>{studentExperienceT('Contacto no disponible.')}</span>}
               </div>
             </div>
           ))}
@@ -230,9 +230,9 @@ function StudentSignedEnrollmentPrivateF984() {
   };
   return (
     <section className="card" style={{ marginTop:16, padding:'18px 20px' }}>
-      <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:'var(--an-granate)' }}{studentExperienceT('Documento privado')}</div>
-      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'7px 0 6px', fontSize:22 }}{studentExperienceT('Matrícula firmada')}</h2>
-      <p style={{ margin:'0 0 12px', color:'var(--ink-3)', fontSize:12.5, lineHeight:1.55 }}{studentExperienceT('Cuando Admisiones adjunte tu PDF firmado, podés abrir aquí la versión más reciente de tu propio expediente.')}</p>
+      <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:'var(--an-granate)' }}>{studentExperienceT('Documento privado')}</div>
+      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'7px 0 6px', fontSize:22 }}>{studentExperienceT('Matrícula firmada')}</h2>
+      <p style={{ margin:'0 0 12px', color:'var(--ink-3)', fontSize:12.5, lineHeight:1.55 }}>{studentExperienceT('Cuando Admisiones adjunte tu PDF firmado, podés abrir aquí la versión más reciente de tu propio expediente.')}</p>
       <button type="button" className="btn btn-primary" disabled={busy} onClick={abrir}>{studentExperienceT(busy ? 'Verificando…' : 'Abrir matrícula firmada')}</button>
       {error ? <div role="alert" style={{ marginTop:9, color:'var(--danger)', fontSize:12 }}>{studentExperienceT(error)}</div> : null}
     </section>
