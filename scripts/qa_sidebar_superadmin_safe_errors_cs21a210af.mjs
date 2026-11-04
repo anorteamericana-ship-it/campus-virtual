@@ -33,7 +33,10 @@ must(src.includes("window.dispatchEvent(new Event('an:session-changed'));"),'Se 
 const attendanceMenu="        { id: 'asistencia_grupos', label: 'Asistencia de grupos', icon: 'calendar' },\n";
 must(src.split(attendanceMenu).length===2,'Entrada de asistencia debe existir una sola vez.');
 // Reconstrucción de preimagen AF, revirtiendo SOLO la entrada aditiva.
-const restored=src.replace(attendanceMenu,'').replace(NEW,OLD);
+const hiddenStudentOnly="        ...(false && mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []), // F111 student demo: hidden, teacher/admin unaffected.";
+const studentMenuOriginal="        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),";
+must(src.split(hiddenStudentOnly).length-1===1,'Only the student I CAN menu is hidden for the demo.');
+const restored=src.replace(hiddenStudentOnly,studentMenuOriginal).replace(attendanceMenu,'').replace(NEW,OLD);
 must(restored!==src,'No se pudo revertir AF en memoria.');
 // F111 i18n review: permit ONLY the exact known sidebar preview blob after AF reversal.
  // This is a hash allowlist, not a broad exception: any unrelated byte change still fails.
