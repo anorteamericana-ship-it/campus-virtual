@@ -24,7 +24,7 @@
       return;
     }
     loadCss();
-    loader.loadOne('src/student_books_proxy_cs21a126.jsx?v=F98.4Z6CS21A127')
+    loader.loadOne('src/student_books_proxy_cs21a126.jsx?v=F98.4Z6CS21A127&four=F111FOURTABSEN20261104A')
       .then(()=>loader.loadOne('src/student_planeamiento_pdf_catalog_cs21a129.js?v=F98.4Z6CS21A130'))
       .then(()=>loader.loadOne('src/student_content_access_cs21a125.jsx?v=F98.4Z6CS21A149&demo=F111STUDENTDEMO20261104'))
       .then(()=>loader.loadOne('src/student_tasks_menu_cs21a126.js?v=F98.4Z6CS21A127&demo=F111STUDENTDEMO20261104&fb=F111STUDENTFEEDBACK20261104A'))
