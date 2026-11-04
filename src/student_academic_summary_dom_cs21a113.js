@@ -88,7 +88,7 @@
   // Present feedback under the matching attendance lesson/session; never alter source records.
   function isICanFeedback(r){
     return [r?.riel,r?.tipo_leccion,r?.tipo,r?.categoria].some(v=>{
-      const tag=String(v??'').toUpperCase().replace(/[\\s_-]/g,'');
+      const tag=String(v??'').toUpperCase().replace(/[\s_-]/g,'');
       return tag==='ICAN'||tag==='CLUBICAN';
     });
   }
