@@ -12,13 +12,18 @@ assert.equal(appSourceF111.split(academicNewRoute).length-1,1,'F111 EN entry rou
 assert.equal(appSourceF111.split(academicNewStorage).length-1,1,'F111 EN route is not persisted academically');
 // Preserve the October exact D1 rollback check after subtracting only the new
 // student component cache keys. These are assets, not changes to exam behavior.
-const changedDashboard="'src/student_dashboard.jsx?v=F111STUDENTPROFILEEN20261103'";
+const changedDashboard="'src/student_dashboard.jsx?v=F111ATTLIMIT20261103A'";
 const originalDashboard="'src/student_dashboard.jsx?v=F1110826DOCT20261020'";
 const changedTabs="'src/student_experience.jsx?v=F111STUDENTTABSEN20261103'";
 const originalTabs="'src/student_experience.jsx?v=F98.4N'";
 assert.equal(appSourceF111.split(changedDashboard).length-1,1,'single new student profile asset');
 assert.equal(appSourceF111.split(changedTabs).length-1,3,'three identical student tab assets');
+const changedAdminRoster="'src/admin_attendance_roster.jsx?v=F111ATTLIMIT20261103A'";
+const oldAdminRoster="'src/admin_attendance_roster.jsx?v=F111ATTROSTER20261021'";
+assert.equal(appSourceF111.split(changedAdminRoster).length-1,1,'single new admin attendance roster asset');
+assert.equal(appSourceF111.split('&att=F111ATTLIMIT20261103A').length-1,3,'only three admin student routes updated');
 const source=appSourceF111.replace(changedDashboard,originalDashboard).replaceAll(changedTabs,originalTabs)
+  .replace(changedAdminRoster,oldAdminRoster).replaceAll('&att=F111ATTLIMIT20261103A','')
   .replace(academicNewRoute,academicOldRoute).replace(academicNewStorage,academicOldStorage);
 const baseline=execFileSync('git',['show',base+':src/app.jsx'],{encoding:'utf8',maxBuffer:24*1024*1024});
 const anchor="  const superadmin=String(ses?.rol||'').toLowerCase()==='superadmin';\n  const oralSrc=";
@@ -93,6 +98,11 @@ const approvedAssetDiffs=[
  ['&record=F111ADDRECORD20261103',''],
  ['src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103','src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103'],
  ['&i18nstudent=F111STUDENTTABS20261103',''],
+ ['<link rel="stylesheet" href="styles/f111_attendance_limit.css?v=F111ATTLIMIT20261103A">\n',''],
+ ['<script src="src/f111_attendance_limit_hotfix.js?v=F111ATTLIMIT20261103A"></script>\n',''],
+ ['src/att77_widgets.jsx?v=F111ATTLIMIT20261103A','src/att77_widgets.jsx?v=F98.4Z6CS21A77'],
+ ['src/att77_view_detail.jsx?v=F111ATTLIMIT20261103A','src/att77_view_detail.jsx?v=F98.4Z6CS21A77'],
+ ['&att=F111ATTLIMIT20261103A',''],
 ];
 let mainHtml=mainHtmlRaw;
 for (const [next,previous] of approvedAssetDiffs){

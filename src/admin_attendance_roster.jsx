@@ -73,6 +73,8 @@ function AttendanceGroupsSuperadminView(){
     return Array.from(byLesson.values()).sort((a,b)=>Number(a.leccion)-Number(b.leccion));
   },[data]);
   const students=Array.isArray(data?.estudiantes)?data.estudiantes:[];
+  // Use declared program only; never apply INA caps to SIN INA or unknown groups.
+  const riskProgram=attCode(data?.grupo?.programa||groups.find(g=>g.code===group)?.programa||'');
   const visible=students.filter(e=>{
     const q=attUpper(search);
     return !q||attUpper((e.name||e.nombre||'')+' '+(e.code||e.codigo||'')).includes(q);
@@ -266,6 +268,11 @@ function AttendanceGroupsSuperadminView(){
             <tbody>{visible.map((e,i)=><tr key={attCode(e.code||e.codigo)}>
               <td style={{position:'sticky',left:0,zIndex:1,background:i%2?'#F8FAFD':'white',padding:'9px 14px',borderBottom:'1px solid #E5EAF0',fontWeight:750}}>
                 {e.name||e.nombre}<div style={{fontSize:9,color:'#67758E',fontWeight:500}}>{e.code||e.codigo}</div>
+                {window.F111AttendanceLimit&&React.createElement(window.F111AttendanceLimit.Panel,{
+                  rows:lessons.map(l=>({key:'L'+l.leccion,riel:'curso',leccion:l.leccion,l,
+                    presente:attCell(data,l.leccion,attCode(e.code||e.codigo)).presente})),
+                  program:riskProgram,compact:true,label:'Límite de ausencias de '+(e.name||e.nombre)
+                })}
               </td>
               {lessons.map(l=>{
                 const c=attCell(data,l.leccion,attCode(e.code||e.codigo));
@@ -316,6 +323,11 @@ function AttendanceGroupsSuperadminView(){
               return <tr key={code} style={{background:i%2?'#FBFCFE':'white',borderBottom:'1px solid #E7ECF2'}}>
                 <td style={{padding:'12px 10px 12px 16px',verticalAlign:'top'}}>
                   <b>{e.name||e.nombre}</b><div style={{fontSize:10,color:'#60718C',marginTop:3}}>{code}</div>
+                  {window.F111AttendanceLimit&&React.createElement(window.F111AttendanceLimit.Panel,{
+                    rows:lessons.map(l=>({key:'L'+l.leccion,riel:'curso',leccion:l.leccion,l,
+                      presente:attCell(data,l.leccion,code).presente})),
+                    program:riskProgram,compact:true,label:'Control de ausencias de '+(e.name||e.nombre)
+                  })}
                 </td>
                 <td style={{padding:'11px 8px',verticalAlign:'top'}}>
                   <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>

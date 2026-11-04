@@ -1,0 +1,68 @@
+// F111 tri-role attendance limits HOTFIX: isolated read-only synthetic QA.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const src=fs.readFileSync('src/f111_attendance_limit_hotfix.js','utf8');
+const html=fs.readFileSync('campus.html','utf8');
+const teacher=fs.readFileSync('src/att77_widgets.jsx','utf8');
+const teacherDetail=fs.readFileSync('src/att77_view_detail.jsx','utf8');
+const admin=fs.readFileSync('src/admin_attendance_roster.jsx','utf8');
+const adminFicha=fs.readFileSync('src/admin_students.jsx','utf8');
+const student=fs.readFileSync('src/student_dashboard.jsx','utf8');
+const app=fs.readFileSync('src/app.jsx','utf8');
+const window={React:{createElement:(tag,props,...children)=>({tag,props,children})}};
+vm.runInNewContext(src,{window});
+const A=window.F111AttendanceLimit;
+assert(A&&A.VERSION==='F111ATTENDLIMIT20261103A');
+const course=(n,knownHours=true)=>Array.from({length:n},(_,i)=>({riel:'curso',leccion:i+1,p:false,hours:0,duracion_horas:knownHours?3:null}));
+const ican=(n)=>Array.from({length:n},(_,i)=>({riel:'ican',leccion:i+1,p:false,duracion_horas:2}));
+const sum=(rows,program='INA')=>A.summarize({rows,program});
+assert.equal(sum([]).status,'unknown','no records never counts as absent');
+assert.equal(sum([{riel:'curso',leccion:1,p:null}]).status,'unknown','unknown attendance is not an absence');
+assert.equal(sum([{riel:'curso',leccion:1,p:true}]).status,'good','confirmed perfect attendance is green');
+assert.equal(sum(course(2)).status,'safe','2 of 4 stays within safe limits');
+assert.equal(sum(course(3)).status,'near','3 of 4 amber warning');
+assert.equal(sum(course(4)).status,'at','4 of 4 at limit');
+assert.equal(sum(course(5)).status,'over','5 of 4 exceeds limit');
+assert.equal(sum(ican(1)).status,'near','1 of 2 I CAN warning');
+assert.equal(sum(ican(2)).status,'at','2 of 2 I CAN limit');
+assert.equal(sum(ican(3)).status,'over','3 of 2 I CAN over limit');
+assert.equal(sum(course(2)).by.course.hours,6,'real source duration 2 x 3 h');
+assert.equal(sum(course(2).concat(ican(1))).by.ican.hours,2,'I CAN source duration');
+assert.equal(sum(course(2,false)).by.course.hoursKnown,false,'unknown duration does not invent hours');
+assert.equal(sum(course(2).concat(course(2))).by.course.absent,2,'repeated lesson is not double-counted');
+assert.equal(sum([{riel:'curso',leccion:1,p:null},{riel:'curso',leccion:1,p:false}]).by.course.absent,1,'prefer actual A over missing');
+assert.equal(sum(course(5),'SIN_INA').status,'other','partial SIN INA calendar cannot be labeled INA over-limit');
+const makeNonINA=(absences,scheduled)=>Array.from({length:scheduled},(_,i)=>({riel:'curso',leccion:i+1,p:i<absences?false:null}));
+assert.equal(sum(makeNonINA(3,16),'SIN_INA').limits.course,4,'16-session course allows at most 4 absences for 70% attendance');
+assert.equal(sum(makeNonINA(3,16),'SIN_INA').status,'near','SIN INA 3 of 4 amber warning');
+assert.equal(sum(makeNonINA(4,16),'SIN_INA').status,'at','SIN INA 4 of 4 at limit');
+assert.equal(sum(makeNonINA(5,16),'SIN_INA').status,'over','SIN INA 5 of 4 over limit');
+assert.equal(sum(makeNonINA(10,32),'SIN_INA').status,'over','SIN INA 32-session course allows 9 missed sessions');
+assert.equal(sum(makeNonINA(1,10),'SIN_INA').status,'other','unknown full lesson count cannot give fabricated limits');
+assert.equal(sum(course(5),'SIN_INA').limits.course,null,'no false 4-absence cap in non INA');
+assert.equal(sum(course(5),'').status,'other','unknown program must not be mistaken as INA');
+assert.equal(A.programKind('CON_INA'),'INA');
+assert.equal(A.programKind('SIN INA'),'SIN_INA');
+assert.equal(A.programKind('INA'),'INA');
+assert.equal(sum(course(1)).by.course.present,0);
+const ui=A.Panel({rows:course(4),program:'INA',compact:true});
+assert.equal(ui.props['data-f111-att-limit'],'INA');
+assert(/f111-al-at/.test(ui.props.className),'actual status class accessible');
+for(const x of ['styles/f111_attendance_limit.css?v=F111ATTLIMIT20261103A','src/f111_attendance_limit_hotfix.js?v=F111ATTLIMIT20261103A','src/att77_widgets.jsx?v=F111ATTLIMIT20261103A','src/att77_view_detail.jsx?v=F111ATTLIMIT20261103A','&att=F111ATTLIMIT20261103A'])
+ assert(html.includes(x),'required official asset version '+x);
+assert(html.indexOf('src/f111_attendance_limit_hotfix.js')<html.indexOf('src/att77_widgets.jsx'),'core before teacher view');
+assert(html.indexOf('src/f111_attendance_limit_hotfix.js')<html.indexOf('src/app.jsx'),'core before lazy role view');
+assert(teacher.includes('window.F111AttendanceLimit.Panel')&&teacherDetail.includes('window.F111AttendanceLimit.Panel'),'teacher list and details');
+assert(teacher.includes('x.s.name')&&teacher.includes('x.s.code')&&teacher.includes('x.g'),'teacher identity/grades intact');
+assert(admin.includes('window.F111AttendanceLimit.Panel')&&admin.includes('attCell(data,l.leccion'),'admin official matrix');
+assert(admin.includes('readonly=!isSuper'),'admin read-only access unchanged');
+assert(adminFicha.includes('window.F111AttendanceLimit.Panel')&&adminFicha.includes('function TabAsistenciaPanel({ est, detalle })'),'admin student detail unchanged');
+assert(student.includes('window.F111AttendanceLimit.Panel')&&student.includes('program={programa}'),'student own gradebook');
+assert(student.includes('function RegistroNotasAsistenciaCampus('),'student gradebook remains');
+for(const x of ['src/student_dashboard.jsx?v=F111ATTLIMIT20261103A',
+  'src/admin_attendance_roster.jsx?v=F111ATTLIMIT20261103A',
+  'src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A'])
+ assert(app.includes(x),'lazy asset version '+x);
+assert(!src.includes('fetch(')&&!src.includes('post('),'counter never calls backend or writes records');
+console.log('F111 TRI-ROLE ATTENDANCE LIMIT E1 PASS: INA 4/2, non INA isolation, unknown coverage, real hours only, three roles, no writes.');

@@ -4230,6 +4230,10 @@ function TabAsistenciaPanel({ est, detalle }) {
       <div style={{ fontFamily:'var(--f-serif, serif)', fontSize:20, fontWeight:500, color:'var(--an-navy-ink, #14213D)', marginBottom:16 }}>
         Asistencia
       </div>
+      {window.F111AttendanceLimit&&React.createElement(window.F111AttendanceLimit.Panel,{
+        rows:asistencia,program:detalle?.grupo?.programa||detalle?.grupo?.PROGRAMA||est?.PROGRAMA||est?.programa||'',
+        label:'Límite individual de ausencias'
+      })}
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:20 }}>
         {[

@@ -1,0 +1,27 @@
+/* F111 · Accessible compact attendance risk indicator, read only. */
+.f111-al{display:block;box-sizing:border-box;min-width:0;width:100%;padding:9px 11px;margin:7px 0 0;border:1px solid #D9E3EE;border-radius:12px;background:#FFFEFC;color:#18395F;font:inherit}
+.f111-al *{box-sizing:border-box}
+.f111-al-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 10px;margin-bottom:6px}
+.f111-al-title{font-size:9px;font-weight:900;letter-spacing:.1em;color:#49637E}
+.f111-al-program{font-size:9px;font-weight:750;color:#667B93}
+.f111-al-rails{display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px 16px;margin-bottom:7px}
+.f111-al-rail{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px;line-height:1.5}
+.f111-al-rail b{font-size:10px;font-weight:850;color:#25496C}
+.f111-al-rail small{font-size:9px;font-weight:650;color:#405E7B}
+.f111-al-dots{display:inline-flex;align-items:center;gap:3px}
+.f111-al-dot{display:inline-block;flex:0 0 auto;width:9px;height:9px;border-radius:50%;border:1.5px solid var(--al-dot);vertical-align:middle}
+.f111-al-dot.empty{background:#FFF}
+.f111-al-dot.used{background:var(--al-dot)}
+.f111-al-near .f111-al-dot.used,.f111-al-at .f111-al-dot.used{--al-dot:#C88715!important}
+.f111-al-over .f111-al-dot.used{--al-dot:#A72242!important}
+.f111-al-overcount{display:inline-flex;color:#9B203A;font-size:9px}
+.f111-al-state{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 9px;border:1px solid;border-radius:7px;font-size:10px;font-weight:850;line-height:1.4;white-space:normal}
+.f111-al-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.f111-al-smallnote,.f111-al-muted{font-size:9px;color:#667A94;line-height:1.45}
+.f111-al-smallnote{margin-top:5px}
+.f111-al-compact{padding:7px 8px;margin-top:5px;border-radius:8px;background:#F8FAFD}
+.f111-al-compact .f111-al-title{font-size:8px}
+.f111-al-compact .f111-al-program,.f111-al-compact .f111-al-rail small{font-size:8px}
+.f111-al-compact .f111-al-dot{width:8px;height:8px}
+.f111-al-compact .f111-al-state{font-size:8.5px}
+@media(max-width:640px){.f111-al{padding:9px}.f111-al-rails{gap:6px}.f111-al-program{font-size:8px}}

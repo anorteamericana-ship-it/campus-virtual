@@ -11,7 +11,7 @@ const source=fs.readFileSync('src/i18n_pilot_f111.js','utf8');
 
 assert(html.includes('src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103'),'live dictionary version');
 assert(html.includes('&i18nstudent=F111STUDENTTABS20261103'),'live app router cache invalidation');
-assert(app.includes("src/student_dashboard.jsx?v=F111STUDENTPROFILEEN20261103"),'native student profile lazy asset');
+assert(app.includes("src/student_dashboard.jsx?v=F111ATTLIMIT20261103A"),'native student profile lazy asset');
 assert.equal(app.split("src/student_experience.jsx?v=F111STUDENTTABSEN20261103").length-1,3,'all three student tab routes updated');
 assert(app.includes("if (role === 'student') return 'dashboard'"),'profile is first student route every login');
 
