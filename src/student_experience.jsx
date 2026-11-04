@@ -120,9 +120,10 @@ function StudentHelpContactsF984() {
     ? useEstudiante(codigo)
     : { data:null, loading:false, error:'No se pudo cargar la ficha.', reload:()=>{} };
   if (loading && !data) return <div className="card" style={{ padding:24 }}>{studentExperienceT('Cargando contactos configurados…')}</div>;
-  if (error && !data) return <ErrorState message={error} onRetry={reload} />;
+  if (error && !data) return <ErrorState message={studentExperienceT(error)} onRetry={reload} />;
   const est = data?.estudiante || {};
   const contactos = data?.contactos_campus || {};
+  const contactActionLabelsF111 = { academico:'Contactar al área académica', administracion:'Contactar a administración', cobros:'Contactar a cobros', soporte:'Contactar a soporte técnico' };
   const cards = [
     ['Área académica','academico',contactos.contacto_academico || data?.contacto_academico],
     ['Administración','administracion',contactos.contacto_administracion || data?.contacto_administracion],
@@ -141,7 +142,7 @@ function StudentHelpContactsF984() {
               <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', color:'var(--an-granate)', textTransform:'uppercase' }}>{studentExperienceT(label)}</div>
               <div style={{ marginTop:10 }}>
                 {typeof window.ContactoAdmin === 'function'
-                  ? <window.ContactoAdmin est={est} usr={usr} tipo={tipo} label={`Contactar ${label.toLowerCase()}`} hideWhenPending />
+                  ? <window.ContactoAdmin est={est} usr={usr} tipo={tipo} label={studentExperienceT(contactActionLabelsF111[tipo] || 'Contactar')} hideWhenPending />
                   : <span style={{ color:'var(--ink-3)', fontSize:12 }}>{studentExperienceT('Contacto no disponible.')}</span>}
               </div>
             </div>
@@ -209,8 +210,8 @@ function StudentSignedEnrollmentPrivateF984() {
     if (preview) {
       try {
         preview.opener = null;
-        preview.document.title = 'Verificando matrícula firmada…';
-        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">Verificando matrícula firmada…</p>';
+        preview.document.title = studentExperienceT('Verificando matrícula firmada…');
+        preview.document.body.innerHTML = '<p style="font-family:system-ui;padding:24px">' + studentExperienceT('Verificando matrícula firmada…') + '</p>';
       } catch (_) {}
     }
     try {

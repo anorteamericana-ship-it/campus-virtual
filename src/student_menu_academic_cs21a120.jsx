@@ -320,7 +320,7 @@
 
   function FieldCS21A120({ label, value }){
     if(!clean(value))return null;
-    return <div className="sa120-field"><span>{label}</span><p>{value}</p></div>;
+    return <div className="sa120-field"><span>{studentAcademicT(label)}</span><p>{value}</p></div>;
   }
 
   function StudentPlaneamientoRouteCS21A120(){
@@ -340,7 +340,7 @@
           <option value="">{studentAcademicT("Elegí una unidad")}</option>
           {units.map(item=><option key={item.key} value={item.key}>{item.label}{item.titulo_unidad?` · ${item.titulo_unidad}`:''}</option>)}
         </select>
-        {!units.length&&<div className="sa120-empty">No hay planeamientos publicados para este nivel.</div>}
+        {!units.length&&<div className="sa120-empty">{studentAcademicT("No hay planeamientos publicados para este nivel.")}</div>}
       </div>
       {unit&&<div className="sa120-lessons">
         <div className="sa120-unit-head"><strong>{unit.label}</strong><span>{unit.titulo_unidad||''}</span></div>
