@@ -1752,6 +1752,14 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
   const [oculto, setOculto] = React.useState(() => {
     try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
   });
+  // First visit stays in Spanish. After a local "reviewed" confirmation,
+  // the NEXT mounting of this block may use the selected interface language.
+  // This is a device preference, never an official reading certificate.
+  const [reviewedBeforeEntry] = React.useState(() => {
+    try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
+  });
+  const textForRequired = label => reviewedBeforeEntry && window.AN_I18N?.getLang() === 'en'
+    ? window.AN_I18N.t(label) : label;
   const [signedBusy, setSignedBusy] = React.useState(false);
   const [signedError, setSignedError] = React.useState('');
 
@@ -1815,15 +1823,15 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
         <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--an-granate)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:20 }}>📋</div>
         <div style={{ flex:1, minWidth:200 }}>
           <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--an-granate)' }}>
-            Material obligatorio
+            {textForRequired('Material obligatorio')}
           </div>
           <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:500, color:'var(--an-navy-ink)', letterSpacing:'-0.02em', lineHeight:1.15 }}>
-            Antes de empezar tu programa
+            {textForRequired('Antes de empezar tu programa')}
           </div>
 
         </div>
         <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={toggle}>
-          {oculto ? 'Ver material' : 'Marcar revisado en este equipo'}
+          {textForRequired(oculto ? 'Ver material' : 'Marcar revisado en este equipo')}
         </button>
       </div>
 
@@ -1846,10 +1854,10 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
               </span>
               <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-3)' }}>1.0</span>
             </div>
-            <div style={{ fontWeight:600, fontSize:13, color:'var(--ink)', lineHeight:1.3 }}>Inscripción firmada</div>
-            <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>Tu matrícula vigente.</div>
+            <div style={{ fontWeight:600, fontSize:13, color:'var(--ink)', lineHeight:1.3 }}>{textForRequired('Inscripción firmada')}</div>
+            <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>{textForRequired('Tu matrícula vigente.')}</div>
             <div style={{ marginTop:'auto', fontSize:9.5, fontWeight:700, letterSpacing:'0.06em', color:'var(--an-granate)' }}>
-              {signedBusy ? 'VERIFICANDO…' : 'REQUERIDO · ~5 min'}
+              {textForRequired(signedBusy ? 'VERIFICANDO…' : 'REQUERIDO · ~5 min')}
             </div>
           </button>
           {!oculto && items.map(item => (
@@ -1867,10 +1875,10 @@ function AntesDeEmpezar({ codigo, onNavigate }) {
                 </span>
                 <span style={{ fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-3)' }}>{item.code}</span>
               </div>
-              <div style={{ fontWeight:600, fontSize:13, color:'var(--ink)', lineHeight:1.3 }}>{item.title}</div>
-              <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>{item.desc}</div>
+              <div style={{ fontWeight:600, fontSize:13, color:'var(--ink)', lineHeight:1.3 }}>{textForRequired(item.title)}</div>
+              <div style={{ fontSize:11, color:'var(--ink-3)', lineHeight:1.4 }}>{textForRequired(item.desc)}</div>
               <div style={{ marginTop:'auto', fontSize:9.5, fontWeight:700, letterSpacing:'0.06em', color: item.required ? 'var(--an-granate)' : 'var(--ink-3)' }}>
-                {item.required ? 'REQUERIDO' : 'RECOMENDADO'} · ~{item.minutes} min
+                {textForRequired(item.required ? 'REQUERIDO' : 'RECOMENDADO')} · ~{item.minutes} min
               </div>
             </button>
           ))}
