@@ -1365,7 +1365,7 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
           <div style={{fontSize:10.5,color:'var(--ink-3)',marginTop:3}}>{tvF111Translate(viewMode==='total'?(iCanApplies?'Vista TOTAL: lecciones e I CAN, ordenados por fecha y hora.':'Vista TOTAL: seguimiento de las 32 lecciones del curso.'):viewMode==='curso'?'Vista SOLO LECCIONES: seguimiento de las 32 lecciones del curso.':'Vista SOLO I CAN: seguimiento independiente de las 16 sesiones complementarias.')}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap',flex:'1 1 420px'}}>
-          <div role="tablist" aria-label="Filtrar asistencia" style={{display:'inline-flex',gap:5,padding:4,border:'1px solid var(--line)',borderRadius:12,background:'#F7F9FC',flexWrap:'wrap'}}>
+          <div role="tablist" aria-label={tvF111Translate("Filtrar asistencia")} style={{display:'inline-flex',gap:5,padding:4,border:'1px solid var(--line)',borderRadius:12,background:'#F7F9FC',flexWrap:'wrap'}}>
             {[
               {id:'total',label:'TOTAL',count:allLessons.length},
               {id:'curso',label:'SOLO LECCIONES',count:courseCount},

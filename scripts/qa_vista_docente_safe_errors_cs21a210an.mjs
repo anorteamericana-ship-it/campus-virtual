@@ -108,7 +108,25 @@ const F111_OLD_INITIAL = "        setCalendario(cal); setPendientes(pend);";
 must(src.split(F111_REFETCH).length-1===1,'F111 refetch filter must exist once');
 must(src.replace(F111_REFETCH,F111_OLD_REFETCH).split(F111_INITIAL).length-1===1,'F111 initial filter must exist once after refetch removal');
 must(src.includes('window.ANTeacherCyclePolicyF111'),'F111 cycle policy required');
-let preF99=src.replace(F111_REFETCH,F111_OLD_REFETCH).replace(F111_INITIAL,F111_OLD_INITIAL);
+// F111 EN/ES menu-only changes are audited one-for-one before the immutable AN
+// reconstruction. Any additional change to lesson semantics keeps the SHA red.
+const F111_MENU_UI_REVERSALS = [
+  ["function vdF111MenuT(label) { return window.AN_I18N?.t(label) || label; }\n", ""],
+  ["            {vdF111MenuT(t.label)}\n", "            {t.label}\n"],
+  ["            {vdF111MenuT(cat.label)}\n", "            {cat.label}\n"],
+  ["              {vdF111MenuT('La edición de lecciones cerradas estará disponible próximamente.')}\n",
+   "              La edición de lecciones cerradas estará disponible próximamente.\n"],
+  ["        {vdF111MenuT(accion)}\n", "        {accion}\n"],
+  [">{vdF111MenuT('Lec')} {String(pendiente.leccion).padStart(2, '0')}</span>",
+   ">Lec {String(pendiente.leccion).padStart(2, '0')}</span>"],
+];
+let menuOriginal=src;
+F111_MENU_UI_REVERSALS.forEach(([changed,baseline],i)=>{
+  const occurrences=menuOriginal.split(changed).length-1;
+  must(occurrences===1,'F111 menu change '+(i+1)+' absent/ambiguous ('+occurrences+')');
+  menuOriginal=menuOriginal.replace(changed,baseline);
+});
+let preF99=menuOriginal.replace(F111_REFETCH,F111_OLD_REFETCH).replace(F111_INITIAL,F111_OLD_INITIAL);
 F101_REVERSALS.forEach(function(pair,i){
   const occurrences=preF99.split(pair[0]).length-1;
   must(occurrences===1,'F101: cambio '+(i+1)+' ausente o ambiguo ('+occurrences+')');
