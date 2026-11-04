@@ -10,6 +10,7 @@ const html = read('campus.html');
 const app = read('src/app.jsx');
 const menu = read('src/student_menu_academic_cs21a120.jsx');
 const summary = read('src/student_academic_summary_dom_cs21a113.js');
+const dashboard = read('src/student_dashboard.jsx');
 const d1 = read('scripts/qa_f111_superadmin_single_center_20261017.mjs');
 
 const key = 'F111STUDENTCALEN20261104A';
@@ -22,6 +23,20 @@ assert(summary.includes("panel('Club I CAN'"), 'I CAN attendance panel remains v
 assert(calendar.includes("onClick={() => setNivel('ICAN')}"), 'I CAN calendar tab remains available');
 assert(calendar.includes("getSesionClaseEstudiante"), 'meeting session check preserved');
 assert(calendar.includes('fetchMaterialLeccion'), 'protected PDF retrieval preserved');
+assert(dashboard.includes('const textForRequired = label => studentDashT(label);'), 'EN/ES applies to mandatory onboarding immediately');
+assert(!dashboard.includes('reviewedBeforeEntry'), 'no Spanish-first hidden override');
+assert(dashboard.includes("localStorage.getItem(KEY) === '1'"), 'existing reviewed/hide local preference remains');
+assert(dashboard.includes("postStudentDash('actualizarDatosPersonalesEstudiante'"), 'student personal information update unchanged');
+assert(dashboard.includes('studentAttendanceUiLabel(attendance.short)'), 'late attendance isolated from afternoon shift');
+assert(dashboard.includes("studentDashT('Registro de notas y asistencia')"), 'gradebook header bilingual');
+assert(dashboard.includes("studentDashT(meta.title)"), 'upcoming events titles bilingual');
+assert(dashboard.includes("studentDashT(STATUS[est]||est)"), 'academic status labels bilingual');
+assert(dashboard.includes("studentDashT(registrados.length===1?'Existe':'Existen')"), 'certificate grammar kept');
+assert(dashboard.includes('title={textForRequired(') === false, 'no unrecognized JSX change to PDF title transport');
+assert(dashboard.includes('descargarMatriculaFirmadaPrivada'), 'official signed PDF still uses protected endpoint');
+assert(dashboard.includes("window.crypto.subtle.digest('SHA-256', bytes)"), 'signed PDF integrity check intact');
+assert(dashboard.includes('ultimo.comentario'), 'authentic teacher feedback remains unmodified');
+
 
 for (const name of ['CronogramaGrupo','VistaTabsCrono','LeccionBloque','VistaProxima',
   'VistaSemana','VistaLista','Mes','ProgressBar32','PanelDetalle','DetalleLeccion',
@@ -90,5 +105,11 @@ assert.equal(studentES.cgStudentMonthFull(10),'Noviembre');
 assert.equal(studentEN.cgStudentUiT('de 16 sesiones I CAN realizadas'),'of 16 I CAN Sessions Completed');
 assert.equal(studentEN.cgStudentUiT('No se pudo cargar el detalle'),'Could Not Load Lesson Details');
 assert.equal(studentEN.cgStudentUiT('Ver planeamiento PDF'),'View Lesson Plan PDF');
+assert.equal(studentEN.i18n.t('Registro de notas y asistencia'),'Grades & Attendance Record');
+assert.equal(studentEN.i18n.t('Escrito'),'Written');
+assert.equal(studentEN.i18n.t('Próximos eventos'),'Upcoming Events');
+assert.equal(studentEN.i18n.t('Existe'),'There Is');
+assert.equal(studentES.i18n.t('Registro de notas y asistencia'),'Registro de notas y asistencia');
 
-console.log('F111 STUDENT CALENDAR EN/ES E1 PASS: four views, lesson states, shift/weekday/date distinctions, I CAN records visible, teacher/admin unchanged, no writes.');
+
+console.log('F111 STUDENT CALENDAR EN/ES E1 PASS: four views, profile gradebook, first-entry language, shift/date distinctions, I CAN preserved, admin/teacher unchanged, no writes.');
