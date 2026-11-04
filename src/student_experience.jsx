@@ -3,6 +3,9 @@
    NotasView, SolicitudesEstudianteView, InfoProgramaView, ContactoAdmin,
    EmptyState, ErrorState */
 
+// Translate UI strings only; preserve route IDs, signed PDF transport and canonical data.
+const studentExperienceT = value => window.AN_I18N?.t(value) || value;
+
 const STUDENT_TAB_STYLE_F984 = {
   display:'flex', gap:6, flexWrap:'wrap', padding:5, marginBottom:18,
   border:'1px solid var(--line)', borderRadius:14, background:'var(--surface)'
@@ -13,7 +16,7 @@ function StudentTabButtonF984({ active, children, onClick }) {
     <button type="button" className={`student-tab-button ${active ? 'btn btn-primary active' : 'btn btn-ghost'}`}
       onClick={onClick} aria-pressed={active}
       style={{ flex:'1 1 170px', justifyContent:'center', minHeight:40 }}>
-      {children}
+      {typeof children === 'string' ? studentExperienceT(children) : children}
     </button>
   );
 }
@@ -21,9 +24,9 @@ function StudentTabButtonF984({ active, children, onClick }) {
 function StudentSectionHeaderF984({ kicker, title, sub }) {
   return (
     <div className="student-section-header" style={{ marginBottom:20 }}>
-      {kicker ? <div className="student-section-kicker" style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{kicker}</div> : null}
-      <h1 className="student-section-title" style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}>{title}</h1>
-      {sub && <p className="student-section-subtitle" style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}>{sub}</p>}
+      {kicker ? <div className="student-section-kicker" style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--an-granate)' }}>{studentExperienceT(kicker)}</div> : null}
+      <h1 className="student-section-title" style={{ fontFamily:'var(--f-serif)', fontSize:'clamp(30px,4vw,42px)', margin:'4px 0 5px', color:'var(--an-navy-ink)', fontWeight:500, letterSpacing:'-.03em' }}>{studentExperienceT(title)}</h1>
+      {sub && <p className="student-section-subtitle" style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.55, maxWidth:760 }}>{studentExperienceT(sub)}</p>}
     </div>
   );
 }
@@ -31,11 +34,11 @@ function StudentSectionHeaderF984({ kicker, title, sub }) {
 function StudentComingSoonF984({ title, body, items = [] }) {
   return (
     <section className="card" style={{ padding:'22px 24px', border:'1px dashed var(--line-2)', background:'linear-gradient(135deg,#fff,var(--bg-deep))' }}>
-      <div style={{ display:'inline-flex', padding:'4px 9px', borderRadius:999, background:'color-mix(in srgb,var(--an-gold) 15%,white)', color:'#7A4E00', fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase' }}>Próximamente</div>
-      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'10px 0 6px', fontSize:24 }}>{title}</h2>
-      <p style={{ margin:'0 0 12px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>{body}</p>
+      <div style={{ display:'inline-flex', padding:'4px 9px', borderRadius:999, background:'color-mix(in srgb,var(--an-gold) 15%,white)', color:'#7A4E00', fontSize:10, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase' }}>{studentExperienceT('Próximamente')}</div>
+      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'10px 0 6px', fontSize:24 }}>{studentExperienceT(title)}</h2>
+      <p style={{ margin:'0 0 12px', color:'var(--ink-2)', fontSize:13, lineHeight:1.55 }}>{studentExperienceT(body)}</p>
       {items.length > 0 && <ul style={{ margin:'0 0 0 18px', padding:0, color:'var(--ink-3)', fontSize:12.5, lineHeight:1.65 }}>
-        {items.map(x => <li key={x}>{x}</li>)}
+        {items.map(x => <li key={x}>{studentExperienceT(x)}</li>)}
       </ul>}
     </section>
   );
@@ -50,8 +53,8 @@ function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, i
 
   return (
     <div className="student-page student-page-course" data-screen-label="Estudiante · Mi curso" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
-      <StudentSectionHeaderF984 title="Mi curso" />
-      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Mi curso">
+      <StudentSectionHeaderF984 title={studentExperienceT('Mi curso')} />
+      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label={studentExperienceT('Secciones de Mi curso')}>
         <StudentTabButtonF984 active={tab==='cronograma'} onClick={()=>choose('cronograma')}>Cronograma</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='materiales'} onClick={()=>choose('materiales')}>Materiales</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='tareas'} onClick={()=>choose('tareas')}>Tareas</StudentTabButtonF984>
@@ -59,10 +62,10 @@ function StudentCourseView({ initialTab='cronograma', onTabChange, onNavigate, i
       <div role="tabpanel">
         {tab==='cronograma' && (typeof window.CronogramaGrupo === 'function'
           ? <window.CronogramaGrupo rol="student" onNavigate={onNavigate} />
-          : <EmptyState icon="🗓️" title="Cronograma no disponible" subtitle="No fue posible cargar la pantalla de cronograma." />)}
+          : <EmptyState icon="🗓️" title={studentExperienceT('Cronograma no disponible')} subtitle={studentExperienceT('No fue posible cargar la pantalla de cronograma.')} />)}
         {tab==='materiales' && (typeof window.MaterialesView === 'function'
           ? <window.MaterialesView initialLesson={initialLesson} onNavigate={onNavigate} />
-          : <EmptyState icon="📚" title="Materiales no disponibles" subtitle="No fue posible cargar la biblioteca del curso." />)}
+          : <EmptyState icon="📚" title={studentExperienceT('Materiales no disponibles')} subtitle={studentExperienceT('No fue posible cargar la biblioteca del curso.')} />)}
         {tab==='tareas' && <StudentComingSoonF984
           title="Tareas · Próximamente"
           body="Este espacio queda reservado dentro de Mi curso. No se muestran tareas ficticias mientras no exista el flujo completo de publicación, entrega y revisión."
@@ -82,20 +85,20 @@ function StudentEvaluationsView({ initialTab='proximas', onTabChange, onNavigate
 
   return (
     <div className="student-page student-page-evaluations" data-screen-label="Estudiante · Evaluaciones" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
-      <StudentSectionHeaderF984 title="Evaluaciones" />
-      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Evaluaciones">
+      <StudentSectionHeaderF984 title={studentExperienceT('Evaluaciones')} />
+      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label={studentExperienceT('Secciones de Evaluaciones')}>
         <StudentTabButtonF984 active={tab==='proximas'} onClick={()=>choose('proximas')}>Próximas y activas</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='resultados'} onClick={()=>choose('resultados')}>Resultados</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='reposiciones'} onClick={()=>choose('reposiciones')}>Reposiciones</StudentTabButtonF984>
       </div>
       <div role="tabpanel">
-        {tab==='proximas' && (typeof renderUpcoming === 'function' ? renderUpcoming() : <EmptyState icon="📝" title="Exámenes no disponibles" subtitle="No fue posible cargar el panel de exámenes." />)}
+        {tab==='proximas' && (typeof renderUpcoming === 'function' ? renderUpcoming() : <EmptyState icon="📝" title={studentExperienceT('Exámenes no disponibles')} subtitle={studentExperienceT('No fue posible cargar el panel de exámenes.')} />)}
         {tab==='resultados' && (typeof window.NotasView === 'function'
           ? <window.NotasView onNavigate={onNavigate} />
-          : <EmptyState icon="📊" title="Resultados no disponibles" subtitle="No fue posible cargar Mis Notas." />)}
+          : <EmptyState icon="📊" title={studentExperienceT('Resultados no disponibles')} subtitle={studentExperienceT('No fue posible cargar Mis Notas.')} />)}
         {tab==='reposiciones' && (typeof window.SolicitudesEstudianteView === 'function'
           ? <window.SolicitudesEstudianteView onNavigate={onNavigate} embedded />
-          : <EmptyState icon="🧾" title="Reposiciones no disponibles" subtitle="No fue posible cargar las solicitudes de reposición." />)}
+          : <EmptyState icon="🧾" title={studentExperienceT('Reposiciones no disponibles')} subtitle={studentExperienceT('No fue posible cargar las solicitudes de reposición.')} />)}
       </div>
     </div>
   );
@@ -115,7 +118,7 @@ function StudentHelpContactsF984() {
   const { data, loading, error, reload } = typeof useEstudiante === 'function'
     ? useEstudiante(codigo)
     : { data:null, loading:false, error:'No se pudo cargar la ficha.', reload:()=>{} };
-  if (loading && !data) return <div className="card" style={{ padding:24 }}>Cargando contactos configurados…</div>;
+  if (loading && !data) return <div className="card" style={{ padding:24 }}>{studentExperienceT('Cargando contactos configurados…')}</div>;
   if (error && !data) return <ErrorState message={error} onRetry={reload} />;
   const est = data?.estudiante || {};
   const contactos = data?.contactos_campus || {};
@@ -129,23 +132,23 @@ function StudentHelpContactsF984() {
   return (
     <div>
       {cards.length === 0 ? (
-        <EmptyState icon="☎️" title="Contactos pendientes de configuración" subtitle="No hay contactos institucionales publicados para tu perfil. No se muestran teléfonos o correos inventados." />
+        <EmptyState icon="☎️" title={studentExperienceT('Contactos pendientes de configuración')} subtitle={studentExperienceT('No hay contactos institucionales publicados para tu perfil. No se muestran teléfonos o correos inventados.')} />
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))', gap:14 }}>
           {cards.map(([label,tipo]) => (
             <div key={tipo} className="card" style={{ padding:20 }}>
-              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', color:'var(--an-granate)', textTransform:'uppercase' }}>{label}</div>
+              <div style={{ fontSize:10, fontWeight:900, letterSpacing:'.13em', color:'var(--an-granate)', textTransform:'uppercase' }}>{studentExperienceT(label)}</div>
               <div style={{ marginTop:10 }}>
                 {typeof window.ContactoAdmin === 'function'
                   ? <window.ContactoAdmin est={est} usr={usr} tipo={tipo} label={`Contactar ${label.toLowerCase()}`} hideWhenPending />
-                  : <span style={{ color:'var(--ink-3)', fontSize:12 }}>Contacto no disponible.</span>}
+                  : <span style={{ color:'var(--ink-3)', fontSize:12 }}>{studentExperienceT('Contacto no disponible.')}</span>}
               </div>
             </div>
           ))}
         </div>
       )}
       <div className="card" style={{ marginTop:16, padding:'16px 18px', fontSize:12.5, color:'var(--ink-2)', lineHeight:1.55 }}>
-        Para reportar una falla del campus, enviá una captura e indicá tu nombre, código, grupo, pantalla y hora del error. No compartás contraseñas ni códigos de acceso a exámenes.
+        {studentExperienceT('Para reportar una falla del campus, enviá una captura e indicá tu nombre, código, grupo, pantalla y hora del error. No compartás contraseñas ni códigos de acceso a exámenes.')}
       </div>
     </div>
   );
@@ -227,11 +230,11 @@ function StudentSignedEnrollmentPrivateF984() {
   };
   return (
     <section className="card" style={{ marginTop:16, padding:'18px 20px' }}>
-      <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:'var(--an-granate)' }}>Documento privado</div>
-      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'7px 0 6px', fontSize:22 }}>Matrícula firmada</h2>
-      <p style={{ margin:'0 0 12px', color:'var(--ink-3)', fontSize:12.5, lineHeight:1.55 }}>Cuando Admisiones adjunte tu PDF firmado, podés abrir aquí la versión más reciente de tu propio expediente.</p>
-      <button type="button" className="btn btn-primary" disabled={busy} onClick={abrir}>{busy ? 'Verificando…' : 'Abrir matrícula firmada'}</button>
-      {error ? <div role="alert" style={{ marginTop:9, color:'var(--danger)', fontSize:12 }}>{error}</div> : null}
+      <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.13em', textTransform:'uppercase', color:'var(--an-granate)' }}>{studentExperienceT('Documento privado')}</div>
+      <h2 style={{ fontFamily:'var(--f-serif)', color:'var(--an-navy-ink)', margin:'7px 0 6px', fontSize:22 }}>{studentExperienceT('Matrícula firmada')}</h2>
+      <p style={{ margin:'0 0 12px', color:'var(--ink-3)', fontSize:12.5, lineHeight:1.55 }}>{studentExperienceT('Cuando Admisiones adjunte tu PDF firmado, podés abrir aquí la versión más reciente de tu propio expediente.')}</p>
+      <button type="button" className="btn btn-primary" disabled={busy} onClick={abrir}>{studentExperienceT(busy ? 'Verificando…' : 'Abrir matrícula firmada')}</button>
+      {error ? <div role="alert" style={{ marginTop:9, color:'var(--danger)', fontSize:12 }}>{studentExperienceT(error)}</div> : null}
     </section>
   );
 }
@@ -244,8 +247,8 @@ function StudentDocumentsHelpView({ initialTab='programa', onTabChange }) {
   const choose = (next) => { setTab(next); if (onTabChange) onTabChange(next); };
   return (
     <div className="student-page student-page-documents" data-screen-label="Estudiante · Documentos y ayuda" style={{ padding:'28px 32px 60px', maxWidth:1280, margin:'0 auto' }}>
-      <StudentSectionHeaderF984 kicker="Gestión" title="Documentos y ayuda" sub="Información institucional, avisos y contactos reales configurados para tu perfil." />
-      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label="Secciones de Documentos y ayuda">
+      <StudentSectionHeaderF984 kicker={studentExperienceT('Gestión')} title={studentExperienceT('Documentos y ayuda')} sub={studentExperienceT('Información institucional, avisos y contactos reales configurados para tu perfil.')} />
+      <div className="student-tabs" style={STUDENT_TAB_STYLE_F984} role="tablist" aria-label={studentExperienceT('Secciones de Documentos y ayuda')}>
         <StudentTabButtonF984 active={tab==='programa'} onClick={()=>choose('programa')}>Programa y documentos</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='avisos'} onClick={()=>choose('avisos')}>Avisos</StudentTabButtonF984>
         <StudentTabButtonF984 active={tab==='ayuda'} onClick={()=>choose('ayuda')}>Ayuda y contactos</StudentTabButtonF984>
@@ -254,7 +257,7 @@ function StudentDocumentsHelpView({ initialTab='programa', onTabChange }) {
         {tab==='programa' && <>
           {typeof window.InfoProgramaView === 'function'
             ? <window.InfoProgramaView />
-            : <EmptyState icon="📖" title="Documentos no disponibles" subtitle="No fue posible cargar la información del programa." />}
+            : <EmptyState icon="📖" title={studentExperienceT('Documentos no disponibles')} subtitle={studentExperienceT('No fue posible cargar la información del programa.')} />}
           <StudentSignedEnrollmentPrivateF984 />
         </>}
         {tab==='avisos' && <StudentNoticesF984 />}

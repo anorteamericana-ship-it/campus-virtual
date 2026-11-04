@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_dashboard.jsx'
+      - 'src/student_experience.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/teacher_cs21a_planeamiento_grouped.jsx'
       - 'src/student_content_access_cs21a125.jsx'
@@ -25,6 +27,8 @@ on:
     branches: [main]
     paths:
       - 'src/student_menu_academic_cs21a120.jsx'
+      - 'src/student_dashboard.jsx'
+      - 'src/student_experience.jsx'
       - 'src/student_menu_academic_guard_cs21a120.js'
       - 'src/teacher_cs21a_planeamiento_grouped.jsx'
       - 'src/student_content_access_cs21a125.jsx'
@@ -61,6 +65,8 @@ jobs:
           const parser = require('@babel/parser');
           const files = [
             'src/student_menu_academic_cs21a120.jsx',
+            'src/student_dashboard.jsx',
+            'src/student_experience.jsx',
             'src/student_content_access_cs21a125.jsx',
             'src/student_books_proxy_cs21a126.jsx',
             'src/program_info_shared_cs21a119.jsx',

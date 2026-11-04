@@ -59,7 +59,7 @@ assert.equal(x.api.setLang('en'),false,'admin no activa traducción incompleta')
 x=create('superadmin','');
 assert.equal(x.api.available,true,'superadmin también ve selector');
 assert.equal(x.api.getLang(),'es','superadmin no se traduce');
-assert.ok(html.includes('src/i18n_pilot_f111.js?v=F111REALDOCSEN20261103'));
+assert.ok(html.includes('src/i18n_pilot_f111.js?v=F111STUDENTPROFILEEN20261103'));
 assert.ok(html.indexOf('src/i18n_pilot_f111.js')<html.indexOf('src/data.jsx'));
 assert.ok(html.includes('src/sidebar.jsx?v=F111ATTEND20261021&i18n=F111VISIBLE20261103'),'sidebar cache invalidated');
 assert.ok(shell.includes('data-an-nav-label={item.label}'),'nav key estable');
