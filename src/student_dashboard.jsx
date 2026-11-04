@@ -1350,8 +1350,8 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
   return (
     <section className="card" style={{ padding:0, marginBottom:18, overflow:'hidden', border:'2px solid color-mix(in srgb, var(--an-gold) 55%, white)' }} aria-label="Orientación inicial del campus">
       <div style={{ padding:'16px 20px', background:'linear-gradient(135deg, color-mix(in srgb, var(--an-gold) 16%, white), #fff)', borderBottom:'1px solid var(--line)' }}>
-        <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A4E00' }}>Primer ingreso · orientación obligatoria</div>
-        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>Antes de avanzar, verificá tus datos</div>
+        <div style={{ fontSize:10.5, fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', color:'#7A4E00' }}>{studentDashT('Primer ingreso · orientación obligatoria')}</div>
+        <div style={{ fontFamily:'var(--f-serif)', fontSize:22, fontWeight:600, color:'var(--an-navy-ink)', marginTop:2 }}>{studentDashT('Antes de avanzar, verificá tus datos')}</div>
         <div style={{ fontSize:12.5, color:'var(--ink-3)', lineHeight:1.5, marginTop:4 }}>
           El Campus inicia en <strong>Mi Campus</strong> para que tengás a mano tu información académica, horario, grupo y material de lectura obligatorio solicitado para el programa. Esta guía aparece en el primer ingreso de este equipo y queda disponible desde el material del programa.
         </div>
@@ -1368,8 +1368,8 @@ function OrientacionInicialCampus({ codigo, nombreCompleto, codGrupo, nivelReal,
           <strong style={{ color:'var(--ink)' }}>Checklist inicial:</strong> verificá tus datos, abrí el material obligatorio y guardá esta información. Si algo no coincide con tu grupo real, reportalo antes de hacer exámenes o registrar asistencia.
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button className="btn btn-ghost" type="button" onClick={() => onNavigate && onNavigate('info_programa')}>Ver material obligatorio</button>
-          <button className="btn btn-primary" type="button" onClick={confirmar}>Mis datos están a la mano</button>
+          <button className="btn btn-ghost" type="button" onClick={() => onNavigate && onNavigate('info_programa')}>{studentDashT('Ver material obligatorio')}</button>
+          <button className="btn btn-primary" type="button" onClick={confirmar}>{studentDashT('Mis datos están a la mano')}</button>
         </div>
       </div>
     </section>
