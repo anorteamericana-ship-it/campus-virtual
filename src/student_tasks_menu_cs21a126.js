@@ -3,6 +3,7 @@
   'use strict';
   const VERSION='F98.4-Z6-CS21A126';
   const ROUTE='tareas_estudiante';
+  const F111_HIDE_TASKS_FROM_DEMO = true; // Hide only navigation, do not delete historical work.
   let queued=false;
 
   function ensureCss(){
@@ -62,6 +63,7 @@
   }
 
   function installMenu(){
+    if (F111_HIDE_TASKS_FROM_DEMO) { document.querySelector('[data-nav-id="tareas_estudiante"]')?.remove(); return; }
     const aside=document.querySelector('aside.student-sb');
     const evaluations=aside?.querySelector('[data-nav-id="evaluaciones"]');
     if(!aside||!evaluations)return;
