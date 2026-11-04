@@ -217,7 +217,7 @@ checks.push({ area: 'writes', ok: true, skipped: true, reason: 'CS21A210BO no im
 const campusBase = process.env.QA_CAMPUS_BASE_URL || 'http://127.0.0.1:4173';
 const scenarios = [
   { role: 'student', route: 'dashboard', viewport: { width: 390, height: 844 } },
-  { role: 'student', route: 'libros_audios_estudiante', clickLabel: 'Libros y Audios', viewport: { width: 1440, height: 900 } },
+  { role: 'student', route: 'libros_audios_estudiante', navId: 'libros_audios_estudiante', expectedLabel: 'Books & Audio', lang: 'en', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'grupos', viewport: { width: 1440, height: 900 } },
   { role: 'teacher', route: 'materiales', viewport: { width: 390, height: 844 } },
   { role: 'superadmin', route: 'dashboard', viewport: { width: 1440, height: 900 } },
@@ -230,14 +230,15 @@ for (const scenario of scenarios) {
   const key = `${scenario.role}-${scenario.route}-${scenario.viewport.width}`;
   const context = await browser.newContext({ viewport: scenario.viewport, ignoreHTTPSErrors: true });
   const initialRoute = scenario.role === 'student' ? 'dashboard' : scenario.route;
-  await context.addInitScript(({ session, route }) => {
+  await context.addInitScript(({ session, route, lang }) => {
     sessionStorage.setItem('an_usuario', JSON.stringify(session));
     sessionStorage.removeItem('an_just_logged_in');
+    if (lang === 'en' || lang === 'es') sessionStorage.setItem('an_i18n_pilot_lang', lang);
     const uiRole = session.rol === 'superadmin' || session.rol === 'admin' ? 'admin' : session.rol;
     localStorage.setItem('an_role', uiRole);
     localStorage.setItem('an_active', route);
     localStorage.setItem(`an_active_${uiRole}`, route);
-  }, { session, route: initialRoute });
+  }, { session, route: initialRoute, lang: scenario.lang });
 
   const page = await context.newPage();
   const errors = [];
@@ -278,13 +279,23 @@ for (const scenario of scenarios) {
     } catch (_) {}
     await page.waitForTimeout(1500);
 
-    if (scenario.clickLabel) {
-      const locator = page.getByText(scenario.clickLabel, { exact: true }).last();
-      if (await locator.count()) {
-        await locator.click({ timeout: 5000 });
+    if (scenario.navId) {
+      // The label may vary with language: route IDs are stable; verify the EN/ES label separately.
+      if (scenario.viewport.width <= 640) {
+        const toggle = page.locator('.an-mobile-nav-toggle').first();
+        if (await toggle.count() && await toggle.isVisible()) await toggle.click({ timeout: 5000 });
+      }
+      const button = page.locator('button[data-nav-id="' + scenario.navId + '"]').first();
+      if (await button.count() && await button.isVisible()) {
+        const label = (await button.locator('.sb-label').innerText()).trim();
+        if (label !== scenario.expectedLabel) {
+          add('P2', 'navegador', `Etiqueta EN/ES incorrecta en ${key}`,
+            `route=${scenario.navId}; expected=${scenario.expectedLabel}; observed=${label}`);
+        }
+        await button.click({ timeout: 5000 });
         await page.waitForTimeout(2500);
       } else {
-        add('P1', 'navegador', `No apareció navegación ${key}`, `control=${scenario.clickLabel}`);
+        add('P1', 'navegador', `No apareció navegación ${key}`, `route=${scenario.navId}`);
       }
     }
 
