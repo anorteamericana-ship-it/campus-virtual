@@ -7,6 +7,8 @@ on:
       - 'src/sidebar.jsx'
       - 'src/sidebar_active_state_cs21a69.js'
       - 'src/student_dashboard.jsx'
+      - 'styles/academy_identity_card.css'
+      - 'scripts/qa_f111_student_hero_language_visual_e1.mjs'
       - 'src/f111_attendance_limit_hotfix.js'
       - 'src/admin_attendance_roster.jsx'
       - 'src/admin_students.jsx'
@@ -38,6 +40,8 @@ jobs:
         run: node scripts/qa_f111_attendance_limit_three_roles_e1.mjs
       - name: Native role-aware preview, stable nav and emergency exit
         run: node scripts/qa_f111_i18n_preview_e1.mjs
+      - name: Student hero name contrast, ribbon hover and reviewed-material language E1
+        run: node scripts/qa_f111_student_hero_language_visual_e1.mjs
       - name: Student profile and tabs bilingual E1 (synthetic)
         run: node scripts/qa_f111_student_profile_tabs_en_e1.mjs
       - name: Real teacher document viewer and professional record regression
