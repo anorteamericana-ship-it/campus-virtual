@@ -66,7 +66,7 @@ function LazyRoute({ title, component, files, ...props }) {
   return <LazyModuleView title={title || component} component={component} files={files || []} props={props} />;
 }
 const F96_LAZY = {
-  student_dashboard: ['src/student_dashboard.jsx?v=F111HERO20261103B&demo=F111STUDENTDEMO20261104&calendar=F111STUDENTCALEN20261104A&support=F111SUPPORTEN20261104A'],
+  student_dashboard: ['src/student_dashboard.jsx?v=F111HERO20261103B&demo=F111STUDENTDEMO20261104&calendar=F111STUDENTCALEN20261104A&support=F111SUPPORTEN20261104A&crday=F111CRDAY20261104A'],
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
@@ -81,8 +81,8 @@ const F96_LAZY = {
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021','src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A','src/calendario_grupo.jsx?v=F98.4Z6CM'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A','src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A','src/calendario_grupo.jsx?v=F98.4Z6CM'],
   docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/teacher_views.jsx?v=F104NEXTROSTER20261009&rl=F111ROSTER20261104CLEAN','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
@@ -97,7 +97,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A',
+    'src/vista_docente.jsx?v=F111ARCHIVESEP20261020','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A&crday=F111CRDAY20261104A',
     'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023&deep=F111STUDENTDEEPTABS20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A'
   ],
   student_evaluations: [

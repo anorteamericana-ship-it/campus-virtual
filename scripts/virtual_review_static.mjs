@@ -82,8 +82,9 @@ const allSources = sourceFiles.map(file => ({ file, text: read(file) }));
 const staticAssets = deliveryHtmlFiles.flatMap(file => extractAssets(read(file), file));
 
 let lazyAssets = [];
+let lazyMap = {};
 try {
-  const lazyMap = extractLazyMap(app);
+  lazyMap = extractLazyMap(app);
   lazyAssets = [...new Set(Object.values(lazyMap).flat())].map(raw => ({
     raw,
     file: resolveLocalRef(raw, 'campus.html'),
@@ -110,8 +111,40 @@ for (const ref of [...staticAssets, ...lazyAssets]) {
   if (!refsBySurfaceAndFile.has(key)) refsBySurfaceAndFile.set(key, { source: ref.source, file: ref.file, refs: new Set() });
   refsBySurfaceAndFile.get(key).refs.add(ref.raw);
 }
+// F111 #725/#726: approved student-only cache versions are not delivery defects.
+// Validate both exact URLs AND the full per-route map; any unexpected scope/version
+// remains P2 instead of being silently waived.
+const scopedVersions = Object.freeze({
+  'src/solicitudes_unificadas.jsx': { base:'src/solicitudes_unificadas.jsx?v=F98.4A', scopes:['student_evaluations'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
+  'src/student_modules.jsx': { base:'src/student_modules.jsx?v=F111PROFILECANONICAL20261020', scopes:['student_evaluations','student_documents'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
+  'src/syllabus_views.jsx': { base:'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023', scopes:['student_course','student_documents'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
+  'src/cronograma_grupo.jsx': { base:'src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A', scopes:['student_course'], studentUrl:'src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A&crday=F111CRDAY20261104A' },
+});
+const reviewedScopedCache = [];
+function isReviewedScopedCache(source, file, refs) {
+  if (source !== 'src/app.jsx · F96_LAZY') return false;
+  const rule = scopedVersions[file];
+  if (!rule || refs.size !== 2) return false;
+  const scopedUrl = rule.studentUrl || (rule.base + rule.suffix);
+  if (!refs.has(rule.base) || !refs.has(scopedUrl)) return false;
+  const observedScopes = new Set();
+  for (const [route, urls] of Object.entries(lazyMap)) {
+    for (const url of urls) {
+      if (cleanRef(url) !== file) continue;
+      const expected = rule.scopes.includes(route) ? scopedUrl : rule.base;
+      if (url !== expected) return false;
+      if (rule.scopes.includes(route)) observedScopes.add(route);
+    }
+  }
+  return rule.scopes.every(route => observedScopes.has(route));
+}
 for (const { source, file, refs } of refsBySurfaceAndFile.values()) {
-  if (refs.size > 1) add('P2', 'caché', 'Un archivo usa versiones distintas en la misma superficie', `${file} en ${source}: ${[...refs].join(' | ')}`);
+  if (refs.size <= 1) continue;
+  if (isReviewedScopedCache(source, file, refs)) {
+    reviewedScopedCache.push({file,kind:'REVIEWED_STUDENT_ROUTE_CACHE',urls:[...refs],scopes:scopedVersions[file].scopes});
+  } else {
+    add('P2', 'caché', 'Un archivo usa versiones distintas en la misma superficie', `${file} en ${source}: ${[...refs].join(' | ')}`);
+  }
 }
 
 const endpointFiles = new Map();
@@ -172,6 +205,7 @@ const report = {
     css_assets: cssAssets.length,
     source_files: sourceFiles.length,
     endpoints_detected: endpointFiles.size,
+    reviewed_scoped_cache_pairs: reviewedScopedCache.length,
   },
   scope: 'Estudiante, Docente y Superadmin; login y módulos embebidos. Ventas queda fuera de esta entrega.',
   limitations: [
@@ -181,6 +215,7 @@ const report = {
     'Los archivos no alcanzables desde las superficies de entrega o F96_LAZY no bloquean.',
   ],
   findings,
+  reviewed_scoped_cache: reviewedScopedCache,
 };
 
 fs.writeFileSync(path.join(outDir, 'static-report.json'), JSON.stringify(report, null, 2));
@@ -196,6 +231,7 @@ const lines = [
   '## Hallazgos',
   '',
 ];
+lines.push(`- Cachés estudiantiles validados por ruta: ${reviewedScopedCache.length} pares aprobados (no P2).`, '');
 if (!findings.length) lines.push('No se detectaron hallazgos estáticos.');
 for (const finding of findings) {
   lines.push(`### ${finding.id} · ${finding.severity} · ${finding.title}`, '', `- Categoría: ${finding.category}`, `- Confianza: ${finding.confidence}`, `- Evidencia: ${finding.evidence}`, '');

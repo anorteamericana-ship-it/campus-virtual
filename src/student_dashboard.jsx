@@ -5,6 +5,15 @@
 const SCRIPT_URL_SD = window.APPS_SCRIPT_URL;
 // F111: UI-only labels; never translate personal data, academic codes or server payloads.
 const studentDashT = value => window.AN_I18N?.t(value) || value;
+// F111: Academic "today" must use Costa Rica civil time, not UTC or device timezone.
+// Pure and read-only: only determines which lesson is upcoming and how UI status is labeled.
+function fechaHoyAcademiaF111(now = new Date()) {
+  const tokens = new Intl.DateTimeFormat('en-US', {
+    timeZone:'America/Costa_Rica', year:'numeric', month:'2-digit', day:'2-digit'
+  }).formatToParts(now);
+  const parts = Object.fromEntries(tokens.map(item => [item.type, item.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
 
 // FIX-ADMIN-CORE-POST-001: lectura sensible vía POST text/plain (token en body).
 async function postStudentDash(fn, payload = {}) {
@@ -394,7 +403,7 @@ function buildICANEventoDesdeDataSD(data) {
   return futura ? buildEventoConsultaSD({ ...futura, tipo:'ICAN', fecha:futura.__fecha }, 'ICAN') : null;
 }
 function buildRegistroAcademicoSD({ asistenciaRows, lecciones, evaluaciones, retroData, icanData, nivel, codGrupo, notaActiva, asistPct, asistPresentes, asistTotal }) {
-  const todayIso = new Date().toISOString().slice(0,10);
+  const todayIso = fechaHoyAcademiaF111();
   const retroItems = Array.isArray(retroData?.retroalimentacion) ? retroData.retroalimentacion : [];
   const leccionesArr = Array.isArray(lecciones) ? lecciones : [];
   const evalArr = Array.isArray(evaluaciones) ? evaluaciones : [];
@@ -1387,7 +1396,7 @@ function RegistroNotasAsistenciaCampus({ nivel, summary, rows, nombreCompleto, c
   const positionedRef = React.useRef('');
   const [visibleRange, setVisibleRange] = React.useState({ start:0, end:0 });
 
-  const todayIso = new Date().toISOString().slice(0,10);
+  const todayIso = fechaHoyAcademiaF111();
   const nextIndex = React.useMemo(() => {
     const upcoming = list.findIndex(r => r.isLesson && r.fecha && r.fecha >= todayIso && String(r.estado || '').toUpperCase() !== 'CERRADA');
     if (upcoming >= 0) return upcoming;

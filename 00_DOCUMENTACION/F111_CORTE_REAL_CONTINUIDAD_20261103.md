@@ -1,4 +1,6 @@
 # F111 — Corte comprobable, 19 casillas pendientes y continuidad
+> **Anexo de continuidad 04-nov-2026:** [Auditoría de 10 hallazgos P2, reconciliación de caché, fecha CR y plan verificable](F111_AUDITORIA_P2_Y_FECHA_CR_20261104.md). Este anexo NO cambia el corte académico 16/35 ni certifica E2.
+
 **Fecha de corte:** 03-nov-2026 (America/Costa_Rica), después de hotfix #717 y #718.
 **CORTE INA 0826 ACTUALIZADO (03-nov, 22:31+ CR):** [contingencia INA 0826, nueve criterios de alistamiento (65,9%), 18 archivos, matriz P0 y continuidad](F111_CONTINGENCIA_INA_0826_CORTE_20261103.md). **Este 65,9% NO modifica 16/35 F111.** Los enlaces privados de estudiantes permanecen exclusivamente en el índice de Drive `CONTROL 0826`.
 

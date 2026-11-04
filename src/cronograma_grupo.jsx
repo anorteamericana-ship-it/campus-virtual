@@ -247,6 +247,14 @@ const DIA_INICIAL   = ['L','M','M','J','V','S','D']; // semana inicia lunes
 
 function parseISO(iso) { return iso ? new Date(iso + 'T00:00:00') : null; }
 function isoOf(d) { return d.toISOString().slice(0,10); }
+// F111: Keep date-grid formatting unchanged; compare "today" using Costa Rica civil time.
+function hoyCostaRicaCG(now = new Date()) {
+  const tokens = new Intl.DateTimeFormat('en-US', {
+    timeZone:'America/Costa_Rica', year:'numeric', month:'2-digit', day:'2-digit'
+  }).formatToParts(now);
+  const parts = Object.fromEntries(tokens.map(item => [item.type, item.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
 function fmtDDMMM(iso) {
   const d = parseISO(iso); if (!d) return '—';
   return `${String(d.getDate()).padStart(2,'0')}/${cgStudentMonthShort(d.getMonth())}`;
@@ -1877,7 +1885,7 @@ function VistaSemana({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {dias.map(({ dd, nom, lecs }) => {
-            const hoy = isoOf(dd) === isoOf(new Date());
+            const hoy = isoOf(dd) === hoyCostaRicaCG();
             return (
               <div key={isoOf(dd)} style={{ display:'grid', gridTemplateColumns:'92px 1fr', gap:14, alignItems:'start' }}>
                 <div style={{ paddingTop:4 }}>
@@ -1918,7 +1926,7 @@ function VistaLista({ lecciones, mapaLecciones, nivel, selLec, onSelect }) {
     return set;
   }, [lecciones]);
 
-  const hoyIso = isoOf(new Date());
+  const hoyIso = hoyCostaRicaCG();
 
   return (
     <div className="card" style={{ padding:18 }}>
