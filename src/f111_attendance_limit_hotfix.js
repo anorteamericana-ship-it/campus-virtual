@@ -109,7 +109,7 @@
   }
   function Panel({rows,program,compact=false,label='Estado de asistencia'}){
     const s=summarize({rows,program}),c=tone[s.status],hasIcan=s.by.ican.events>0;
-    return h('section',{className:'f111-al '+(compact?'f111-al-compact ':'')+'f111-al-'+s.status,
+    return h('span',{className:'f111-al '+(compact?'f111-al-compact ':'')+'f111-al-'+s.status,
       'data-f111-att-limit':s.kind,role:'status','aria-label':label},
       h('div',{className:'f111-al-top'},
         h('span',{className:'f111-al-title'},'AUSENCIAS · SEGUIMIENTO'),
