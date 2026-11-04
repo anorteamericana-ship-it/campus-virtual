@@ -14,7 +14,7 @@ const d1 = read('scripts/qa_f111_superadmin_single_center_20261017.mjs');
 
 const key = 'F111STUDENTCALEN20261104A';
 assert.equal(html.split('&calendar=' + key).length - 1, 2, 'live app and dictionary refreshed');
-assert.equal(app.split('&calendar=' + key).length - 1, 1, 'only student_course lazy calendar refreshed');
+assert.equal(app.split('&calendar=' + key).length - 1, 2, 'only student calendar and dashboard lazy views refreshed');
 assert(app.includes("src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=" + key), 'student course route selects refreshed calendar');
 assert(d1.includes("replaceAll('&calendar=" + key + "','')"), 'historic admin D1 gate knows cache-only diff');
 assert(menu.includes('F111_HIDE_UNREADY_STUDENT_MODULES ? []'), 'unfinished I CAN menu remains hidden');
