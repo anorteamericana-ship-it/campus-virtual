@@ -4,13 +4,24 @@ const BASE='3d161df00606dab513cb9bce706502a4ca6be433';
 const pre={'src/examenes_modes.jsx':'e9009020f4d081f000205b52028d8907f4b3c8d4','src/examenes_bundle.jsx':'76e4017b73de426530fca6ed09ae6bf76c195cbf'};
 const cand={'src/examenes_modes.jsx':'9d86826c3c3d0ac12e4a915d461e9fcc42be3705','src/examenes_bundle.jsx':'4ee147afe2c06c3318d075b478a47497994a93dc'};
 const exact=process.argv.includes('--exact-import');
-const contexts=['get_attempt','create_review','get_review','close_review','push_after_close','push_retry','review_inbox'];
+const contexts=['get_attempt','create_review','get_review','review_inbox'];
 for(const path of Object.keys(pre)){
  const s=fs.readFileSync(path,'utf8');
  const sha=execFileSync('git',['hash-object','--stdin'],{input:s,encoding:'utf8'}).trim();
  if(exact && sha!==cand[path]) throw Error(`${path}: candidate blob mismatch ${sha}`);
  if((s.match(/function examTeacherSafeUserError\(/g)||[]).length!==1) throw Error(path+' helper count');
  for(const c of contexts) if((s.match(new RegExp("'"+c+"'",'g'))||[]).length!==1) throw Error(`${path}: context ${c}`);
+ // D2: el antiguo flujo de doble POST se sustituye por un cierre atómico
+ // a nivel API. No mostrar botón de reenvío cuando el resultado es incierto.
+ const d2= s.includes("Object.assign(payload(), { push_to_notas:'SI' })");
+ if (d2) {
+  if(s.includes('pushClosedReviewToNotas') || s.includes('onClick={pushToNotas}'))
+    throw Error(`${path}: reenvío docente peligroso todavía habilitado`);
+  if(!s.includes('nota oficial no está confirmada') || !s.includes('conciliación administrativa'))
+    throw Error(`${path}: advertencia de conciliación ausente`);
+ } else for (const legacy of ['push_after_close','push_retry'])
+  if ((s.match(new RegExp("'"+legacy+"'",'g'))||[]).length!==1)
+   throw Error(`${path}: contrato histórico de error ${legacy} ausente`);
  for(const ep of ['examGetAttempt','examCreateReviewDraft','examGetReview','examCloseReview','examPushReviewToNotas','examReviewInbox']) if(!s.includes(ep)) throw Error(`${path}: endpoint lost ${ep}`);
  for(const unsafe of [
   "setErr((attRes && (attRes.mensaje || attRes.error)) || 'No se pudo abrir la entrega.');",

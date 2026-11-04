@@ -694,12 +694,6 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     return r;
   };
 
-  const pushClosedReviewToNotas = async () => {
-    const reviewId = reviewData && reviewData.REVIEW_ID;
-    if (!reviewId) return { ok:false, error:'review_id_no_disponible', mensaje:'No se encontró la revisión que debe enviarse.' };
-    return await postExamBackend('examPushReviewToNotas', { review_id:reviewId, source:'teacher_written_review_f98_4_m' }, 45000);
-  };
-
   const closeAndPush = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || closed || busy) return;
     const feedback = String(studentFeedback || '').trim();
@@ -709,32 +703,22 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
       return;
     }
 
+    // F111 D2: cierre y envío en UNA llamada. El backend responde ok=false
+    // si la nota queda sin confirmar; nunca iniciar un segundo POST automático.
     setBusy('close'); setErr(''); setMsg('');
-    const closeRes = await postExamBackend('examCloseReview', Object.assign(payload(), { push_to_notas:'NO' }), 45000);
-    if (!closeRes || closeRes.ok === false) {
-      setBusy('');
-      setErr(examTeacherSafeUserError(closeRes && (closeRes.mensaje || closeRes.error), 'No se pudo cerrar la revisión. Intentá nuevamente.', 'close_review'));
+    let closeRes = null;
+    try {
+      closeRes = await postExamBackend('examCloseReview',
+        Object.assign(payload(), { push_to_notas:'SI' }), 45000);
+    } catch (_) {
+      // Timeout o caída de red: el servidor puede haber registrado la nota.
+    }
+    setBusy('');
+    try { await refreshReview(); } catch (_) {}
+    if (!closeRes || closeRes.ok !== true || closeRes.pushed_to_notas !== 'SI') {
+      setErr('La revisión pudo quedar cerrada, pero no se confirmó la nota oficial. No la reenviés; solicitá conciliación administrativa.');
       return;
     }
-
-    const pushRes = await pushClosedReviewToNotas();
-    setBusy('');
-    await refreshReview();
-    if (!pushRes || pushRes.ok === false) {
-      setErr(examTeacherSafeUserError(pushRes && (pushRes.mensaje || pushRes.error), 'La revisión se cerró, pero no se pudo registrar la nota. Presioná Enviar Nota nuevamente.', 'push_after_close'));
-      return;
-    }
-    setMsg('Nota enviada correctamente a Mis Notas.');
-    if (onDone) onDone(true);
-  };
-
-  const pushToNotas = async () => {
-    if (!reviewData || !reviewData.REVIEW_ID || pushed || busy) return;
-    setBusy('push'); setErr(''); setMsg('');
-    const r = await pushClosedReviewToNotas();
-    setBusy('');
-    if (!r || r.ok === false) { setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar la nota. Intentá nuevamente.', 'push_retry')); return; }
-    await refreshReview();
     setMsg('Nota enviada correctamente a Mis Notas.');
     if (onDone) onDone(true);
   };
@@ -789,7 +773,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         {msg && <div className="rev-live-ok">✓ {msg}</div>}
         {err && <div className="rev-live-err">⚠ {err}</div>}
         {!closed && <button type="button" className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
-        {closed && !pushed && <button type="button" className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
+        {closed && !pushed && <div className="rev-live-err" role="status">⚠ La revisión está cerrada, pero la nota oficial no está confirmada. Solicitá conciliación a administración antes de otro envío.</div>}
         {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
       </aside>
 

@@ -19,7 +19,7 @@ const rawTeacherPatterns=[
   "if (!r || r.ok === false) { setErr((r && (r.mensaje || r.error)) || 'No se pudo enviar la nota.'); return; }",
   "setErr((r && (r.mensaje || r.error)) || 'No se pudo consultar la bandeja de entregas.');",
 ];
-const safeContexts=['get_attempt','create_review','get_review','close_review','push_after_close','push_retry','review_inbox'];
+const safeContexts=['get_attempt','create_review','get_review','review_inbox'];
 const activationRaw="const detail = r && (r.mensaje || r.error || (r.errores && r.errores.join(' · ')));";
 const opsRaw="else { setMsg(''); setErr((r && (r.mensaje || r.error)) || 'No se pudo completar la operación.'); }";
 const exact=process.argv.includes('--exact-import');
@@ -39,6 +39,16 @@ for(const [path,sha] of Object.entries(expected)){
     for(const p of rawTeacherPatterns) if(current.includes(p)) throw new Error(`teacher raw sink survived descendant ${path}: ${p}`);
     if((current.match(/function examTeacherSafeUserError\(/g)||[]).length!==1) throw new Error(`teacher safe helper count mismatch ${path}`);
     for(const c of safeContexts) if((current.match(new RegExp("'"+c+"'",'g'))||[]).length!==1) throw new Error(`teacher safe context mismatch ${path}: ${c}`);
+    const d2=current.includes("Object.assign(payload(), { push_to_notas:'SI' })");
+    if(d2){
+      if(current.includes('onClick={pushToNotas}') || current.includes('pushClosedReviewToNotas'))
+        throw new Error(`Teacher D2 unsafe retry in ${path}`);
+      if(!current.includes('nota oficial no está confirmada'))
+        throw new Error(`Teacher D2 reconciliation message missing in ${path}`);
+    }else for(const old of ['push_after_close','push_retry']){
+      if((current.match(new RegExp("'"+old+"'",'g'))||[]).length!==1)
+        throw new Error(`Teacher legacy safe context missing ${path}: ${old}`);
+    }
     const adminSafe=current.includes('function examAdminSafeUserError(');
     if(adminSafe){
       if(current.includes(activationRaw)||current.includes(opsRaw)) throw new Error(`admin raw projection survived safe descendant ${path}`);
