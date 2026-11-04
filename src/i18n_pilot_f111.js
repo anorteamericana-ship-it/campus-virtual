@@ -14,6 +14,7 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    "Escribí o seleccioná una unidad": "Type or select a unit",
     "Notas": "Grades",
     "Cargando planeamiento, libros y audios del nivel…": "Loading level lesson plans, books and audio…",
     "Biblioteca del nivel no disponible": "Level Library Unavailable",
