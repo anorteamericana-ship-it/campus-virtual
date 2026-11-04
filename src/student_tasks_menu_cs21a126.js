@@ -82,7 +82,9 @@
   },true);
   window.addEventListener('popstate',()=>{if(location.hash==='#'+ROUTE)open(false);else if(document.body.classList.contains('an-student-tasks-open'))close(false);});
   window.addEventListener('an:session-changed',()=>close(false));
-  new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
-  ensureCss();queue();
+  if (!F111_HIDE_TASKS_FROM_DEMO) {
+    new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true});
+    ensureCss();queue();
+  }
   window.StudentTasksMenuCS21A126={version:VERSION,open,close};
 })();
