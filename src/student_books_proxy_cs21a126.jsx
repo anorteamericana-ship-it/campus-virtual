@@ -10,12 +10,13 @@
     I2:{SB:'1rt9zr_fCmQtpnFexdKBp732rVNGU5HWB',WB:'1VX-4nsWPnY4jO_U4E0OzdhY0u6EG8gaE'}
   };
   const NAMES={B1:'Básico I',B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
+  const bookProxyT = label => window.AN_I18N?.t(label) || label;
   function view(id){return `https://drive.google.com/file/d/${id}/view`;}
   function download(id){return `https://drive.google.com/uc?export=download&id=${id}`;}
 
   function VisualProxy({level}){
     const Component=window.__AN_BOOK_RESOURCES_COMPONENT__;
-    if(typeof Component!=='function')return <div className="ca125-state error"><strong>El visor visual del libro no está disponible.</strong></div>;
+    if(typeof Component!=='function')return <div className="ca125-state error"><strong>{bookProxyT('El visor visual del libro no está disponible.')}</strong></div>;
     const original=sessionStorage.getItem('an_usuario');
     let parsed={};
     try{parsed=JSON.parse(original||'null')||{};}catch(_){parsed={};}
@@ -31,8 +32,8 @@
   function BookAction({type,label,id}){
     return <article data-book-type={type}>
       <b>{type}</b><span>{label}</span>
-      <a className="btn" href={view(id)} target="_blank" rel="noopener noreferrer" aria-label={`Abrir PDF ${label}`}>Abrir PDF</a>
-      <a className="btn btn-primary" href={download(id)} target="_blank" rel="noopener noreferrer" aria-label={`Descargar PDF ${label}`}>Descargar PDF</a>
+      <a className="btn" href={view(id)} target="_blank" rel="noopener noreferrer" aria-label={`${bookProxyT('Abrir PDF')} ${label}`}>{bookProxyT('Abrir PDF')}</a>
+      <a className="btn btn-primary" href={download(id)} target="_blank" rel="noopener noreferrer" aria-label={`${bookProxyT('Descargar PDF')} ${label}`}>{bookProxyT('Descargar PDF')}</a>
     </article>;
   }
 
@@ -41,7 +42,7 @@
     const files=FILES[safe];
     return <div className="sb126-wrap" data-student-book-types="SB,WB">
       <div className="sb126-downloads">
-        <div><strong>{safe} · {NAMES[safe]}</strong><span>Los libros se muestran como páginas e imágenes, igual que en la vista docente.</span></div>
+        <div><strong>{safe} · {bookProxyT(NAMES[safe])}</strong><span>{bookProxyT('Los libros se muestran como páginas e imágenes, igual que en la vista docente.')}</span></div>
         <div className="sb126-download-grid">
           <BookAction type="SB" label="Student Book" id={files.SB}/>
           <BookAction type="WB" label="Workbook" id={files.WB}/>

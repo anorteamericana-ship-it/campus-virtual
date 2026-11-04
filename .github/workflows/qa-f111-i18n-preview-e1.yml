@@ -26,6 +26,10 @@ on:
       - 'scripts/qa_f111_student_demo_english_e1.mjs'
       - 'src/cronograma_grupo.jsx'
       - 'scripts/qa_f111_student_calendar_en_e1.mjs'
+      - 'scripts/qa_f111_student_four_tabs_en_e1.mjs'
+      - 'src/student_books_proxy_cs21a126.jsx'
+      - 'src/book_unit_starts_cs21a60.jsx'
+      - 'src/student_book_pdf_cs21a65.js'
       - 'scripts/qa_f111_cr_day_and_scoped_cache_e1.mjs'
       - 'scripts/virtual_review_static.mjs'
       - 'src/app.jsx'
@@ -68,6 +72,8 @@ jobs:
         run: node scripts/qa_f111_student_profile_tabs_en_e1.mjs
       - name: Student calendar EN/ES, I CAN visibility and teacher/admin safety E1
         run: node scripts/qa_f111_student_calendar_en_e1.mjs
+      - name: Four student tabs EN/ES and preserved official records E1
+        run: node scripts/qa_f111_student_four_tabs_en_e1.mjs
       - name: Costa Rica midnight calendar boundary and exact scoped-cache triage E1
         run: node scripts/qa_f111_cr_day_and_scoped_cache_e1.mjs
       - name: Real teacher document viewer and professional record regression

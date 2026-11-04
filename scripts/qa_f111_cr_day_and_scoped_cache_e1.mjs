@@ -61,7 +61,7 @@ const {scopedVersions,isReviewedScopedCache} = guardWithMap(lazyMap);
 const rules = Object.entries(scopedVersions);
 assert.equal(rules.length,4,'only four documented and exact student-scoped versions');
 for(const [file, rule] of rules) {
-  const allowed = new Set([rule.base,rule.studentUrl || (rule.base + rule.suffix)]);
+  const allowed = new Set([rule.base + (rule.extra || ''),rule.studentUrl || (rule.base + rule.suffix + (rule.extra || ''))]);
   assert(isReviewedScopedCache('src/app.jsx · F96_LAZY',file,allowed),
     'only exact scoped student and existing legacy route versions accepted: ' + file);
 }

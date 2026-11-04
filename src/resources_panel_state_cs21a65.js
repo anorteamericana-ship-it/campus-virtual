@@ -24,7 +24,7 @@
   }
 
   function loadStudentPdfControls() {
-    loadScript(STUDENT_PDF_SCRIPT_ID, 'src/student_book_pdf_cs21a65.js?v=F98.4Z6CS21A65');
+    loadScript(STUDENT_PDF_SCRIPT_ID, 'src/student_book_pdf_cs21a65.js?v=F98.4Z6CS21A65&four=F111FOURTABSEN20261104A');
   }
 
   function loadPrematriculaStability() {
