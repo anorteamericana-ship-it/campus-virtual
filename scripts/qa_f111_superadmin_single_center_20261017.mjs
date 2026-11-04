@@ -82,8 +82,12 @@ for(const path of protectedPaths){
    assert.equal(sourceProtected.split(attendanceMenu).length-1,1,'Entrada única Asistencia de grupos');
    // Tras el merge, origin/main YA contiene la nueva opción; en un PR aún
    // no fusionado, la preimagen origin/main no la contiene.
-   const normalized=old.includes(attendanceMenu)?sourceProtected:sourceProtected.replace(attendanceMenu,'');
-   assert.equal(normalized,old,'Sidebar histórico preservado salvo ruta aditiva');
+   const withExistingMenu=old.includes(attendanceMenu)?sourceProtected:sourceProtected.replace(attendanceMenu,'');
+   const studentHidden="        ...(false && mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []), // F111 student demo: hidden, teacher/admin unaffected.";
+   const studentOriginal="        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),";
+   assert.equal(withExistingMenu.split(studentHidden).length-1,1,'student demo hides only I CAN menu');
+   const normalized=withExistingMenu.replace(studentHidden,studentOriginal);
+   assert.equal(normalized,old,'Sidebar histórico preservado except student-only navigation item');
  }else{
    assert.equal(sourceProtected,old,'Motor o navegación alterados: '+path);
  }
