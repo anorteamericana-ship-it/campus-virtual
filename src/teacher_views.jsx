@@ -85,7 +85,8 @@ async function cargarPanelDocenteF80(codGrupo, nivel) {
       version:'F80_FALLBACK',
       parcial:true,
       estudiantes:rEst.estudiantes || [],
-      total_ca:(rEst.estudiantes || []).length,
+      total_ca:(rEst.estudiantes || []).filter(e=>String(e.estatus||'').toUpperCase()==='CA').length,
+      total_matriculados:(rEst.estudiantes || []).length,
       lecciones,
       leccion_hoy:leccionHoy,
       cerradas:lecciones.filter(l => String(l.estado || '').toUpperCase() === 'CERRADA').length,
@@ -400,6 +401,9 @@ function useTeacherSession(activeSessionGroup='') {
             code,
             name:e.name || e.nombre || e.NOMBRE || '',
             cedula:String(e.cedula || e.CEDULA || e.NUM_CEDULA || e.identificacion || '').trim(),
+            estatus:String(e.estatus||'').trim().toUpperCase(),
+            examen_habilitado:e.examen_habilitado!==false,
+            matricula_duplicada:e.matricula_duplicada===true,
             avg:note?.tiene_notas ? note.nota_total : null,
             note,
             lastSeen:null,
@@ -416,7 +420,8 @@ function useTeacherSession(activeSessionGroup='') {
         setIcanResumen(r.ican || {});
         setPanelPrograma(r.programa || r.grupo?.programa || '');
         setResumenGrupo({
-          totalCA:r.total_ca ?? rs.length,
+          totalCA:r.total_matriculados ?? rs.length,
+          conteoCONAPE:r.por_estatus || {},
           promedioGrupo:r.promedio_grupo,
           promedioAsistencia:r.promedio_asistencia,
           cerradas:r.cerradas || 0,
@@ -871,7 +876,9 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
             style={{background:(missingMark||missingNote)?'#FFFCF5':i%2?'#F9FBFE':'#FFF'}}>
             <div style={{minWidth:0}}>
               <div style={{fontSize:13,fontWeight:850,color:'#1B3453',lineHeight:1.35,overflowWrap:'anywhere'}}>{s.name}</div>
-              <div style={{fontSize:11,color:'#6B7C91',marginTop:4}}>Código {code}</div>
+              <div style={{fontSize:11,color:'#6B7C91',marginTop:4}}>
+                Código {code}{String(s.estatus||'').toUpperCase()==='RI'?' · RI (seguimiento de ausencias)':''}
+              </div>
             </div>
             <div role="group" aria-label={'Asistencia de '+s.name} style={{display:'flex',alignItems:'center',gap:4}}>
               {[['P','#18733B','#E5F5E9','Presente'],['A','#B52C25','#FCEBE8','Ausente'],['?','#8A6524','#FFF4DF','Pendiente']].map(([v,color,bg,title])=>
@@ -1005,7 +1012,16 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
       const notes={};Object.entries(r.comentarios||{}).forEach(([code,value])=>{
         if(typeof value==='string'&&value.trim())notes[code]=value;
       });
-      setDraftAttendance(vals);setDraftSaved(JSON.stringify(vals));
+      // F111 R56: RI conserva su matrícula y aparece en cada clase.
+      // Sólo en una sesión ABIERTA, si todavía no tiene marca, sugerir A.
+      // El profesor puede corregirlo antes del cierre oficial.
+      const withRetired={...vals};
+      (roster||[]).forEach(est=>{
+        if(String(est.estatus||'').toUpperCase()==='RI'&&
+           !Object.prototype.hasOwnProperty.call(withRetired,String(est.code)))
+          withRetired[String(est.code)]='A';
+      });
+      setDraftAttendance(withRetired);setDraftSaved(JSON.stringify(vals));
       setDraftComments(notes);setDraftCommentsSaved(JSON.stringify(notes));
       const verifiedProgram=String(r.programa||'').trim().toUpperCase().replace(/\s+/g,'_');
       if(!verifiedProgram)throw Error('No se pudo verificar el programa oficial del grupo.');
