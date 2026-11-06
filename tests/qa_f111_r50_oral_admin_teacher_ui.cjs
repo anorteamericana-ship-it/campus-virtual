@@ -27,6 +27,11 @@ pass(script.includes("!state.reviewConflicts?.[String(s.codigo)]||r50AccionHabil
 pass(script.includes("state.reviewConflicts?.[String(state.selected.codigo)]&&!r50EsGrupoF111()"),'no hay bypass general de conflicto');
 pass(script.includes("if(!preflight.conflicto_previo&&state.reviewConflicts?.[String(student.codigo)])"),'lecturas contradictorias se bloquean');
 pass(script.includes('r50_expediente_cambio_revisar'),'expediente modificado conserva bloqueo seguro');
+pass(script.includes("st==='ACTUALIZACION_REQUERIDA'"),'superadmin no aprueba solicitud desactualizada');
+pass(script.includes("button.textContent='ACTUALIZAR SOLICITUD'"),'docente ve acción renovadora');
+pass(script.includes("if(estadoR50==='ACTUALIZACION_REQUERIDA')"),'docente renueva solo al confirmar');
+pass(script.includes('const renewed=await api(\'r50SolicitarConciliacionOral\',ident)'),'renovación usa endpoint controlado R50');
+pass(script.includes('El superadmin debe aprobar la rúbrica vigente.'),'nunca confunde renovación con nota oficial');
 pass(script.includes('r50ApprovedFor===String(student.codigo)'),'estado se limita al estudiante seleccionado');
 pass(script.includes("state.r50ApprovedFor=''"),'carga nuevo grupo borra permiso anterior');
 pass(script.includes("state.reviewConflicts[String(student.codigo)]=true"),'nota sin autorización permanece protegida');
