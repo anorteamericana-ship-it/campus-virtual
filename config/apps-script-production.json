@@ -2,26 +2,37 @@
   "environment": "production",
   "scriptId": "1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2",
   "deploymentId": "AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ",
-  "deployedVersion": 460,
-  "lastVerifiedAt": "2026-10-09T14:05:45-06:00",
-  "lastVerifiedBy": "clasp-immutable-460-readback-32of32-sha256-zero-diff-node-syntax-http200-noauth-denied-pages-success-public-assets",
+  "deployedVersion": 494,
+  "lastVerifiedAt": "2026-11-06T21:48:50.838Z",
+  "lastVerifiedBy": "F111 R56 immutable Apps Script readback 35 files; 2 surgical changed, 33 untouched; LIVE access HTTP 403 (E2 blocked)",
   "lastChange": {
-    "summary": "F103 docente: autoguardado parcial por sesion + contactos de alumnos autorizados en Mis grupos",
-    "sourceBackendPr": 23,
+    "summary": "F111 R56: matrícula grupo CA APR RI independiente del estado CONAPE; CA APR exámenes; RI permanece en asistencia",
+    "sourceBackendPr": 129,
     "backendReleasePrs": [
-      23
+      128,
+      129
     ],
-    "previousKnownGoodVersion": 459,
+    "previousKnownGoodVersion": null,
+    "previousRollbackVersion": 493,
     "runtimeVerified": true,
     "functionalVerified": false,
-    "functionalVerificationNote": "F103 @460 verificado en deployment estable; version inmutable 32/32 identica al candidato, 30 JavaScript con sintaxis PASS, HTTP GET 200. POST anónimo a getDocenteContactosF103 devuelve sesion_invalida. QA local de asistencia parcial/contactos PASS. Falta prueba autenticada docente con lectura del grupo real y escritura controlada en entorno aislado; NO FULL_E2E.",
-    "backendDeployedCodeTag": "prod-460",
-    "backendDeployedCodeCommit": "956bf9ae84c9df7f6378de2e56a373a9dc69d964"
+    "functionalVerificationNote": "CORE @494 y Quiz @477 readback sin drift; editor original restaurado. Login en producción NO funcional: CORE/Quiz HTTP 403 de Google pese a permitir ANYONE_ANONYMOUS; sin E2 docente y estudiante. Versión @493 es punto de rollback técnico, no prueba de acceso saludable.",
+    "backendDeployedCodeTag": null,
+    "backendDeployedCodeCommit": null,
+    "backendSourceMergeCommit": "d75cf814f26da4ea432479796e64e6d4e3056b44",
+    "immutableCandidateSha256": "1562e7bc9bac26572c28620d361fa86e37766ee918b77716ea44fb60fc496def",
+    "modifiedModules": [
+      "02_Auth_Sesiones_Usuarios",
+      "10_Estudiantes"
+    ],
+    "preservedModules": 33,
+    "academicProductionWrites": 0
   },
-  "frontendCodeMainAtVerification": "f1dee806471e2dafcb3163d6ce8310f09f559b99",
-  "frontendHotfixPr": 401,
-  "latestFrontendMainPr": 483,
+  "frontendCodeMainAtVerification": "f34b06dd2277d9d56349df05d1e19c0d769a66ee",
+  "frontendHotfixPr": 742,
+  "latestFrontendMainPr": 742,
   "notes": [
+    "2026-11-06 F111 current: CORE @494, Quiz @477, R56 frontend published. Login HTML HTTP 200 but Google CORE/Quiz anonymous 403. E2 not possible. Historical OAuth reauthorization @419 resolved SpreadsheetApp scopes; new 403 may also be Google platform issue. See PRODUCTION_STATE.md and issue #736.",
     "Script ID y Deployment ID no son secretos; no guardar tokens ni credenciales aquí.",
     "La fuente de verdad de runtime es el Deployment ID estable apuntando a una versión numérica; HEAD remoto no equivale por sí solo a producción.",
     "Rollback conocido-bueno para el corte CONAPE V1: @434. No usar @435 como rollback operativo sin verificación separada.",
@@ -34,7 +45,7 @@
     "F103 GitHub Pages commit f1dee806 / PR #483 con frontend publicado; las pruebas reales de asistencia no se ejecutaron sobre alumnos productivos.",
     "F111 R0: código del despliegue @460 en el tag anotado prod-460 (commit 956bf9ae84c9df7f6378de2e56a373a9dc69d964); main NO representa necesariamente el código desplegado. Desde el merge #36, main contiene cambios sin desplegar hasta @461."
   ],
-  "frontendLastVerifiedAt": "2026-10-09T14:05:45-06:00",
+  "frontendLastVerifiedAt": "2026-11-06T21:48:50.838Z",
   "frontendReleasePrs": [
     392,
     395,
@@ -43,12 +54,13 @@
     400,
     401,
     405,
-    483
+    483,
+    742
   ],
   "frontendFunctionalVerified": false,
-  "frontendFunctionalVerificationNote": "PR #483 fusionado en main, Pages success (commit f1dee806). Sitio publico entrega app.jsx con cache-bust F103AUTOSAVECONTACT20261009 y teacher_views.jsx con getDocenteContactosF103. No hubo prueba autenticada de navegador ni guardado oficial con estudiante real.",
+  "frontendFunctionalVerificationNote": "PR #742 merge + URL dominio sirve src/app.jsx con F111R56CONAPERO20261106A y teacher_views.jsx con estatus RI y total_matriculados. No E2 por 403 Google.",
   "fullE2EVerified": false,
-  "fullE2EVerificationNote": "F103: pendiente prueba docente autenticada del grupo real, reabrir borrador y cierre en ambiente controlado; error intermitente requiere observacion en navegador. Siguen pendientes E2E globales/CONAPE de cortes previos.",
+  "fullE2EVerificationNote": "R56 E1 22 backend + 12 UI controles PASS. Backend CI 5/5, UI CI R56 PASS, workflows generales frontend 4 FAIL (tres Playwright ubuntu26.04 y un guard baseline). CORE @494 y Quiz @477 públicamente 403 Google; consentimiento OAuth de cuenta desplegadora pendiente verificación.",
   "ciMaintenancePr": 402,
   "frontendFeaturePr": 483,
   "conapeProspectacionV1": {
@@ -66,5 +78,58 @@
       "vencido": "14+"
     },
     "realPostBaselineEventObserved": false
+  },
+  "f111CurrentSnapshot": {
+    "date": "2026-11-06",
+    "tracker": "https://github.com/anorteamericana-ship-it/campus-virtual/issues/736",
+    "academicMatrix": {
+      "certified": 16,
+      "total": 35,
+      "pending": 19,
+      "percent": 45.7
+    },
+    "runtime": {
+      "core": 494,
+      "quiz": 477,
+      "loginPageHttp": 200,
+      "coreAnonymousHttp": 403,
+      "quizAnonymousHttp": 403,
+      "authenticatedE2": false
+    },
+    "roster": {
+      "grupo": "B1-LM69-C2-0526",
+      "nivel": "B2",
+      "total": 23,
+      "CA": 13,
+      "APR": 9,
+      "RI": 1,
+      "academicStatusPolicy": "CA APR exams, CA APR RI attendance, no automatic group changes"
+    },
+    "oralLastChecked": {
+      "total": 17,
+      "officialPdf": 4,
+      "draft": 13,
+      "realTeacherPostR56Unverified": true
+    },
+    "changes": {
+      "backendPr": 129,
+      "frontendPr": 742,
+      "qaBackendChecks": 22,
+      "qaFrontendChecks": 12,
+      "backendWorkflowsPass": 5
+    },
+    "dataWritesThisRelease": 0,
+    "rollbackCore": 493,
+    "incident": {
+      "error": "Access Denied Google HTTP 403 BEFORE login auth",
+      "sameVersionRedeployAttempted": true,
+      "sameVersionRedeployFixed": false,
+      "googleManualOAuthOwnerRequiredCheck": true,
+      "externalGoogle2026Reports": true
+    },
+    "privacy": {
+      "passwordVisibleInPreviousScreenshot": true,
+      "rotateAfterAccessRecovers": true
+    }
   }
 }
