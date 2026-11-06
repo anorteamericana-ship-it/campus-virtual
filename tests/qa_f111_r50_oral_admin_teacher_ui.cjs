@@ -22,7 +22,7 @@ pass(script.includes('confirmar_nota_oficial:true'),'docente confirma individual
 pass(script.includes("estadoR50==='SOLICITADO'"),'pendiente no escribe nota');
 pass(script.includes("estadoR50!=='APROBADO'"),'sin permiso no continúa');
 pass(script.includes('function r50AccionHabilitadaF111(codigo)'),'acciones R50 individuales');
-pass(script.includes("['SIN_SOLICITUD','APROBADO'].includes"),'solo solicitud y aprobado pueden actuar tras preflight');
+pass(script.includes("['SIN_SOLICITUD','ACTUALIZACION_REQUERIDA','APROBADO'].includes"),'solicitud, renovación y aprobado habilitan solo la ruta con preflight');
 pass(script.includes("!state.reviewConflicts?.[String(s.codigo)]||r50AccionHabilitadaF111(s.codigo)"),'aviso visual no bloquea autorización validada');
 pass(script.includes("state.reviewConflicts?.[String(state.selected.codigo)]&&!r50EsGrupoF111()"),'no hay bypass general de conflicto');
 pass(script.includes("if(!preflight.conflicto_previo&&state.reviewConflicts?.[String(student.codigo)])"),'lecturas contradictorias se bloquean');
