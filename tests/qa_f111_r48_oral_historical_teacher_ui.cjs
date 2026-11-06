@@ -34,7 +34,7 @@ assert.ok(source.includes('state.reviewConflicts[String(student.codigo)]=true'),
 assert.ok(source.includes("if(state.dirty)return toast('Guardá primero"),'confirmar solo después de guardar');
 assert.ok(source.includes("const individualDownload=document.getElementById('f111-pdf-download')"),'PDF individual');
 assert.ok(source.includes('individualDownload.click()'),'descarga tras PDF oficial');
-assert.ok(source.includes("r50Permitido?'r50CerrarOralConciliado':'oralFinalizarBorradorHistoricoR47'")&&source.includes("estadoR50!=='APROBADO'"),'R47 normal o R50 autorizado: no saltear guard backend');
+assert.ok(source.includes("cierreDocenteOriginal?'r50CerrarOralConciliado':'oralFinalizarBorradorHistoricoR47'")&&source.includes('cierre_docente_original:true'),'R47 normal o R52 docente original validado por CORE');
 assert.ok(source.includes("const check=await api('oralGetPanelHistorico'"),'readback ante error, no doble cierre');
 assert.ok(source.includes("if(state.panel?.historico&&!oralEditableHistoricalR48("),'solo guardar borrador elegible');
 const teacher=fs.readFileSync('src/teacher_quiz_review_f111.js','utf8');
