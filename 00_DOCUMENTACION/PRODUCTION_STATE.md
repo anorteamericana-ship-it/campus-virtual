@@ -1,5 +1,69 @@
 # CAMPUS VIRTUAL · Estado de producción
 
+
+> **CORTE OPERATIVO PRINCIPAL — 06-nov-2026, F111 R56 + INCIDENTE P0 LOGIN.** Este bloque prevalece sobre todas las notas históricas de versiones @460, @486, @487 que aparecen más abajo. Reconciliado con Apps Script API, GitHub PR, HTTP público y Apollo. Seguimiento único [#736](https://github.com/anorteamericana-ship-it/campus-virtual/issues/736), matriz académica [#499](https://github.com/anorteamericana-ship-it/campus-virtual/issues/499).
+
+## F111 · CORTE PARA REANUDAR SIN REPETICIÓN — 06-nov-2026
+
+### A. EMERGENCIA ACCESO: P0 ABIERTO — **NO PUEDE INICIARSE SESIÓN**
+
+| Verificación real del 06-nov-2026 | Resultado | Interpretación |
+|---|---|---|
+| \`https://anorteamerican.com/campus-virtual/login.html\` | **HTTP 200** | Hosting/HTML disponible; no significa login funcionando |
+| \`https://script.google.com/macros/s/AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ/exec\` | **HTTP 403** | Acceso denegado por Google antes de comprobar usuario/clave |
+| Quiz deployment ID \`AKfycbwT4nYpH2MqxgP-ydwndWW7OdSkDXRCiI-l4qxBdsqq0IXuTNSKIvogvpj-1PgtsNjZhw\` | **HTTP 403** | Mismo proyecto Apps Script, otro deployment @477, también falla |
+| Apps Script API: CORE \`deploymentConfig.versionNumber\` | **@494**, configuración \`ANYONE_ANONYMOUS\`, \`USER_DEPLOYING\` | Publicación y permisos declarados presentes; acceso efectivo NO |
+| Apps Script API: Quiz | **@477**, acceso público declarado | No modificado por R54/R55/R56 |
+| Repetir deploy del mismo CORE @493, **sin** cambio de código | Readback PASS, HTTP siguió **403** | No hacer más redeploy ciegos |
+| Ejecución \`scripts.run\` de prueba REBECA usando credenciales API de clasp | **403: The caller does not have permission** | Diagnóstico separado; no demuestra por sí solo OAuth del propietario porque la API puede exigir scopes adicionales |
+| Login autenticado de Keylor tras arreglar 403 | **NO ejecutado** | E2 bloqueo real, no atribuir a su contraseña |
+
+**Antecedente canónico histórico** en este documento, sección «Incidente OAuth histórico resuelto durante el release @419»: \`SpreadsheetApp.openById\` perdió autorización del desplegador; ejecutar desde editor Apps Script una función READ-ONLY y aceptar los scopes restauró el sistema. **La falla actual es distinta en su superficie:** un 403 de Google antes del endpoint, no un JSON interno de \`SpreadsheetApp\`. No asegurar que la misma reparación baste.
+
+**Acción humana necesaria primero:** con la cuenta Google propietaria/desplegadora, abrir [editor Apps Script de este proyecto](https://script.google.com/home/projects/1kV4wKnD_OU5DPQSawScjPsUbo1MOg_rAHbtpYupSMPkqywIVSQwdV4y2/edit), seleccionar \`test_rebecaV8Routing_activeOnly\` (**confirmada read-only en módulo \`90_REBECA_V8_Routing\` de HEAD y frozen @493**), pulsar Ejecutar y atender *Revisar permisos* si aparece. Probar HTTP de nuevo desde una ventana privada, y luego login legítimo de docente/estudiante. Si sigue 403, inspeccionar "Ejecuciones" y configuración con propietario, Google Workspace políticas, restricción de Web App; considerar incidente plataforma. Google abrió un [issue público 574946511](https://issuetracker.google.com/issues/574946511) en octubre 2026 con síntomas muy similares para Web Apps "Anyone", sin causa definitivamente establecida en este proyecto. **No crear otro Deployment ID por reflejo; no eliminar el proyecto ni alterar scopes al azar.**
+
+**Privacidad inmediata:** una captura pública del problema mostró una contraseña. No volver a copiarla/registrarla ni utilizarla. Rotarla mediante «Recuperar acceso» una vez restablecido el servicio. No pedir passwords/tokens en chats.
+
+### B. CORRECCIÓN MATRICULADOS CA/APR/RI: IMPLEMENTADA, LIVE CODE, NO E2
+
+**La interpretación académica aprobada por Dirección:** \`ESTATUS\` de Apollo contiene estados administrativos CONAPE. Cambiar CA→APR **no implica** que terminó clases ni que debe trasladarse de grupo. Los RI se conservan en lista de asistencia para documentar ausencias hasta finalizar el grupo. Solo operaciones académicas explícitas cambian grupo/nivel. Cada examen guarda su componente; el motor de notas calcula conforme al programa. Nunca usar el estado CONAPE para asignar automáticamente otro grupo.
+
+**Evidencia Apollo, B2 del grupo 05-26** \`B1-LM69-C2-0526\`:
+- **23** filas de matrícula estudiante+grupo+nivel únicas: **13 CA**, **9 APR**, **1 RI**. El padrón antiguo excluía **10/23 = 43,5%**.
+- **Asistencia** debe tener 23; el RI puede marcarse \`A\` en cada nueva clase abierta, pero el docente controla la marca, y no se deben inventar ausencias históricas.
+- **Exámenes ordinarios** CA y APR; RI se conserva en asistencia pero no se le asignan notas o reposiciones por el mero estado.
+- Ningún traslado/migración de matrículas fue ejecutado en este release.
+
+**Código:** [backend PR #129](https://github.com/anorteamericana-ship-it/campus_backend/pull/129) MERGED squash \`d75cf814f26da4ea432479796e64e6d4e3056b44\`; [frontend PR #742](https://github.com/anorteamericana-ship-it/campus-virtual/pull/742) MERGED squash \`f34b06dd2277d9d56349df05d1e19c0d769a66ee\`.
+- \`getEstudiantesParaCierre\` en módulo 10 lee ESTATUS por **grupo+nivel**, conserva CA/APR/RI sin cambiar sus valores, deduplica por código y expone matrícula duplicada para bloqueo de escritura individual.
+- Módulo 02: F79 asistencia/lista y totales, seguridad de oral original CA/APR, reposiciones automáticas para CA/APR (sin RI), resolución de estudiante APR en escrito, lectura académica I CAN.
+- Frontend \`teacher_views.jsx\` muestra 23 matriculados y estado RI; sugiere \`A\` para RI **solo si no había marca previa y sesión abierta**, sin escribir ausencias históricas o cambiar marcas existentes. Cache tag \`F111R56CONAPERO20261106A\` confirmado HTTP en \`src/app.jsx\` y \`src/teacher_views.jsx\` real.
+- Tests aislados 100% sin escritura productiva: **22/22 backend** + **12/12 UI**; backend CI **5/5 workflows PASS**. Frontend R56 específico PASS; 4/17 workflows genéricos FAIL: 3 instalaciones Playwright/Chromium incompatibles con Ubuntu 26.04, 1 guard antiguo que compara bytes de docente contra baseline desactualizado. **No llamarlos PASS global ni E2**.
+
+**CORE Apps Script @494 LIVE** en el **mismo Deployment ID**. Frozen readback SHA-256 \`1562e7bc9bac26572c28620d361fa86e37766ee918b77716ea44fb60fc496def\`; **35 módulos**, **2 modificados quirúrgicamente** (\`02_Auth_Sesiones_Usuarios\`, \`10_Estudiantes\`), **33 idénticos**, editor HEAD original restaurado SHA \`c97c702a...\`, **0 cambios en calificaciones/matrículas/asistencia reales**, rollback técnico CORE @493. Script local canónico \`C:\Users\leodr\Documents\CampusVirtual\F111_OFICIAL\backend\deploy\F111_R56_CORE494_RELEASE_20261106.mjs\`. No volver a pegar íntegro \`backend/main\` sobre Apps Script: sus archivos eran distintos al frozen @493. Quiz @477 se conserva.
+
+**Limitaciones pendientes:** por el login 403 no existe E2 docente después de R56; falta constatar los 23 en asistencia y una evaluación CA/APR en sesión real, validar otros niveles/programas (INA vs SIN INA), sumatorias oficiales y evitar cambios automáticos al habilitar la matrícula. R55 mantuvo excepcionalmente \`NOTA=70\` histórica APR en B2 L9 para proteger expedientes; **eso no significa** que la regla general de sumatoria esté finalizada. Conciliar esos historiales en otro trabajo controlado, nunca rebajar silenciosamente el 70.
+
+### C. Exámenes orales B2 L9 y matriz F111 (no inflar porcentajes)
+
+- Último readback de \`CAMPUS_OPERATIVO\` grupo 05-26 B2 L9: **17 evaluaciones**, **4/17=23,5%** oficialmente cerradas con PDF, **13/17=76,5%** borradores. Este conteo es un corte previo al 403, no garantía de ausencia de otros cierres posteriores.
+- R55 [backend PR #128](https://github.com/anorteamericana-ship-it/campus_backend/pull/128): oficial de oral histórico APR sin borrar calificación final 70; CORE **@493** (rollback técnico). QA **85/85** local. R54 CORE @492 se desplegó solo temporalmente y **se revirtió** porque había riesgo de recálculo indebido del 70; no usar @492 como referencia.
+- **Matriz académica F111: 16/35 = 45,7% histórica, 19 pendientes**. No cambia por R56 ni por CI. EN/ES E1 menús **41/41**, integración **24/24**, post-check **10/10** y PR frontend #734 fusionada, pero E2 de pantallas reales aún pendiente; no anunciar campus 100% bilingüe.
+- Incidente 403 es P0 único por encima de exámenes/PDF y mejoras adicionales. No pedir al profesor que reintente «Guardar nota oficial» mientras el backend rechaza tráfico público.
+
+### D. Orden de reanudación / criterio de cierre
+
+1. **Login P0**: ejecutar prueba segura en editor del desplegador y, si solicita, conceder scopes → probar \`GET/POST\` anónimos (esperado HTTP 200 y JSON de \`sesion_requerida\`, no 403) → login legítimo sin imprimir claves → registrar duración y estado. Si hay 403 anónimo aun con OAuth, escalar a configuración de Google / incidencia externa. Asegurar que fallas no sean multi-login; probar incógnito.
+2. **Verificar R56 E2**: Keylor ve 23 estudiantes B2/0526 (13 CA,9 APR,1 RI), asistencia RI puede pasar a A, no se inventan ausencias anteriores, y un oral APR se guarda y aparece PDF R51 sin afectar NOTA=70 ni estado APR. No modificar notas históricas a ciegas.
+3. **Más evaluaciones:** CA/APR todos niveles y clases orales/escritos/Quiz; verificar el registrador oficial por componente antes de decir "todos funcionan" y que la nota final no se fije artificialmente a 70.
+4. **Estabilidad:** implementar salud desde origen ajeno al navegador (sondeo de GET y POST anónimo cada 5–10 min; diferenciar HTTP 403/5xx/timeouts), alertar por fallas consecutivas y registrar incidentes/códigos; evitar redeploy como rutina.
+5. **Documentación obligatoria**: continuar este archivo + [issue #736](https://github.com/anorteamericana-ship-it/campus-virtual/issues/736). Actualizar \`config/apps-script-production.json\` (estaba desactualizado en @460; corregir a @494), no crear nueva "fuente canónica". Citar los últimos readbacks, separar integrado, publicado, probado, E2.
+
+**No terminado**: sitio **no accesible** por 403; autenticación completa y 23 alumnos en sesión docente no certificados. **Sí terminado**: integrar backend/frontend R56 en main, desplegar CORE @494 con readback, publicar frontend y documentar los respaldos. Estado al 06-nov-2026.
+
+---
+
+
 > **Actualización de continuidad — 03-nov-2026 (CR), posterior a las PR #717 y #718.**
 > Ver [CORTE REAL F111: porcentajes con denominador, 19 verificaciones pendientes y plan de reanudación](F111_CORTE_REAL_CONTINUIDAD_20261103.md) y la [issue canónica #499](https://github.com/anorteamericana-ship-it/campus-virtual/issues/499).
 > Matriz F111 académica **16/35 = 45,7% histórico, 19 sin certificar**; dos hotfix de UI publicados con readback SHA pero aún sin E2 autenticado para 3 roles. El indicador de idioma **0/23 rutas certificadas totalmente EN/ES E2** NO representa el porcentaje de textos traducidos; traducción global N/D.
