@@ -16,7 +16,7 @@ pass(script.includes('motivo.trim().length<25'),'mínimo de justificación');
 pass(script.includes('confirmo_cero_incorrecto:true'),'confirmación administrativa positiva');
 pass(script.includes("'r50AprobarConciliacionOral'"),'endpoint aprobacion');
 pass(script.includes("'r50EstadoConciliacionOral'"),'lectura de estado');
-pass(script.includes("'r50SolicitarConciliacionOral'"),'solicitud docente');
+pass(script.includes('cierre_docente_original:true'),'cierre docente original sin solicitud R50');
 pass(script.includes("'r50CerrarOralConciliado'"),'cierre autorizado en vez de bypass general');
 pass(script.includes('confirmar_nota_oficial:true'),'docente confirma individualmente');
 pass(script.includes('function r52CierreDocenteOriginalF111()'),'cierre docente original de grupo acotado');
