@@ -242,7 +242,11 @@ function r50EsGrupoF111(){
 // R50: conflicto detectado no puede ocultar SOLICITAR/CONFIRMAR si el
 // estado individual procede de una consulta explícita de CORE.
 // El cierre de nota sigue obligado a consultar CORE otra vez.
+function r52CierreDocenteOriginalF111(){
+ return r50EsGrupoF111()&&String(getSesion().rol||'').toLowerCase()==='teacher';
+}
 function r50AccionHabilitadaF111(codigo){
+ if(r52CierreDocenteOriginalF111())return true;
  if(!r50EsGrupoF111()||String(getSesion().rol||'').toLowerCase()!=='teacher')return false;
  return ['SIN_SOLICITUD','ACTUALIZACION_REQUERIDA','APROBADO'].includes(String(state.r50TeacherStates?.[String(codigo)]||'').toUpperCase());
 }
@@ -294,6 +298,15 @@ async function r50RefreshTeacherF111(){
  if(!r50EsGrupoF111()||!state.panel?.historico||
     String(getSesion().rol||'').toLowerCase()!=='teacher'||!state.selected)return;
  const code=String(state.selected.codigo);
+ if(r52CierreDocenteOriginalF111()){
+  delete state.r50TeacherStates[code];
+  const button=document.getElementById('btn-finalize-saved');
+  if(button&&String(state.evaluations?.[code]?.ESTADO||'').toUpperCase()==='BORRADOR'){
+   button.textContent='GUARDAR NOTA OFICIAL';button.disabled=!!state.busy||!!state.dirty;
+   button.title='Confirma la rúbrica original; CORE verifica que el único cero F29 sea posterior y no sea una nota válida distinta.';
+  }
+  return;
+ }
  const identity={cod_grupo:state.panel.cod_grupo,nivel:state.panel.nivel,
    leccion:Number(state.panel.leccion),cod_estudiante:code};
  try{
@@ -333,7 +346,7 @@ async function r50RefreshTeacherF111(){
   // Un fallo de lectura nunca autoriza cierre ni PDF: la acción vuelve a consultar CORE.
  }
 }
-function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');if(!interno&&state.dirty&&state.selected&&!confirm('Hay cambios sin guardar. ¿Descartarlos y recargar la ficha seleccionada?'))return;const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();r50RefreshAdminF111();r50RefreshTeacherF111();const cerrado=(!!state.panel?.historico&&!oralEditableHistoricalR48(ev))||!!state.panel?.es_reposicion||oralLockedF111(ev)||!!state.uncertainCloseCodes?.[s.codigo];document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=cerrado||state.busy||!!state.panel?.preview;draftBtn.textContent='GUARDAR BORRADOR';const finalizeSaved=document.getElementById('btn-finalize-saved');if(finalizeSaved){const status=String(ev.ESTADO||'').toUpperCase(),sync=String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase();const eligible=state.panel?.historico&&state.panel?.modo_sin_ina&&(!state.reviewConflicts?.[String(s.codigo)]||r50AccionHabilitadaF111(s.codigo))&&(status==='BORRADOR'||status==='CERRADO'&&sync==='SINCRONIZADA'||status==='PDF_GENERADO');finalizeSaved.style.display=state.panel?.historico?'':'none';finalizeSaved.disabled=!eligible||state.busy||!!state.dirty;finalizeSaved.textContent=status==='PDF_GENERADO'||status==='CERRADO'?'DESCARGAR PDF':'GUARDAR NOTA OFICIAL';if(status==='BORRADOR'){const r50=state.r50TeacherStates?.[String(s.codigo)];if(r50==='SOLICITADO'){finalizeSaved.textContent='REVISIÓN SOLICITADA';finalizeSaved.disabled=true;}else if(r50==='APROBADO'){finalizeSaved.textContent='CONFIRMAR NOTA OFICIAL';}else if(r50==='SIN_SOLICITUD'){finalizeSaved.textContent='SOLICITAR REVISIÓN';}else if(r50==='ACTUALIZACION_REQUERIDA'){finalizeSaved.textContent='ACTUALIZAR SOLICITUD';}}finalizeSaved.title=state.reviewConflicts?.[String(s.codigo)]?'Ya existe nota oficial; requiere conciliación, sin sobrescribir.':'';}const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.style.display=state.panel?.historico?'none':'';pdfBtn.textContent=state.panel?.es_reposicion?'Reposición pendiente de habilitación':ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'GUARDAR NOTA OFICIAL';pdfBtn.disabled=!!state.panel?.historico||!!state.panel?.es_reposicion||oralNeedsReviewF111(ev)||!!state.panel?.preview||!!state.uncertainCloseCodes?.[s.codigo];}}
+function selectStudent(code,interno=false){if(state.busy&&!interno)return toast('Se está guardando el expediente. Esperá a que finalice esta operación.');if(!interno&&state.dirty&&state.selected&&!confirm('Hay cambios sin guardar. ¿Descartarlos y recargar la ficha seleccionada?'))return;const s=state.students.find(x=>String(x.codigo)===String(code));if(!s)return;state.selected=s;const ev=state.evaluations[s.codigo]||{};document.getElementById('fi-student').textContent=s.nombre||s.name;document.getElementById('fi-code').textContent=s.codigo;document.getElementById('fi-state').textContent=ev.ESTADO||'PENDIENTE';loadEvaluationIntoForm(ev);oralSyncWarningF111(ev);renderStudents();r50RefreshAdminF111();r50RefreshTeacherF111();const cerrado=(!!state.panel?.historico&&!oralEditableHistoricalR48(ev))||!!state.panel?.es_reposicion||oralLockedF111(ev)||!!state.uncertainCloseCodes?.[s.codigo];document.querySelectorAll('.score-btn').forEach(b=>b.disabled=cerrado||state.busy);document.querySelectorAll('#qbody input').forEach(b=>b.disabled=cerrado||state.busy);['comentarios','sugerencias','otras-global'].forEach(id=>{const e=document.getElementById(id);if(e)e.readOnly=cerrado||state.busy;});const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=cerrado||state.busy||!!state.panel?.preview;draftBtn.textContent='GUARDAR BORRADOR';const finalizeSaved=document.getElementById('btn-finalize-saved');if(finalizeSaved){const status=String(ev.ESTADO||'').toUpperCase(),sync=String(ev.NOTA_OFICIAL_ESTADO||'').toUpperCase();const eligible=state.panel?.historico&&state.panel?.modo_sin_ina&&(!state.reviewConflicts?.[String(s.codigo)]||r50AccionHabilitadaF111(s.codigo))&&(status==='BORRADOR'||status==='CERRADO'&&sync==='SINCRONIZADA'||status==='PDF_GENERADO');finalizeSaved.style.display=state.panel?.historico?'':'none';finalizeSaved.disabled=!eligible||state.busy||!!state.dirty;finalizeSaved.textContent=status==='PDF_GENERADO'||status==='CERRADO'?'DESCARGAR PDF':'GUARDAR NOTA OFICIAL';if(status==='BORRADOR'&&!r52CierreDocenteOriginalF111()){const r50=state.r50TeacherStates?.[String(s.codigo)];if(r50==='SOLICITADO'){finalizeSaved.textContent='REVISIÓN SOLICITADA';finalizeSaved.disabled=true;}else if(r50==='APROBADO'){finalizeSaved.textContent='CONFIRMAR NOTA OFICIAL';}else if(r50==='SIN_SOLICITUD'){finalizeSaved.textContent='SOLICITAR REVISIÓN';}else if(r50==='ACTUALIZACION_REQUERIDA'){finalizeSaved.textContent='ACTUALIZAR SOLICITUD';}}finalizeSaved.title=r52CierreDocenteOriginalF111()?'Cierre docente original con verificación del cero posterior, sin autorización administrativa.':state.reviewConflicts?.[String(s.codigo)]?'Ya existe nota oficial; requiere conciliación, sin sobrescribir.':'';}const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.style.display=state.panel?.historico?'none':'';pdfBtn.textContent=state.panel?.es_reposicion?'Reposición pendiente de habilitación':ev.ESTADO==='PDF_GENERADO'?'Ver PDF archivado':ev.ESTADO==='CERRADO'?'Generar PDF pendiente':'GUARDAR NOTA OFICIAL';pdfBtn.disabled=!!state.panel?.historico||!!state.panel?.es_reposicion||oralNeedsReviewF111(ev)||!!state.panel?.preview||!!state.uncertainCloseCodes?.[s.codigo];}}
 
 // F111: bancos originales de B2, I1 e I2: única fuente transcrita de PDFs docentes.
 function originalBankF111(){
@@ -603,38 +616,9 @@ async function f111FinalizarGuardadoR47(){
      !String(ev.COMENTARIOS||'').trim()||!String(ev.SUGERENCIAS||'').trim())
    return toast('Los cinco criterios, comentarios y sugerencias deben estar guardados antes del cierre.');
   const total=rubric.reduce((n,k)=>n+Number(ev[k]),0);
-  // R50 sólo en B2 L9, con cero oficial verificado: la primera pulsación
-  // solicita revisión, no sobrescribe la nota. Tras aprobación se permite
-  // cerrar el MISMO borrador guardado con la confirmación habitual.
-  if(r50EsGrupoF111()&&String(getSesion().rol||'').toLowerCase()==='teacher'){
-   let preflight;
-   try{preflight=await api('r50EstadoConciliacionOral',ident);}
-   catch(e){return toast('No se pudo verificar la nota previa. No se ejecutó el cierre: '+(e.message||String(e)));}
-   if(!preflight.conflicto_previo&&state.reviewConflicts?.[String(student.codigo)])
-    return toast('La lectura actual no coincide con la nota previa detectada. NO se cerró el examen; solicitá verificación administrativa.');
-   if(preflight.conflicto_previo){
-    const estadoR50=String(preflight.estado||'').toUpperCase();
-    if(estadoR50==='SIN_SOLICITUD'){
-     if(!confirm('El estudiante ya tiene una nota oficial cero registrada posteriormente.\n\n¿Solicitar al superadministrador su revisión individual antes de guardar esta rúbrica como nota oficial?\n\nNo cambia ninguna nota ni genera PDF.'))return;
-     try{await api('r50SolicitarConciliacionOral',ident);state.r50TeacherStates[String(student.codigo)]='SOLICITADO';r50RefreshTeacherF111();toast('Solicitud de conciliación enviada. El borrador sigue guardado y el cero oficial NO se modificó.');}
-     catch(e){toast('Solicitud no confirmada: '+(e.message||String(e)));}
-     return;
-    }
-    if(estadoR50==='ACTUALIZACION_REQUERIDA'){
-     if(!confirm('Esta solicitud R50 ya no coincide con la rúbrica guardada.\n\n¿ACTUALIZAR la solicitud del MISMO estudiante?\nNo cambia el cero oficial ni aprueba la corrección. La revisión del superadmin sigue siendo obligatoria.'))return;
-     try{
-      const renewed=await api('r50SolicitarConciliacionOral',ident);
-      if(!renewed||String(renewed.estado||'').toUpperCase()!=='SOLICITADO')throw Error('Solicitud no revalidada por el servidor.');
-      state.r50TeacherStates[String(student.codigo)]='SOLICITADO';
-      r50RefreshTeacherF111();toast('Solicitud actualizada, sin modificar nota oficial. El superadmin debe aprobar la rúbrica vigente.');
-     }catch(e){toast('No se pudo actualizar la solicitud: '+(e.message||String(e)));}
-     return;
-    }
-    if(estadoR50==='SOLICITADO')return toast('La revisión del cero ya fue solicitada. Esperá la autorización del superadministrador.');
-    if(estadoR50!=='APROBADO')return toast('Conciliación '+estadoR50+': requiere revisión administrativa. No se repetirá ninguna nota.');
-    state.r50ApprovedFor=String(student.codigo);
-   }
-  }
+  // R52: únicamente el docente autor original de este B2 L9 puede cerrar
+  // una rúbrica anterior al cero F29, previa validación estricta en CORE.
+  // No se crean solicitudes R50 ni se requiere aprobación del superadmin.
   if(!confirm('CONFIRMAR CIERRE OFICIAL INDIVIDUAL\n\n'+(student.nombre||student.codigo)+
     '\nGrupo: '+panel.cod_grupo+' · B2 L'+panel.leccion+
     '\nRúbrica ya guardada: '+total+'/25 · Nota '+(total*4)+'/100 · aporte '+(total*0.6).toFixed(1)+'/15'+
@@ -658,8 +642,9 @@ async function f111FinalizarGuardadoR47(){
     preguntas_json:raw('PREGUNTAS_JSON'),otras_preguntas_json:raw('OTRAS_PREGUNTAS_JSON'),
     otras_preguntas:String(ev.OTRAS_PREGUNTAS||'')};
    cierreSolicitado=true;
-   const r50Permitido=state.r50ApprovedFor===String(student.codigo)&&r50EsGrupoF111();
-   const closed=await api(r50Permitido?'r50CerrarOralConciliado':'oralFinalizarBorradorHistoricoR47',r50Permitido?{...ident,confirmar_nota_oficial:true}:ident);
+   const cierreDocenteOriginal=r52CierreDocenteOriginalF111();
+   const closed=await api(cierreDocenteOriginal?'r50CerrarOralConciliado':'oralFinalizarBorradorHistoricoR47',
+     cierreDocenteOriginal?{...ident,confirmar_nota_oficial:true,cierre_docente_original:true}:ident);
    if(String(closed.evaluacion?.ESTADO)!=='CERRADO'||String(closed.evaluacion?.NOTA_OFICIAL_ESTADO)!=='SINCRONIZADA')
     throw Error('El servidor no confirmó cierre y nota oficial. No se intentará otra escritura.');
    state.evaluations[student.codigo]=closed.evaluacion;
@@ -677,8 +662,8 @@ async function f111FinalizarGuardadoR47(){
   // Descarga local individual, para enviarla por WhatsApp; el botón queda visible
   // para reintento manual. No genera ni reemplaza el documento ya archivado.
   const individualDownload=document.getElementById('f111-pdf-download');
-  if(estado!=='BORRADOR'&&individualDownload)individualDownload.click();
-  toast(estado==='BORRADOR'?'Nota oficial confirmada y PDF archivado. Ahora pulsá DESCARGAR PDF.':'PDF descargado. Podés pulsar DESCARGAR PDF cuantas veces necesités; es el mismo archivo institucional.');
+  if(individualDownload)individualDownload.click();
+  toast(estado==='BORRADOR'?'Nota oficial confirmada, PDF archivado y descarga iniciada.':'PDF descargado. Podés pulsar DESCARGAR PDF cuantas veces necesités; es el mismo archivo institucional.');
  }catch(e){
   if(String(e.code||e.message||'').includes('r50_expediente_cambio_revisar')){
    state.reviewConflicts[String(student.codigo)]=true;
