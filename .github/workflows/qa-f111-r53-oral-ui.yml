@@ -1,0 +1,23 @@
+name: F111 R53 - estado docente y descarga R51
+on:
+  pull_request:
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'campus.html'
+      - 'tests/qa_f111_r53_oral_live_readback_pdf.cjs'
+      - '.github/workflows/qa-f111-r53-oral-ui.yml'
+permissions:
+  contents: read
+jobs:
+  oral:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node tests/qa_f111_r53_oral_live_readback_pdf.cjs
+      - run: node tests/qa_f111_r48_oral_historical_teacher_ui.cjs
+      - run: node tests/qa_f111_oral_two_actions_e1.cjs
+      - run: node tests/qa_f111_r50_oral_conflict_on_load.cjs
