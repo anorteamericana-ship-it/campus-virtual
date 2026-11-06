@@ -654,6 +654,17 @@ async function f111FinalizarGuardadoR47(){
   if(String(res.evaluacion?.ESTADO)!=='PDF_GENERADO'||!res.file_id||!res.backup_file_id)
    throw Error('No se confirmó PDF principal y respaldo. No se repetirá la emisión.');
   state.evaluations[student.codigo]=res.evaluacion;
+  // R53: un cierre oficial confirmado no puede seguir mostrando GUARDAR NOTA.
+  // Releer el MISMO registro; no se hace ninguna segunda escritura.
+  try{
+   const readback=await api('oralGetEvaluacion',ident);
+   const live=readback?.evaluacion;
+   if(live&&String(live.ORAL_ID)===String(ev.ORAL_ID)&&
+      String(live.ESTADO).toUpperCase()==='PDF_GENERADO'&&
+      String(live.PDF_FILE_ID)===String(res.file_id)&&
+      String(live.PDF_BACKUP_FILE_ID)===String(res.backup_file_id))
+    state.evaluations[student.codigo]=live;
+  }catch(_){ /* respuesta PDF válida permanece como lectura positiva */ }
   if(state.lastPdfBlobUrl){try{URL.revokeObjectURL(state.lastPdfBlobUrl);}catch(_){}}
   state.lastPdfBlobUrl=pdfBlobUrlF90(res.pdf_base64,res.pdf_mime);
   state.lastPdfDriveUrl=res.pdf_url||'';
@@ -669,7 +680,7 @@ async function f111FinalizarGuardadoR47(){
    state.reviewConflicts[String(student.codigo)]=true;
    delete state.r50TeacherStates[String(student.codigo)];
    state.r50ApprovedFor='';
-   toast('El expediente cambió desde la autorización R50. No se cerró ni se duplicó la nota. Superadmin debe verificar otra vez el cero y su autorización; no se reintenta automáticamente.');
+   toast('El expediente cambió y el servidor bloqueó el cierre para proteger la nota oficial. No reintentes; verificá el estado del estudiante.');
   }else if(['r47_nota_oficial_ya_existente','nota_oficial_conciliacion_requerida','r47_nota_previa_no_verificable'].includes(String(e.code||''))){
    state.reviewConflicts[String(student.codigo)]=true;
    toast('Nota oficial existente o no verificable. El expediente queda en revisión; no se volverá a cerrar.');
@@ -683,6 +694,16 @@ async function f111FinalizarGuardadoR47(){
  }finally{
   state.busy=false;
   selectStudent(student.codigo,true);
+  const current=state.evaluations?.[student.codigo];
+  if(current&&String(current.NOTA_OFICIAL_ESTADO||'').toUpperCase()==='SINCRONIZADA'&&
+      ['CERRADO','PDF_GENERADO'].includes(String(current.ESTADO||'').toUpperCase())){
+   const finalBtn=document.getElementById('btn-finalize-saved');
+   if(finalBtn&&String(state.selected?.codigo)===String(student.codigo)){
+    finalBtn.textContent='DESCARGAR PDF';
+    finalBtn.disabled=false;
+    finalBtn.title='Nota oficial registrada; descarga el mismo PDF institucional sin volver a grabar la nota.';
+   }
+  }
  }
 }
 function renderArchivedPdfF111(pdf,ev){
@@ -708,7 +729,7 @@ function renderArchivedPdfF111(pdf,ev){
     const download=document.createElement('a');
     download.id='f111-pdf-download';download.href=blob;
     const code=String(ev?.COD_ESTUDIANTE||'ESTUDIANTE').replace(/[^a-zA-Z0-9_-]/g,'');
-    download.download='EXAMEN_ORAL_'+String(ev?.NIVEL||'').replace(/[^a-zA-Z0-9_-]/g,'')+'_L'+String(ev?.LECCION||'')+'_'+code+'.pdf';
+    download.download='EXAMEN_ORAL_R51_'+String(ev?.NIVEL||'').replace(/[^a-zA-Z0-9_-]/g,'')+'_L'+String(ev?.LECCION||'')+'_'+code+'.pdf';
     download.textContent='DESCARGAR PDF';
     download.style.cssText='display:inline-block;background:#e4b734;color:#142c45;text-decoration:none;padding:12px 16px;border-radius:8px;font-size:12px;font-weight:bold';
     actions.appendChild(download);
