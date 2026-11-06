@@ -708,7 +708,7 @@ function f111TeacherExamModal(title,url){
 function f111ExamPageUrl(path,params){
  const url=new URL(path,new URL('./',location.href));
  for(const [k,v] of Object.entries(params||{}))if(v!=null)url.searchParams.set(k,String(v));
- if(path==='modulos/examen_oral.html'&&String(params?.historial||'')==='1')url.searchParams.set('ui','F111R50ESTADOS20261103');url.searchParams.set('acciones','F111R49TWO20261102');if(path==='modulos/examen_oral.html')url.searchParams.set('r50fix','F111R50APPROVAL20261104A');
+ if(path==='modulos/examen_oral.html'&&String(params?.historial||'')==='1')url.searchParams.set('ui','F111R50ESTADOS20261103');url.searchParams.set('acciones','F111R49TWO20261102');if(path==='modulos/examen_oral.html')url.searchParams.set('r50fix','F111R50RENUEVA20261106A');
  return url.href;
 }
 function f111TeacherGroups(){
