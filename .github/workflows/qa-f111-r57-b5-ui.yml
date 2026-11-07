@@ -29,5 +29,5 @@ jobs:
           npx --yes esbuild@0.25.12 src/app.jsx --loader:.jsx=jsx --jsx=transform --outfile=/tmp/f111-r57-b5-app.js
       - name: Verify changed-file whitespace
         run: |
-          git fetch --no-tags origin main
+          git fetch --no-tags --unshallow origin main || git fetch --no-tags origin main
           git diff --check origin/main...HEAD
