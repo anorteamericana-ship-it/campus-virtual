@@ -432,6 +432,25 @@ function VDTabs({ value, onChange, counts }) {
   );
 }
 
+// F111-9: solicitud administrativa independiente del cierre de asistencia.
+// No modifica la lección ni marca ausencias: solo habilita el modal de petición.
+function vdSuspensionKey(lec) {
+  return [lec?.cod_grupo || '', lec?.nivel || '', lec?.leccion || '', lec?.riel || 'curso'].join('|');
+}
+function vdSuspensionEstado(lec, locales) {
+  const estado = String((locales || {})[vdSuspensionKey(lec)] || lec?.solicitud_estado || lec?.estado_solicitud || '').trim().toUpperCase();
+  return ['PENDIENTE', 'APROBADA', 'RECHAZADA'].includes(estado) ? estado : '';
+}
+function vdSuspensionPermitida(lec, rol) {
+  const r = String(rol || '').trim().toUpperCase();
+  const estado = String(lec?.estado || '').trim().toUpperCase();
+  return ['DOCENTE', 'PROFESOR', 'TEACHER'].includes(r) &&
+    !!String(lec?.cod_grupo || '').trim() && !!String(lec?.nivel || '').trim() &&
+    Number.isInteger(Number(lec?.leccion)) && Number(lec.leccion) > 0 &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(lec?.fecha || '')) &&
+    (estado === '' || estado === 'PROGRAMADA');
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // LeccionRow — fila / tarjeta de una lección
 // ─────────────────────────────────────────────────────────────────────────
@@ -443,7 +462,7 @@ function VDTabs({ value, onChange, counts }) {
 //   diasAtraso → si > 0, badge rojo "Atrasada X días"
 //   highlight → 'atrasada' | 'hoy' | null  (afecta el borde)
 // ─────────────────────────────────────────────────────────────────────────
-function LeccionRow({ lec, variant = 'active', diasAtraso = null, highlight = null, onClick }) {
+function LeccionRow({ lec, variant = 'active', diasAtraso = null, highlight = null, onClick, onSuspender = null, suspensionEstado = '' }) {
   const pal = nivelPal(lec.nivel);
 
   const readonly = variant !== 'active';
@@ -497,13 +516,14 @@ function LeccionRow({ lec, variant = 'active', diasAtraso = null, highlight = nu
   })();
 
   return (
+    <div style={{ marginBottom: 8 }}>
     <button
       type="button"
       onClick={onClick}
       style={{
         all: 'unset', boxSizing: 'border-box', display: 'block',
         width: '100%', cursor: 'pointer',
-        marginBottom: 8,
+        marginBottom: 0,
         background: bg, color: 'var(--ink)',
         border: `1px solid ${borderColor}`,
         borderLeft: `4px solid ${leftStripe}`,
@@ -607,6 +627,29 @@ function LeccionRow({ lec, variant = 'active', diasAtraso = null, highlight = nu
         </div>
       </div>
     </button>
+    {variant === 'active' && (onSuspender || suspensionEstado) && (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:9,
+        flexWrap:'wrap', padding:'6px 8px 2px' }}>
+        {suspensionEstado && (
+          <span role="status" style={{ fontSize:11, fontWeight:700,
+            color:suspensionEstado === 'RECHAZADA' ? '#8B1A10' : '#7A4F00' }}>
+            {suspensionEstado === 'PENDIENTE' ? 'Solicitud pendiente de aprobación' :
+              suspensionEstado === 'APROBADA' ? 'Suspensión aprobada' : 'Solicitud rechazada'}
+          </span>
+        )}
+        {onSuspender && !['PENDIENTE','APROBADA'].includes(suspensionEstado) && (
+          <button type="button" onClick={onSuspender}
+            aria-label={`Solicitar suspensión de lección ${lec.leccion} del grupo ${lec.cod_grupo}`}
+            style={{ border:'1px solid #B7791F', borderRadius:'var(--r-pill)',
+              background:'#FFF8E1', color:'#7A4F00', cursor:'pointer',
+              fontSize:11, fontWeight:750, minHeight:36, padding:'7px 12px',
+              fontFamily:'var(--f-sans)' }}>
+            Solicitar suspensión · sin abrir clase
+          </button>
+        )}
+      </div>
+    )}
+    </div>
   );
 }
 
@@ -656,7 +699,7 @@ function SeccionHeader({ icon, title, count, tone = 'default' }) {
 // "Esta semana" cubre los 7 días siguientes a hoy (exclusivo de hoy).
 // Si una sección está vacía no se renderiza.
 // ─────────────────────────────────────────────────────────────────────────
-function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
+function VDTabProximas({ programadas, sinCerrar, onAbrirCierre, onSolicitarSuspension, rol, solicitudesPendientes }) {
   // Mapa para enriquecer con dias_atraso desde sin_cerrar
   const mapaAtraso = React.useMemo(() => {
     const m = new Map();
@@ -709,9 +752,13 @@ function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
   }
 
   const handleClick = (lec, ctx) => {
-    console.log('Abrir modal cierre', { ...lec, contexto: ctx });
     onAbrirCierre && onAbrirCierre(lec, ctx);
   };
+  const suspensionProps = (lec) => ({
+    suspensionEstado: vdSuspensionEstado(lec, solicitudesPendientes),
+    onSuspender: onSolicitarSuspension && vdSuspensionPermitida(lec, rol)
+      ? () => onSolicitarSuspension(lec) : null,
+  });
 
   return (
     <div>
@@ -742,6 +789,7 @@ function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
                   highlight="atrasada"
                   diasAtraso={dias}
                   onClick={() => handleClick(lec, 'atrasada')}
+                  {...suspensionProps(lec)}
                 />
               );
             })}
@@ -757,6 +805,7 @@ function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
             <LeccionRow key={`${lec.cod_grupo}|${lec.nivel}|${lec.leccion}|${lec.riel || 'curso'}`}
               lec={lec} variant="active" highlight="hoy"
               onClick={() => handleClick(lec, 'hoy')}
+              {...suspensionProps(lec)}
             />
           ))}
         </>
@@ -770,6 +819,7 @@ function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
             <LeccionRow key={`${lec.cod_grupo}|${lec.nivel}|${lec.leccion}|${lec.riel || 'curso'}`}
               lec={lec} variant="active"
               onClick={() => handleClick(lec, 'esta_semana')}
+              {...suspensionProps(lec)}
             />
           ))}
         </>
@@ -808,6 +858,7 @@ function VDTabProximas({ programadas, sinCerrar, onAbrirCierre }) {
                 <LeccionRow key={`${lec.cod_grupo}|${lec.nivel}|${lec.leccion}|${lec.riel || 'curso'}`}
                   lec={lec} variant="active"
                   onClick={() => handleClick(lec, 'mas_adelante')}
+                  {...suspensionProps(lec)}
                 />
               ))}
               <button
@@ -1776,6 +1827,8 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const [error, setError]           = React.useState('');
   const [tab, setTab]               = React.useState('proximas');
   const [modalLec, setModalLec]     = React.useState(null);   // lección en cierre
+  const [modalSuspLec, setModalSuspLec] = React.useState(null); // solicitud SIN abrir cierre
+  const [solicitudesPendientes, setSolicitudesPendientes] = React.useState({});
   const [modalPC, setModalPC]       = React.useState(null);   // recuperación PC cerrado
   const [toastMsg, setToastMsg]     = React.useState('');
   const [bannerAbierto, setBannerAbierto] = React.useState(false);
@@ -1948,6 +2001,11 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
   const abrirProgressCheckPendiente = (p) => {
     setModalPC({ ...p, riel:'curso', estado:'CERRADA' });
   };
+  const abrirSolicitudSinCierre = (lec) => {
+    if (!vdSuspensionPermitida(lec, sesion.rol)) return;
+    if (['PENDIENTE', 'APROBADA'].includes(vdSuspensionEstado(lec, solicitudesPendientes))) return;
+    setModalSuspLec(lec);
+  };
 
   return (
     <div data-screen-label="Vista docente">
@@ -1978,6 +2036,9 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
           programadas={calendario?.programadas || []}
           sinCerrar={pendientes?.sin_cerrar || []}
           onAbrirCierre={(lec) => setModalLec(lec)}
+          onSolicitarSuspension={abrirSolicitudSinCierre}
+          rol={sesion.rol}
+          solicitudesPendientes={solicitudesPendientes}
         />
       )}
       {tab === 'historico' && (
@@ -1985,6 +2046,20 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
       )}
       {tab === 'pre' && (
         <VDTabPre historico={calendario?.historico || []} />
+      )}
+
+      {modalSuspLec && (
+        <ModalSolicitarSuspension
+          lec={modalSuspLec}
+          solicitante={nombre || cedula}
+          onCerrar={() => setModalSuspLec(null)}
+          onEnviada={(mensaje) => {
+            setSolicitudesPendientes(prev => ({ ...prev, [vdSuspensionKey(modalSuspLec)]: 'PENDIENTE' }));
+            setModalSuspLec(null);
+            setToastMsg(mensaje || 'Solicitud enviada · pendiente de aprobación.');
+            refetch();
+          }}
+        />
       )}
 
       {modalLec && (
@@ -2004,6 +2079,7 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
             refetch();
           }}
           onSolicitudEnviada={(mensaje) => {
+            setSolicitudesPendientes(prev => ({ ...prev, [vdSuspensionKey(modalLec)]: 'PENDIENTE' }));
             setToastMsg(mensaje || 'Solicitud enviada, pendiente de aprobación.');
             refetch();
           }}
@@ -2070,6 +2146,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
   const [horaInicio, setHoraInicio] = React.useState(defaults.ini || '');
   const [horaFin, setHoraFin] = React.useState(defaults.fin || '');
   const [enviando, setEnviando] = React.useState(false);
+  const enviandoRef = React.useRef(false); // evita doble envío antes del siguiente render
   const [err, setErr] = React.useState('');
 
   React.useEffect(() => {
@@ -2087,6 +2164,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
   };
 
   const handleEnviar = async () => {
+    if (enviandoRef.current) return;
     const m = motivo.trim();
     if (!m || m.length < 8) {
       setErr('Brinda una explicación breve de al menos 8 caracteres.');
@@ -2103,6 +2181,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
       }
     }
 
+    enviandoRef.current = true;
     setEnviando(true); setErr('');
     const payload = {
       tipo_solicitud: tipo,
@@ -2122,15 +2201,20 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
 
     try {
       const res = await window.fetchSolicitarSuspension(payload);
-      setEnviando(false);
       if (!res?.ok) {
-        setErr(res?.error || 'No se pudo enviar la solicitud.');
+        const msg = String(res?.error || 'No se pudo enviar la solicitud.');
+        setErr(/ya existe.*pendiente/i.test(msg)
+          ? 'Ya existe una solicitud pendiente para esta lección. Administración debe resolverla.'
+          : 'No se pudo registrar la solicitud. Verificá los datos e intentá nuevamente.');
         return;
       }
-      onEnviada(res.mensaje || `Solicitud enviada · pendiente de aprobación (${res.id || ''}).`);
+      onEnviada(res.mensaje || `Solicitud enviada · pendiente de aprobación (${res.id || ''}).`, res);
     } catch (e) {
+      setErr('No pudimos comunicarnos con Administración. Intentá nuevamente.');
+      console.warn('[VistaDocente] Solicitud no enviada.', e);
+    } finally {
+      enviandoRef.current = false;
       setEnviando(false);
-      setErr(e?.message || String(e));
     }
   };
 
@@ -2146,7 +2230,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
         background:'rgba(20,16,12,0.58)', backdropFilter:'blur(4px)',
         display:'flex', alignItems:'center', justifyContent:'center', padding:18,
       }}>
-      <div role="dialog" aria-modal="true" style={{
+      <div role="dialog" aria-modal="true" aria-labelledby="vd-suspension-title" aria-busy={enviando} style={{
         width:'100%', maxWidth:570, maxHeight:'calc(100vh - 36px)',
         background:'var(--surface)', borderRadius:'var(--r-lg, 12px)',
         boxShadow:'0 24px 70px rgba(0,0,0,.4)', overflow:'hidden',
@@ -2165,7 +2249,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
             <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.16em', textTransform:'uppercase', color:'#7A4F00' }}>
               Cambio excepcional de clase
             </div>
-            <div style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:650, lineHeight:1.2, marginTop:2 }}>
+            <div id="vd-suspension-title" style={{ fontFamily:'var(--f-serif)', fontSize:20, fontWeight:650, lineHeight:1.2, marginTop:2 }}>
               Solicitar suspensión o reprogramación
             </div>
           </div>
@@ -2190,6 +2274,14 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
             </div>
           </div>
 
+          {vdDiasHasta(lec.fecha) < 0 && (
+            <div role="note" style={{ fontSize:12, lineHeight:1.5, padding:'10px 12px',
+              background:'#FFF3E0', color:'#8B4B00', border:'1px solid #F0D4A0',
+              borderRadius:'var(--r-md)', marginBottom:12 }}>
+              Esta fecha ya pasó. La solicitud será excepcional y deberá revisarla Administración;
+              no se cambiará el calendario automáticamente.
+            </div>
+          )}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:14 }}>
             <button type="button" disabled={enviando} onClick={() => { setTipo('SUSPENSION'); setErr(''); }} style={{
               padding:'12px 13px', textAlign:'left', borderRadius:'var(--r-md)', cursor:'pointer',
@@ -2256,7 +2348,7 @@ function ModalSolicitarSuspension({ lec, solicitante, onCerrar, onEnviada }) {
             Solicitante: <b style={{ color:'var(--ink-2)' }}>{solicitante || '—'}</b>
           </div>
 
-          {err && <div style={{
+          {err && <div role="alert" aria-live="assertive" style={{
             padding:'10px 12px', marginBottom:12, background:'#FDECEA', border:'1px solid #F5C2BD',
             borderRadius:'var(--r-sm)', color:'#8B1A10', fontSize:12, fontWeight:650,
           }}>⚠ {err}</div>}
