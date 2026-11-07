@@ -1,0 +1,33 @@
+name: F111 R57 B5 - Solicitudes 48h UI (E1)
+
+on:
+  pull_request:
+    paths:
+      - 'src/solicitudes_unificadas.jsx'
+      - 'src/app.jsx'
+      - 'tests/qa_f111_r57_b5_ui_contract.mjs'
+      - '.github/workflows/qa-f111-r57-b5-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r57-b5-ui-e1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify contract and negative cases
+        run: node tests/qa_f111_r57_b5_ui_contract.mjs
+      - name: Parse both real JSX modules using pinned esbuild
+        run: |
+          npx --yes esbuild@0.25.12 src/solicitudes_unificadas.jsx --loader:.jsx=jsx --jsx=transform --outfile=/tmp/f111-r57-b5-solicitudes.js
+          npx --yes esbuild@0.25.12 src/app.jsx --loader:.jsx=jsx --jsx=transform --outfile=/tmp/f111-r57-b5-app.js
+      - name: Verify changed-file whitespace
+        run: |
+          git fetch --no-tags origin main
+          git diff --check origin/main...HEAD
