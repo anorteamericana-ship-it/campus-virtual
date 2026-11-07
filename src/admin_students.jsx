@@ -5496,6 +5496,13 @@ function agIndEstadoFinancieroPE(estatus, cotizacion, pendientesNivel) {
 }
 
 
+// Determinar si la cotización debe ocultarse por liquidación real. APR por sí solo
+// no basta: el saldo contractual debe estar efectivamente en cero.
+function agIndNivelLiquidadoParaConsulta(c,finLabel,estatus) {
+  return Boolean(c?.disponible) && typeof c.saldo==='number' && Number.isFinite(c.saldo) &&
+    c.saldo<=0.01 && (finLabel==='AL DÍA'||['APR','CNV'].includes(estatus));
+}
+
 // HOTFIX F111: tarjeta comercial limpia para captura y WhatsApp.
 // No altera estado académico, financiación CONAPE ni registros de pago.
 function AgIndCotizacionClienteHotfixF111({nivel,cotizacion:c}) {
@@ -5511,32 +5518,32 @@ function AgIndCotizacionClienteHotfixF111({nivel,cotizacion:c}) {
   ];
   return <section data-consulta-cotizacion-cliente="true"
     style={{border:'1px solid #BFD5EE',background:'#F2F8FF',borderRadius:12,
-      padding:'15px 18px',marginBottom:10}}>
+      padding:'10px 12px',marginBottom:6}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-      flexWrap:'wrap',gap:12,marginBottom:15}}>
+      flexWrap:'wrap',gap:8,marginBottom:10}}>
       <strong style={{fontSize:14,color:'#123C70'}}>Costos de {NIVEL_LABEL_P[nivel]}</strong>
-      <span data-consulta-subtotal="true" style={{padding:'6px 12px',borderRadius:24,
-        background:'#14213D',color:'white',fontWeight:900,fontSize:13}}>
+      <span data-consulta-subtotal="true" style={{padding:'5px 10px',borderRadius:24,
+        background:'#14213D',color:'white',fontWeight:900,fontSize:12}}>
         {esI2?'SUBTOTAL SIN TOEIC':'SUBTOTAL'} {agIndMoney(c.subtotalCliente)}
       </span>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',
-      gap:16,alignItems:'start'}}>
+      gap:10,alignItems:'start'}}>
       {detalle.map(item=><div key={item.label}>
-        <div style={{fontSize:12,color:'#36506F',fontWeight:650,marginBottom:5}}>{item.label}</div>
-        <strong style={{fontSize:17,color:'#14213D',fontWeight:900}}>
+        <div style={{fontSize:11,color:'#36506F',fontWeight:650,marginBottom:3}}>{item.label}</div>
+        <strong style={{fontSize:15.5,color:'#14213D',fontWeight:900}}>
           {item.valor>0?agIndMoney(item.valor):'—'}
         </strong>
       </div>)}
     </div>
-    <div data-consulta-saldo-final="true" style={{marginTop:18,padding:'15px 18px',
-      border:'2px solid #82B5ED',borderRadius:12,
+    <div data-consulta-saldo-final="true" style={{marginTop:11,padding:'9px 13px',
+      border:'1.5px solid #82B5ED',borderRadius:12,
       background:'linear-gradient(115deg,#E8F3FF,#D6E9FF)',
-      display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
-      <div style={{fontSize:14,fontWeight:950,color:'#11477F',letterSpacing:'.02em'}}>
+      display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+      <div style={{fontSize:12.5,fontWeight:950,color:'#11477F',letterSpacing:'.02em'}}>
         Saldo por aplicar{esI2&&c.toeicCliente>0?' · incluye TOEIC':''}
       </div>
-      <strong style={{color:'#0756A8',fontSize:'clamp(26px,3.2vw,36px)',lineHeight:1.1,
+      <strong style={{color:'#0756A8',fontSize:'clamp(22px,2.4vw,29px)',lineHeight:1.1,
         fontWeight:950,letterSpacing:'-.02em',fontVariantNumeric:'tabular-nums'}}>
         {agIndMoney(c.saldoCliente)}
       </strong>
@@ -5555,6 +5562,7 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
   const [comentarioOpen,setComentarioOpen]=React.useState(false);
   const [syncing,setSyncing]=React.useState('');
   const [toast,setToast]=React.useState('');
+  const [vistaCompartir,setVistaCompartir]=React.useState(false);
   const nivelColor={B1:'#C88A00',B2:'#CF3028',I1:'#1769A5',I2:'#2E7D32'};
 
   React.useEffect(() => {
@@ -5580,40 +5588,100 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
   const d=estado.detalle,est=d.estudiante||{},niveles=d.niveles||{},pend=d.pendientes?.por_nivel||{},movimientos=agIndMovimientos(d),comentarioAdmin=agIndNorm(estado.comentarioAdmin),historialCount=Array.isArray(estado.historial)?estado.historial.length:0;
   const nombre=agIndNorm(est.NOMBRE||estudianteBase?.nombre||estudianteBase?.display)||'Estudiante',cedula=agIndNorm(est.NUM_CEDULA||estudianteBase?.cedula),telefono=agIndNorm(est.TELEFONO||estudianteBase?.telefono),correo=agIndNorm(est.email||est.EMAIL||estudianteBase?.email),convenio=agIndNorm(est.CONVENIO||estudianteBase?.convenio)||'—',grupoActual=agIndNorm(d.cod_grupo||est.GRUPO||estudianteBase?.grupo)||'—';
   const totalAsis=estado.asistencia.length,totalPres=estado.asistencia.filter(r=>agIndPresente(r?.presente??r?.PRESENTE)).length,pctGlobal=totalAsis?Math.round(totalPres/totalAsis*100):null,orden=['B1','B2','I1','I2'];
-  const gridCols='minmax(190px,1.2fr) minmax(112px,.62fr) minmax(128px,.72fr) minmax(215px,1.08fr) minmax(118px,.66fr) 82px 92px 30px';
+  const gridCols='minmax(164px,1.2fr) minmax(92px,.63fr) minmax(91px,.62fr) minmax(160px,.95fr) minmax(105px,.68fr) 60px 75px 26px';
+  const gridColsCompartir='minmax(205px,1.4fr) minmax(88px,.6fr) minmax(90px,.6fr) minmax(135px,.9fr) minmax(95px,.65fr) 26px';
+  const nivelSugeridoCaptura=[...orden].reverse().find(n=>{
+    const i=niveles[n]||{},q=agIndCotizarNivel(i,pend[n]||{},n,agIndNorm(i.convenio)||convenio);
+    return q.disponible&&q.saldo>0.01;
+  })||'I2';
 
-  return <div style={{padding:'14px 16px 22px',background:'var(--bg,#f7f4ef)'}}>
-    {toast&&<div style={{position:'fixed',right:22,bottom:22,zIndex:2600,padding:'11px 15px',borderRadius:10,background:toast.startsWith('CONAPE quedó')?'#B42318':'#2E7D32',color:'white',fontSize:12,fontWeight:900,boxShadow:'0 8px 25px rgba(0,0,0,.24)'}}>{toast}</div>}
-    <div style={{background:'linear-gradient(135deg,#112A4C,#193C68)',color:'white',borderRadius:14,padding:'14px 16px',marginBottom:12,boxShadow:'0 10px 24px rgba(20,33,61,.16)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',gap:14,flexWrap:'wrap',alignItems:'flex-start'}}>
-        <div style={{minWidth:260}}><div style={{fontSize:9.5,fontWeight:900,letterSpacing:'.16em',textTransform:'uppercase',opacity:.68}}>Consulta individual · filtro de ESTATUS</div><div style={{fontFamily:'var(--f-serif,serif)',fontSize:25,fontWeight:650,marginTop:3}}>{nombre}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,max-content))',columnGap:17,rowGap:4,marginTop:8,fontSize:10.5,opacity:.9}}><span>Código <b>{codigo}</b></span>{cedula&&<span>Cédula <b>{cedula}</b></span>}<span>Grupo actual <b>{grupoActual}</b></span><span>Convenio <b>{convenio}</b></span>{telefono&&<span>Teléfono <b>{telefono}</b></span>}{correo&&<span>Correo <b>{correo}</b></span>}</div></div>
-        <div style={{display:'flex',flexDirection:'column',gap:7,alignItems:'stretch'}}>
-          <div style={{display:'flex',gap:7,alignItems:'stretch',flexWrap:'wrap',justifyContent:'flex-end'}}><div style={{minWidth:110,padding:'8px 10px',borderRadius:9,background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.22)',textAlign:'center'}}><div style={{fontSize:8.5,fontWeight:900,textTransform:'uppercase',letterSpacing:'.1em',opacity:.72}}>Asistencia total</div><div style={{marginTop:2,fontSize:21,fontWeight:900,color:pctGlobal==null?'white':(pctGlobal>=70?'#BDE9C4':'#FFC4C0')}}>{pctGlobal==null?'—':`${pctGlobal}%`}</div><div style={{fontSize:8.5,opacity:.72}}>{totalAsis?`${totalPres}/${totalAsis} registros`:'Sin registros'}</div></div><button type="button" onClick={()=>setHistorial(true)} title={historialCount?`${historialCount} cambio(s) registrado(s). Revisar historial.`:'No existen cambios registrados.'} style={{padding:'8px 11px',borderRadius:9,border:`1px solid ${historialCount?'#F1C45C':'rgba(255,255,255,.24)'}`,background:historialCount?'#F6C453':'rgba(255,255,255,.1)',color:historialCount?'#3F2A00':'white',fontWeight:950,cursor:'pointer',boxShadow:historialCount?'0 0 0 3px rgba(246,196,83,.16)':'none'}}>{historialCount?`🕘 Historial · ${historialCount} por revisar`:'🕘 Historial'}</button><button type="button" onClick={onClose} style={{padding:'8px 11px',borderRadius:9,border:'1px solid rgba(255,255,255,.24)',background:'white',color:'#14213D',fontWeight:900,cursor:'pointer'}}>Cerrar</button></div>
-          <button type="button" onClick={()=>setComentarioOpen(true)} title={comentarioAdmin||'Agregar comentario interno'} style={{alignSelf:'flex-end',minWidth:220,padding:'8px 11px',borderRadius:9,border:`1px solid ${comentarioAdmin?'#F1C45C':'rgba(255,255,255,.32)'}`,background:comentarioAdmin?'#FFF3CF':'rgba(255,255,255,.12)',color:comentarioAdmin?'#5B3B00':'white',fontWeight:950,cursor:'pointer',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{comentarioAdmin?'📝 Comentario registrado':'＋ Agregar comentario'}</button>
+  return <div style={{padding:'9px 12px 14px',background:'var(--bg,#f7f4ef)'}}>
+    {toast&&<div style={{position:'fixed',right:22,bottom:22,zIndex:2600,padding:'11px 15px',
+      borderRadius:10,background:toast.startsWith('CONAPE quedó')?'#B42318':'#2E7D32',
+      color:'white',fontSize:12,fontWeight:900}}>{toast}</div>}
+    <header data-consulta-estudiante-compacta="true"
+      style={{background:'linear-gradient(135deg,#112A4C,#193C68)',color:'white',
+        borderRadius:12,padding:'10px 14px',marginBottom:9}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',alignItems:'center'}}>
+        <div style={{flex:'1 1 460px',minWidth:220}}>
+          <div style={{fontSize:9,fontWeight:900,letterSpacing:'.1em',opacity:.75,
+            textTransform:'uppercase'}}>Consulta individual · Academia Norteamericana</div>
+          <div style={{fontSize:23,fontWeight:850,lineHeight:1.15,marginTop:3}}>{nombre}</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'3px 16px',fontSize:10.5,marginTop:5,opacity:.92}}>
+            <span>Código <b>{codigo}</b></span>
+            <span>Grupo actual <b>{grupoActual}</b></span>
+            <span>Convenio <b>{convenio}</b></span>
+          </div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:5,alignItems:'flex-end'}}>
+          <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}>
+            <button type="button" onClick={()=>{
+              if(!vistaCompartir)setNivelAbierto(nivelSugeridoCaptura);
+              setVistaCompartir(v=>!v);
+            }} aria-pressed={vistaCompartir}
+              style={{padding:'6px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,.3)',
+                background:vistaCompartir?'#DBEAFF':'rgba(255,255,255,.12)',
+                color:vistaCompartir?'#123C70':'white',fontSize:10.5,fontWeight:850,cursor:'pointer'}}>
+              {vistaCompartir?'Volver a gestión':'Vista para compartir'}
+            </button>
+            {!vistaCompartir&&<>
+              <button type="button" onClick={()=>setHistorial(true)}
+                style={{padding:'6px 9px',borderRadius:8,border:'1px solid rgba(255,255,255,.3)',
+                  background:historialCount?'#F6C453':'rgba(255,255,255,.1)',
+                  color:historialCount?'#3F2A00':'white',fontWeight:850,fontSize:10.5,cursor:'pointer'}}>
+                Historial{historialCount?' · '+historialCount:''}
+              </button>
+              <button type="button" onClick={onClose}
+                style={{padding:'6px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,.3)',
+                  background:'white',color:'#14213D',fontWeight:850,fontSize:10.5,cursor:'pointer'}}>Cerrar</button>
+            </>}
+          </div>
+          {!vistaCompartir&&<button type="button" onClick={()=>setComentarioOpen(true)}
+            title={comentarioAdmin||'Agregar comentario interno'}
+            style={{padding:'5px 9px',borderRadius:8,border:'1px solid rgba(255,255,255,.25)',
+              background:comentarioAdmin?'#FFF3CF':'rgba(255,255,255,.1)',
+              color:comentarioAdmin?'#5B3B00':'white',fontWeight:850,fontSize:10,cursor:'pointer'}}>
+            {comentarioAdmin?'Comentario registrado':'Agregar comentario'}
+          </button>}
         </div>
       </div>
-    </div>
+    </header>
 
     <div style={{overflowX:'auto',borderRadius:12}}>
-      <div style={{minWidth:1040}}>
-        <div style={{display:'grid',gridTemplateColumns:gridCols,gap:8,padding:'0 13px 7px 18px',fontSize:8.5,fontWeight:900,letterSpacing:'.09em',textTransform:'uppercase',color:'#756D65'}}><span>Nivel y grupo</span><span>Convenio</span><span>Estado</span><span>Finanzas / comprobantes</span><span>Certificado</span><span>Nota</span><span>Asistencia</span><span></span></div>
+      <div style={{minWidth:vistaCompartir?760:900}}>
+        <div style={{display:'grid',gridTemplateColumns:vistaCompartir?gridColsCompartir:gridCols,
+          gap:7,padding:'0 11px 5px 16px',fontSize:9,fontWeight:900,letterSpacing:'.05em',
+          textTransform:'uppercase',color:'#756D65'}}>
+          <span>Nivel y período</span><span>Convenio</span><span>Estado</span><span>Finanzas</span>
+          <span>Certificado</span>
+          {!vistaCompartir&&<><span>Nota</span><span>Asistencia</span></>}
+          <span></span>
+        </div>
         <div style={{display:'grid',gap:8}}>{orden.map(nivel=>{const info=niveles[nivel]||{},pendienteNivel=pend[nivel]||{},estatus=agIndUpper(info.estatus)||'SIN REGISTRO',tone=agIndStatusTone(estatus),grupo=agIndNorm(info.grupo)||'—',notaNum=info.nota===''||info.nota==null||isNaN(Number(info.nota))?null:Number(info.nota),asis=agIndAsistenciaNivel(estado.asistencia,nivel,grupo),color=nivelColor[nivel]||'#8B8178',movsNivel=movimientos.filter(m=>m.nivel===nivel),resumen=agIndResumenMovimientos(movsNivel,pendienteNivel),finanzas=agIndFinanzasNivel(estatus,movsNivel,resumen),abierto=nivelAbierto===nivel,periodoCorto=agIndNorm(info.periodo_corto)||'PERIODO SIN DEFINIR',periodoLargo=agIndNorm(info.periodo_largo),convNivel=agIndNorm(info.convenio)||convenio,intentos=Array.isArray(info.intentos)?info.intentos:[],trasladoDesde=agIndNorm(info.traslado_desde),gruposPagoAplicados=Array.isArray(pendienteNivel?.grupos_pago_aplicados)?pendienteNivel.grupos_pago_aplicados:[],pagosConvalidados=!!pendienteNivel?.pagos_convalidados,finIntentos=agIndFinanzasIntentos(d,nivel),finActual=finIntentos.find(x=>x?.es_actual)||finIntentos[finIntentos.length-1]||null,deudaFin=Number(finActual?.deuda_exigible||0),excedenteFin=Number(finActual?.excedente_bancario||0),finLabel=finIntentos.length?(deudaFin>0.005?`DEUDA ${agIndMoney(deudaFin)}`:'AL DÍA'):finanzas.label,finTone=deudaFin>0.005?{bg:'#FFEBEE',fg:'#C62828',bd:'#F4B7B7'}:{bg:'#E8F5E9',fg:'#2E7D32',bd:'#BFE4C3'},certRegistro=agIndNorm(info.reg_certificados||info.cert_num),certPendienteDocumento=!certRegistro&&['APR','CNV'].includes(estatus),cotizacion=agIndCotizarNivel(info,pendienteNivel,nivel,convNivel),indexNivel=orden.indexOf(nivel),nivelPrevio=indexNivel>0?orden[indexNivel-1]:'',estatusPrevio=nivelPrevio?agIndUpper(niveles[nivelPrevio]?.estatus):'',anticipoConape=agIndUpper(convNivel)==='CONAPE'&&estatus==='PE'&&(!nivelPrevio||estatusPrevio==='CA')&&cotizacion.disponible&&cotizacion.saldo>0;const estadoFinancieroPE=agIndEstadoFinancieroPE(estatus,cotizacion,pendienteNivel);
+          // Ocultar cotización solo si el saldo financiero contractual está liquidado.
+          // No basta APR, ni un indicador AL DÍA aislado, ni un nivel proyectado PE.
+          const nivelLiquidado=agIndNivelLiquidadoParaConsulta(cotizacion,finLabel,estatus);
           return <div key={nivel} style={{background:'white',border:'1px solid #DED8D0',borderRadius:11,boxShadow:abierto?'0 10px 24px rgba(20,33,61,.10)':'0 3px 10px rgba(20,33,61,.035)',overflow:'hidden'}}>
-            <button type="button" onClick={()=>setNivelAbierto(abierto?'':nivel)} aria-expanded={abierto} style={{width:'100%',border:'none',background:'white',cursor:'pointer',padding:'9px 12px 9px 0',display:'grid',gridTemplateColumns:`8px ${gridCols}`,gap:8,alignItems:'center',textAlign:'left',fontFamily:'inherit'}}>
+            <button type="button" onClick={()=>setNivelAbierto(abierto?'':nivel)} aria-expanded={abierto} style={{width:'100%',border:'none',background:'white',cursor:'pointer',padding:'7px 10px 7px 0',display:'grid',
+                gridTemplateColumns:`7px ${vistaCompartir?gridColsCompartir:gridCols}`,gap:7,alignItems:'center',textAlign:'left',fontFamily:'inherit'}}>
               <span style={{alignSelf:'stretch',background:color,borderRadius:'0 6px 6px 0'}}></span>
-              <div><div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}><span style={{fontSize:14,fontWeight:950,color}}>{NIVEL_LABEL_P[nivel]}</span><span style={{fontSize:9,fontWeight:900,color:'#5D6673'}}>{periodoCorto}</span></div><div style={{fontSize:10,color:'#596273',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{periodoLargo&&<div style={{fontSize:8.5,color:'#8A8178',marginTop:1}}>{periodoLargo}</div>}{trasladoDesde&&<div style={{fontSize:8.5,color:'#8A5600',fontWeight:900,marginTop:2}}>↪ desde {agIndGrupoCorto(trasladoDesde)}</div>}</div>
+              <div><div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}><span style={{fontSize:16,fontWeight:950,color,lineHeight:1.1}}>{NIVEL_LABEL_P[nivel]}</span>
+                <span style={{fontSize:9.5,fontWeight:850,color:'#5D6673'}}>{periodoCorto}</span></div>
+                {periodoLargo&&<div style={{fontSize:9.5,color:'#756D65',marginTop:2,fontWeight:750}}>{periodoLargo}</div>}
+                {trasladoDesde&&<div style={{fontSize:9.5,color:'#8A5600',fontWeight:850,marginTop:2}}>
+                  ↪ desde {agIndGrupoCorto(trasladoDesde)}</div>}</div>
               <span style={{justifySelf:'start',display:'inline-flex',padding:'4px 7px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',border:'1px solid #C9D9F1',fontSize:9,fontWeight:900,maxWidth:108,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{convNivel}</span>
               <div><span style={{display:'inline-flex',padding:'4px 8px',borderRadius:999,background:tone.bg,color:tone.fg,border:`1px solid ${tone.bd}`,fontSize:9.5,fontWeight:950}}>{estatus}</span>{intentos.length>1&&<div style={{fontSize:8.5,color:'#9A5B00',fontWeight:900,marginTop:3}}>{intentos.length} intentos</div>}</div>
-              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:estadoFinancieroPE?.bg||(finIntentos.length?finTone.bg:finanzas.bg),color:estadoFinancieroPE?.fg||(finIntentos.length?finTone.fg:finanzas.fg),border:`1px solid ${estadoFinancieroPE?.bd||(finIntentos.length?finTone.bd:finanzas.bd)}`,fontSize:9,fontWeight:950}}>{estadoFinancieroPE?.label||finLabel}</span>{finIntentos.length>1&&<span style={{fontSize:8.5,color:'#7A4A00',fontWeight:900}}>{finIntentos.length} intentos separados</span>}{excedenteFin>0.005&&<span style={{fontSize:8.5,color:'#8A5A00',fontWeight:900}}>Excedente {agIndMoney(excedenteFin)}</span>}</div>
-              <div><span title={certRegistro?`Registro oficial ${certRegistro}`:(certPendienteDocumento?'Nivel aprobado sin documento oficial emitido.':'El nivel aún no habilita emisión de certificado.')} style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:certRegistro?'#E8F5E9':certPendienteDocumento?'#FFF8E1':'#F4F1EC',color:certRegistro?'#2E7D32':certPendienteDocumento?'#9A6200':'#756D65',border:`1px solid ${certRegistro?'#BFE4C3':certPendienteDocumento?'#F1D18A':'#DED7CF'}`,fontSize:8.5,fontWeight:950,maxWidth:112,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{certRegistro?`EMITIDO · ${certRegistro}`:certPendienteDocumento?'PENDIENTE':'NO EMITIDO'}</span></div>
-              <div><div style={{fontSize:12,fontWeight:950,color:notaNum!=null&&notaNum<70?'#C62828':'#14213D'}}>{notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)}</div>{agIndUpper(convNivel)==='CONAPE'&&estatus==='PE'&&cotizacion.disponible&&cotizacion.matricula>0&&Number(pendienteNivel?.mat_pagada||0)+0.01>=cotizacion.matricula&&<div title="Matrícula anticipada verificada con pagos internos. Este aviso no equivale a un resultado académico ni a una actualización del portal CONAPE." style={{fontSize:8.5,fontWeight:850,color:'#244A7C',lineHeight:1.25,marginTop:3,maxWidth:110}}>CONAPE · Matrícula anticipada pagada<br/>Reporte externo pendiente</div>}</div>
-              <div><div style={{fontSize:11,fontWeight:950,color:asis.pct!=null&&asis.pct<70?'#C62828':'#14213D'}}>{asis.pct==null?'—':`${asis.pct}%`}</div>{asis.total>0&&<div style={{fontSize:8.5,color:'#81776F'}}>{asis.presentes}/{asis.total}</div>}</div>
+              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:estadoFinancieroPE?.bg||(finIntentos.length?finTone.bg:finanzas.bg),color:estadoFinancieroPE?.fg||(finIntentos.length?finTone.fg:finanzas.fg),border:`1px solid ${estadoFinancieroPE?.bd||(finIntentos.length?finTone.bd:finanzas.bd)}`,fontSize:9,fontWeight:950}}>{estadoFinancieroPE?.label||finLabel}</span>{!vistaCompartir&&finIntentos.length>1&&<span style={{fontSize:8.5,color:'#7A4A00',fontWeight:900}}>{finIntentos.length} intentos separados</span>}{!vistaCompartir&&excedenteFin>0.005&&<span style={{fontSize:8.5,color:'#8A5A00',fontWeight:900}}>Excedente {agIndMoney(excedenteFin)}</span>}</div>
+              <div><span title={certRegistro?(vistaCompartir?'Certificado emitido':`Registro oficial ${certRegistro}`):(certPendienteDocumento?'Nivel aprobado sin documento oficial emitido.':'El nivel aún no habilita emisión de certificado.')} style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:certRegistro?'#E8F5E9':certPendienteDocumento?'#FFF8E1':'#F4F1EC',color:certRegistro?'#2E7D32':certPendienteDocumento?'#9A6200':'#756D65',border:`1px solid ${certRegistro?'#BFE4C3':certPendienteDocumento?'#F1D18A':'#DED7CF'}`,fontSize:8.5,fontWeight:950,maxWidth:112,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{certRegistro?(vistaCompartir?'EMITIDO':`EMITIDO · ${certRegistro}`):certPendienteDocumento?'PENDIENTE':'NO EMITIDO'}</span></div>
+              {!vistaCompartir&&<div><div style={{fontSize:12,fontWeight:950,color:notaNum!=null&&notaNum<70?'#C62828':'#14213D'}}>{notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)}</div>{agIndUpper(convNivel)==='CONAPE'&&estatus==='PE'&&cotizacion.disponible&&cotizacion.matricula>0&&Number(pendienteNivel?.mat_pagada||0)+0.01>=cotizacion.matricula&&<div title="Matrícula anticipada verificada con pagos internos. Este aviso no equivale a un resultado académico ni a una actualización del portal CONAPE." style={{fontSize:8.5,fontWeight:850,color:'#244A7C',lineHeight:1.25,marginTop:3,maxWidth:110}}>CONAPE · Matrícula anticipada pagada<br/>Reporte externo pendiente</div>}</div>}
+              {!vistaCompartir&&<div><div style={{fontSize:11,fontWeight:950,color:asis.pct!=null&&asis.pct<70?'#C62828':'#14213D'}}>{asis.pct==null?'—':`${asis.pct}%`}</div>{asis.total>0&&<div style={{fontSize:8.5,color:'#81776F'}}>{asis.presentes}/{asis.total}</div>}</div>}
               <span style={{width:25,height:25,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:abierto?color:'#F1EEE9',color:abierto?'white':'#6B625A',fontSize:14,fontWeight:900,transform:abierto?'rotate(180deg)':'none'}}>⌄</span>
             </button>
             {abierto&&<div style={{padding:'8px 12px 12px 16px',borderTop:'1px solid #EAE4DC',background:'#FBFAF8'}}>
-              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica&&!anticipoConape} title={anticipoConape?(cotizacion.proformaVerificada?'CONAPE: aplicar el anticipo completo del nivel PE sin activarlo.':'CONAPE: preparar el anticipo y vincular la proforma antes de cobrar.'):!finanzas.aplica?'Solo se anticipa el nivel CONAPE inmediatamente siguiente al nivel CA.':''} onClick={()=>{if(anticipoConape){window.dispatchEvent(new CustomEvent('an:inline-payment-open',{detail:{codigo,nivel}}));}else if(finanzas.aplica){abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate);}}}>💳 {anticipoConape?(cotizacion.proformaVerificada?'Anticipo CONAPE':'Preparar anticipo'):'Pago'}</AkActionButton><AkActionButton disabled={!['CA','REP','APR','CNV'].includes(estatus)} onClick={()=>['CA','REP','APR','CNV'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
-              {pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
-              {cotizacion.disponible&&<AgIndCotizacionClienteHotfixF111 nivel={nivel} cotizacion={cotizacion}/>}{estatus==='PE'&&anticipoConape&&window.AgIndAnticipoConape&&React.createElement(window.AgIndAnticipoConape,{codigo,nivel,grupo:agIndNorm(info.grupo),color})}{finIntentos.length>0&&<div style={{display:'grid',gap:7}}>
+              <div style={{display:vistaCompartir?'none':'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica&&!anticipoConape} title={anticipoConape?(cotizacion.proformaVerificada?'CONAPE: aplicar el anticipo completo del nivel PE sin activarlo.':'CONAPE: preparar el anticipo y vincular la proforma antes de cobrar.'):!finanzas.aplica?'Solo se anticipa el nivel CONAPE inmediatamente siguiente al nivel CA.':''} onClick={()=>{if(anticipoConape){window.dispatchEvent(new CustomEvent('an:inline-payment-open',{detail:{codigo,nivel}}));}else if(finanzas.aplica){abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate);}}}>💳 {anticipoConape?(cotizacion.proformaVerificada?'Anticipo CONAPE':'Preparar anticipo'):'Pago'}</AkActionButton><AkActionButton disabled={!['CA','REP','APR','CNV'].includes(estatus)} onClick={()=>['CA','REP','APR','CNV'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
+              {!vistaCompartir&&!nivelLiquidado&&pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
+              {cotizacion.disponible&&!nivelLiquidado&&<AgIndCotizacionClienteHotfixF111 nivel={nivel} cotizacion={cotizacion}/>}{!vistaCompartir&&estatus==='PE'&&anticipoConape&&window.AgIndAnticipoConape&&React.createElement(window.AgIndAnticipoConape,{codigo,nivel,grupo:agIndNorm(info.grupo),color})}{!vistaCompartir&&!nivelLiquidado&&finIntentos.length>0&&<div style={{display:'grid',gap:7}}>
                 {finIntentos.map((it,i)=><AgIndIntentoFinanciero
                   key={it.intento_id||i} intento={it} color={color} nivel={nivel}
                   certificadoRegistro={certRegistro}/>)}
