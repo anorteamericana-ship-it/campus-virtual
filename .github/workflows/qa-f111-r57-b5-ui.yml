@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/solicitudes_unificadas.jsx'
       - 'src/app.jsx'
+      - 'modulos/examen_oral.html'
+      - 'tests/qa_f111_r57_b6_oral_ui_contract.mjs'
       - 'tests/qa_f111_r57_b5_ui_contract.mjs'
       - '.github/workflows/qa-f111-r57-b5-ui.yml'
   workflow_dispatch:
@@ -31,3 +33,5 @@ jobs:
         run: |
           git fetch --no-tags --unshallow origin main || git fetch --no-tags origin main
           git diff --check origin/main...HEAD
+      - name: Validate independent oral draft UI contract
+        run: node tests/qa_f111_r57_b6_oral_ui_contract.mjs
