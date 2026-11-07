@@ -21,8 +21,10 @@ const quote=source.slice(source.indexOf('function AgIndCotizacionClienteHotfixF1
 const component=source.slice(source.indexOf('function AdminEstudianteResumenIndividual('),
  source.indexOf('function AgIndMetric(',source.indexOf('function AdminEstudianteResumenIndividual(')));
 assert.ok(component.includes('cotizacion.disponible&&!nivelLiquidado&&<AgIndCotizacionClienteHotfixF111'));
-assert.ok(component.includes('!vistaCompartir&&!nivelLiquidado&&finIntentos.length>0'));
-assert.ok(component.includes('!vistaCompartir&&!nivelLiquidado&&pagosConvalidados'));
+assert.ok(component.includes('!vistaCompartir&&finIntentos.length>0'),
+  'Comprobantes aplicados visibles aun cuando el nivel este liquidado');
+assert.ok(component.includes('!vistaCompartir&&pagosConvalidados'),
+  'Detalle de pagos convalidados restaurado tambien al estar al dia');
 assert.ok(component.includes('vistaCompartir?gridColsCompartir:gridCols'));
 assert.ok(component.includes('setNivelAbierto(nivelSugeridoCaptura)'));
 assert.ok(component.includes('↪ desde {agIndGrupoCorto(trasladoDesde)}'));
@@ -43,4 +45,6 @@ const app=fs.readFileSync(path.join(root,'src','app.jsx'),'utf8');
 const html=fs.readFileSync(path.join(root,'campus.html'),'utf8');
 assert.equal((app.match(/compact=F111COMPACT1107/g)||[]).length,3);
 assert.equal((html.match(/compact=F111COMPACT1107/g)||[]).length,1);
+assert.equal((app.match(/aplicados=F111APLICADOS1107/g)||[]).length,3);
+assert.equal((html.match(/aplicados=F111APLICADOS1107/g)||[]).length,1);
 console.log('F111_HOTFIX_CONSULTA_COMPACTA_PASS · 22 controles focalizados; 0 escrituras');
