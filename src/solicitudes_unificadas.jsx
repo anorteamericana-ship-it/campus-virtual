@@ -169,6 +169,79 @@ function ReposicionesR57Estudiante(){
     </details>}
   </section>;
 }
+// F111 R57: recuperacion de escritos SOLO con intervención explícita superadmin.
+// Nunca se ejecuta al renderizar, cargar ciclos ni diagnosticar.
+function ReposicionesR57RecuperacionAdmin({reposicionId}){
+  const [diag,setDiag]=React.useState(null),[confirmar,setConfirmar]=React.useState(''),
+    [busy,setBusy]=React.useState(false),[error,setError]=React.useState(''),
+    [resultado,setResultado]=React.useState('');
+  const id=String(reposicionId||'').trim();
+  const frase='RECUPERAR_ESCRITO_R57:'+id;
+  const validId=id.startsWith('R57-');
+  const diagnosticar=async()=>{
+    if(!validId||busy)return;
+    setBusy(true);setError('');setResultado('');setDiag(null);
+    try{
+      const r=await f92Post('reposDiagnosticarRecuperacionEscritoR57',{reposicion_id:id});
+      if(r.solo_lectura!==true||!r.siguiente_paso)throw Error('diagnostico_incompleto');
+      setDiag(r);
+    }catch(e){setError('No se pudo verificar el estado del escrito: '+String(e?.message||'sin_detalle').slice(0,110));}
+    finally{setBusy(false);}
+  };
+  const recuperar=async()=>{
+    if(!validId||busy||!diag||!diag.recuperable||confirmar!==frase)return;
+    setBusy(true);setError('');setResultado('');
+    try{
+      const r=await f92Post('reposRecuperarEscritoR57',{reposicion_id:id,confirmar:frase});
+      if(!r.ok)throw Error('recuperacion_no_confirmada');
+      setConfirmar('');
+      setResultado(r.recuperada?'Recuperación verificada.':'El escrito ya estaba conciliado.');
+      // Nuevo readback: nunca anunciar COMPLETA por una respuesta de write aislada.
+      const check=await f92Post('reposDiagnosticarRecuperacionEscritoR57',{reposicion_id:id});
+      if(check.siguiente_paso!=='COMPLETA'){
+        setDiag(check);setError('Revisar conciliación: aún no está completo.');
+        setResultado('');return;
+      }
+      setDiag(check);
+    }catch(e){
+      setDiag(null);
+      setError('Recuperación no confirmada. Volvé a diagnosticar antes de repetir: '+
+        String(e?.message||'sin_detalle').slice(0,100));
+    }finally{setBusy(false);}
+  };
+  return <details data-r57-recuperacion-escrito="true"
+    style={{borderTop:'1px solid var(--line)',marginTop:8,paddingTop:8}}>
+    <summary style={{fontWeight:850,cursor:'pointer',color:'#134A78'}}>
+      Conciliación de escrito · superadmin
+    </summary>
+    <p style={{fontSize:11,margin:'7px 0',color:'var(--ink-3)'}}>
+      Diagnóstico sin escrituras. La recuperación requiere autorización expresa y
+      conserva el histórico académico.
+    </p>
+    <button type="button" className="btn btn-ghost" disabled={busy||!validId}
+      onClick={diagnosticar}>{busy?'Verificando…':'Diagnosticar escrito'}</button>
+    {error&&<div role="alert" style={{marginTop:8,color:'#991B1B',fontSize:11}}>{error}</div>}
+    {resultado&&<div role="status" style={{marginTop:8,color:'#166534',fontSize:11}}>{resultado}</div>}
+    {diag&&<div style={{marginTop:9,fontSize:11}}>
+      <div><b>Estado verificado:</b> {diag.siguiente_paso==='COMPLETA'
+        ?'Conciliación completa':diag.siguiente_paso.replaceAll('_',' ')}</div>
+      {diag.recuperable&&<>
+        <p style={{color:'#8A5A00'}}>Operación restringida. Escribí literalmente
+          la confirmación para este ciclo:</p>
+        <code style={{display:'block',marginBottom:6,overflowWrap:'anywhere'}}>{frase}</code>
+        <input value={confirmar} onChange={e=>setConfirmar(e.target.value)}
+          autoComplete="off" placeholder="Confirmación exacta del ciclo"
+          aria-label="Confirmación de recuperación R57"
+          style={{width:'100%',maxWidth:460,padding:8,border:'1px solid var(--line)',
+            borderRadius:7,fontSize:11}} />
+        <button type="button" className="btn btn-primary"
+          style={{marginLeft:7,marginTop:6}} disabled={busy||confirmar!==frase}
+          onClick={recuperar}>Recuperar y verificar</button>
+      </>}
+    </div>}
+  </details>;
+}
+
 function ReposicionesR57Admin(){
   const ses=typeof getSesion==='function'?getSesion():null;
   const isSuper=String(ses?.rol||'').toLowerCase()==='superadmin';
@@ -217,6 +290,8 @@ function ReposicionesR57Admin(){
           {r.FECHA_LIMITE&&<span style={{marginLeft:8}}>Hasta {r57DateTime(r.FECHA_LIMITE)}</span>}
           {r.SOLICITUD_MOTIVO&&<div style={{marginTop:4}}>Motivo: {r.SOLICITUD_MOTIVO}</div>}
           {r.ADMIN_NOTA&&<div style={{marginTop:4}}>Decisión: {r.ADMIN_NOTA}</div>}
+          {isSuper&&r.TIPO_EXAMEN==='ESCRITO'&&
+            <ReposicionesR57RecuperacionAdmin reposicionId={r.REPOSICION_ID}/>}
         </div>})}
       </div>
     </details>}
