@@ -1,0 +1,20 @@
+// R57: validation only for new written-status views; no browser or prod data.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..'),source=fs.readFileSync(path.join(root,'src','solicitudes_unificadas.jsx'),'utf8');
+const babel=require(path.join(root,'vendor','babel.js'));
+const out=babel.transform(source,{presets:['react'],filename:'solicitudes_unificadas.jsx'}).code;
+new vm.Script(out);
+let n=0;const check=(a,label)=>{assert.ok(a,label);n++};
+check(source.includes("f92Post('reposEstadoEscritoR57').catch(()=>null)"),'safe student reader fallback');
+check(source.includes("f92Post('reposEstadoEscritoR57',{cod_grupo:group,nivel:level}).catch(()=>null)"),'teacher scope and fallback');
+check(source.includes("data-r57-written-status=\"true\""),'student written status visible');
+check(source.includes("data-r57-teacher-written-status=\"true\""),'teacher written status visible');
+check(source.includes("escrito.nota_oficial===true"),'student note only if official');
+check(source.includes("status?.nota_oficial===true"),'teacher note only if official');
+check(source.includes("REVISADO_PENDIENTE_NOTA"),'review not equal official grade');
+check(source.includes("REQUIERE_CONCILIACION"),'manual reconciliation state');
+check(source.includes("Nota oficial: {escrito.nota_componente}/{escrito.max_puntos}"),'weighted score display');
+check(!source.includes("escrito.nota_oficial||"),'zero score not lost on falsy check');
+check(source.includes("setEscritos(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null)"),'server read-only condition');
+check(source.includes("setEscritosDocente(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null)"),'teacher server read-only condition');
+console.log('F111_R57_WRITTEN_UI_PASS checks='+n+' JSX_PARSE_PASS');

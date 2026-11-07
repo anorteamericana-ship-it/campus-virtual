@@ -64,16 +64,32 @@ function r57DateTime(raw){
   });
 }
 function r57Key(row){return [row.COD_GRUPO,row.NIVEL,row.LECCION,row.COD_ESTUDIANTE].join('|');}
+function r57EscritoFaseUi(row){
+  if(!row)return ['Estado de escrito no disponible','#6B7280','#F3F4F6'];
+  const labels={
+    SIN_INTENTO:['Sin intento registrado','#6B7280','#F3F4F6'],
+    INICIADO:['Examen iniciado','#0C4F86','#E7F1FA'],
+    ENTREGADO:['Entregado · pendiente de revisión','#805500','#FFF4D6'],
+    EN_REVISION:['En revisión docente','#805500','#FFF4D6'],
+    REVISADO_PENDIENTE_NOTA:['Revisado · nota oficial pendiente','#805500','#FFF4D6'],
+    REQUIERE_CONCILIACION:['Nota en conciliación administrativa','#991B1B','#FDECEA'],
+    CALIFICADO:['Nota oficial registrada','#166534','#EAF8EF']
+  };
+  return labels[row.fase]||['Estado pendiente de verificar','#805500','#FFF4D6'];
+}
 function ReposicionesR57Estudiante(){
   const [options,setOptions]=React.useState([]),[cycles,setCycles]=React.useState([]),
+    [escritos,setEscritos]=React.useState(null),
     [enabled,setEnabled]=React.useState(false),[loading,setLoading]=React.useState(true),
     [selected,setSelected]=React.useState(''),[motivo,setMotivo]=React.useState(''),
     [busy,setBusy]=React.useState(false),[message,setMessage]=React.useState(''),[error,setError]=React.useState('');
   const load=React.useCallback(async()=>{
     setLoading(true);
     try{
-      const [o,c]=await Promise.all([f92Post('reposListarOpcionesR57'),f92Post('reposListarCiclosR57')]);
+      const [o,c,w]=await Promise.all([f92Post('reposListarOpcionesR57'),f92Post('reposListarCiclosR57'),
+        f92Post('reposEstadoEscritoR57').catch(()=>null)]);
       setEnabled(true);setOptions(o.rows||[]);setCycles(c.rows||[]);
+      setEscritos(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null);
     }catch(e){
       // Función B5 no publicada o bandera institucional aún apagada:
       // mantener intacta la experiencia histórica F92.
@@ -133,9 +149,19 @@ function ReposicionesR57Estudiante(){
     {cycles.length>0&&<details style={{marginTop:12}}>
       <summary style={{fontSize:12,fontWeight:800,cursor:'pointer'}}>Ver historial de solicitudes ({cycles.length})</summary>
       <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8}}>
-        {cycles.map(c=>{const [label,ink,bg]=r57StatusUi(c.ESTADO);return <div key={c.REPOSICION_ID} style={{padding:9,borderRadius:8,border:'1px solid var(--line)',fontSize:11.5}}>
+        {cycles.map(c=>{const [label,ink,bg]=r57StatusUi(c.ESTADO);
+          const escrito=c.TIPO_EXAMEN==='ESCRITO'&&escritos?escritos.find(w=>w.REPOSICION_ID===c.REPOSICION_ID):null;
+          const [eLabel,eInk,eBg]=r57EscritoFaseUi(escrito);
+          return <div key={c.REPOSICION_ID} style={{padding:9,borderRadius:8,border:'1px solid var(--line)',fontSize:11.5}}>
           {c.NIVEL} · Lección {c.LECCION} · <b style={{color:ink}}>{label}</b>
           {c.FECHA_LIMITE&&<span style={{marginLeft:8}}>Hasta {r57DateTime(c.FECHA_LIMITE)}</span>}
+          {c.TIPO_EXAMEN==='ESCRITO'&&escrito&&<div data-r57-written-status="true" style={{marginTop:7}}>
+            <span style={{display:'inline-block',padding:'4px 8px',borderRadius:9,
+              background:eBg,color:eInk,fontWeight:850}}>{eLabel}</span>
+            {escrito.nota_oficial===true&&<strong style={{marginLeft:9,color:'#166534'}}>
+              Nota oficial: {escrito.nota_componente}/{escrito.max_puntos} · {escrito.nota_100}%
+            </strong>}
+          </div>}
           {c.MENSAJE_ESTUDIANTE&&<p style={{margin:'6px 0 0',color:'#8A5A00'}}>{c.MENSAJE_ESTUDIANTE}</p>}
           {c.ADMIN_NOTA&&<p style={{margin:'6px 0 0'}}>Observación de la Academia: {c.ADMIN_NOTA}</p>}
         </div>})}
@@ -198,7 +224,8 @@ function ReposicionesR57Admin(){
 }
 function ReposicionesR57Docente({onNavigate}){
   const [groups,setGroups]=React.useState([]),[group,setGroup]=React.useState(''),[level,setLevel]=React.useState('B1'),
-    [rows,setRows]=React.useState([]),[cycles,setCycles]=React.useState([]),[enabled,setEnabled]=React.useState(false),
+    [rows,setRows]=React.useState([]),[cycles,setCycles]=React.useState([]),
+    [escritosDocente,setEscritosDocente]=React.useState(null),[enabled,setEnabled]=React.useState(false),
     [loading,setLoading]=React.useState(false),[busy,setBusy]=React.useState(''),[error,setError]=React.useState('');
   React.useEffect(()=>{
     let mounted=true;
@@ -215,15 +242,17 @@ function ReposicionesR57Docente({onNavigate}){
     if(!group||!level)return;
     setLoading(true);setError('');
     try{
-      const [r,c]=await Promise.all([
+      const [r,c,w]=await Promise.all([
         f92Post('reposListarOpcionesR57',{cod_grupo:group,nivel:level}),
-        f92Post('reposListarCiclosR57')
+        f92Post('reposListarCiclosR57'),
+        f92Post('reposEstadoEscritoR57',{cod_grupo:group,nivel:level}).catch(()=>null)
       ]);
       setRows(r.rows||[]);
       setCycles((c.rows||[]).filter(x=>x.COD_GRUPO===group&&x.NIVEL===level));
+      setEscritosDocente(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null);
       setEnabled(true);
     }
-    catch(e){setEnabled(false);setRows([]);setCycles([]);
+    catch(e){setEnabled(false);setRows([]);setCycles([]);setEscritosDocente(null);
       console.warn('[F111 R57] Opciones docentes no disponibles.',e);}
     finally{setLoading(false);}
   },[group,level]);
@@ -287,6 +316,23 @@ function ReposicionesR57Docente({onNavigate}){
               })}>{c.ESTADO==='AUTORIZADA_48H'?'ABRIR EXAMEN ORAL':'REVISAR BORRADOR'}</button>}
         </div>})}</div>
     </div>}
+    {enabled&&cycles.some(x=>x.TIPO_EXAMEN==='ESCRITO')&&
+      <div data-r57-teacher-written-status="true" style={{marginTop:12,paddingTop:10,
+        borderTop:'1px solid var(--line)',display:'grid',gap:7}}>
+        <h4 style={{fontSize:14,margin:0}}>Seguimiento de escritos R57</h4>
+        {cycles.filter(x=>x.TIPO_EXAMEN==='ESCRITO').map(c=>{
+          const status=escritosDocente&&escritosDocente.find(w=>w.REPOSICION_ID===c.REPOSICION_ID);
+          const [label,fg,bg]=r57EscritoFaseUi(status);
+          return <div key={c.REPOSICION_ID} style={{display:'flex',justifyContent:'space-between',
+            gap:9,alignItems:'center',flexWrap:'wrap',padding:9,border:'1px solid var(--line)',
+            borderRadius:9,fontSize:11.5}}>
+            <span><strong>{c.NOMBRE||c.COD_ESTUDIANTE}</strong> · {c.NIVEL} · L{c.LECCION}</span>
+            <span style={{background:bg,color:fg,padding:'4px 8px',borderRadius:8,fontWeight:850}}>{label}</span>
+            {status?.nota_oficial===true&&
+              <strong style={{color:'#166534'}}>Oficial {status.nota_componente}/{status.max_puntos}</strong>}
+          </div>;
+        })}
+      </div>}
   </section>;
 }
 
