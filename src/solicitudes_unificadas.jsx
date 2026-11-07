@@ -108,7 +108,7 @@ function ReposicionesR57Estudiante(){
       const [label,ink,bg]=r57StatusUi(row.ESTADO),key=r57Key(row);
       return <div key={key} style={{border:'1px solid var(--line)',borderRadius:10,padding:12}}>
         <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
-          <b style={{fontSize:12.5}}>{row.TIPO_EXAMEN==='ORAL'?'Oral':'Escrito'} · Lección {String(row.LECCION).padStart(2,'0')} · {row.NIVEL}</b>
+          <b style={{fontSize:12.5}}>{row.TIPO_EXAMEN==='ORAL'?'Oral':'Escrito'} · Lección {String(row.LECCION).padStart(2,'0')} · {row.NIVEL} · {row.COD_GRUPO}</b>
           <span style={{fontSize:11,fontWeight:800,color:ink,background:bg,padding:'4px 8px',borderRadius:12}}>{label}</span>
         </div>
         {row.FECHA_LIMITE&&<div style={{fontSize:11,color:'var(--ink-3)',marginTop:5}}>Ventana autorizada hasta: {r57DateTime(row.FECHA_LIMITE)}</div>}
@@ -181,6 +181,19 @@ function ReposicionesR57Admin(){
         </div>:<div style={{fontSize:11,color:'var(--ink-3)'}}>Solo superadmin puede resolver solicitudes.</div>}
       </div>)}
     </div>
+    {rows.length>0&&<details style={{marginTop:12}}>
+      <summary style={{cursor:'pointer',fontSize:12,fontWeight:800}}>Historial completo de ciclos ({rows.length})</summary>
+      <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8}}>
+        {rows.map(r=>{const [label,ink]=r57StatusUi(r.ESTADO);return <div key={r.REPOSICION_ID}
+          style={{border:'1px solid var(--line)',borderRadius:8,padding:9,fontSize:11.5}}>
+          <b>{r.NOMBRE||r.COD_ESTUDIANTE}</b> · #{r.COD_ESTUDIANTE} · {r.NIVEL} · Lección {r.LECCION}
+          <span style={{marginLeft:8,color:ink,fontWeight:850}}>{label}</span>
+          {r.FECHA_LIMITE&&<span style={{marginLeft:8}}>Hasta {r57DateTime(r.FECHA_LIMITE)}</span>}
+          {r.SOLICITUD_MOTIVO&&<div style={{marginTop:4}}>Motivo: {r.SOLICITUD_MOTIVO}</div>}
+          {r.ADMIN_NOTA&&<div style={{marginTop:4}}>Decisión: {r.ADMIN_NOTA}</div>}
+        </div>})}
+      </div>
+    </details>}
   </section>;
 }
 function ReposicionesR57Docente(){
