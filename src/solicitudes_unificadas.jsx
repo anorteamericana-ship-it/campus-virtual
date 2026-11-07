@@ -43,6 +43,7 @@ function f92SafeUserError(raw,fallback,context=''){
 // F111 R57 B5 — superficies nuevas, separadas de solicitudes históricas F92.
 // Estos componentes no verifican dinero, no abren exámenes y nunca inventan
 // disponibilidad: todas las opciones provienen de respuestas autenticadas.
+function r57UserSafeError(_raw,fallback,_context){return fallback;}
 function r57StatusUi(estado){
   return ({
     SIN_SOLICITUD:['Pendiente de solicitar','#991B1B','#FDECEA'],
@@ -90,7 +91,7 @@ function ReposicionesR57Estudiante(){
       });
       setMessage(r.mensaje||'Solicitud enviada a la Academia.');setSelected('');setMotivo('');
       await load();
-    }catch(e){setError(f92SafeUserError(e,'No se pudo presentar la solicitud. Intentá nuevamente.','R57:student'));}
+    }catch(e){setError(r57UserSafeError(e,'No se pudo presentar la solicitud. Intentá nuevamente.','R57:student'));}
     finally{setBusy(false);}
   };
   if(loading||!enabled)return null;
@@ -158,7 +159,7 @@ function ReposicionesR57Admin(){
     if(!comment.trim()||comment.trim().length>1000){setError('Escribí una observación válida de hasta 1000 caracteres.');return;}
     setError('');setBusy(row.REPOSICION_ID);
     try{await f92Post('reposResolverSolicitudR57',{reposicion_id:row.REPOSICION_ID,decision,admin_nota:comment.trim()});await load();}
-    catch(e){setError(f92SafeUserError(e,'No se pudo resolver esta solicitud.','R57:admin'));}
+    catch(e){setError(r57UserSafeError(e,'No se pudo resolver esta solicitud.','R57:admin'));}
     finally{setBusy('');}
   };
   if(!enabled)return null;
@@ -212,7 +213,7 @@ function ReposicionesR57Docente(){
       await f92Post('reposInvitarSolicitudR57',{cod_grupo:r.COD_GRUPO,nivel:r.NIVEL,
         leccion:Number(r.LECCION),cod_estudiante:r.COD_ESTUDIANTE});
       await load();
-    }catch(e){setError(f92SafeUserError(e,'No se pudo enviar la invitación.','R57:teacher'));}
+    }catch(e){setError(r57UserSafeError(e,'No se pudo enviar la invitación.','R57:teacher'));}
     finally{setBusy('');}
   };
   if(!groups.length)return null;
@@ -252,9 +253,9 @@ function ReposicionesR57Docente(){
 
 function ReposicionStudentCardF92({ onNavigate, compact=false }){
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows((r.rows||[]).filter(x=>String(x.SOURCE||'')!=='F111_R57_B5'))).catch(e=>setError(f92SafeUserError(e,'Intentá nuevamente en unos segundos.','reposMiEstadoF92:card'))).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows(r.rows||[])).catch(e=>setError(f92SafeUserError(e,'Intentá nuevamente en unos segundos.','reposMiEstadoF92:card'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
-  const pending=rows.filter(r=>!['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
+  const pending=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5'&&!['APLICADA','VENCIDA_0','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
   if(loading)return compact?null:<div className="card" style={{padding:16}}>{studentRequestsT('Consultando evaluaciones pendientes…')}</div>;
   if(error)return compact?null:<div className="card" style={{padding:16,color:'#8B1F1F'}}>{studentRequestsT('No se pudo consultar reposiciones:')} {studentRequestsT(error)}</div>;
   if(!pending.length)return null;
@@ -283,8 +284,9 @@ const studentRequestsDate = value => {
 };
 function SolicitudesEstudianteView({ onNavigate, embedded=false }){
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[selected,setSelected]=React.useState(null),[motivo,setMotivo]=React.useState(''),[ref,setRef]=React.useState(''),[file,setFile]=React.useState(null),[busy,setBusy]=React.useState(false),[ok,setOk]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows((r.rows||[]).filter(x=>String(x.SOURCE||'')!=='F111_R57_B5'))).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las reposiciones.','reposMiEstadoF92:view'))).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposMiEstadoF92').then(r=>setRows(r.rows||[])).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las reposiciones.','reposMiEstadoF92:view'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
+  const legacyRows=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5');
   const send=async()=>{if(!selected||!file)return;setBusy(true);setError('');setOk('');try{const b64=await f92FileToBase64(file);const pago=String(selected.ESTADO).toUpperCase()==='PENDIENTE_PAGO';const r=await f92Post('reposEnviarSolicitudF92',{reposicion_id:selected.REPOSICION_ID,tipo_solicitud:pago?'PAGO':'JUSTIFICACION',motivo,referencia_pago:ref,archivo_base64:b64,archivo_mime:file.type,archivo_nombre:file.name});setOk(r.mensaje||'Solicitud enviada.');setSelected(null);setMotivo('');setRef('');setFile(null);await load();}catch(e){setError(f92SafeUserError(e,'No se pudo enviar la solicitud. Intentá nuevamente.','reposEnviarSolicitudF92'));}finally{setBusy(false);}};
   return <div data-screen-label="Estudiante · Reposiciones" style={{maxWidth:1060,margin:'0 auto',padding:embedded?'0':'28px 30px 60px'}}>
     {!embedded && <div style={{marginBottom:20}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.15em',color:'var(--an-granate)'}}>{studentRequestsT('EVALUACIONES')}</div><h1 style={{fontFamily:'var(--f-serif)',fontSize:34,margin:'4px 0 5px'}}>{studentRequestsT('Reposiciones de examen')}</h1><p style={{margin:0,color:'var(--ink-3)',fontSize:13}}>{studentRequestsT('Consultá requisitos, plazos, evidencia enviada y resolución de cada reposición.')}</p></div>}
@@ -294,7 +296,7 @@ function SolicitudesEstudianteView({ onNavigate, embedded=false }){
     </div>
     {ok&&<div style={{padding:12,borderRadius:10,background:'#EAF8EF',color:'#166534',marginBottom:12}}>{ok}</div>}
     {error&&<div style={{padding:12,borderRadius:10,background:'#FDECEA',color:'#991B1B',marginBottom:12}}>{studentRequestsT(error)}</div>}
-    {loading?<div className="card">{studentRequestsT('Cargando solicitudes…')}</div>:!rows.length?<div className="card" style={{textAlign:'center',padding:34}}>{studentRequestsT('No tenés reposiciones registradas.')}</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{rows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),state=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase(),canJust=state==='PENDIENTE_JUSTIFICACION'&&sent!=='ENVIADA',canPay=state==='PENDIENTE_PAGO'&&sent!=='PAGO_REPORTADO',inProcess=(state==='PENDIENTE_JUSTIFICACION'&&sent==='ENVIADA')||(state==='PENDIENTE_PAGO'&&sent==='PAGO_REPORTADO');return <div className="card" key={r.REPOSICION_ID} style={{padding:16}}>
+    {loading?<div className="card">{studentRequestsT('Cargando solicitudes…')}</div>:!legacyRows.length?<div className="card" style={{textAlign:'center',padding:34}}>{studentRequestsT('No tenés reposiciones registradas.')}</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{legacyRows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),state=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase(),canJust=state==='PENDIENTE_JUSTIFICACION'&&sent!=='ENVIADA',canPay=state==='PENDIENTE_PAGO'&&sent!=='PAGO_REPORTADO',inProcess=(state==='PENDIENTE_JUSTIFICACION'&&sent==='ENVIADA')||(state==='PENDIENTE_PAGO'&&sent==='PAGO_REPORTADO');return <div className="card" key={r.REPOSICION_ID} style={{padding:16}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><div><b>{studentRequestsT(r.TIPO_EXAMEN==='ORAL'?'Examen oral':'Examen escrito')} · {studentRequestsT('Lección')} {String(r.LECCION).padStart(2,'0')}</b><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:4}}>{studentRequestsT('Solicitud:')} {studentRequestsDate(r.SOLICITUD_LIMITE)} · {studentRequestsT('Reposición:')} {studentRequestsDate(r.FECHA_LIMITE)}</div></div><span style={{padding:'4px 9px',borderRadius:999,background:bg,color:fg,fontSize:10,fontWeight:900}}>{studentRequestsT(label)}</span></div>
       {inProcess&&<div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:10,padding:'9px 12px',borderRadius:10,background:'#EAF8EF',color:'#166534',fontSize:12,fontWeight:850}}><span style={{width:8,height:8,borderRadius:'50%',background:'#2E7D32'}} />{state==='PENDIENTE_PAGO'?studentRequestsT('Comprobante en validación'):studentRequestsT('Solicitud en proceso')}</div>}
       {canJust&&<button className="btn btn-primary" style={{marginTop:10}} onClick={()=>{setSelected(r);setMotivo(r.SOLICITUD_MOTIVO||'');setRef('');setFile(null);}}>{studentRequestsT('ENVIAR SOLICITUD')}</button>}
@@ -314,11 +316,12 @@ function ReposicionesAdminSolicitudesF92(){
   const sesion=typeof getSesion==='function'?getSesion():null;
   const esSuperadmin=String(sesion?.rol||'').toLowerCase()==='superadmin';
   const [rows,setRows]=React.useState([]),[loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
-  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposListarSolicitudesF92').then(r=>setRows((r.rows||[]).filter(x=>String(x.SOURCE||'')!=='F111_R57_B5'))).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las solicitudes de reposición.','reposListarSolicitudesF92'))).finally(()=>setLoading(false));},[]);
+  const load=React.useCallback(()=>{setLoading(true);setError('');f92Post('reposListarSolicitudesF92').then(r=>setRows(r.rows||[])).catch(e=>setError(f92SafeUserError(e,'No se pudieron cargar las solicitudes de reposición.','reposListarSolicitudesF92'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
+  const legacyRows=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5');
   const act=async(r,accion)=>{let note=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Observación de aprobación:':accion==='RECHAZAR_JUSTIFICACION'?'Motivo por el que requiere ₡10.000:':'Referencia validada del pago:',r.ADMIN_NOTA||r.PAGO_REFERENCIA||'');if(note===null)return;setBusy(r.REPOSICION_ID+accion);try{await f92Post('reposResolverSolicitudF92',{reposicion_id:r.REPOSICION_ID,accion,admin_nota:note,pago_referencia:note});await load();}catch(e){setError(f92SafeUserError(e,'No se pudo actualizar la solicitud de reposición.','reposResolverSolicitudF92'));}finally{setBusy('');}};
   if(loading)return <div className="card">Cargando solicitudes de examen…</div>;
-  return <div><ReposicionesR57Admin />{error&&<div style={{padding:12,background:'#FDECEA',color:'#991B1B',borderRadius:10,marginBottom:10}}>{error}</div>}{!rows.length?<div className="card" style={{textAlign:'center',padding:30}}>No hay reposiciones registradas.</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{rows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),st=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase();return <div className="card" key={r.REPOSICION_ID} style={{padding:15}}>
+  return <div><ReposicionesR57Admin />{error&&<div style={{padding:12,background:'#FDECEA',color:'#991B1B',borderRadius:10,marginBottom:10}}>{error}</div>}{!legacyRows.length?<div className="card" style={{textAlign:'center',padding:30}}>No hay reposiciones registradas.</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{legacyRows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),st=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase();return <div className="card" key={r.REPOSICION_ID} style={{padding:15}}>
     <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'start'}}><div><div style={{fontSize:14,fontWeight:850}}>{r.NOMBRE} <span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>#{r.COD_ESTUDIANTE}</span></div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:3}}>{r.TIPO_EXAMEN} · Lección {String(r.LECCION).padStart(2,'0')} · {window.appTeacherGroupLabelF88?window.appTeacherGroupLabelF88(r.COD_GRUPO):r.COD_GRUPO} · vence {f92FmtDate(r.FECHA_LIMITE)}</div></div><span style={{padding:'4px 9px',borderRadius:999,background:bg,color:fg,fontSize:10,fontWeight:900}}>{label}</span></div>
     <div style={{marginTop:10,padding:10,borderRadius:10,background:'#F8FAFE',fontSize:12}}><b>Solicitud:</b> {sent||'NO ENVIADA'}{r.SOLICITUD_MOTIVO&&<div style={{marginTop:4}}>{r.SOLICITUD_MOTIVO}</div>}<div style={{display:'flex',gap:8,marginTop:7,flexWrap:'wrap'}}>{r.SOLICITUD_ARCHIVO_URL&&<a className="btn btn-ghost" href={r.SOLICITUD_ARCHIVO_URL} target="_blank" rel="noreferrer">Ver respaldo</a>}{r.PAGO_ARCHIVO_URL&&<a className="btn btn-ghost" href={r.PAGO_ARCHIVO_URL} target="_blank" rel="noreferrer">Ver comprobante</a>}</div></div>
     <div style={{display:'flex',gap:7,justifyContent:'flex-end',marginTop:10,flexWrap:'wrap'}}>{esSuperadmin&&st==='PENDIENTE_JUSTIFICACION'&&sent==='ENVIADA'&&<><button className="btn btn-ghost" disabled={!!busy} onClick={()=>act(r,'RECHAZAR_JUSTIFICACION')}>REQUIERE ₡10.000</button><button className="btn btn-primary" disabled={!!busy} onClick={()=>act(r,'APROBAR_JUSTIFICACION')}>APROBAR SIN COSTO</button></>}{st==='PENDIENTE_JUSTIFICACION'&&sent!=='ENVIADA'&&<span style={{fontSize:11,color:'#8A5A00'}}>Esperando solicitud del estudiante dentro de 24 horas.</span>}{esSuperadmin&&st==='PENDIENTE_PAGO'&&sent==='PAGO_REPORTADO'&&<button className="btn btn-primary" disabled={!!busy} onClick={()=>act(r,'CONFIRMAR_PAGO')}>CONFIRMAR PAGO</button>}{!esSuperadmin&&((st==='PENDIENTE_JUSTIFICACION'&&sent==='ENVIADA')||(st==='PENDIENTE_PAGO'&&sent==='PAGO_REPORTADO'))&&<span style={{fontSize:11,color:'#40516A'}}>Pendiente de resolución por Superadmin.</span>}</div>
