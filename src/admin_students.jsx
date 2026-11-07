@@ -5441,6 +5441,11 @@ function agIndCotizarNivel(infoNivel, pendientesNivel, nivel, convenio) {
   const incluyeToeic=i2&&x.toeic_aplica===true&&(!conape||x.toeic_incluido_proforma===true);
   const toeic=incluyeToeic?Math.max(0,Number(x.precio_toeic)||0):0;
   const toeicReferencia=i2?Math.max(0,Number(x.precio_toeic_referencia||x.precio_toeic)||0):0;
+  // Cotización visual para compartir: usa la tarifa TOEIC del grupo aunque
+  // todavía no se haya vinculado una proforma. NO cambia cobros ni deuda real.
+  const toeicCliente=i2?(incluyeToeic&&toeic>0?toeic:toeicReferencia):0;
+  const subtotalCliente=round(matricula+totalCuotas+certificado+programa);
+  const totalCliente=round(subtotalCliente+toeicCliente);
   const total=round(matricula+totalCuotas+certificado+programa+toeic);
   const pagadoMat=Math.max(0,Number(x.mat_pagada)||0);
   const pagadoCuotas=Math.max(0,Number(x.cuotas_pagadas)||0);
@@ -5450,9 +5455,12 @@ function agIndCotizarNivel(infoNivel, pendientesNivel, nivel, convenio) {
   const pendienteCert=round(Math.max(0,certificado-pagadoCert));
   const pendientePrograma=i2?round(Math.max(0,programa-(Number(x.programa_completo_pagado??x.titulo_pagado)||0))):0;
   const pendienteToeic=incluyeToeic?round(Math.max(0,toeic-(Number(x.toeic_pagado)||0))):0;
+  const saldoCliente=round(pendienteMat+pendienteCuotas+pendienteCert+pendientePrograma+
+    (i2?Math.max(0,toeicCliente-(Number(x.toeic_pagado)||0)):0));
   const proformaVerificada=toeicConfirmado&&(!i2||programa>0)&&(!incluyeToeic||toeic>0);
   return {disponible:true,proformaVerificada,n,matricula,cuota,totalCuotas,certificado,
     programa,toeic,toeicReferencia, incluyeToeic,toeicConfirmado,
+    subtotalCliente,toeicCliente,totalCliente,saldoCliente,
     proformaUrl:String(x.proforma_conape_url||''),total,
     pendienteMat,pendienteCuotas,pendienteCert,pendientePrograma,pendienteToeic,
     saldo:round(pendienteMat+pendienteCuotas+pendienteCert+pendientePrograma+pendienteToeic)};
@@ -5485,6 +5493,55 @@ function agIndEstadoFinancieroPE(estatus, cotizacion, pendientesNivel) {
     return {label:'ANTICIPO PARCIAL', detalle:'Saldo por anticipar '+agIndMoney(c.saldo),
       bg:'#FFF8E1', fg:'#8A5A00', bd:'#E5C56D'};
   return neutro('SIN ANTICIPO', 'Sin obligación exigible');
+}
+
+
+// HOTFIX F111: tarjeta comercial limpia para captura y WhatsApp.
+// No altera estado académico, financiación CONAPE ni registros de pago.
+function AgIndCotizacionClienteHotfixF111({nivel,cotizacion:c}) {
+  const esI2=nivel==='I2';
+  const detalle=[
+    {label:'Matrícula',valor:c.matricula},
+    {label:`Cuotas (${c.n} × ${agIndMoney(c.cuota)})`,valor:c.totalCuotas},
+    {label:'Certificado del nivel',valor:c.certificado},
+    ...(esI2?[
+      {label:'Título final del programa',valor:c.programa},
+      {label:'TOEIC',valor:c.toeicCliente}
+    ]:[])
+  ];
+  return <section data-consulta-cotizacion-cliente="true"
+    style={{border:'1px solid #BFD5EE',background:'#F2F8FF',borderRadius:12,
+      padding:'15px 18px',marginBottom:10}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+      flexWrap:'wrap',gap:12,marginBottom:15}}>
+      <strong style={{fontSize:14,color:'#123C70'}}>Costos de {NIVEL_LABEL_P[nivel]}</strong>
+      <span data-consulta-subtotal="true" style={{padding:'6px 12px',borderRadius:24,
+        background:'#14213D',color:'white',fontWeight:900,fontSize:13}}>
+        {esI2?'SUBTOTAL SIN TOEIC':'SUBTOTAL'} {agIndMoney(c.subtotalCliente)}
+      </span>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',
+      gap:16,alignItems:'start'}}>
+      {detalle.map(item=><div key={item.label}>
+        <div style={{fontSize:12,color:'#36506F',fontWeight:650,marginBottom:5}}>{item.label}</div>
+        <strong style={{fontSize:17,color:'#14213D',fontWeight:900}}>
+          {item.valor>0?agIndMoney(item.valor):'—'}
+        </strong>
+      </div>)}
+    </div>
+    <div data-consulta-saldo-final="true" style={{marginTop:18,padding:'15px 18px',
+      border:'2px solid #82B5ED',borderRadius:12,
+      background:'linear-gradient(115deg,#E8F3FF,#D6E9FF)',
+      display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
+      <div style={{fontSize:14,fontWeight:950,color:'#11477F',letterSpacing:'.02em'}}>
+        Saldo por aplicar{esI2&&c.toeicCliente>0?' · incluye TOEIC':''}
+      </div>
+      <strong style={{color:'#0756A8',fontSize:'clamp(26px,3.2vw,36px)',lineHeight:1.1,
+        fontWeight:950,letterSpacing:'-.02em',fontVariantNumeric:'tabular-nums'}}>
+        {agIndMoney(c.saldoCliente)}
+      </strong>
+    </div>
+  </section>;
 }
 
 function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate }) {
@@ -5547,22 +5604,26 @@ function AdminEstudianteResumenIndividual({ estudianteBase, onClose, onNavigate 
               <div><div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}><span style={{fontSize:14,fontWeight:950,color}}>{NIVEL_LABEL_P[nivel]}</span><span style={{fontSize:9,fontWeight:900,color:'#5D6673'}}>{periodoCorto}</span></div><div style={{fontSize:10,color:'#596273',marginTop:2,fontFamily:'var(--f-mono,monospace)'}}>{grupo}</div>{periodoLargo&&<div style={{fontSize:8.5,color:'#8A8178',marginTop:1}}>{periodoLargo}</div>}{trasladoDesde&&<div style={{fontSize:8.5,color:'#8A5600',fontWeight:900,marginTop:2}}>↪ desde {agIndGrupoCorto(trasladoDesde)}</div>}</div>
               <span style={{justifySelf:'start',display:'inline-flex',padding:'4px 7px',borderRadius:999,background:'#EEF4FF',color:'#244A7C',border:'1px solid #C9D9F1',fontSize:9,fontWeight:900,maxWidth:108,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{convNivel}</span>
               <div><span style={{display:'inline-flex',padding:'4px 8px',borderRadius:999,background:tone.bg,color:tone.fg,border:`1px solid ${tone.bd}`,fontSize:9.5,fontWeight:950}}>{estatus}</span>{intentos.length>1&&<div style={{fontSize:8.5,color:'#9A5B00',fontWeight:900,marginTop:3}}>{intentos.length} intentos</div>}</div>
-              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:estadoFinancieroPE?.bg||(finIntentos.length?finTone.bg:finanzas.bg),color:estadoFinancieroPE?.fg||(finIntentos.length?finTone.fg:finanzas.fg),border:`1px solid ${estadoFinancieroPE?.bd||(finIntentos.length?finTone.bd:finanzas.bd)}`,fontSize:9,fontWeight:950}}>{estadoFinancieroPE?.label||finLabel}</span>{finIntentos.length>1&&<span style={{fontSize:8.5,color:'#7A4A00',fontWeight:900}}>{finIntentos.length} intentos separados</span>}{excedenteFin>0.005&&<span style={{fontSize:8.5,color:'#8A5A00',fontWeight:900}}>Excedente {agIndMoney(excedenteFin)}</span>}{estadoFinancieroPE?.detalle&&<span style={{fontSize:9,color:estadoFinancieroPE.label==='AL DÍA'?'#2E7D32':'#756D65',fontWeight:800}}>{estadoFinancieroPE.detalle}</span>}{!estadoFinancieroPE&&!finIntentos.length&&!finanzas.aplica&&<span style={{fontSize:9,color:'#756D65',fontWeight:800}}>Sin obligación exigible</span>}{cotizacion.disponible&&<span style={{fontSize:9,fontWeight:950,color:'#244A7C'}}>{cotizacion.proformaVerificada?'Costo nivel':'Subtotal sin validar'} {agIndMoney(cotizacion.total)}</span>}</div>
+              <div style={{display:'flex',gap:5,alignItems:'center',flexWrap:'wrap'}}><span style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:estadoFinancieroPE?.bg||(finIntentos.length?finTone.bg:finanzas.bg),color:estadoFinancieroPE?.fg||(finIntentos.length?finTone.fg:finanzas.fg),border:`1px solid ${estadoFinancieroPE?.bd||(finIntentos.length?finTone.bd:finanzas.bd)}`,fontSize:9,fontWeight:950}}>{estadoFinancieroPE?.label||finLabel}</span>{finIntentos.length>1&&<span style={{fontSize:8.5,color:'#7A4A00',fontWeight:900}}>{finIntentos.length} intentos separados</span>}{excedenteFin>0.005&&<span style={{fontSize:8.5,color:'#8A5A00',fontWeight:900}}>Excedente {agIndMoney(excedenteFin)}</span>}</div>
               <div><span title={certRegistro?`Registro oficial ${certRegistro}`:(certPendienteDocumento?'Nivel aprobado sin documento oficial emitido.':'El nivel aún no habilita emisión de certificado.')} style={{display:'inline-flex',padding:'4px 7px',borderRadius:999,background:certRegistro?'#E8F5E9':certPendienteDocumento?'#FFF8E1':'#F4F1EC',color:certRegistro?'#2E7D32':certPendienteDocumento?'#9A6200':'#756D65',border:`1px solid ${certRegistro?'#BFE4C3':certPendienteDocumento?'#F1D18A':'#DED7CF'}`,fontSize:8.5,fontWeight:950,maxWidth:112,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{certRegistro?`EMITIDO · ${certRegistro}`:certPendienteDocumento?'PENDIENTE':'NO EMITIDO'}</span></div>
               <div><div style={{fontSize:12,fontWeight:950,color:notaNum!=null&&notaNum<70?'#C62828':'#14213D'}}>{notaNum==null?'—':notaNum.toFixed(notaNum%1?1:0)}</div>{agIndUpper(convNivel)==='CONAPE'&&estatus==='PE'&&cotizacion.disponible&&cotizacion.matricula>0&&Number(pendienteNivel?.mat_pagada||0)+0.01>=cotizacion.matricula&&<div title="Matrícula anticipada verificada con pagos internos. Este aviso no equivale a un resultado académico ni a una actualización del portal CONAPE." style={{fontSize:8.5,fontWeight:850,color:'#244A7C',lineHeight:1.25,marginTop:3,maxWidth:110}}>CONAPE · Matrícula anticipada pagada<br/>Reporte externo pendiente</div>}</div>
               <div><div style={{fontSize:11,fontWeight:950,color:asis.pct!=null&&asis.pct<70?'#C62828':'#14213D'}}>{asis.pct==null?'—':`${asis.pct}%`}</div>{asis.total>0&&<div style={{fontSize:8.5,color:'#81776F'}}>{asis.presentes}/{asis.total}</div>}</div>
               <span style={{width:25,height:25,borderRadius:999,display:'inline-flex',alignItems:'center',justifyContent:'center',background:abierto?color:'#F1EEE9',color:abierto?'white':'#6B625A',fontSize:14,fontWeight:900,transform:abierto?'rotate(180deg)':'none'}}>⌄</span>
             </button>
             {abierto&&<div style={{padding:'8px 12px 12px 16px',borderTop:'1px solid #EAE4DC',background:'#FBFAF8'}}>
-              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{fontSize:9.5,fontWeight:800,color:['CA','REP','APR','CNV'].includes(estatus)?'#256B36':'#7A6250'}}>Cambio académico: {['CA','REP','APR','CNV'].includes(estatus)?'evaluación individual habilitada':'no aplica para este estado'}</div><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica&&!anticipoConape} title={anticipoConape?(cotizacion.proformaVerificada?'CONAPE: aplicar el anticipo completo del nivel PE sin activarlo.':'CONAPE: preparar el anticipo y vincular la proforma antes de cobrar.'):!finanzas.aplica?'Solo se anticipa el nivel CONAPE inmediatamente siguiente al nivel CA.':''} onClick={()=>{if(anticipoConape){window.dispatchEvent(new CustomEvent('an:inline-payment-open',{detail:{codigo,nivel}}));}else if(finanzas.aplica){abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate);}}}>💳 {anticipoConape?(cotizacion.proformaVerificada?'Anticipo CONAPE':'Preparar anticipo'):'Pago'}</AkActionButton><AkActionButton disabled={!['CA','REP','APR','CNV'].includes(estatus)} onClick={()=>['CA','REP','APR','CNV'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
+              <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><div style={{display:'flex',gap:5,flexWrap:'wrap'}}><AkActionButton onClick={()=>abrirFicha(info,nivel)}>👤 Ficha</AkActionButton><AkActionButton onClick={()=>setModalEstado({nivel,info})}>✏️ Estado</AkActionButton><AkActionButton disabled={syncing===nivel} onClick={()=>syncConape(nivel)}>{syncing===nivel?'↻ Actualizando…':'↻ CONAPE'}</AkActionButton><AkActionButton disabled={!finanzas.aplica&&!anticipoConape} title={anticipoConape?(cotizacion.proformaVerificada?'CONAPE: aplicar el anticipo completo del nivel PE sin activarlo.':'CONAPE: preparar el anticipo y vincular la proforma antes de cobrar.'):!finanzas.aplica?'Solo se anticipa el nivel CONAPE inmediatamente siguiente al nivel CA.':''} onClick={()=>{if(anticipoConape){window.dispatchEvent(new CustomEvent('an:inline-payment-open',{detail:{codigo,nivel}}));}else if(finanzas.aplica){abrirPago({...estudianteBase,...est,codigo,grupo},nivel,onNavigate);}}}>💳 {anticipoConape?(cotizacion.proformaVerificada?'Anticipo CONAPE':'Preparar anticipo'):'Pago'}</AkActionButton><AkActionButton disabled={!['CA','REP','APR','CNV'].includes(estatus)} onClick={()=>['CA','REP','APR','CNV'].includes(estatus)&&setModalCambio({nivel,info})}>🧭 Evaluar cambio</AkActionButton></div></div>
               {pagosConvalidados&&<div style={{margin:'0 0 7px',padding:'6px 9px',borderRadius:8,background:'#EEF7FF',border:'1px solid #BFD8EE',color:'#244A7C',fontSize:9.5,fontWeight:750}}>↪ {agIndNorm(pendienteNivel?.pagos_leyenda)||`Pagos conservados y aplicados a ${agIndGrupoCorto(grupo)}.`}</div>}
-              {cotizacion.disponible?<div style={{border:'1px solid #C8D8E7',background:'#F1F7FD',borderRadius:10,padding:'12px 13px',marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:7,marginBottom:8}}><b style={{fontSize:11,color:'#14213D'}}>Vista previa · costos de {NIVEL_LABEL_P[nivel]}{agIndUpper(convNivel)==='CONAPE'?' según proforma':''}</b><span style={{padding:'4px 10px',background:'#14213D',color:'white',borderRadius:20,fontSize:12,fontWeight:950}}>{cotizacion.proformaVerificada?(agIndUpper(convNivel)==='CONAPE'?'TOTAL FINANCIADO':'TOTAL NIVEL'):'SUBTOTAL SIN VALIDAR'} {agIndMoney(cotizacion.total)}</span></div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(125px,1fr))',gap:8}}><div><small>Matrícula</small><div style={{fontWeight:900}}>{agIndMoney(cotizacion.matricula)}</div></div><div><small>Cuotas ({cotizacion.n} × {agIndMoney(cotizacion.cuota)})</small><div style={{fontWeight:900}}>{agIndMoney(cotizacion.totalCuotas)}</div></div><div><small>Certificado del nivel</small><div style={{fontWeight:900}}>{agIndMoney(cotizacion.certificado)}</div></div>{nivel==='I2'&&<div><small>Título final del programa (según proforma)</small><div style={{fontWeight:900}}>{cotizacion.programa>0?agIndMoney(cotizacion.programa):'SIN PRECIO'}</div></div>}{nivel==='I2'&&<div><small>TOEIC</small><div style={{fontWeight:900}}>{cotizacion.toeicConfirmado?(cotizacion.incluyeToeic?agIndMoney(cotizacion.toeic):'NO INCLUIDO EN PROFORMA'):(cotizacion.toeicReferencia>0?'Precio grupo '+agIndMoney(cotizacion.toeicReferencia)+' · pendiente verificar financiación':'Sin precio TOEIC confirmado')}</div></div>}<div><small>Saldo por aplicar</small><div style={{fontWeight:900,color:'#244A7C'}}>{agIndMoney(cotizacion.saldo)}</div></div></div><div style={{fontSize:9.5,color:'#53677D',marginTop:8}}>{estatus==='PE'?'Nivel proyectado: esta cotización no es morosidad ni activa matrícula.':'Importes contractuales del nivel y saldo calculado con los pagos ya aplicados.'}{nivel==='I2'?(cotizacion.proformaVerificada?' El título final y el TOEIC incluido se contemplan en el anticipo; la emisión de títulos sigue su procedimiento académico.':' No se habilita el anticipo I2 hasta verificar precio de título y selección individual TOEIC en la proforma.') : ''}{cotizacion.proformaUrl&&<a href={cotizacion.proformaUrl} target="_blank" rel="noopener noreferrer" style={{marginLeft:8}}>Ver proforma emitida</a>}</div></div>:<div style={{padding:'10px 12px',marginBottom:9,borderRadius:8,border:'1px solid #E5C56D',background:'#FFF8E1',fontSize:10,color:'#805900'}}>No hay suficientes precios contractuales confirmados para calcular este nivel. No se mostrará un total estimado.</div>}{nivel==='I2'&&agIndUpper(convNivel)==='CONAPE'&&!cotizacion.toeicConfirmado&&window.AgIndProformaLegacy&&React.createElement(window.AgIndProformaLegacy,{codigo,referencia:cotizacion.toeicReferencia})}{estatus==='PE'&&anticipoConape&&window.AgIndAnticipoConape&&React.createElement(window.AgIndAnticipoConape,{codigo,nivel,grupo:agIndNorm(info.grupo),color})}{finIntentos.length?<div style={{display:'grid',gap:7}}>{finIntentos.map((it,i)=><AgIndIntentoFinanciero key={it.intento_id||i} intento={it} color={color} nivel={nivel} certificadoRegistro={certRegistro}/>)}</div>:<div style={{padding:'9px 10px',border:'1px dashed #D9D0C7',borderRadius:8,color:'#81776F',fontSize:10,background:'white'}}>{estadoFinancieroPE?.label==='AL DÍA'?'Anticipo completo registrado. El nivel continúa PE hasta su inicio académico.':finanzas.aplica?'El backend todavía no separó los comprobantes por intento.':'Sin matrícula activa ni deuda exigible. Los precios proyectados se muestran arriba.'}</div>}
+              {cotizacion.disponible&&<AgIndCotizacionClienteHotfixF111 nivel={nivel} cotizacion={cotizacion}/>}{estatus==='PE'&&anticipoConape&&window.AgIndAnticipoConape&&React.createElement(window.AgIndAnticipoConape,{codigo,nivel,grupo:agIndNorm(info.grupo),color})}{finIntentos.length>0&&<div style={{display:'grid',gap:7}}>
+                {finIntentos.map((it,i)=><AgIndIntentoFinanciero
+                  key={it.intento_id||i} intento={it} color={color} nivel={nivel}
+                  certificadoRegistro={certRegistro}/>)}
+              </div>}
             </div>}
           </div>;
         })}</div>
       </div>
     </div>
-    <div style={{marginTop:8,fontSize:9.5,color:'var(--ink-3,#81776f)'}}>La columna financiera separa comprobantes por intento. Los costos proyectados de PE se muestran al expandir cada nivel y NO representan deuda exigible. Los excedentes no se aplican automáticamente.</div>
+
     {modalEstado&&<ModalEstatus estudiante={{...estudianteBase,...est,codigo,display:nombre,grupo:modalEstado.info.grupo,estatus:modalEstado.info.estatus,nota:modalEstado.info.nota}} nivel={modalEstado.nivel} onClose={()=>setModalEstado(null)} onSuccess={()=>refrescar('Estado actualizado.')}/>} 
     {modalCambio&&<AkCambioAcademicoWizard codigo={codigo} nivel={modalCambio.nivel} infoNivel={modalCambio.info} onClose={()=>setModalCambio(null)} onSuccess={()=>refrescar('Cambio académico individual aplicado. Revisá grupo, intento, pagos y estado CONAPE.')}/>} 
     {historial&&<AkHistorialCambiosModal codigo={codigo} onClose={()=>setHistorial(false)} onReverted={()=>refrescar('Cambio de grupo reversado.')} onConapeClosed={()=>refrescar('Gestión CONAPE cerrada como NO CONTINUÓ; sin cambios académicos ni financieros.')}/>}
