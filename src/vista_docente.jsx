@@ -2029,6 +2029,9 @@ function VistaDocente({ cedulaOverride, nombreOverride } = {}) {
         onClickSinPC={abrirProgressCheckPendiente}
       />
 
+      {typeof window.SocialSkillDocenteF111 === 'function' &&
+        React.createElement(window.SocialSkillDocenteF111, {calendario, pendientes})}
+
       <VDTabs value={tab} onChange={setTab} counts={counts} />
 
       {tab === 'proximas' && (
