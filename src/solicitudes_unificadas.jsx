@@ -196,9 +196,9 @@ function ReposicionesR57Admin(){
     </details>}
   </section>;
 }
-function ReposicionesR57Docente(){
+function ReposicionesR57Docente({onNavigate}){
   const [groups,setGroups]=React.useState([]),[group,setGroup]=React.useState(''),[level,setLevel]=React.useState('B1'),
-    [rows,setRows]=React.useState([]),[enabled,setEnabled]=React.useState(false),
+    [rows,setRows]=React.useState([]),[cycles,setCycles]=React.useState([]),[enabled,setEnabled]=React.useState(false),
     [loading,setLoading]=React.useState(false),[busy,setBusy]=React.useState(''),[error,setError]=React.useState('');
   React.useEffect(()=>{
     let mounted=true;
@@ -214,9 +214,17 @@ function ReposicionesR57Docente(){
   const load=React.useCallback(async()=>{
     if(!group||!level)return;
     setLoading(true);setError('');
-    try{const r=await f92Post('reposListarOpcionesR57',{cod_grupo:group,nivel:level});
-      setRows(r.rows||[]);setEnabled(true);}
-    catch(e){setEnabled(false);setRows([]);console.warn('[F111 R57] Opciones docentes no disponibles.',e);}
+    try{
+      const [r,c]=await Promise.all([
+        f92Post('reposListarOpcionesR57',{cod_grupo:group,nivel:level}),
+        f92Post('reposListarCiclosR57')
+      ]);
+      setRows(r.rows||[]);
+      setCycles((c.rows||[]).filter(x=>x.COD_GRUPO===group&&x.NIVEL===level));
+      setEnabled(true);
+    }
+    catch(e){setEnabled(false);setRows([]);setCycles([]);
+      console.warn('[F111 R57] Opciones docentes no disponibles.',e);}
     finally{setLoading(false);}
   },[group,level]);
   React.useEffect(()=>{load();},[load]);
@@ -261,6 +269,24 @@ function ReposicionesR57Docente(){
             onClick={()=>invite(r)}>{busy?'PROCESANDO…':r.INVITADA?'INVITACIÓN ENVIADA':'INVITAR A SOLICITAR'}</button>}
         </div>;
       })}</div>)}
+    {enabled&&cycles.some(x=>x.TIPO_EXAMEN==='ORAL')&&<div style={{marginTop:14,paddingTop:12,borderTop:'1px solid var(--line)'}}>
+      <h4 style={{fontSize:15,margin:'0 0 8px'}}>Reposiciones orales autorizadas e historial</h4>
+      <div style={{display:'flex',flexDirection:'column',gap:7}}>{cycles.filter(x=>x.TIPO_EXAMEN==='ORAL')
+        .map(c=>{const [label,ink,bg]=r57StatusUi(c.ESTADO);return <div key={c.REPOSICION_ID}
+          style={{border:'1px solid var(--line)',borderRadius:9,padding:10,display:'flex',
+            flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:8}}>
+          <div><b style={{fontSize:12}}>{c.NOMBRE||c.COD_ESTUDIANTE}</b>
+            <div style={{fontSize:11,color:'var(--ink-3)'}}>#{c.COD_ESTUDIANTE} · {c.NIVEL} · Lección {c.LECCION}</div>
+            <span style={{fontSize:10.5,color:ink,background:bg,padding:'3px 6px',borderRadius:7}}>{label}</span>
+          </div>
+          {['AUTORIZADA_48H','VENCIDA_SIN_PRESENTACION'].includes(c.ESTADO)&&
+            <button type="button" className="btn btn-primary"
+              disabled={typeof onNavigate!=='function'} onClick={()=>onNavigate('examen_oral',{
+                oral:{grupo:c.COD_GRUPO,nivel:c.NIVEL,leccion:Number(c.LECCION),
+                  reposicion_id:c.REPOSICION_ID}
+              })}>{c.ESTADO==='AUTORIZADA_48H'?'ABRIR EXAMEN ORAL':'REVISAR BORRADOR'}</button>}
+        </div>})}</div>
+    </div>}
   </section>;
 }
 
