@@ -31,4 +31,6 @@ check('Legacy teacher/admin panel excludes R57 duplicate records',()=>assert.mat
 check('Each R57 list has a stable unique scope key',()=>assert.match(area,/function r57Key\(row\)/));
 check('R57 UI has no new library dependency',()=>assert.doesNotMatch(area,/^\s*import .* from /m));
 check('Legacy F92 calls preserve exact post-load boundary',()=>assert.match(file,/f92Post\('reposMiEstadoF92'\)\.then\(r=>setRows\(r\.rows\|\|\[\]\)\)/));
+check('Superadmin can review every historical cycle',()=>assert.match(area,/Historial completo de ciclos/));
+check('Student distinguishes group codes when multiple cohorts exist',()=>assert.match(area,/row.NIVEL} · {row.COD_GRUPO}/));
 console.log('F111_R57_B5_UI_CONTRACT_PASS checks='+checks);
