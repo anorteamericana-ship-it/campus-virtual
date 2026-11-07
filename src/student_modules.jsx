@@ -501,6 +501,7 @@ function NotasView({ onNavigate }) {
   const [evalRetry, setEvalRetry] = React.useState(0);
   const [reposRows, setReposRows] = React.useState([]);
   const [reposErr, setReposErr] = React.useState('');
+  const [escritosR57, setEscritosR57] = React.useState(null);
 
   React.useEffect(() => {
     if (!codigo) return;
@@ -520,18 +521,28 @@ function NotasView({ onNavigate }) {
       .catch(() => { if (!cancelled) { setReposRows([]); setReposErr('Sin conexión'); } });
     return () => { cancelled = true; };
   }, [codigo]);
+  React.useEffect(() => {
+    if (!codigo) return;
+    let cancelled = false;
+    setEscritosR57(null);
+    // Reader nuevo es opcional mientras CORE R57 esté en DRAFT; nunca inventar notas.
+    postStudentModules('reposEstadoEscritoR57', { codigo })
+      .then(r => { if (!cancelled && r?.ok && r?.solo_lectura && Array.isArray(r.rows)) setEscritosR57(r.rows); })
+      .catch(() => { if (!cancelled) setEscritosR57(null); });
+    return () => { cancelled = true; };
+  }, [codigo,evalRetry]);
 
   return <div>
     <PageHeader title={<>{studentGradesT('Mis')} <em>{studentGradesT('Notas')}</em></>} />
     <GuardSesion usr={usr}>
       {loading && !data ? <SkeletonTable /> : error ? <ErrorState message={studentGradesT(error)} onRetry={reload} /> : evalErr ?
         <ErrorState message={studentGradesT(evalErr)} onRetry={()=>setEvalRetry(n=>n+1)} /> :
-        <NotasContenido data={data} evaluaciones={evaluaciones} evalErr={evalErr} reposRows={reposRows} reposErr={reposErr} onNavigate={onNavigate} />}
+        <NotasContenido data={data} evaluaciones={evaluaciones} evalErr={evalErr} reposRows={reposRows} reposErr={reposErr} escritosR57={escritosR57} onNavigate={onNavigate} />}
     </GuardSesion>
   </div>;
 }
 
-function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNavigate }) {
+function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, escritosR57, onNavigate }) {
   const niveles = data?.niveles || {};
   const nivelActivo = calcularNivelActivoSM(niveles);
   const [selectedLevel, setSelectedLevel] = React.useState(nivelActivo || 'B1');
@@ -555,11 +566,32 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
     !_smRepoTieneNotaOficial_(r, evaluaciones)
   );
   const pendingAlert = activeRepos[0] || null;
+  const escritosNivelR57 = (Array.isArray(escritosR57) ? escritosR57 : [])
+    .filter(r => String(r.NIVEL||'').toUpperCase()===selected);
 
   const gradeLetter = (pct) => pct >= 95?'A+':pct >= 90?'A':pct >= 85?'A-':pct >= 80?'B+':pct >= 75?'B':pct >= 70?'B-':pct >= 65?'C':'D';
   const gradeColor = (g) => g?.startsWith('A')?'var(--ok)':g?.startsWith('B')?'var(--an-navy)':g?.startsWith('C')?'var(--warn)':'var(--danger)';
 
   return <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+    {escritosNivelR57.length>0&&<section className="card" data-r57-mis-notas-escritos="true"
+      style={{padding:'12px 16px',border:'1px solid #C9D9F1'}}>
+      <strong style={{fontSize:13,color:'#123C70'}}>Seguimiento de escritos R57 · {selected}</strong>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:9}}>
+        {escritosNivelR57.map(r => <span key={r.REPOSICION_ID}
+          style={{background:r.nota_oficial===true?'#EAF8EF':'#EEF2F7',
+            color:r.nota_oficial===true?'#166534':'#40516A',borderRadius:8,
+            padding:'6px 9px',fontSize:11.5,fontWeight:750}}>
+          L{r.LECCION} · {r.nota_oficial===true
+            ? 'Nota oficial '+r.nota_componente+'/'+r.max_puntos
+            : ({SIN_INTENTO:'Sin intento',INICIADO:'Iniciado',ENTREGADO:'Entregado',
+               EN_REVISION:'En revisión',REVISADO_PENDIENTE_NOTA:'Revisado · nota pendiente',
+               REQUIERE_CONCILIACION:'En conciliación'}[r.fase]||'Pendiente de verificar')}
+        </span>)}
+      </div>
+      <div style={{fontSize:11,color:'var(--ink-3)',marginTop:7}}>
+        El acumulado del nivel utiliza únicamente las evaluaciones oficiales de ESTATUS.
+      </div>
+    </section>}
     {pendingAlert && (() => { const tone=_smReposTone_(pendingAlert.ESTADO); return <section style={{border:`1px solid ${tone.border}`,background:tone.bg,borderRadius:20,padding:18,boxShadow:'var(--sh-1)'}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
         <div><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.14em',textTransform:'uppercase',color:tone.kicker}}>{studentGradesT('Aviso académico importante')}</div>

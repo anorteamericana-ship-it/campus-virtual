@@ -17,4 +17,10 @@ check(source.includes("Nota oficial: {escrito.nota_componente}/{escrito.max_punt
 check(!source.includes("escrito.nota_oficial||"),'zero score not lost on falsy check');
 check(source.includes("setEscritos(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null)"),'server read-only condition');
 check(source.includes("setEscritosDocente(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null)"),'teacher server read-only condition');
+const grades=fs.readFileSync(path.join(root,'src','student_modules.jsx'),'utf8');
+new vm.Script(babel.transform(grades,{presets:['react'],filename:'student_modules.jsx'}).code);
+check(grades.includes("postStudentModules('reposEstadoEscritoR57', { codigo })"),'Mis Notas uses student session API');
+check(grades.includes('data-r57-mis-notas-escritos="true"'),'Mis Notas shows written status');
+check(grades.includes('r.nota_oficial===true'),'Mis Notas does not treat reviewed as official');
+check(grades.includes("El acumulado del nivel utiliza únicamente las evaluaciones oficiales de ESTATUS"),'Mis Notas preserves official total');
 console.log('F111_R57_WRITTEN_UI_PASS checks='+n+' JSX_PARSE_PASS');
