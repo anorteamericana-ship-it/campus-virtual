@@ -22,12 +22,13 @@ check('R57 student does not accept arbitrary student code in payload',()=>{
 });
 check('R57 new screens do not claim to enable an exam directly',()=>assert.doesNotMatch(area,/f92Post\('(reposProgramarEscrito|oralCloseEvaluacion)/));
 check('Backend decides student eligibility, not a JS-only time calculation',()=>assert.doesNotMatch(area,/Date\.now\(\)\s*-\s*.*48/));
-check('Legacy student rows exclude new R57 records',()=>assert.match(file,/reposMiEstadoF92'\)\.then\(r=>setRows\(\(r\.rows\|\|\[\]\)\.filter\(/));
-check('Legacy admin rows exclude new R57 records',()=>assert.match(file,/reposListarSolicitudesF92'\)\.then\(r=>setRows\(\(r\.rows\|\|\[\]\)\.filter\(/));
+check('Legacy student rows exclude new R57 records at presentation',()=>assert.match(file,/legacyRows=rows\.filter\(r=>String\(r\.SOURCE\|\|''\)!=='F111_R57_B5'\)/));
+check('Legacy admin loads preserve canonical safe-error path',()=>assert.match(file,/reposListarSolicitudesF92'\)\.then\(r=>setRows\(r\.rows\|\|\[\]\)\)/));
 check('Admin UI mounted before legacy admin section',()=>assert.match(file,/return <div><ReposicionesR57Admin \/>/));
 check('Student UI mounted before old F92 form',()=>assert.match(file,/<ReposicionesR57Estudiante \/>/));
 check('Teacher UI is attached to the actual Exámenes screen',()=>assert.match(app,/typeof ReposicionesR57Docente==='function'&&<ReposicionesR57Docente\/>/));
-check('Legacy teacher/admin panel excludes R57 duplicate records',()=>assert.match(app,/reposListarExamenes'\)\.then\(r=>setRows\(\(r\.rows\|\|\[\]\)\.filter\(/));
+check('Legacy teacher/admin panel excludes R57 duplicate records',()=>assert.match(app,/const visible=rows\.filter\(r=>String\(r\.SOURCE\|\|''\)!=='F111_R57_B5'/));
 check('Each R57 list has a stable unique scope key',()=>assert.match(area,/function r57Key\(row\)/));
 check('R57 UI has no new library dependency',()=>assert.doesNotMatch(area,/^\s*import .* from /m));
+check('Legacy F92 calls preserve exact post-load boundary',()=>assert.match(file,/f92Post\('reposMiEstadoF92'\)\.then\(r=>setRows\(r\.rows\|\|\[\]\)\)/));
 console.log('F111_R57_B5_UI_CONTRACT_PASS checks='+checks);
