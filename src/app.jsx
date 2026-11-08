@@ -132,6 +132,27 @@ function studentRouteHashF984(target, tabs = {}) {
   const tab = target === 'mi_curso' ? tabs.course : target === 'evaluaciones' ? tabs.evaluations : target === 'documentos_ayuda' ? tabs.documents : '';
   return '#' + target + (tab ? '/' + tab : '');
 }
+// F111 R57 E2: deep link explícito del estudiante, únicamente rutas conocidas.
+// No tratar cualquier fragmento ni texto de URL como una ruta válida.
+function studentInitialRouteFromHashF984(hash) {
+  const parts = String(hash || '').replace(/^#/, '').split('/');
+  const raw = parts[0], rawTab = parts[1] || '';
+  const allowedRoutes = ['dashboard','mi_curso','evaluaciones','documentos_ayuda',
+    'pagos','certificados','ican','academia_play','notas','examenes','solicitudes_estudiante',
+    'cronograma_grupo','materiales','info_programa'];
+  if (parts.length > 2 || !allowedRoutes.includes(raw)) return null;
+  const normalized = normalizarRutaEstudianteF984(raw);
+  const acceptedTabs = {
+    mi_curso: ['cronograma','materiales','tareas'],
+    evaluaciones: ['proximas','resultados','reposiciones'],
+    documentos_ayuda: ['programa','avisos','contactos']
+  };
+  const allow = acceptedTabs[normalized.target];
+  if (rawTab && (!allow || !allow.includes(rawTab))) return null;
+  const tab = rawTab || normalized.tab || (normalized.target==='mi_curso'?'cronograma':
+    normalized.target==='evaluaciones'?'proximas':normalized.target==='documentos_ayuda'?'programa':null);
+  return {route:normalized.target,tab};
+}
 
 function esUsuarioGratisSesionF984Z6CS(u, role) {
   if (String(role || '').toLowerCase() !== 'student') return false;
@@ -745,19 +766,25 @@ function App() {
     : rolReal === 'student'   ? 'student'
     : null;
 
+  const studentEntryRouteF984 = React.useMemo(() =>
+    role === 'student' ? studentInitialRouteFromHashF984(window.location.hash) : null,
+    [role]);
   const [active, setActive] = useState(() => {
-    // F111: each academic entry starts in the real profile. Never restore the
-    // last saved academic tab; navigation remains free after the profile opens.
-    if (role === 'student') return 'dashboard'; // Native Student My Profile
+    // Normal entry stays in Profile; explicit, validated deep links are honored.
+    // Never restore stale academic routes from localStorage.
+    if (role === 'student') return studentEntryRouteF984?.route || 'dashboard';
     if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76
     // Preserve the operational state of admin/superadmin (outside bilingual pilot).
     const roleKey = 'an_active_' + (role || 'unknown');
     const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';
     return saved === 'portal_estudiante' ? 'dashboard' : saved;
   });
-  const [studentCourseTab, setStudentCourseTab] = useState('cronograma');
-  const [studentEvalTab, setStudentEvalTab] = useState('proximas');
-  const [studentDocsTab, setStudentDocsTab] = useState('programa');
+  const [studentCourseTab, setStudentCourseTab] = useState(() =>
+    studentEntryRouteF984?.route === 'mi_curso' ? studentEntryRouteF984.tab : 'cronograma');
+  const [studentEvalTab, setStudentEvalTab] = useState(() =>
+    studentEntryRouteF984?.route === 'evaluaciones' ? studentEntryRouteF984.tab : 'proximas');
+  const [studentDocsTab, setStudentDocsTab] = useState(() =>
+    studentEntryRouteF984?.route === 'documentos_ayuda' ? studentEntryRouteF984.tab : 'programa');
   const [toastMsg, setToastMsg] = useState('');
   const [pendingLesson, setPendingLesson] = useState(null);
   // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
@@ -876,8 +903,17 @@ function App() {
   // F98.4-A: atrás/adelante conserva módulo y pestaña del estudiante.
   useEffect(() => {
     if (role !== 'student') return undefined;
-    const tabsIniciales = { course:'cronograma', evaluations:'proximas', documents:'programa' };
-    try { history.replaceState({ anCampus:true, route:'dashboard', tabs:tabsIniciales }, '', '#dashboard'); } catch (_) {}
+    const entry = studentEntryRouteF984;
+    const tabsIniciales = {
+      course:entry?.route === 'mi_curso' ? entry.tab : 'cronograma',
+      evaluations:entry?.route === 'evaluaciones' ? entry.tab : 'proximas',
+      documents:entry?.route === 'documentos_ayuda' ? entry.tab : 'programa'
+    };
+    const initialRoute = entry?.route || 'dashboard';
+    // Replace the *current* history entry to make Back/Forward deterministic,
+    // never overwrite an explicitly allowed deep link with #dashboard.
+    try { history.replaceState({ anCampus:true, route:initialRoute, tabs:tabsIniciales },
+      '', studentRouteHashF984(initialRoute,tabsIniciales)); } catch (_) {}
     const onPop = (ev) => {
       const st = ev.state || {};
       const parts = String(location.hash || '').replace(/^#/,'').split('/');
