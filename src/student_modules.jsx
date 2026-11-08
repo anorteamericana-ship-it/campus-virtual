@@ -492,6 +492,7 @@ function _smFooterStatusF108_(estatus) {
 }
 
 const studentGradesT = label => window.AN_I18N?.t(label) || label;
+const studentGradesR57PartialT = (es,en) => window.AN_I18N?.getLang?.() === 'en' ? en : es;
 const studentGradesLevel = code => window.AN_I18N?.getLang?.()==='en'?window.AN_I18N.level(code):NIVEL_NOMBRE_SM[code];
 function NotasView({ onNavigate }) {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
@@ -541,18 +542,25 @@ function NotasView({ onNavigate }) {
           {Array.isArray(escritosR57)&&escritosR57.length>0&&
             <section className="card" data-r57-mis-notas-parcial="true"
               style={{marginTop:12,padding:'13px 16px',border:'1px solid #C9D9F1'}}>
-              <strong style={{fontSize:13,color:'#123C70'}}>Seguimiento de escritos R57 · Solo lectura</strong>
+              <strong style={{fontSize:13,color:'#123C70'}}>{studentGradesR57PartialT('Seguimiento de escritos R57 · Solo lectura','R57 written exam status · Read-only')}</strong>
               <p style={{fontSize:12,color:'var(--ink-2)',margin:'7px 0'}}>
-                El historial de notas generales no está disponible. Estos estados provienen de la consulta autenticada R57;
-                no permiten inferir ni calcular la calificación oficial del nivel.
+                {studentGradesR57PartialT(
+                  'El historial de notas generales no está disponible. Estos estados provienen de la consulta autenticada R57; no permiten inferir ni calcular la calificación oficial del nivel.',
+                  'Your overall grade history is currently unavailable. These statuses come from the authenticated R57 reader and do not establish or calculate your official level grade.'
+                )}
               </p>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                 {escritosR57.map(r=><span key={r.REPOSICION_ID}
                   style={{padding:'5px 9px',borderRadius:8,background:'#EEF2F7',color:'#40516A',fontSize:11.5,fontWeight:750}}>
-                  L{r.LECCION} · {({SIN_INTENTO:'Sin intento',INICIADO:'Iniciado',ENTREGADO:'Entregado',
-                    EN_REVISION:'En revisión',REVISADO_PENDIENTE_NOTA:'Revisado · nota pendiente',
-                    REQUIERE_CONCILIACION:'En conciliación',CALIFICADO:'Nota verificada en expediente R57'
-                    })[r.fase]||'Pendiente de verificar'}
+                  L{r.LECCION} · {({
+                    SIN_INTENTO:studentGradesR57PartialT('Sin intento','Not attempted'),
+                    INICIADO:studentGradesR57PartialT('Iniciado','Started'),
+                    ENTREGADO:studentGradesR57PartialT('Entregado','Submitted'),
+                    EN_REVISION:studentGradesR57PartialT('En revisión','Under review'),
+                    REVISADO_PENDIENTE_NOTA:studentGradesR57PartialT('Revisado · nota pendiente','Reviewed · grade pending'),
+                    REQUIERE_CONCILIACION:studentGradesR57PartialT('En conciliación','Requires reconciliation'),
+                    CALIFICADO:studentGradesR57PartialT('Nota verificada en expediente R57','Grade verified in R57 record')
+                    })[r.fase]||studentGradesR57PartialT('Pendiente de verificar','Pending verification')}
                 </span>)}
               </div>
             </section>}

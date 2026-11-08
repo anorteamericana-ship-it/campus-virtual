@@ -33,6 +33,19 @@ check(grades.includes('data-r57-mis-notas-parcial="true"')&&
   'R57 status remains visible if the general official grade reader fails');
 check(grades.includes("no permiten inferir ni calcular la calificación oficial del nivel"),
   'partial R57 status must not claim an official level grade');
-check(grades.includes("CALIFICADO:'Nota verificada en expediente R57'"),
+check(grades.includes("CALIFICADO:studentGradesR57PartialT('Nota verificada en expediente R57','Grade verified in R57 record')"),
   'R57 partial status never copies component points into official total');
+check(grades.includes("studentGradesR57PartialT('Seguimiento de escritos R57 · Solo lectura','R57 written exam status · Read-only')"),
+  'R57 partial status has both Spanish and English label');
+check(grades.includes("Not attempted")&&grades.includes("Sin intento"),
+  'R57 partial status is translated without inventing grades');
+const tr=grades.match(/const studentGradesR57PartialT = .+;/)?.[0];
+assert(tr,'R57 partial language helper exists');
+const ctx=vm.createContext({window:{AN_I18N:{getLang:()=> 'en'}}});
+vm.runInContext(tr,ctx);
+check(vm.runInContext("studentGradesR57PartialT('Español','English')",ctx)==='English',
+  'R57 partial actual English selection');
+ctx.window.AN_I18N.getLang=()=> 'es';
+check(vm.runInContext("studentGradesR57PartialT('Español','English')",ctx)==='Español',
+  'R57 partial actual Spanish selection');
 console.log('F111_R57_WRITTEN_UI_PASS checks='+n+' JSX_PARSE_PASS');
