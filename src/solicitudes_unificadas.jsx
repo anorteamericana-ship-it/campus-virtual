@@ -81,20 +81,36 @@ function ReposicionesR57Estudiante(){
   const [options,setOptions]=React.useState([]),[cycles,setCycles]=React.useState([]),
     [escritos,setEscritos]=React.useState(null),
     [enabled,setEnabled]=React.useState(false),[loading,setLoading]=React.useState(true),
-    [selected,setSelected]=React.useState(''),[motivo,setMotivo]=React.useState(''),
+    [partial,setPartial]=React.useState(false),[selected,setSelected]=React.useState(''),[motivo,setMotivo]=React.useState(''),
     [busy,setBusy]=React.useState(false),[message,setMessage]=React.useState(''),[error,setError]=React.useState('');
   const load=React.useCallback(async()=>{
     setLoading(true);
     try{
-      const [o,c,w]=await Promise.all([f92Post('reposListarOpcionesR57'),f92Post('reposListarCiclosR57'),
-        f92Post('reposEstadoEscritoR57').catch(()=>null)]);
-      setEnabled(true);setOptions(o.rows||[]);setCycles(c.rows||[]);
+      const [optionsResult,cyclesResult,writtenResult]=await Promise.allSettled([
+        f92Post('reposListarOpcionesR57'),
+        f92Post('reposListarCiclosR57'),
+        f92Post('reposEstadoEscritoR57')
+      ]);
+      // Sin historial autorizado no habilitar el formulario: podría duplicar
+      // solicitudes si la consulta de ciclos falló.
+      if(cyclesResult.status!=='fulfilled'){
+        setEnabled(false);setPartial(false);setCycles([]);setOptions([]);setEscritos(null);
+        console.warn('[F111 R57] Historial no verificable, solicitudes bloqueadas.');
+        return;
+      }
+      const cyclesList=Array.isArray(cyclesResult.value.rows)?cyclesResult.value.rows:[];
+      const optionsOk=optionsResult.status==='fulfilled';
+      const optionsList=optionsOk&&Array.isArray(optionsResult.value.rows)?optionsResult.value.rows:[];
+      // Si opciones falla pero hay ciclos verificados, mostrar solo historial;
+      // nunca permitir una nueva solicitud sin elegibilidad comprobada.
+      setEnabled(optionsOk||cyclesList.length>0);
+      setPartial(!optionsOk);setCycles(cyclesList);setOptions(optionsList);
+      const w=writtenResult.status==='fulfilled'?writtenResult.value:null;
       setEscritos(w&&w.solo_lectura&&Array.isArray(w.rows)?w.rows:null);
+      if(!optionsOk)console.warn('[F111 R57] Elegibilidad no disponible: historial en modo consulta.');
     }catch(e){
-      // Función B5 no publicada o bandera institucional aún apagada:
-      // mantener intacta la experiencia histórica F92.
       console.warn('[F111 R57] Ciclos de reposición no disponibles.',e);
-      setEnabled(false);
+      setEnabled(false);setPartial(false);setCycles([]);setOptions([]);setEscritos(null);
     }finally{setLoading(false);}
   },[]);
   React.useEffect(()=>{load();},[load]);
@@ -119,6 +135,9 @@ function ReposicionesR57Estudiante(){
     </p>
     {message&&<div role="status" style={{padding:10,background:'#EAF8EF',color:'#166534',borderRadius:8,marginBottom:9,fontSize:12}}>{message}</div>}
     {error&&<div role="alert" style={{padding:10,background:'#FDECEA',color:'#991B1B',borderRadius:8,marginBottom:9,fontSize:12}}>{error}</div>}
+    {partial&&<div role="status" data-r57-partial-readonly="true" style={{padding:10,background:'#FFF4D6',color:'#805500',borderRadius:8,marginBottom:9,fontSize:12}}>
+      La elegibilidad para nuevas reposiciones no está disponible. Podés consultar tu historial, pero no iniciar solicitudes hasta verificarlo.
+    </div>}
     {!options.length&&!cycles.length&&<div style={{fontSize:12,color:'var(--ink-3)'}}>No hay solicitudes o exámenes elegibles para reposición.</div>}
     <div style={{display:'flex',flexDirection:'column',gap:9}}>{options.map(row=>{
       const [label,ink,bg]=r57StatusUi(row.ESTADO),key=r57Key(row);

@@ -5,7 +5,12 @@ const babel=require(path.join(root,'vendor','babel.js'));
 const out=babel.transform(source,{presets:['react'],filename:'solicitudes_unificadas.jsx'}).code;
 new vm.Script(out);
 let n=0;const check=(a,label)=>{assert.ok(a,label);n++};
-check(source.includes("f92Post('reposEstadoEscritoR57').catch(()=>null)"),'safe student reader fallback');
+check(source.includes("f92Post('reposEstadoEscritoR57')")&&
+  source.includes("writtenResult.status==='fulfilled'?writtenResult.value:null")&&
+  source.includes("Promise.allSettled"),'safe student written status fallback with independent settling');
+check(source.includes("setPartial(!optionsOk)")&&source.includes("setEnabled(optionsOk||cyclesList.length>0)"),'student historical cycles remain visible on eligibility failure');
+check(source.includes("if(cyclesResult.status!=='fulfilled')")&&source.includes("setOptions([])"),'no new request when cycle authorization cannot be verified');
+check(source.includes('data-r57-partial-readonly="true"'),'partial data warning when eligibility fails');
 check(source.includes("f92Post('reposEstadoEscritoR57',{cod_grupo:group,nivel:level}).catch(()=>null)"),'teacher scope and fallback');
 check(source.includes("data-r57-written-status=\"true\""),'student written status visible');
 check(source.includes("data-r57-teacher-written-status=\"true\""),'teacher written status visible');

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>F111 R57 E2 · Staging QA ficticio</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#193044;background:#f3f6fa;--ink-2:#43566a;--ink-3:#627589;--line:#cad5df;--an-granate:#7a1e2c}
+*{box-sizing:border-box}body{margin:0}main{max-width:1050px;margin:auto;padding:20px}
+h1{font-size:24px;margin:0 0 10px}p{line-height:1.55}
+.card{background:white;border:1px solid #d9e2ea;padding:18px;margin:12px 0;border-radius:12px}
+input,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #aebecb;margin:3px 5px 3px 0}
+button{background:#0d496d;color:white;cursor:pointer}button:disabled{opacity:.6}
+header{background:#112e42;color:white;padding:16px}header p{margin:3px 0;font-size:12px}
+#e2-error{color:#a31515}
+[data-e2-session-role]{font-weight:bold;color:#0a6b60}
+</style>
+<script src="../vendor/react.js"></script>
+<script src="../vendor/react-dom.js"></script>
+<script src="../vendor/babel.js"></script>
+<script>
+window.APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbxTfTiYRbbReYccyQWMuqyXzIBrgW5Lh25tGYjyRibyG_wYXWNJ6KZOt63oXKVNbBAU/exec';
+window.__qaSession=null;window.getSesion=()=>window.__qaSession;
+window.getSessionToken=()=>window.__qaSession?.token||'';
+window.__e2BrowserRequests=[];
+const qaOriginalFetch=window.fetch.bind(window);
+window.fetch=async function(url,options){
+ const started=performance.now(),req=options?.body||'';
+ let fn='';
+ try{fn=JSON.parse(req)?.fn||'';}catch(_){}
+ try{
+  const res=await qaOriginalFetch(url,options);
+  if(String(url).includes('script.google.com/macros/s/'))window.__e2BrowserRequests.push({fn,status:res.status,ms:Math.round(performance.now()-started)});
+  return res;
+ }catch(e){
+  if(String(url).includes('script.google.com/macros/s/'))window.__e2BrowserRequests.push({fn,status:'NETWORK_ERROR',ms:Math.round(performance.now()-started)});
+  throw e;
+ }
+};
+window.__e2BrowserErrors=[];
+window.addEventListener('error',e=>window.__e2BrowserErrors.push(String(e.message||'error')));
+window.addEventListener('unhandledrejection',e=>window.__e2BrowserErrors.push(String(e.reason?.message||'rejection')));
+</script>
+<script type="text/babel" src="../src/solicitudes_unificadas.jsx" data-presets="react"></script>
+<script type="text/babel" data-presets="react">
+function E2State(){
+ const [session,setSession]=React.useState(null),[username,setUsername]=React.useState(''),[password,setPassword]=React.useState('');
+ const [busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+ async function request(fn,body={}){
+   const res=await fetch(window.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+     body:JSON.stringify({fn,...body})});
+   return await res.json();
+ }
+ async function login(e){
+  e.preventDefault();setBusy(true);setError('');
+  try{
+   const r=await request('qaE2Login',{usuario:username,clave:password});
+   if(!r.ok)throw Error(r.error||'Acceso QA denegado');
+   window.__qaSession=r;setSession(r);setPassword('');
+  }catch(e){setError('No se pudo iniciar sesión QA: '+(e.message||'error'));}
+  finally{setBusy(false);}
+ }
+ async function logout(){
+  setBusy(true);
+  try{if(session?.token)await request('qaE2Logout',{token:session.token});}
+  finally{window.__qaSession=null;setSession(null);setBusy(false);setError('');}
+ }
+ return <main><h1>R57 · Entorno E2 exclusivamente ficticio</h1>
+  <p>Se montan componentes reales de <code>src/solicitudes_unificadas.jsx</code> contra Google Apps Script QA @4.
+  No es una página del Campus en producción ni una validación de los demás módulos.</p>
+  {!session?<form className="card" onSubmit={login} data-e2-login="true">
+    <h2>Cuenta ficticia QA</h2><label>Usuario <input aria-label="Usuario QA" value={username} onChange={e=>setUsername(e.target.value)} required/></label>
+    <label>Contraseña <input aria-label="Contraseña QA" type="password" autoComplete="off" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
+    <button type="submit" disabled={busy}>Ingresar</button>
+  </form>:<section>
+    <div className="card"><span data-e2-session-role={session.rol}>{session.rol.toUpperCase()}</span> · {session.nombre}
+      <button style={{float:'right'}} onClick={logout} disabled={busy}>Cerrar sesión QA</button>
+      <p>Grupo ficticio: {session.grupo||'Sin grupo'} · Programa: {session.programa||'N/A'}</p></div>
+    {session.rol==='student'&&<ReposicionesR57Estudiante/>}
+    {session.rol==='teacher'&&<ReposicionesR57Docente onNavigate={()=>{}}/>}
+    {(session.rol==='admin'||session.rol==='superadmin')&&<ReposicionesR57Admin/>}
+    {session.rol==='ventas'&&<div className="card" data-e2-sales-no-access="true">Ventas no tiene acceso al módulo académico R57.</div>}
+   </section>}
+  {error&&<div id="e2-error" role="alert">{error}</div>}
+  <p style={{fontSize:12,color:'#697586'}}>Pruebas de interfaz de ensayo; el despliegue institucional permanece sin cambios.</p>
+ </main>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<E2State/>);
+</script>
+</head><body><header><strong>Academia Norteamericana — F111 QA</strong><p>Staging sintético · No utilizar cuentas reales</p></header><div id="root"></div></body></html>
