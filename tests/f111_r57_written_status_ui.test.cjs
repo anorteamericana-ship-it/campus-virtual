@@ -28,4 +28,11 @@ check(grades.includes("postStudentModules('reposEstadoEscritoR57', { codigo })")
 check(grades.includes('data-r57-mis-notas-escritos="true"'),'Mis Notas shows written status');
 check(grades.includes('r.nota_oficial===true'),'Mis Notas does not treat reviewed as official');
 check(grades.includes("El acumulado del nivel utiliza únicamente las evaluaciones oficiales de ESTATUS"),'Mis Notas preserves official total');
+check(grades.includes('data-r57-mis-notas-parcial="true"')&&
+  grades.includes("Array.isArray(escritosR57)&&escritosR57.length>0"),
+  'R57 status remains visible if the general official grade reader fails');
+check(grades.includes("no permiten inferir ni calcular la calificación oficial del nivel"),
+  'partial R57 status must not claim an official level grade');
+check(grades.includes("CALIFICADO:'Nota verificada en expediente R57'"),
+  'R57 partial status never copies component points into official total');
 console.log('F111_R57_WRITTEN_UI_PASS checks='+n+' JSX_PARSE_PASS');

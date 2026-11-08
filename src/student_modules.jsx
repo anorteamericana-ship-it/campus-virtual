@@ -536,7 +536,27 @@ function NotasView({ onNavigate }) {
     <PageHeader title={<>{studentGradesT('Mis')} <em>{studentGradesT('Notas')}</em></>} />
     <GuardSesion usr={usr}>
       {loading && !data ? <SkeletonTable /> : error ? <ErrorState message={studentGradesT(error)} onRetry={reload} /> : evalErr ?
-        <ErrorState message={studentGradesT(evalErr)} onRetry={()=>setEvalRetry(n=>n+1)} /> :
+        <div>
+          <ErrorState message={studentGradesT(evalErr)} onRetry={()=>setEvalRetry(n=>n+1)} />
+          {Array.isArray(escritosR57)&&escritosR57.length>0&&
+            <section className="card" data-r57-mis-notas-parcial="true"
+              style={{marginTop:12,padding:'13px 16px',border:'1px solid #C9D9F1'}}>
+              <strong style={{fontSize:13,color:'#123C70'}}>Seguimiento de escritos R57 · Solo lectura</strong>
+              <p style={{fontSize:12,color:'var(--ink-2)',margin:'7px 0'}}>
+                El historial de notas generales no está disponible. Estos estados provienen de la consulta autenticada R57;
+                no permiten inferir ni calcular la calificación oficial del nivel.
+              </p>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {escritosR57.map(r=><span key={r.REPOSICION_ID}
+                  style={{padding:'5px 9px',borderRadius:8,background:'#EEF2F7',color:'#40516A',fontSize:11.5,fontWeight:750}}>
+                  L{r.LECCION} · {({SIN_INTENTO:'Sin intento',INICIADO:'Iniciado',ENTREGADO:'Entregado',
+                    EN_REVISION:'En revisión',REVISADO_PENDIENTE_NOTA:'Revisado · nota pendiente',
+                    REQUIERE_CONCILIACION:'En conciliación',CALIFICADO:'Nota verificada en expediente R57'
+                    })[r.fase]||'Pendiente de verificar'}
+                </span>)}
+              </div>
+            </section>}
+        </div> :
         <NotasContenido data={data} evaluaciones={evaluaciones} evalErr={evalErr} reposRows={reposRows} reposErr={reposErr} escritosR57={escritosR57} onNavigate={onNavigate} />}
     </GuardSesion>
   </div>;
