@@ -58,7 +58,7 @@ const originalRef='src/solicitudes_unificadas.jsx?v=F98.4A';
 assert.equal(app.split(originalRef).length-1,3,'Expected 3 institutional B5 loaders');
 app=app.replaceAll(originalRef,'src/solicitudes_unificadas.jsx?v='+version);
 const oldDeep='src/solicitudes_unificadas.jsx?v='+version+'&deep=F111STUDENTDEEPTABS20261104A';
-app=onlyOne(app,oldDeep,'src/solicitudes_unificadas.jsx?v='+version,'deduplicate B5 student loader');
+assert.equal(app.split(oldDeep).length-1,1,'Preserve the scoped bilingual student deep-link cache marker');
 app=onlyOne(app,
   "const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));",
   "const visible=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5'&&(role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase())));",

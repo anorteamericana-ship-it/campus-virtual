@@ -36,8 +36,9 @@ check(new Set(Object.values(m).flat().map(x=>x.split(/[?#]/)[0])).size===41,
  '41 original lazy source files preserved');
 const version='F111R57B5PDF20261109C';
 const assets=Object.values(m).flat().filter(x=>x.startsWith('src/solicitudes_unificadas.jsx?'));
-check(assets.length===3&&assets.every(x=>x==='src/solicitudes_unificadas.jsx?v='+version),
- 'student/admin B5 cache assets are identical and versioned');
+check(assets.length===3&&assets.every(x=>x.startsWith('src/solicitudes_unificadas.jsx?v='+version))&&
+ assets.filter(x=>x.endsWith('&deep=F111STUDENTDEEPTABS20261104A')).length===1,
+ 'student/admin B5 loaders are versioned and preserve bilingual deep-link cache scope');
 check(app.includes('component="ReposicionesR57Docente"')&&
  app.includes("files={['src/solicitudes_unificadas.jsx?v="+version+"']}"),
  'teacher Exámenes explicitly lazy-loads B5 before rendering');

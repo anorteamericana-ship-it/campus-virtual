@@ -101,7 +101,7 @@ const F96_LAZY = {
     'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023&deep=F111STUDENTDEEPTABS20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A&menus=F111MENUSENFINAL20261104A'
   ],
   student_evaluations: [
-    'src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C',
+    'src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C&deep=F111STUDENTDEEPTABS20261104A',
     'src/student_modules.jsx?v=F111PROFILECANONICAL20261020&deep=F111STUDENTDEEPTABS20261104A&four=F111FOURTABSEN20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A&menus=F111MENUSENFINAL20261104A'
   ],
   student_documents: [
