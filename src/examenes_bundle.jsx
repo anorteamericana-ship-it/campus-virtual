@@ -2673,6 +2673,8 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const [openComment, setOpenComment] = useState(null);
   const [studentFeedback, setStudentFeedback] = useState('');
   const [scriptSec, setScriptSec] = useState(null);
+  const [pdfState, setPdfState] = useState(null);
+  const [pdfError, setPdfError] = useState('');
 
   const hydrateReview = useCallback((rev) => {
     const adj = examTeacherAdjustmentsF940(rev && rev.MANUAL_ADJUSTMENTS_JSON);
@@ -2738,6 +2740,17 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const pushed = String(reviewData && reviewData.PUSHED_TO_NOTAS || '').toUpperCase() === 'SI';
   const displayScore = closed && reviewData && reviewData.FINAL_SCORE_100 !== '' ? Number(reviewData.FINAL_SCORE_100) : calculated100;
 
+  // A reposición escrita puede consultar su PDF oficial; un examen ordinario
+  // nunca muestra el botón. La lectura del backend valida matrícula y ledger.
+  useEffect(() => {
+    let active = true;
+    if (!pushed) { setPdfState(null); return () => { active=false; }; }
+    postExamBackend('reposConsultarPdfEscritoR57', { attempt_id:attemptId }, 30000)
+      .then(r => { if(active) setPdfState(r && r.ok && r.aplica ? r : null); })
+      .catch(() => { if(active) setPdfState(null); });
+    return () => { active=false; };
+  }, [attemptId,pushed]);
+
   const setMark = (id, value) => { if (!closed) setMarks(m => Object.assign({}, m, { [id]:value })); };
   const setComment = (id, value) => { if (!closed) setComments(c => Object.assign({}, c, { [id]:value })); };
   const reviewApi = { marks, setMark, comments, setComment, openComment, setOpenComment:(id)=>{ if (!closed) setOpenComment(id); }, locked:closed };
@@ -2788,6 +2801,38 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     }
     setMsg('Nota enviada correctamente a Mis Notas.');
     if (onDone) onDone(true);
+  };
+
+  const generateWrittenPdf = async () => {
+    if (!pushed || !pdfState || busy) return;
+    setBusy('pdf'); setPdfError('');
+    const r = await postExamBackend('reposGenerarPdfEscritoR57', { attempt_id:attemptId }, 60000);
+    setBusy('');
+    if (!r || !r.ok) {
+      setPdfError('No se generó el PDF. Verificá con administración la autorización y el expediente.');
+      return;
+    }
+    setPdfState(r);
+  };
+
+  const downloadWrittenPdf = async () => {
+    if (!pdfState || !pdfState.existe || busy) return;
+    setBusy('download'); setPdfError('');
+    const r = await postExamBackend('reposConsultarPdfEscritoR57', {
+      attempt_id:attemptId,incluir_pdf_base64:'SI'
+    }, 60000);
+    setBusy('');
+    if (!r || !r.ok || !r.pdf_base64) {
+      setPdfError('No se pudo recuperar el archivo oficial. No se generó otra copia.');
+      return;
+    }
+    try {
+      const bytes = Uint8Array.from(window.atob(r.pdf_base64), c=>c.charCodeAt(0));
+      const url = window.URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+      const a = document.createElement('a'); a.href=url;
+      a.download=String(r.pdf_name||'reposicion_escrita.pdf'); document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(()=>window.URL.revokeObjectURL(url), 5000);
+    } catch (_) { setPdfError('El navegador no pudo descargar el PDF recuperado.'); }
   };
 
   const pushToNotas = async () => {
@@ -2853,6 +2898,22 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         {!closed && <button type="button" className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && !pushed && <button type="button" className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
+        {closed && pushed && pdfState && (
+          <div className="rev-closed">
+            {pdfState.existe ? (
+              <button type="button" className="btn-close" disabled={!!busy} onClick={downloadWrittenPdf}>
+                {busy === 'download' ? 'Recuperando PDF…' : 'Descargar PDF escrito'}
+              </button>
+            ) : pdfState.requiere_preparacion ? (
+              <span>PDF escrito pendiente de habilitación administrativa.</span>
+            ) : (
+              <button type="button" className="btn-close" disabled={!!busy} onClick={generateWrittenPdf}>
+                {busy === 'pdf' ? 'Generando PDF…' : 'Generar PDF escrito'}
+              </button>
+            )}
+          </div>
+        )}
+        {pdfError && <div className="rev-live-err">⚠ {pdfError}</div>}
       </aside>
 
       <div className="rev-main">
