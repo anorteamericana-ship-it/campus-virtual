@@ -3,11 +3,28 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 const BASE='9a63461feb6622a73d6ef5b90a1dc5900a93f8ad';
 const read=n=>fs.readFileSync('src/'+n,'utf8');
 const previous=n=>execFileSync('git',['show',BASE+':src/'+n],{encoding:'utf8',maxBuffer:32*1024*1024});
 const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx','examenes_modes.jsx'];
-for(const n of protectedFiles)assert.equal(read(n),previous(n),'Protected exam renderer, motor student, style or administration changed: '+n);
+// Strict R57 B6-D exception: one APPROVED byte-for-byte teacher PDF/UI source
+// (70 added/2 removed relative to the immutable D1 baseline). Any further
+// modification fails closed. Other protected sources remain exact-equality.
+const r57ApprovedModesSha256='21723651fef079b791cc508dd02c8f36784af9323738b634a904c641ba1f6d33';
+for(const n of protectedFiles){
+ const current=read(n),immutable=previous(n);
+ if(n==='examenes_modes.jsx'&&current!==immutable){
+  const digest=createHash('sha256').update(current,'utf8').digest('hex');
+  assert.equal(digest,r57ApprovedModesSha256,
+   'Protected exam modes changed beyond reviewed R57 written PDF UI+submission warning');
+  assert(current.includes("postExamBackend('reposGenerarPdfEscritoR57'")&&
+    current.includes('reposicionSyncPending')&&
+    current.includes('closed && pushed && pdfState'),
+   'R57 approved teacher-only PDF and sent-state guard missing');
+ }else assert.equal(current,immutable,
+  'Protected exam renderer, motor student, style or administration changed: '+n);
+}
 // E4: se permite UNICAMENTE el alias de 2 formatos en ReadingTF; sin alterar el motor restante.
 let expectedRenderer=previous('examenes_render.jsx');
 const replacements=[
