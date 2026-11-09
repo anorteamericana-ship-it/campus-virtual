@@ -204,7 +204,7 @@ function ReposicionesR57RecuperacionAdmin({reposicionId}){
       const r=await f92Post('reposDiagnosticarRecuperacionEscritoR57',{reposicion_id:id});
       if(r.solo_lectura!==true||!r.siguiente_paso)throw Error('diagnostico_incompleto');
       setDiag(r);
-    }catch(e){setError('No se pudo verificar el estado del escrito: '+String(e?.message||'sin_detalle').slice(0,110));}
+    }catch(e){setError(r57UserSafeError(e,'No se pudo verificar el estado del escrito. Revisá el expediente desde administración.','R57:recovery:diagnose'));}
     finally{setBusy(false);}
   };
   const recuperar=async()=>{
@@ -224,8 +224,7 @@ function ReposicionesR57RecuperacionAdmin({reposicionId}){
       setDiag(check);
     }catch(e){
       setDiag(null);
-      setError('Recuperación no confirmada. Volvé a diagnosticar antes de repetir: '+
-        String(e?.message||'sin_detalle').slice(0,100));
+      setError(r57UserSafeError(e,'Recuperación no confirmada. Volvé a diagnosticar antes de repetir.','R57:recovery:execute'));
     }finally{setBusy(false);}
   };
   return <details data-r57-recuperacion-escrito="true"

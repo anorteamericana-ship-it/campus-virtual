@@ -59,6 +59,9 @@ check(f92.includes("if(cyclesResult.status!=='fulfilled')")&&
 const area=f92.split('// F111 R57 B5 — superficies nuevas')[1]?.split('function ReposicionStudentCardF92(')[0]||'';
 check(area.length>13000&&!/f92Post\('(reposEnviarSolicitudF92|reposResolverSolicitudF92|CONFIRMAR_PAGO)/.test(area),
  'new B5 surfaces contain no historical paid flow');
+check(!area.includes("String(e?.message||'sin_detalle')")&&
+ area.includes('R57:recovery:diagnose')&&area.includes('R57:recovery:execute'),
+ 'admin recovery never exposes raw backend error details');
 check(f92.includes("const legacyRows=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5')")&&
  app.includes("const visible=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5'"),
  'legacy F91/F92 lists exclude duplicate R57 records');

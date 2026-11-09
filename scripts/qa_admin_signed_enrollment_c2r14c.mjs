@@ -20,7 +20,8 @@ check(admin.includes('Las versiones anteriores se conservan'), 'Admin UI explain
 check(admin.includes("fn: tipo === 'CERTIFICADO' ? 'generarDocumentoVentas' : 'generarDocumento'"), 'Admin enrollment uses the same canonical renderer as Sales while preserving other admin documents');
 check(!admin.includes("fn:'generarDocumentoAdminFirmado'"), 'No duplicate enrollment generator was introduced');
 const adminRefs = app.match(/src\/admin_students\.jsx(?:\?v=[^'\"]+)?/g) || [];
-check(adminRefs.length > 0 && adminRefs.every(ref => /\?v=[A-Za-z0-9_.-]+(?:&hotfix=[A-Za-z0-9_.-]+)?(?:&att=F111ATTLIMIT20261103A)?(?:&coadvance=F111CONAPEADVANCEREADONLY20261104A)?$/.test(ref)), 'Admin lazy bundle is cache-busted');
+const approvedAdminAsset='src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107';
+check(adminRefs.length===3&&adminRefs.every(ref=>ref===approvedAdminAsset), 'Admin lazy bundle has the complete, immutable approved financial cache token');
 
 if (fail) process.exit(1);
 console.log('C2-R14C ADMIN SIGNED ENROLLMENT QA PASS');

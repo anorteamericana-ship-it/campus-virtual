@@ -51,6 +51,15 @@ candidate=onlyOne(candidate,exportLine,exportLine+
   '\n// R57 teacher route is lazy-loaded; publish the component explicitly for LazyModuleView.\n'+
   'Object.assign(window,{ReposicionesR57Estudiante,ReposicionesR57Admin,ReposicionesR57Docente});',
   'global component export');
+// B5 recovery: no raw Apps Script error is ever shown to the superadmin.
+candidate=onlyOne(candidate,
+  "}catch(e){setError('No se pudo verificar el estado del escrito: '+String(e?.message||'sin_detalle').slice(0,110));}",
+  "}catch(e){setError(r57UserSafeError(e,'No se pudo verificar el estado del escrito. Revisá el expediente desde administración.','R57:recovery:diagnose'));}",
+  'safe QA diagnosis error');
+candidate=onlyOne(candidate,
+  "setError('Recuperación no confirmada. Volvé a diagnosticar antes de repetir: '+\n        String(e?.message||'sin_detalle').slice(0,100));",
+  "setError(r57UserSafeError(e,'Recuperación no confirmada. Volvé a diagnosticar antes de repetir.','R57:recovery:execute'));",
+  'safe QA recovery error');
 put(rel,candidate);
 let app=read(candidateDir,appRel);
 const version='F111R57B5PDF20261109C';
