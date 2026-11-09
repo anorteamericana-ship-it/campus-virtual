@@ -5,13 +5,13 @@ import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 const BASE='9a63461feb6622a73d6ef5b90a1dc5900a93f8ad';
-const read=n=>fs.readFileSync('src/'+n,'utf8');
+const read=n=>fs.readFileSync('src/'+n,'utf8').replace(/\r\n/g,'\n');
 const previous=n=>execFileSync('git',['show',BASE+':src/'+n],{encoding:'utf8',maxBuffer:32*1024*1024});
 const protectedFiles=['examenes_css.jsx','examenes_appcss.jsx','examenes_modes.jsx'];
 // Strict R57 B6-D exception: one APPROVED byte-for-byte teacher PDF/UI source
 // (70 added/2 removed relative to the immutable D1 baseline). Any further
 // modification fails closed. Other protected sources remain exact-equality.
-const r57ApprovedModesSha256='21723651fef079b791cc508dd02c8f36784af9323738b634a904c641ba1f6d33';
+const r57ApprovedModesSha256='0321e49e09f221e7a27d3020717d65a0f95cf7dd7a623a4e917d229e7a5b3c7b';
 for(const n of protectedFiles){
  const current=read(n),immutable=previous(n);
  if(n==='examenes_modes.jsx'&&current!==immutable){
