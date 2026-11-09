@@ -108,6 +108,9 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const [answers, setAnswers] = useState(backend && backend.initialAnswers ? backend.initialAnswers : {});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  // A successful written attempt can require a separate R57 cycle sync.
+  // Do not mislabel it as an unsent exam or expose server internals.
+  const [reposicionSyncPending, setReposicionSyncPending] = useState(false);
   const [sending, setSending] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [missingWarningShown, setMissingWarningShown] = useState(false);
@@ -200,6 +203,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         }
         dirtyRef.current = false;
         setDirty(false);
+        setReposicionSyncPending(r.reposicion_sync_pending === true);
         setStage('sent');
         return r;
       } catch (e) {
@@ -379,7 +383,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
       grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
     };
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} /></div>;
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -464,13 +468,16 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {} }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false }) {
   return (
     <>
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
         <div className="sent-check" style={{ background:tema.color }}>✓</div>
         <h2 className="ascard-title">Examen enviado</h2>
         <p className="sent-msg">Tu examen fue recibido. El envío es único y tus respuestas ya no pueden modificarse.</p>
+        {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
+          <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
+        </div>}
         <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
         <div className="sent-grid">
           <div><span>Examen</span><b>{exam.titulo}</b></div>
