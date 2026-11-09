@@ -303,6 +303,7 @@ const EVAL_SCHEMA_SM = [
   { key:'ORAL_4', tipo:'oral', titulo:'4.º Examen Oral', leccion:31, max:15, orden:5 },
   { key:'ESCRITO_2', tipo:'esc', titulo:'2.º Examen Escrito', leccion:32, max:15, orden:6 },
   { key:'SOCIAL', tipo:'prog', titulo:'Participación / Social Skill', leccion:'', max:10, orden:7 },
+  { key:'ICAN', tipo:'ican', titulo:'Club I CAN · Participación', leccion:'1–16', max:20, orden:8 },
 ];
 function _smNivelEval_(e) {
   const raw = String(e?.nivel || e?.NIVEL || e?.nivel_actual || '').trim().toUpperCase();
@@ -423,7 +424,12 @@ function _smCanonicalRows_(evaluaciones, reposRows, nivel) {
     !['CANCELADA','APLICADA','VENCIDA_0'].includes(String(r.ESTADO || '').toUpperCase()) &&
     !_smRepoTieneNotaOficial_(r, evaluaciones)
   );
-  return EVAL_SCHEMA_SM.map(def => {
+  // El backend auténtico devuelve ICAN exclusivamente para programa INA.
+  // Nunca forzar ocho componentes ni 20 puntos en un expediente sin INA.
+  const hasIcan = raw.some(e => _smOfficialType_(e) === 'ICAN' &&
+    String(e.programa || e.PROGRAMA || '').trim().toUpperCase() === 'INA');
+  const levelSchema = hasIcan ? EVAL_SCHEMA_SM : EVAL_SCHEMA_SM.filter(def => def.key !== 'ICAN');
+  return levelSchema.map(def => {
     const found = raw.find(e => _smOfficialType_(e) === def.key) || null;
     const registered = _smEvalRegistrada_(found);
     const rep = registered ? null : (repos.find(r => Number(r.LECCION || 0) === Number(def.leccion || -1)) || null);
@@ -492,6 +498,7 @@ function _smFooterStatusF108_(estatus) {
 }
 
 const studentGradesT = label => window.AN_I18N?.t(label) || label;
+const studentGradesR57PartialT = (es,en) => window.AN_I18N?.getLang?.() === 'en' ? en : es;
 const studentGradesLevel = code => window.AN_I18N?.getLang?.()==='en'?window.AN_I18N.level(code):NIVEL_NOMBRE_SM[code];
 function NotasView({ onNavigate }) {
   const { usr, data, loading, error, reload } = useEstudianteDeSesion();
@@ -501,6 +508,7 @@ function NotasView({ onNavigate }) {
   const [evalRetry, setEvalRetry] = React.useState(0);
   const [reposRows, setReposRows] = React.useState([]);
   const [reposErr, setReposErr] = React.useState('');
+  const [escritosR57, setEscritosR57] = React.useState(null);
 
   React.useEffect(() => {
     if (!codigo) return;
@@ -520,18 +528,55 @@ function NotasView({ onNavigate }) {
       .catch(() => { if (!cancelled) { setReposRows([]); setReposErr('Sin conexión'); } });
     return () => { cancelled = true; };
   }, [codigo]);
+  React.useEffect(() => {
+    if (!codigo) return;
+    let cancelled = false;
+    setEscritosR57(null);
+    // Reader nuevo es opcional mientras CORE R57 esté en DRAFT; nunca inventar notas.
+    postStudentModules('reposEstadoEscritoR57', { codigo })
+      .then(r => { if (!cancelled && r?.ok && r?.solo_lectura && Array.isArray(r.rows)) setEscritosR57(r.rows); })
+      .catch(() => { if (!cancelled) setEscritosR57(null); });
+    return () => { cancelled = true; };
+  }, [codigo,evalRetry]);
 
   return <div>
     <PageHeader title={<>{studentGradesT('Mis')} <em>{studentGradesT('Notas')}</em></>} />
     <GuardSesion usr={usr}>
       {loading && !data ? <SkeletonTable /> : error ? <ErrorState message={studentGradesT(error)} onRetry={reload} /> : evalErr ?
-        <ErrorState message={studentGradesT(evalErr)} onRetry={()=>setEvalRetry(n=>n+1)} /> :
-        <NotasContenido data={data} evaluaciones={evaluaciones} evalErr={evalErr} reposRows={reposRows} reposErr={reposErr} onNavigate={onNavigate} />}
+        <div>
+          <ErrorState message={studentGradesT(evalErr)} onRetry={()=>setEvalRetry(n=>n+1)} />
+          {Array.isArray(escritosR57)&&escritosR57.length>0&&
+            <section className="card" data-r57-mis-notas-parcial="true"
+              style={{marginTop:12,padding:'13px 16px',border:'1px solid #C9D9F1'}}>
+              <strong style={{fontSize:13,color:'#123C70'}}>{studentGradesR57PartialT('Seguimiento de escritos R57 · Solo lectura','R57 written exam status · Read-only')}</strong>
+              <p style={{fontSize:12,color:'var(--ink-2)',margin:'7px 0'}}>
+                {studentGradesR57PartialT(
+                  'El historial de notas generales no está disponible. Estos estados provienen de la consulta autenticada R57; no permiten inferir ni calcular la calificación oficial del nivel.',
+                  'Your overall grade history is currently unavailable. These statuses come from the authenticated R57 reader and do not establish or calculate your official level grade.'
+                )}
+              </p>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {escritosR57.map(r=><span key={r.REPOSICION_ID}
+                  style={{padding:'5px 9px',borderRadius:8,background:'#EEF2F7',color:'#40516A',fontSize:11.5,fontWeight:750}}>
+                  L{r.LECCION} · {({
+                    SIN_INTENTO:studentGradesR57PartialT('Sin intento','Not attempted'),
+                    INICIADO:studentGradesR57PartialT('Iniciado','Started'),
+                    ENTREGADO:studentGradesR57PartialT('Entregado','Submitted'),
+                    EN_REVISION:studentGradesR57PartialT('En revisión','Under review'),
+                    REVISADO_PENDIENTE_NOTA:studentGradesR57PartialT('Revisado · nota pendiente','Reviewed · grade pending'),
+                    REQUIERE_CONCILIACION:studentGradesR57PartialT('En conciliación','Requires reconciliation'),
+                    CALIFICADO:studentGradesR57PartialT('Nota verificada en expediente R57','Grade verified in R57 record')
+                    })[r.fase]||studentGradesR57PartialT('Pendiente de verificar','Pending verification')}
+                </span>)}
+              </div>
+            </section>}
+        </div> :
+        <NotasContenido data={data} evaluaciones={evaluaciones} evalErr={evalErr} reposRows={reposRows} reposErr={reposErr} escritosR57={escritosR57} onNavigate={onNavigate} />}
     </GuardSesion>
   </div>;
 }
 
-function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNavigate }) {
+function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, escritosR57, onNavigate }) {
   const niveles = data?.niveles || {};
   const nivelActivo = calcularNivelActivoSM(niveles);
   const [selectedLevel, setSelectedLevel] = React.useState(nivelActivo || 'B1');
@@ -542,6 +587,7 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
   const rowsByLevel = _smCanonicalRows_(evaluaciones, reposRows, selected);
   const visibleRows = rowsByLevel.filter(e => filter === 'all' || e.tipo_normalizado === filter);
   const completedLevel = rowsByLevel.filter(e => e.registrada);
+  const totalEvaluacionesLevel = rowsByLevel.length;
   const totalPuntos = Math.round(rowsByLevel.reduce((a,e)=>a+Number(e.nota||0),0)*100)/100;
   const totalMax = rowsByLevel.reduce((a,e)=>a+Number(e.max||0),0) || 100;
   const avgLevel = completedLevel.length ? (completedLevel.reduce((a,e)=>a+Number(e.pct||0),0)/completedLevel.length).toFixed(1) : null;
@@ -555,11 +601,32 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
     !_smRepoTieneNotaOficial_(r, evaluaciones)
   );
   const pendingAlert = activeRepos[0] || null;
+  const escritosNivelR57 = (Array.isArray(escritosR57) ? escritosR57 : [])
+    .filter(r => String(r.NIVEL||'').toUpperCase()===selected);
 
   const gradeLetter = (pct) => pct >= 95?'A+':pct >= 90?'A':pct >= 85?'A-':pct >= 80?'B+':pct >= 75?'B':pct >= 70?'B-':pct >= 65?'C':'D';
   const gradeColor = (g) => g?.startsWith('A')?'var(--ok)':g?.startsWith('B')?'var(--an-navy)':g?.startsWith('C')?'var(--warn)':'var(--danger)';
 
   return <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
+    {escritosNivelR57.length>0&&<section className="card" data-r57-mis-notas-escritos="true"
+      style={{padding:'12px 16px',border:'1px solid #C9D9F1'}}>
+      <strong style={{fontSize:13,color:'#123C70'}}>Seguimiento de escritos R57 · {selected}</strong>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:9}}>
+        {escritosNivelR57.map(r => <span key={r.REPOSICION_ID}
+          style={{background:r.nota_oficial===true?'#EAF8EF':'#EEF2F7',
+            color:r.nota_oficial===true?'#166534':'#40516A',borderRadius:8,
+            padding:'6px 9px',fontSize:11.5,fontWeight:750}}>
+          L{r.LECCION} · {r.nota_oficial===true
+            ? 'Nota oficial '+r.nota_componente+'/'+r.max_puntos
+            : ({SIN_INTENTO:'Sin intento',INICIADO:'Iniciado',ENTREGADO:'Entregado',
+               EN_REVISION:'En revisión',REVISADO_PENDIENTE_NOTA:'Revisado · nota pendiente',
+               REQUIERE_CONCILIACION:'En conciliación'}[r.fase]||'Pendiente de verificar')}
+        </span>)}
+      </div>
+      <div style={{fontSize:11,color:'var(--ink-3)',marginTop:7}}>
+        El acumulado del nivel utiliza únicamente las evaluaciones oficiales de ESTATUS.
+      </div>
+    </section>}
     {pendingAlert && (() => { const tone=_smReposTone_(pendingAlert.ESTADO); return <section style={{border:`1px solid ${tone.border}`,background:tone.bg,borderRadius:20,padding:18,boxShadow:'var(--sh-1)'}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start',flexWrap:'wrap'}}>
         <div><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.14em',textTransform:'uppercase',color:tone.kicker}}>{studentGradesT('Aviso académico importante')}</div>
@@ -576,12 +643,12 @@ function NotasContenido({ data, evaluaciones, evalErr, reposRows, reposErr, onNa
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{['B1','B2','I1','I2'].map(n=>{const est=estatusDe(niveles,n)||(n===nivelActivo?'CA':'PE'),resumen=_smGradeSummaryF108_(n,niveles,evaluaciones,reposRows),active=n===selected,color=NIVEL_COLOR_SM[n]||'var(--an-navy)';return <button key={n} type="button" onClick={()=>setSelectedLevel(n)} style={{border:`2px solid ${active?color:'var(--line)'}`,background:active?`color-mix(in srgb, ${color} 8%, white)`:'#fff',borderRadius:18,padding:16,textAlign:'left',cursor:'pointer',fontFamily:'inherit'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{fontSize:10.5,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'var(--ink-3)'}}>{studentGradesLevel(n)}</span>{active&&<span style={{fontSize:10,fontWeight:900,color}}>{n===nivelActivo?studentGradesT('ACTUAL'):studentGradesT('VISTA')}</span>}</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,lineHeight:1,color,marginTop:8}}>{n}</div><div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>{resumen.label}</div><div style={{marginTop:8}}><Chip tone={_smChipToneByStatus_(est)} dot>{studentGradesT(ESTATUS_LABEL_SM[est]||est||'Pendiente')}</Chip></div></button>})}</div>
     </section>
 
-    <div className="grid-4"><Stat label={studentGradesT('Nivel consultado')} num={selected} sub={studentGradesLevel(selected)} pct={0} color={NIVEL_COLOR_SM[selected]}/><Stat label={studentGradesT('Puntos registrados')} num={totalPuntosLabel} suffix={hasOfficialGrades?'/100':''} sub={hasOfficialGrades?(estatusNivel==='CA'?studentGradesT('Acumulado provisional'):studentGradesT('Nota oficial del nivel')):studentGradesT('Sin calificaciones registradas')} subTone={estatusNivel==='APR'?'ok':''} pct={hasOfficialGrades?totalPuntos:0} color="var(--an-granate)"/><Stat label={studentGradesT('Evaluaciones registradas')} num={`${completedLevel.length}/7`} sub={`${7-completedLevel.length} ${studentGradesT('pendientes o programadas')}`} pct={(completedLevel.length/7)*100} color="var(--an-navy)"/><Stat label={studentGradesT('Promedio de evaluaciones')} num={avgLevel||'—'} suffix={avgLevel?'%':''} sub={completedLevel.length?`${completedLevel.length} ${studentGradesT('calificadas')}`:studentGradesT('Sin datos aún')} pct={Number(avgLevel||0)} color="var(--an-gold)"/></div>
+    <div className="grid-4"><Stat label={studentGradesT('Nivel consultado')} num={selected} sub={studentGradesLevel(selected)} pct={0} color={NIVEL_COLOR_SM[selected]}/><Stat label={studentGradesT('Puntos registrados')} num={totalPuntosLabel} suffix={hasOfficialGrades?'/100':''} sub={hasOfficialGrades?(estatusNivel==='CA'?studentGradesT('Acumulado provisional'):studentGradesT('Nota oficial del nivel')):studentGradesT('Sin calificaciones registradas')} subTone={estatusNivel==='APR'?'ok':''} pct={hasOfficialGrades?totalPuntos:0} color="var(--an-granate)"/><Stat label={studentGradesT('Evaluaciones registradas')} num={`${completedLevel.length}/${totalEvaluacionesLevel}`} sub={`${totalEvaluacionesLevel-completedLevel.length} ${studentGradesT('pendientes o programadas')}`} pct={totalEvaluacionesLevel?(completedLevel.length/totalEvaluacionesLevel)*100:0} color="var(--an-navy)"/><Stat label={studentGradesT('Promedio de evaluaciones')} num={avgLevel||'—'} suffix={avgLevel?'%':''} sub={completedLevel.length?`${completedLevel.length} ${studentGradesT('calificadas')}`:studentGradesT('Sin datos aún')} pct={Number(avgLevel||0)} color="var(--an-gold)"/></div>
 
     <section className="card" style={{padding:0,overflow:'hidden'}}>
-      <div style={{padding:'16px 18px 12px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div className="card-title">{studentGradesT('Detalle de evaluaciones')}</div><div className="tabs" style={{margin:0}}>{[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check']].map(([k,l])=><button key={k} className={`tab ${filter===k?'active':''}`} onClick={()=>setFilter(k)}>{studentGradesT(l)}</button>)}</div></div>
+      <div style={{padding:'16px 18px 12px',borderBottom:'1px solid var(--line)',display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div className="card-title">{studentGradesT('Detalle de evaluaciones')}</div><div className="tabs" style={{margin:0}}>{[['all','Todo'],['oral','Orales'],['esc','Escritos'],['prog','Progress Check'],...(rowsByLevel.some(row=>row.key==='ICAN')?[['ican','I CAN']]:[])].map(([k,l])=><button key={k} className={`tab ${filter===k?'active':''}`} onClick={()=>setFilter(k)}>{studentGradesT(l)}</button>)}</div></div>
       <div style={{overflowX:'auto'}}><table className="table-soft" style={{minWidth:940}}><thead><tr><th style={{width:72}}>{studentGradesT('Lec.')}</th><th>{studentGradesT('Evaluación')}</th><th style={{width:190}}>{studentGradesT('Fecha')}</th><th style={{width:160}}>{studentGradesT('Estado')}</th><th style={{textAlign:'right',width:120}}>{studentGradesT('Puntaje')}</th><th style={{textAlign:'right',width:80}}>%</th><th style={{textAlign:'center',width:80}}>{studentGradesT('Nota')}</th></tr></thead><tbody>
-        {evaluaciones===null?<tr><td colSpan={7} style={{padding:24,textAlign:'center'}}>{studentGradesT('Cargando…')}</td></tr>:visibleRows.map(row=>{const pct=Number(row.pct||0),grade=gradeLetter(pct),tone=_smStatusTone_(row),scoreView=_smRowScoreF108_(row);const statusUpper=String(row.estado||'').toUpperCase(),rowBg=(statusUpper==='SIN_NOTA'||statusUpper==='VENCIDA_0')?'color-mix(in srgb, var(--danger) 3%, white)':statusUpper==='PROGRAMADA'?'#F8FAFE':'#fff';return <tr key={row.key} style={{background:rowBg}}><td style={{fontFamily:'var(--f-mono)',color:'var(--ink-3)'}}>{row.leccion?`L${String(row.leccion).padStart(2,'0')}`:'—'}</td><td><div style={{fontWeight:750}}>{row.titulo}</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{studentGradesLevel(selected)}{row.es_reposicion?' · '+studentGradesT('Reposición'):''}</div></td><td style={{fontSize:12,color:'var(--ink-2)'}}>{_smEvalDateText_(row)}</td><td><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:tone.bg,color:tone.color,fontSize:10,fontWeight:900}}>{studentGradesT(_smStatusLabel_(row))}</span></td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontWeight:750}}>{scoreView.score}</td><td style={{textAlign:'right',fontWeight:750}}>{scoreView.percent}</td><td style={{textAlign:'center'}}><span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minWidth:38,height:38,borderRadius:10,background:row.registrada?`color-mix(in srgb, ${gradeColor(grade)} 14%, white)`:statusUpper==='VENCIDA_0'?'#FDECEA':'#EEF2F7',color:row.registrada?gradeColor(grade):statusUpper==='VENCIDA_0'?'#991B1B':'#40516A',fontWeight:800}}>{row.registrada?grade:scoreView.badge}</span></td></tr>})}
+        {evaluaciones===null?<tr><td colSpan={7} style={{padding:24,textAlign:'center'}}>{studentGradesT('Cargando…')}</td></tr>:visibleRows.map(row=>{const pct=Number(row.pct||0),grade=gradeLetter(pct),tone=_smStatusTone_(row),scoreView=_smRowScoreF108_(row);const statusUpper=String(row.estado||'').toUpperCase(),rowBg=(statusUpper==='SIN_NOTA'||statusUpper==='VENCIDA_0')?'color-mix(in srgb, var(--danger) 3%, white)':statusUpper==='PROGRAMADA'?'#F8FAFE':'#fff';return <tr key={row.key} style={{background:rowBg}}><td style={{fontFamily:'var(--f-mono)',color:'var(--ink-3)'}}>{row.key==='ICAN'?'I CAN':row.leccion?`L${String(row.leccion).padStart(2,'0')}`:'—'}</td><td><div style={{fontWeight:750}}>{row.titulo}</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{studentGradesLevel(selected)}{row.es_reposicion?' · '+studentGradesT('Reposición'):''}</div></td><td style={{fontSize:12,color:'var(--ink-2)'}}>{_smEvalDateText_(row)}</td><td><span style={{display:'inline-flex',padding:'5px 9px',borderRadius:999,background:tone.bg,color:tone.color,fontSize:10,fontWeight:900}}>{studentGradesT(_smStatusLabel_(row))}</span></td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontWeight:750}}>{scoreView.score}</td><td style={{textAlign:'right',fontWeight:750}}>{scoreView.percent}</td><td style={{textAlign:'center'}}><span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',minWidth:38,height:38,borderRadius:10,background:row.registrada?`color-mix(in srgb, ${gradeColor(grade)} 14%, white)`:statusUpper==='VENCIDA_0'?'#FDECEA':'#EEF2F7',color:row.registrada?gradeColor(grade):statusUpper==='VENCIDA_0'?'#991B1B':'#40516A',fontWeight:800}}>{row.registrada?grade:scoreView.badge}</span></td></tr>})}
       </tbody><tfoot><tr style={{background:'#F7F3EC',borderTop:'2px solid var(--an-navy)'}}><td colSpan={4} style={{fontWeight:900,color:'var(--an-navy)',textAlign:'right'}}>{studentGradesT('SUMA TOTAL DEL NIVEL')}</td><td style={{textAlign:'right',fontFamily:'var(--f-mono)',fontSize:16,fontWeight:900,color:'var(--an-navy)'}}>{hasOfficialGrades?`${totalPuntos}/${totalMax}`:'—'}</td><td style={{textAlign:'right',fontWeight:900,color:'var(--an-navy)'}}>{hasOfficialGrades?`${Math.round((totalPuntos/totalMax)*100)}%`:'—'}</td><td style={{textAlign:'center',fontWeight:900,color:estatusNivel==='APR'?'var(--ok)':estatusNivel==='REP'?'var(--danger)':'var(--ink-3)'}}>{studentGradesT(_smFooterStatusF108_(estatusNivel))}</td></tr></tfoot></table></div>
       {(evalErr||reposErr)&&<div style={{padding:'10px 18px',fontSize:11,color:'var(--danger)',borderTop:'1px solid var(--line)'}}>{studentGradesT('Algunos datos no pudieron actualizarse. Recargá la vista.')}</div>}
     </section>

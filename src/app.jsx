@@ -72,23 +72,23 @@ const F96_LAZY = {
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
   student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A','src/student_modules.jsx?v=F111PROFILECANONICAL20261020&four=F111FOURTABSEN20261104A'],
   syllabus_views: ['src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023'],
-  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL'],
+  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL'],
   english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20H'],
-  vista_docente: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A'],
+  vista_docente: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R-HOTFIX-DATES-SUPER'],
   admin_master: ['src/conape_bridge_config_c3_6.js?v=V4.2.9','src/conape_bridge_client_c3_6.js?v=V3.1.0','src/admin_master_charts.jsx?v=F98.4Z6CL','src/admin_master_dashboard.jsx?v=F98.4Z6CS21A94C'],
   admin_students: ['src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107'],
   matriculas: ['src/matriculas_admin.jsx?v=F96.5G','src/matriculas_calendario.jsx?v=F96.5G','src/matriculas.jsx?v=F96.5G'],
   cronograma: ['src/cronograma.jsx?v=F96.5G'],
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
-  cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A'],
-  calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A','src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/calendario_grupo.jsx?v=F98.4Z6CM'],
-  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
+  cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A'],
+  calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A','src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/calendario_grupo.jsx?v=F98.4Z6CM'],
+  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP&hotfix=F111ANTICIPOS20261103'],
   conape: ['src/conape_cobranza.jsx?v=F96.5G'],
-  supervision: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/panel_admin_supervision.jsx?v=F96.5G'],
+  supervision: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A','src/panel_admin_supervision.jsx?v=F96.5G'],
   auditoria: ['src/auditoria_academica.jsx?v=F111ATTEND20261021'],
   asistencia_grupos: ['src/admin_attendance_roster.jsx?v=F111ATTLIMIT20261103A'],
   diagnostico: ['src/diagnostico_interno.jsx?v=F98.4Z6BD'],
@@ -97,7 +97,7 @@ const F96_LAZY = {
   inscripcion_admin: ['src/inscripcion_admin.jsx?v=F96.5G'],
   solicitudes: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F98.4A'],
   student_course: [
-    'src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A&crday=F111CRDAY20261104A',
+    'src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/social_skill_docente_f111.jsx?v=F111N6SOCIAL20261107A','src/cronograma_todos.jsx?v=F98.4Z6CK','src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A&crday=F111CRDAY20261104A',
     'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023&deep=F111STUDENTDEEPTABS20261104A','src/student_experience.jsx?v=F111STUDENTTABSEN20261103&demo=F111STUDENTDEMO20261104&deep=F111STUDENTDEEPTABS20261104A&menus=F111MENUSENFINAL20261104A'
   ],
   student_evaluations: [
@@ -131,6 +131,27 @@ function normalizarRutaEstudianteF984(target, opts = {}) {
 function studentRouteHashF984(target, tabs = {}) {
   const tab = target === 'mi_curso' ? tabs.course : target === 'evaluaciones' ? tabs.evaluations : target === 'documentos_ayuda' ? tabs.documents : '';
   return '#' + target + (tab ? '/' + tab : '');
+}
+// F111 R57 E2: deep link explícito del estudiante, únicamente rutas conocidas.
+// No tratar cualquier fragmento ni texto de URL como una ruta válida.
+function studentInitialRouteFromHashF984(hash) {
+  const parts = String(hash || '').replace(/^#/, '').split('/');
+  const raw = parts[0], rawTab = parts[1] || '';
+  const allowedRoutes = ['dashboard','mi_curso','evaluaciones','documentos_ayuda',
+    'pagos','certificados','ican','academia_play','notas','examenes','solicitudes_estudiante',
+    'cronograma_grupo','materiales','info_programa'];
+  if (parts.length > 2 || !allowedRoutes.includes(raw)) return null;
+  const normalized = normalizarRutaEstudianteF984(raw);
+  const acceptedTabs = {
+    mi_curso: ['cronograma','materiales','tareas'],
+    evaluaciones: ['proximas','resultados','reposiciones'],
+    documentos_ayuda: ['programa','avisos','contactos']
+  };
+  const allow = acceptedTabs[normalized.target];
+  if (rawTab && (!allow || !allow.includes(rawTab))) return null;
+  const tab = rawTab || normalized.tab || (normalized.target==='mi_curso'?'cronograma':
+    normalized.target==='evaluaciones'?'proximas':normalized.target==='documentos_ayuda'?'programa':null);
+  return {route:normalized.target,tab};
 }
 
 function esUsuarioGratisSesionF984Z6CS(u, role) {
@@ -254,7 +275,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
 // Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F98.4M`;
+  const src = `modulos/examenes.html?view=${view}&v=F111R57WRITTENPDF20261109B`;
   return (
     <section data-screen-label={screenLabel} style={{
       display: 'flex', flexDirection: 'column', gap: 14,
@@ -284,7 +305,7 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
-          key={`${view}-F98.4M`}
+          key={`${view}-F111R57WRITTENPDF20261109B`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
@@ -339,7 +360,7 @@ function ReposicionesPanelF91({ role='teacher', onNavigate }) {
   const load=React.useCallback(()=>{setLoading(true);setError('');appPostF91('reposListarExamenes').then(r=>setRows(r.rows||[])).catch(e=>setError(appSafeUserErrorF91(e,'No pudimos consultar las reposiciones. Intentá nuevamente.','repos_listar'))).finally(()=>setLoading(false));},[]);
   React.useEffect(()=>{load();},[load]);
   const act=async(row,accion)=>{let payload={reposicion_id:row.REPOSICION_ID,accion};let endpoint='reposResolverExamen';if(accion==='APROBAR_JUSTIFICACION'||accion==='RECHAZAR_JUSTIFICACION'){endpoint='reposResolverSolicitudF92';const nota=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Justificación aprobada. Agregá una observación breve:':'Indicá por qué la justificación no fue aceptada:','');if(nota===null)return;payload.justificacion=nota;payload.admin_nota=nota;}if(accion==='CONFIRMAR_PAGO'){endpoint='reposResolverSolicitudF92';const ref=window.prompt('Referencia o número del pago de ₡10.000:','');if(ref===null)return;payload.pago_referencia=ref;payload.admin_nota=ref;}if(accion==='PROGRAMAR_ESCRITO'){const fecha=window.prompt('Fecha de aplicación (AAAA-MM-DD):',row.FECHA_LIMITE||'');if(fecha===null)return;const hi=window.prompt('Hora de inicio (HH:MM):','18:00');if(hi===null)return;const hf=window.prompt('Hora de cierre (HH:MM):','19:00');if(hf===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_programada:fecha,hora_inicio:hi,hora_fin:hf};endpoint='reposProgramarEscrito';}if(accion==='COORDINAR_ORAL'){const fecha=window.prompt('Fecha tentativa de reposición (AAAA-MM-DD). Podés iniciar la prueba antes si ambos están disponibles:',row.FECHA_PROGRAMADA||row.FECHA_LIMITE||'');if(fecha===null)return;payload={reposicion_id:row.REPOSICION_ID,fecha_tentativa:fecha};endpoint='reposCoordinarOralF926';}setBusy(row.REPOSICION_ID+accion);try{await appPostF91(endpoint,payload);await load();}catch(e){setError(appSafeUserErrorF91(e,'No pudimos completar la operación de reposición. Intentá nuevamente.','repos_accion'));}finally{setBusy('');}};
-  const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));
+  const visible=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5'&&(role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase())));
   const sectionTitle=role==='teacher'?'Reposiciones orales':'Reposiciones de examen';
   const sectionKicker=role==='teacher'?'ORAL · AUTORIZACIONES':'CONTROL ADMINISTRATIVO';
   if(loading)return <div style={{border:'1px solid var(--line)',borderRadius:14,background:'#fff',overflow:'hidden'}}><div style={{padding:'13px 15px',borderBottom:'1px solid var(--line)',background:'#F8FAFE'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>{sectionKicker}</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>{sectionTitle}</div></div><div style={{padding:18,color:'var(--ink-3)',fontSize:13}}>Consultando reposiciones autorizadas…</div></div>;
@@ -481,7 +502,7 @@ function TeacherWrittenPreviewModalF950({ activation, group, leccion, onClose })
   const test=activation.TEST_CODE||activation.test_code||(Number(leccion)===32?'TEST2':'TEST1');
   const opcion=activation.OPCION||activation.opcion||'A';
   const plan=String(activation.PLAN||activation.plan||'CON_INA').toLowerCase();
-  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F98.4M`;
+  const src=`modulos/examenes.html?view=teacher_preview&nivel=${encodeURIComponent(nivel)}&test=${encodeURIComponent(test)}&opcion=${encodeURIComponent(opcion)}&plan=${encodeURIComponent(plan)}&grupo=${encodeURIComponent(group||'')}&v=F111R57WRITTENPDF20261109B`;
   return <div role="dialog" aria-modal="true" aria-label="Modelo del examen escrito" style={{position:'fixed',inset:0,zIndex:99999,background:'rgba(0,20,48,.72)',padding:18,display:'flex',alignItems:'stretch',justifyContent:'center'}} onClick={onClose}>
     <div style={{width:'min(1500px,100%)',height:'calc(100vh - 36px)',background:'#F7F3EC',borderRadius:18,overflow:'hidden',boxShadow:'0 26px 80px rgba(0,0,0,.35)',display:'flex',flexDirection:'column'}} onClick={e=>e.stopPropagation()}>
       <div style={{padding:'11px 14px',background:'#fff',borderBottom:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
@@ -537,7 +558,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
   :esEscrito?<WrittenSessionCardF929 session={s}/>
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
-  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
+  const top=<><div style={{padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}><div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.15em',color:'#7A1E2C'}}>EXÁMENES DEL DOCENTE</div><div style={{fontFamily:'var(--f-serif)',fontSize:28,fontWeight:600,color:'var(--an-navy)',marginTop:3}}>Orales, reposiciones y escritos</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>La sesión activa habilita automáticamente el examen que corresponde a la lección.</div></div>{activeExamCard}{typeof ReposicionesR57Docente==='function'&&<ReposicionesR57Docente onNavigate={onNavigate}/>}<ReposicionesPanelF91 role="teacher" onNavigate={onNavigate}/></>;
   return <ExamenesIframePanel hideHeader view="teacher" screenLabel="Docente · Exámenes" iframeTitle="Exámenes del docente" topContent={top}/>;
 }
 
@@ -745,19 +766,25 @@ function App() {
     : rolReal === 'student'   ? 'student'
     : null;
 
+  const studentEntryRouteF984 = React.useMemo(() =>
+    role === 'student' ? studentInitialRouteFromHashF984(window.location.hash) : null,
+    [role]);
   const [active, setActive] = useState(() => {
-    // F111: each academic entry starts in the real profile. Never restore the
-    // last saved academic tab; navigation remains free after the profile opens.
-    if (role === 'student') return 'dashboard'; // Native Student My Profile
+    // Normal entry stays in Profile; explicit, validated deep links are honored.
+    // Never restore stale academic routes from localStorage.
+    if (role === 'student') return studentEntryRouteF984?.route || 'dashboard';
     if (role === 'teacher') return 'perfil';     // TeacherProfileCS21A76
     // Preserve the operational state of admin/superadmin (outside bilingual pilot).
     const roleKey = 'an_active_' + (role || 'unknown');
     const saved = localStorage.getItem(roleKey) || localStorage.getItem('an_active') || 'dashboard';
     return saved === 'portal_estudiante' ? 'dashboard' : saved;
   });
-  const [studentCourseTab, setStudentCourseTab] = useState('cronograma');
-  const [studentEvalTab, setStudentEvalTab] = useState('proximas');
-  const [studentDocsTab, setStudentDocsTab] = useState('programa');
+  const [studentCourseTab, setStudentCourseTab] = useState(() =>
+    studentEntryRouteF984?.route === 'mi_curso' ? studentEntryRouteF984.tab : 'cronograma');
+  const [studentEvalTab, setStudentEvalTab] = useState(() =>
+    studentEntryRouteF984?.route === 'evaluaciones' ? studentEntryRouteF984.tab : 'proximas');
+  const [studentDocsTab, setStudentDocsTab] = useState(() =>
+    studentEntryRouteF984?.route === 'documentos_ayuda' ? studentEntryRouteF984.tab : 'programa');
   const [toastMsg, setToastMsg] = useState('');
   const [pendingLesson, setPendingLesson] = useState(null);
   // pendingGrupo: el grupo con el que arranca filtrada la vista Estudiantes
@@ -876,8 +903,17 @@ function App() {
   // F98.4-A: atrás/adelante conserva módulo y pestaña del estudiante.
   useEffect(() => {
     if (role !== 'student') return undefined;
-    const tabsIniciales = { course:'cronograma', evaluations:'proximas', documents:'programa' };
-    try { history.replaceState({ anCampus:true, route:'dashboard', tabs:tabsIniciales }, '', '#dashboard'); } catch (_) {}
+    const entry = studentEntryRouteF984;
+    const tabsIniciales = {
+      course:entry?.route === 'mi_curso' ? entry.tab : 'cronograma',
+      evaluations:entry?.route === 'evaluaciones' ? entry.tab : 'proximas',
+      documents:entry?.route === 'documentos_ayuda' ? entry.tab : 'programa'
+    };
+    const initialRoute = entry?.route || 'dashboard';
+    // Replace the *current* history entry to make Back/Forward deterministic,
+    // never overwrite an explicitly allowed deep link with #dashboard.
+    try { history.replaceState({ anCampus:true, route:initialRoute, tabs:tabsIniciales },
+      '', studentRouteHashF984(initialRoute,tabsIniciales)); } catch (_) {}
     const onPop = (ev) => {
       const st = ev.state || {};
       const parts = String(location.hash || '').replace(/^#/,'').split('/');

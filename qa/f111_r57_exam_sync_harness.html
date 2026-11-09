@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>F111 R57 · Examen escrito - QA ficticio</title>
+<style>body{font-family:system-ui,sans-serif;background:#f3f6fa;color:#182a3b;max-width:1000px;margin:0 auto;padding:24px}.stwrap{background:#fff;padding:22px;border-radius:12px}.ascard{border:1px solid #bfc9d3;padding:18px;border-radius:14px}.sentcard{padding:24px}.stbar{display:flex;justify-content:space-between;align-items:center;padding:16px}.sent-grid{display:flex;gap:12px}.sent-grid>div{padding:9px}.btn-primary{padding:14px;color:#fff;background:#003B7A;border:0;border-radius:7px;cursor:pointer}.stbar-track{background:#eee;height:6px}.stbar-fill{height:6px}button{font:inherit}</style>
+<script src="../vendor/react.js"></script>
+<script src="../vendor/react-dom.js"></script>
+<script src="../vendor/babel.js"></script></head><body>
+<p>QA ficticio · No utiliza API ni estudiantes reales. Renderiza StudentMode y SentCard originales.</p>
+<div id="root"></div>
+<script>
+window.__syncQaErrors=[];
+window.addEventListener('error',e=>window.__syncQaErrors.push(String(e.message||'error')));
+window.addEventListener('unhandledrejection',e=>window.__syncQaErrors.push(String(e.reason||'rejection')));
+window.confirm=()=>true;
+window.__qaReady=false;
+window.__qaResponse={ok:true,reposicion_sync_pending:false};
+async function setup(){
+ const resp=await fetch('../src/examenes_modes.jsx',{cache:'no-store'});
+ if(!resp.ok)throw Error('EXAM_SOURCE_NOT_AVAILABLE');
+ const source=(await resp.text()).replace(/\r\n/g,'\n');
+ const helper=source.slice(source.indexOf('function examParseLocalMs('),
+  source.indexOf('// CALGRUPO_F27_20260617_STUDENTMODE_INTENTO_REAL_BACKEND'));
+ const student=source.slice(source.indexOf('function StudentMode('),
+  source.indexOf('function AssignmentCard('));
+ const sent=source.slice(source.indexOf('function SentCard('),
+  source.indexOf('const ESTADOS = {'));
+ if(!helper||!student||!sent||!sent.includes('data-r57-sync-pending'))throw Error('QA_SOURCE_EXTRACT_ERROR');
+ const compiled=window.Babel.transform(
+  'const {useState,useMemo,useCallback,useEffect}=React;\n'+helper+'\n'+student+'\n'+sent,
+  {presets:['react'],sourceType:'script'}).code;
+ const exam={titulo:'Examen escrito B2 · Ficticio',subtitulo:'Solo QA',leccion:18,
+  unidades:'1',puntos_totales:100,ponderacion_por_plan:{SIN_INA:15,CON_INA:5}};
+ const stubs={
+  NIVEL_TEMA:{B2:{color:'#185a93',soft:'#deeffc',ink:'#003B7A',code:'B2',nombre:'Básico II'}},
+  ExamShell:()=>React.createElement('div',{'data-qa-exam-shell':'true'},'Contenido académico ficticio'),
+  examQuestions:()=>[{q:{id:'Q1',n:1},kind:'single',section:{letter:'A'}}],
+  getMatchVal:()=>null,getExam:()=>exam,planValor:()=>'15%',
+  React:window.React,window:window,document:document
+ };
+ const factory=new Function(...Object.keys(stubs),compiled+'\nreturn {StudentMode,SentCard};');
+ const components=factory(...Object.values(stubs));
+ const backend={attemptId:'QA-R57-ATT-1',startedAt:new Date().toISOString(),timeLimitMin:90,
+  initialAnswers:{Q1:'A'},onSubmit:async()=>window.__qaResponse,
+  onSave:async()=>({ok:true,saved:true})};
+ window.__qaRoot=ReactDOM.createRoot(document.getElementById('root'));
+ window.__qaRoot.render(React.createElement(components.StudentMode,{
+  shell:'premium',density:'compact',nivel:'B2',test:'TEST1',
+  opcion:'B',plan:'SIN_INA',examOverride:exam,backend
+ }));
+ window.__qaReady=true;
+}
+setup().catch(e=>{window.__syncQaErrors.push(String(e.message||e));});
+</script></body></html>

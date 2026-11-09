@@ -2163,6 +2163,9 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const [answers, setAnswers] = useState(backend && backend.initialAnswers ? backend.initialAnswers : {});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  // A successful written attempt can require a separate R57 cycle sync.
+  // Do not mislabel it as an unsent exam or expose server internals.
+  const [reposicionSyncPending, setReposicionSyncPending] = useState(false);
   const [sending, setSending] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [missingWarningShown, setMissingWarningShown] = useState(false);
@@ -2255,6 +2258,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         }
         dirtyRef.current = false;
         setDirty(false);
+        setReposicionSyncPending(r.reposicion_sync_pending === true);
         setStage('sent');
         return r;
       } catch (e) {
@@ -2434,7 +2438,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
       grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
     };
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} /></div>;
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -2519,13 +2523,16 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {} }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false }) {
   return (
     <>
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
         <div className="sent-check" style={{ background:tema.color }}>✓</div>
         <h2 className="ascard-title">Examen enviado</h2>
         <p className="sent-msg">Tu examen fue recibido. El envío es único y tus respuestas ya no pueden modificarse.</p>
+        {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
+          <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
+        </div>}
         <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
         <div className="sent-grid">
           <div><span>Examen</span><b>{exam.titulo}</b></div>
@@ -2666,6 +2673,8 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const [openComment, setOpenComment] = useState(null);
   const [studentFeedback, setStudentFeedback] = useState('');
   const [scriptSec, setScriptSec] = useState(null);
+  const [pdfState, setPdfState] = useState(null);
+  const [pdfError, setPdfError] = useState('');
 
   const hydrateReview = useCallback((rev) => {
     const adj = examTeacherAdjustmentsF940(rev && rev.MANUAL_ADJUSTMENTS_JSON);
@@ -2731,6 +2740,17 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const pushed = String(reviewData && reviewData.PUSHED_TO_NOTAS || '').toUpperCase() === 'SI';
   const displayScore = closed && reviewData && reviewData.FINAL_SCORE_100 !== '' ? Number(reviewData.FINAL_SCORE_100) : calculated100;
 
+  // A reposición escrita puede consultar su PDF oficial; un examen ordinario
+  // nunca muestra el botón. La lectura del backend valida matrícula y ledger.
+  useEffect(() => {
+    let active = true;
+    if (!pushed) { setPdfState(null); return () => { active=false; }; }
+    postExamBackend('reposConsultarPdfEscritoR57', { attempt_id:attemptId }, 30000)
+      .then(r => { if(active) setPdfState(r && r.ok && r.aplica ? r : null); })
+      .catch(() => { if(active) setPdfState(null); });
+    return () => { active=false; };
+  }, [attemptId,pushed]);
+
   const setMark = (id, value) => { if (!closed) setMarks(m => Object.assign({}, m, { [id]:value })); };
   const setComment = (id, value) => { if (!closed) setComments(c => Object.assign({}, c, { [id]:value })); };
   const reviewApi = { marks, setMark, comments, setComment, openComment, setOpenComment:(id)=>{ if (!closed) setOpenComment(id); }, locked:closed };
@@ -2781,6 +2801,38 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
     }
     setMsg('Nota enviada correctamente a Mis Notas.');
     if (onDone) onDone(true);
+  };
+
+  const generateWrittenPdf = async () => {
+    if (!pushed || !pdfState || busy) return;
+    setBusy('pdf'); setPdfError('');
+    const r = await postExamBackend('reposGenerarPdfEscritoR57', { attempt_id:attemptId }, 60000);
+    setBusy('');
+    if (!r || !r.ok) {
+      setPdfError('No se generó el PDF. Verificá con administración la autorización y el expediente.');
+      return;
+    }
+    setPdfState(r);
+  };
+
+  const downloadWrittenPdf = async () => {
+    if (!pdfState || !pdfState.existe || busy) return;
+    setBusy('download'); setPdfError('');
+    const r = await postExamBackend('reposConsultarPdfEscritoR57', {
+      attempt_id:attemptId,incluir_pdf_base64:'SI'
+    }, 60000);
+    setBusy('');
+    if (!r || !r.ok || !r.pdf_base64) {
+      setPdfError('No se pudo recuperar el archivo oficial. No se generó otra copia.');
+      return;
+    }
+    try {
+      const bytes = Uint8Array.from(window.atob(r.pdf_base64), c=>c.charCodeAt(0));
+      const url = window.URL.createObjectURL(new Blob([bytes], {type:'application/pdf'}));
+      const a = document.createElement('a'); a.href=url;
+      a.download=String(r.pdf_name||'reposicion_escrita.pdf'); document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(()=>window.URL.revokeObjectURL(url), 5000);
+    } catch (_) { setPdfError('El navegador no pudo descargar el PDF recuperado.'); }
   };
 
   const pushToNotas = async () => {
@@ -2846,6 +2898,22 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         {!closed && <button type="button" className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && !pushed && <button type="button" className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
+        {closed && pushed && pdfState && (
+          <div className="rev-closed">
+            {pdfState.existe ? (
+              <button type="button" className="btn-close" disabled={!!busy} onClick={downloadWrittenPdf}>
+                {busy === 'download' ? 'Recuperando PDF…' : 'Descargar PDF escrito'}
+              </button>
+            ) : pdfState.requiere_preparacion ? (
+              <span>PDF escrito pendiente de habilitación administrativa.</span>
+            ) : (
+              <button type="button" className="btn-close" disabled={!!busy} onClick={generateWrittenPdf}>
+                {busy === 'pdf' ? 'Generando PDF…' : 'Generar PDF escrito'}
+              </button>
+            )}
+          </div>
+        )}
+        {pdfError && <div className="rev-live-err">⚠ {pdfError}</div>}
       </aside>
 
       <div className="rev-main">
