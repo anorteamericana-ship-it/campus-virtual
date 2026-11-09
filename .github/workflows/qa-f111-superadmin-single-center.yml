@@ -7,6 +7,7 @@ on:
       - 'src/student_academic_summary_dom_cs21a113.js'
       - 'scripts/qa_f111_0826_student_canonical.mjs'
       - 'scripts/qa_f111_superadmin_single_center_20261017.mjs'
+      - 'scripts/qa_f111_r57_d1_single_center_selective.mjs'
       - '.github/workflows/qa-f111-superadmin-single-center.yml'
   push:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'src/student_academic_summary_dom_cs21a113.js'
       - 'scripts/qa_f111_0826_student_canonical.mjs'
       - 'scripts/qa_f111_superadmin_single_center_20261017.mjs'
+      - 'scripts/qa_f111_r57_d1_single_center_selective.mjs'
       - '.github/workflows/qa-f111-superadmin-single-center.yml'
   workflow_dispatch:
 permissions:
@@ -31,8 +33,15 @@ jobs:
         run: |
           npm install --no-save @babel/parser@7.28.4
           node -e "require('@babel/parser').parse(require('fs').readFileSync('src/app.jsx','utf8'),{sourceType:'module',plugins:['jsx']}); console.log('APP JSX PASS')"
-      - name: Conciliar gate superadmin con baseline live y motores protegidos
-        run: node scripts/qa_f111_superadmin_single_center_20261017.mjs
+      - name: Conciliar D1 con baseline LIVE y motor protegido, por versión
+        run: |
+          if grep -q 'F111R57B5PDF20261109C' src/app.jsx; then
+            # Selective R57 branch: exact reversible overlay + strong D1 contract.
+            node scripts/qa_f111_r57_d1_single_center_selective.mjs
+          else
+            # Original historical contract remains on non-R57 branches.
+            node scripts/qa_f111_superadmin_single_center_20261017.mjs
+          fi
       - name: Probar expediente y calendario del estudiante trasladado (E1 sintética)
         run: node scripts/qa_f111_0826_student_canonical.mjs
       - name: Validar diff limpio
