@@ -20,7 +20,7 @@ async function socialSkillPostF111(fn, data) {
   } catch (_) { return {ok:false,error:'red_o_tiempo_agotado'}; }
   finally { if(timeout) clearTimeout(timeout); }
 }
-function socialSkillMensajeF111(code) {
+function socialSkillSafeUserErrorF111(code) {
   const map = {
     social_esquema_no_preparado:'Administración debe habilitar primero el registro Social Skill.',
     nota_social_ya_oficial:'La calificación oficial ya existe. No se puede reemplazar desde este formulario.',
@@ -98,7 +98,7 @@ function SocialSkillDocenteF111({calendario,pendientes}) {
       else if(r.nota_oficial!==null && r.nota_oficial!==undefined)setPuntos(String(r.nota_oficial));
       if(!r.esquema_preparado && r.estado!=='CONFIRMADA')
         setMensaje('El registro Social Skill todavía no fue habilitado por superadmin.');
-    }else setMensaje(socialSkillMensajeF111(r.error));
+    }else setMensaje(socialSkillSafeUserErrorF111(r.error));
     setBusy(false);
   };
   const saveDraft=async() => {
@@ -113,7 +113,7 @@ function SocialSkillDocenteF111({calendario,pendientes}) {
       setRegistro(prev=>({...prev,estado:'BORRADOR',borrador:{event_id:r.event_id,puntos:Number(puntos),comentario:comentario.trim()}}));
       setDirty(false);requestRef.current='';
       setMensaje('Borrador guardado y confirmado por el servidor. Todavía no es nota oficial.');
-    }else setMensaje(socialSkillMensajeF111(r.error));
+    }else setMensaje(socialSkillSafeUserErrorF111(r.error));
     setBusy(false);
   };
   const publish=async() => {
@@ -131,7 +131,7 @@ function SocialSkillDocenteF111({calendario,pendientes}) {
       setMensaje('Nota Social Skill confirmada oficialmente. Se preservó la nota CONAPE.');
       setDirty(false);requestRef.current='';
     }else{
-      setMensaje(socialSkillMensajeF111(r.error));
+      setMensaje(socialSkillSafeUserErrorF111(r.error));
       // Después de un timeout o estado parcial, NO disparar segunda escritura a ciegas.
       if(['red_o_tiempo_agotado','publicacion_pendiente_conciliacion','conciliacion_superadmin_requerida'].includes(r.error))
         setRegistro(prev=>({...prev,estado:'PREPARADA'}));
