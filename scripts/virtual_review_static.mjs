@@ -115,7 +115,7 @@ for (const ref of [...staticAssets, ...lazyAssets]) {
 // Validate both exact URLs AND the full per-route map; any unexpected scope/version
 // remains P2 instead of being silently waived.
 const scopedVersions = Object.freeze({
-  'src/solicitudes_unificadas.jsx': { base:'src/solicitudes_unificadas.jsx?v=F98.4A', scopes:['student_evaluations'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
+  'src/solicitudes_unificadas.jsx': { base:'src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C', scopes:['student_evaluations'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
   'src/student_modules.jsx': { base:'src/student_modules.jsx?v=F111PROFILECANONICAL20261020', scopes:['student_evaluations','student_documents'], suffix:'&deep=F111STUDENTDEEPTABS20261104A', extra:'&four=F111FOURTABSEN20261104A' },
   'src/syllabus_views.jsx': { base:'src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023', scopes:['student_course','student_documents'], suffix:'&deep=F111STUDENTDEEPTABS20261104A' },
   'src/cronograma_grupo.jsx': { base:'src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A', scopes:['student_course'], studentUrl:'src/cronograma_grupo.jsx?v=F111ATTEND20261021&calendar=F111STUDENTCALEN20261104A&crday=F111CRDAY20261104A' },

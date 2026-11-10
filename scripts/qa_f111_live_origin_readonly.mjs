@@ -21,7 +21,7 @@ const SPECS=[
  {path:'src/student_academic_summary_dom_cs21a113.js',marker:"postStudentPortal('getAsistenciaEstudiante'",kind:'source'},
  {path:'src/sidebar.jsx',marker:"id: 'asistencia_grupos'",kind:'source'},
  {path:'src/app.jsx',marker:'component="AttendanceGroupsSuperadminView"',kind:'source'},
- {path:'src/admin_students.jsx',marker:'Título final del programa (según proforma)',kind:'source'},
+ {path:'src/admin_students.jsx',marker:"{label:'Título final del programa',valor:c.programa}",kind:'source'},
  {path:'src/aplicar_pago.jsx',marker:'Título final del programa (según proforma)',kind:'source'},
  {path:'src/admin_attendance_roster.jsx',marker:'Object.assign(window,{AttendanceGroupsSuperadminView})',kind:'source'},
  {path:'src/auditoria_academica.jsx',marker:'justificacion: justificacion.trim()',kind:'source'}
