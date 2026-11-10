@@ -99,5 +99,16 @@ check(f92.includes('data.flags?.escritura_ceros===true')&&
  'readiness warns about zero-write flag and safely handles read failures');
 check(f92.includes('{isSuper&&<ReposicionesR57Diagnostico/>}'),
  'readiness UI stays inaccessible to teacher/student roles');
+check(f92.includes("f92Post('reposConfigurarInicioProspectivoR57'")&&
+ f92.includes("CONFIRMAR_INICIO_B5_2026_11_12"),
+ 'prospective date POST is explicit and PINNED to 12 Nov superadmin UI');
+check(f92.includes('data.b5_programado')&&f92.includes('data.inicio_iso')&&
+ f92.includes("timeZone:'America/Costa_Rica'"),
+ 'policy status distinguishes scheduled/active date in Costa Rica');
+check(f92.includes('data.auxiliares_preparadas')&&f92.includes('data.auxiliares_total'),
+ 'readiness displays four separate auxiliary sheets');
+check(f92.includes("Object.values(data.flags||{}).some(v=>v===true)")&&
+ f92.includes('No habilita exámenes ni reabre lecciones históricas.'),
+ 'superadmin date button disabled if any mutating flag is ON or history might reopen');
 console.log('F111_R57_B5_PDF_SELECTIVE '+passed+'/'+passed+
- ' PASS; finance_writes=0; production_writes=0; release=NOT_AUTHORIZED');
+ ' PASS; finance_writes=0; production_writes=0; release=PHASE1_AUTHORIZED_DATE_PENDING');
