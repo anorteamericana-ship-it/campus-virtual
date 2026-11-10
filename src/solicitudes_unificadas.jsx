@@ -262,6 +262,7 @@ function ReposicionesR57RecuperacionAdmin({reposicionId}){
 
 function ReposicionesR57Diagnostico(){
   const [data,setData]=React.useState(null),[busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+  const [setting,setSetting]=React.useState(false),[notice,setNotice]=React.useState('');
   const inspect=async()=>{
     if(busy)return;
     setBusy(true);setError('');
@@ -273,6 +274,21 @@ function ReposicionesR57Diagnostico(){
     }catch(e){setData(null);setError('No se pudo verificar la configuración R57. No activés procesos de escritura.');}
     finally{setBusy(false);}
   };
+  const program=async()=>{
+    if(setting||busy)return;
+    if(!window.confirm('Programar B5 desde el 12 de noviembre de 2026 a las 00:00 (Costa Rica). Esta acción NO habilita exámenes, notas, PDF ni ceros. ¿Confirmás?'))return;
+    setSetting(true);setError('');setNotice('');
+    try{
+      const r=await f92Post('reposConfigurarInicioProspectivoR57',
+        {confirmar:'CONFIRMAR_INICIO_B5_2026_11_12'});
+      if(r.ok!==true||r.banderas_preservadas!==true||
+         r.fecha_inicio_iso!=='2026-11-12T00:00:00-06:00')
+        throw new Error('r57_fase1_configuracion_no_confirmada');
+      setNotice(r.ya_configurado?'La fecha ya estaba configurada.':'Fecha B5 programada; las cinco banderas permanecen sin cambios.');
+      await inspect();
+    }catch(e){setError('No se pudo confirmar la fecha. No se modificaron permisos desde esta pantalla; revisá la configuración con el responsable técnico.');}
+    finally{setSetting(false);}
+  };
   const items=[
     ['acceso_escrito','Acceso a examen escrito (48 h)'],
     ['borradores_orales','Borradores de examen oral'],
@@ -283,10 +299,29 @@ function ReposicionesR57Diagnostico(){
   return <details data-r57-readiness="superadmin" style={{border:'1px solid var(--line)',borderRadius:10,padding:'10px 12px',margin:'10px 0 14px',background:'#FAFBFE'}}>
     <summary style={{fontSize:12,fontWeight:850,cursor:'pointer'}}>Diagnóstico de preparación R57 · solo superadmin</summary>
     <p style={{fontSize:11.5,color:'var(--ink-3)',margin:'8px 0'}}>Consulta de solo lectura: no activa exámenes, modifica notas ni crea solicitudes.</p>
-    <button type="button" className="btn btn-ghost" onClick={inspect} disabled={busy}>{busy?'Verificando…':'Revisar estado R57'}</button>
+    <button type="button" className="btn btn-ghost" onClick={inspect} disabled={busy||setting}>{busy?'Verificando…':'Revisar estado R57'}</button>
+    {notice&&<p role="status" style={{fontSize:12,color:'#17663B',fontWeight:800}}>{notice}</p>}
     {error&&<p role="alert" style={{fontSize:12,color:'#991B1B'}}>{error}</p>}
     {data&&<div style={{fontSize:12,marginTop:12,display:'grid',gap:8}}>
-      <div><strong>Política B5:</strong> {data.b5_configurado?'Configurada':'Pendiente'} · <strong>Solicitud:</strong> {data.b5_listo?'Lista':'No lista'} · <strong>Escrito 48 h:</strong> {data.escrito_48h_listo?'Listo':'No listo'}</div>
+      <div><strong>Política B5:</strong> {data.b5_programado?'Programada (aún no activa)':data.b5_activo?'Activa':'Pendiente'}
+        {' · '}<strong>Solicitud:</strong> {data.b5_listo?'Lista':'No lista'}
+        {' · '}<strong>Escrito 48 h:</strong> {data.escrito_48h_listo?'Listo':'No listo'}</div>
+      <div><strong>Hojas auxiliares:</strong> {data.auxiliares_preparadas??'?'} de {data.auxiliares_total??4} preparadas
+        {' · '}<strong>Oral R57:</strong> {data.oral_borradores_listos?'Listo':'No habilitado'}</div>
+      {data.inicio_iso&&<p style={{margin:0}}><strong>Inicio B5 configurado:</strong> {new Date(data.inicio_iso).toLocaleString('es-CR',{timeZone:'America/Costa_Rica',dateStyle:'long',timeStyle:'short'})} · Hora de Costa Rica</p>}
+      {!data.b5_configurado&&!data.requiere_revision_fecha&&
+        <div style={{border:'1px solid var(--line)',borderRadius:10,padding:11,background:'#FFFDF8'}}>
+          <strong>Fase 1 autorizada: inicio prospectivo B5</strong>
+          <p style={{margin:'5px 0 10px'}}>Fecha fija: <strong>12 de noviembre de 2026, 00:00 (Costa Rica)</strong>.
+            Solo se permite configurar la fecha si las cinco banderas están apagadas.
+            No habilita exámenes ni reabre lecciones históricas.</p>
+          <button type="button" className="btn btn-ghost" onClick={program}
+            disabled={busy||setting||Object.values(data.flags||{}).some(v=>v===true)||
+             Date.now()>=new Date('2026-11-12T00:00:00-06:00').getTime()}>
+            {setting?'Programando…':'Programar fecha B5 · 12 nov'}
+          </button>
+        </div>}
+      {data.requiere_revision_fecha&&<p role="alert" style={{color:'#991B1B'}}>Ya existe una configuración de fecha inválida. No se sobrescribirá automáticamente.</p>}
       {items.map(([key,label])=><div key={key} style={{display:'flex',justifyContent:'space-between',gap:10,borderTop:'1px solid var(--line)',paddingTop:5}}>
         <span>{label}</span><strong>{data.flags?.[key]===true?'SI':'NO'}</strong>
       </div>)}
