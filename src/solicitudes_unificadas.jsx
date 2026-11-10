@@ -264,10 +264,17 @@ function ReposicionesR57Admin(){
   const ses=typeof getSesion==='function'?getSesion():null;
   const isSuper=String(ses?.rol||'').toLowerCase()==='superadmin';
   const [rows,setRows]=React.useState([]),[enabled,setEnabled]=React.useState(false),
-    [error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
+    [loading,setLoading]=React.useState(true),[error,setError]=React.useState(''),[busy,setBusy]=React.useState('');
   const load=React.useCallback(async()=>{
-    try{const r=await f92Post('reposListarCiclosR57');setRows(r.rows||[]);setEnabled(true);}
-    catch(e){console.warn('[F111 R57] Listado admin aún no disponible.',e);setEnabled(false);}
+    setLoading(true);setError('');
+    try{
+      const r=await f92Post('reposListarCiclosR57');
+      if(!Array.isArray(r.rows))throw new Error('r57_formato_listado_invalido');
+      setRows(r.rows);setEnabled(true);
+    }catch(e){
+      console.warn('[F111 R57] No se pudo verificar la bandeja; decisiones bloqueadas.',e);
+      setRows([]);setEnabled(false);
+    }finally{setLoading(false);}
   },[]);
   React.useEffect(()=>{load();},[load]);
   const act=async(row,decision)=>{
@@ -279,11 +286,19 @@ function ReposicionesR57Admin(){
     catch(e){setError(r57UserSafeError(e,'No se pudo resolver esta solicitud.','R57:admin'));}
     finally{setBusy('');}
   };
-  if(!enabled)return null;
+  if(!enabled)return <section className="card" data-r57-admin-requests="unavailable" style={{padding:16,marginBottom:15}}>
+    <div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',color:'#7A1E2C'}}>SOLICITUDES DE REPOSICIÓN · 48 HORAS</div>
+    <h3 style={{fontSize:19,margin:'5px 0 7px'}}>{loading?'Verificando bandeja R57…':'Bandeja R57 no disponible'}</h3>
+    {!loading&&<><p role="alert" style={{fontSize:12,color:'#7A1E2C',margin:'0 0 12px'}}>No fue posible verificar las solicitudes nuevas. Las decisiones permanecen bloqueadas hasta recuperar la consulta.</p>
+      <button type="button" className="btn btn-ghost" onClick={load}>Reintentar consulta</button></>}
+  </section>;
   const pending=rows.filter(x=>String(x.ESTADO).toUpperCase()==='SOLICITADA');
   return <section className="card" data-r57-admin-requests="true" style={{padding:16,marginBottom:15}}>
     <div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',color:'#7A1E2C'}}>SOLICITUDES DE REPOSICIÓN · 48 HORAS</div>
-    <h3 style={{fontSize:19,margin:'5px 0 7px'}}>Decisiones pendientes ({pending.length})</h3>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+      <h3 style={{fontSize:19,margin:'5px 0 7px'}}>Decisiones pendientes ({pending.length})</h3>
+      <button type="button" className="btn btn-ghost" onClick={load} disabled={loading||!!busy}>{loading?'Actualizando…':'Actualizar bandeja R57'}</button>
+    </div>
     <p style={{fontSize:12,color:'var(--ink-3)',margin:'0 0 12px'}}>La decisión del superadmin es Sí o No, sin comprobación de pago en el Campus.</p>
     {error&&<div role="alert" style={{color:'#991B1B',padding:8,background:'#FDECEA',borderRadius:8,marginBottom:7}}>{error}</div>}
     {!pending.length&&<div style={{fontSize:12,color:'var(--ink-3)'}}>No hay solicitudes nuevas pendientes.</div>}
@@ -293,8 +308,8 @@ function ReposicionesR57Admin(){
         <div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>{r.COD_GRUPO} · {r.NIVEL} · Lección {r.LECCION} · {r.TIPO_EXAMEN}</div>
         <p style={{fontSize:12,margin:'7px 0'}}>{r.SOLICITUD_MOTIVO||'Sin explicación registrada'}</p>
         {isSuper?<div style={{display:'flex',justifyContent:'flex-end',gap:7}}>
-          <button className="btn btn-ghost" disabled={!!busy} onClick={()=>act(r,'NO')}>NO AUTORIZAR</button>
-          <button className="btn btn-primary" disabled={!!busy} onClick={()=>act(r,'SI')}>SÍ · AUTORIZAR 48 HORAS</button>
+          <button className="btn btn-ghost" disabled={loading||!!busy} onClick={()=>act(r,'NO')}>NO AUTORIZAR</button>
+          <button className="btn btn-primary" disabled={loading||!!busy} onClick={()=>act(r,'SI')}>SÍ · AUTORIZAR 48 HORAS</button>
         </div>:<div style={{fontSize:11,color:'var(--ink-3)'}}>Solo superadmin puede resolver solicitudes.</div>}
       </div>)}
     </div>
@@ -498,8 +513,14 @@ function ReposicionesAdminSolicitudesF92(){
   React.useEffect(()=>{load();},[load]);
   const legacyRows=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5');
   const act=async(r,accion)=>{let note=window.prompt(accion==='APROBAR_JUSTIFICACION'?'Observación de aprobación:':accion==='RECHAZAR_JUSTIFICACION'?'Motivo por el que requiere ₡10.000:':'Referencia validada del pago:',r.ADMIN_NOTA||r.PAGO_REFERENCIA||'');if(note===null)return;setBusy(r.REPOSICION_ID+accion);try{await f92Post('reposResolverSolicitudF92',{reposicion_id:r.REPOSICION_ID,accion,admin_nota:note,pago_referencia:note});await load();}catch(e){setError(f92SafeUserError(e,'No se pudo actualizar la solicitud de reposición.','reposResolverSolicitudF92'));}finally{setBusy('');}};
-  if(loading)return <div className="card">Cargando solicitudes de examen…</div>;
-  return <div><ReposicionesR57Admin />{error&&<div style={{padding:12,background:'#FDECEA',color:'#991B1B',borderRadius:10,marginBottom:10}}>{error}</div>}{!legacyRows.length?<div className="card" style={{textAlign:'center',padding:30}}>No hay reposiciones registradas.</div>:<div style={{display:'flex',flexDirection:'column',gap:10}}>{legacyRows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),st=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase();return <div className="card" key={r.REPOSICION_ID} style={{padding:15}}>
+  return <div><ReposicionesR57Admin />
+    <section data-r57-legacy-history="true" style={{padding:'15px 16px',margin:'14px 0 10px',background:'#F8FAFE',border:'1px solid var(--line)',borderRadius:12}}>
+      <div style={{fontSize:10,fontWeight:900,letterSpacing:'.1em',color:'#40516A'}}>HISTORIAL · SISTEMA ANTERIOR (F92)</div>
+      <h3 style={{fontSize:17,margin:'5px 0'}}>Reposiciones anteriores</h3>
+      <p style={{fontSize:12,color:'var(--ink-3)',margin:0}}>Los expedientes de esta sección son históricos y no pertenecen a las solicitudes nuevas R57 de 48 horas.</p>
+    </section>
+    {error&&<div style={{padding:12,background:'#FDECEA',color:'#991B1B',borderRadius:10,marginBottom:10}}>{error}</div>}
+    {loading?<div className="card">Cargando historial anterior…</div>:!legacyRows.length?(error?null:<div className="card" style={{textAlign:'center',padding:30}}>No hay reposiciones en el sistema anterior.</div>):<div style={{display:'flex',flexDirection:'column',gap:10}}>{legacyRows.map(r=>{const [label,fg,bg]=f92RepoStatus(r.ESTADO),st=String(r.ESTADO||'').toUpperCase(),sent=String(r.SOLICITUD_ESTADO||'').toUpperCase();return <div className="card" key={r.REPOSICION_ID} style={{padding:15}}>
     <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:12,alignItems:'start'}}><div><div style={{fontSize:14,fontWeight:850}}>{r.NOMBRE} <span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--ink-3)'}}>#{r.COD_ESTUDIANTE}</span></div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:3}}>{r.TIPO_EXAMEN} · Lección {String(r.LECCION).padStart(2,'0')} · {window.appTeacherGroupLabelF88?window.appTeacherGroupLabelF88(r.COD_GRUPO):r.COD_GRUPO} · vence {f92FmtDate(r.FECHA_LIMITE)}</div></div><span style={{padding:'4px 9px',borderRadius:999,background:bg,color:fg,fontSize:10,fontWeight:900}}>{label}</span></div>
     <div style={{marginTop:10,padding:10,borderRadius:10,background:'#F8FAFE',fontSize:12}}><b>Solicitud:</b> {sent||'NO ENVIADA'}{r.SOLICITUD_MOTIVO&&<div style={{marginTop:4}}>{r.SOLICITUD_MOTIVO}</div>}<div style={{display:'flex',gap:8,marginTop:7,flexWrap:'wrap'}}>{r.SOLICITUD_ARCHIVO_URL&&<a className="btn btn-ghost" href={r.SOLICITUD_ARCHIVO_URL} target="_blank" rel="noreferrer">Ver respaldo</a>}{r.PAGO_ARCHIVO_URL&&<a className="btn btn-ghost" href={r.PAGO_ARCHIVO_URL} target="_blank" rel="noreferrer">Ver comprobante</a>}</div></div>
     <div style={{display:'flex',gap:7,justifyContent:'flex-end',marginTop:10,flexWrap:'wrap'}}>{esSuperadmin&&st==='PENDIENTE_JUSTIFICACION'&&sent==='ENVIADA'&&<><button className="btn btn-ghost" disabled={!!busy} onClick={()=>act(r,'RECHAZAR_JUSTIFICACION')}>REQUIERE ₡10.000</button><button className="btn btn-primary" disabled={!!busy} onClick={()=>act(r,'APROBAR_JUSTIFICACION')}>APROBAR SIN COSTO</button></>}{st==='PENDIENTE_JUSTIFICACION'&&sent!=='ENVIADA'&&<span style={{fontSize:11,color:'#8A5A00'}}>Esperando solicitud del estudiante dentro de 24 horas.</span>}{esSuperadmin&&st==='PENDIENTE_PAGO'&&sent==='PAGO_REPORTADO'&&<button className="btn btn-primary" disabled={!!busy} onClick={()=>act(r,'CONFIRMAR_PAGO')}>CONFIRMAR PAGO</button>}{!esSuperadmin&&((st==='PENDIENTE_JUSTIFICACION'&&sent==='ENVIADA')||(st==='PENDIENTE_PAGO'&&sent==='PAGO_REPORTADO'))&&<span style={{fontSize:11,color:'#40516A'}}>Pendiente de resolución por Superadmin.</span>}</div>
