@@ -260,6 +260,46 @@ function ReposicionesR57RecuperacionAdmin({reposicionId}){
   </details>;
 }
 
+function ReposicionesR57Diagnostico(){
+  const [data,setData]=React.useState(null),[busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+  const inspect=async()=>{
+    if(busy)return;
+    setBusy(true);setError('');
+    try{
+      const r=await f92Post('reposListarCiclosR57',{incluir_diagnostico:true});
+      if(!r.diagnostico||r.diagnostico.ok!==true||r.diagnostico.solo_lectura!==true)
+        throw new Error('r57_diagnostico_no_verificado');
+      setData(r.diagnostico);
+    }catch(e){setData(null);setError('No se pudo verificar la configuración R57. No activés procesos de escritura.');}
+    finally{setBusy(false);}
+  };
+  const items=[
+    ['acceso_escrito','Acceso a examen escrito (48 h)'],
+    ['borradores_orales','Borradores de examen oral'],
+    ['rectificacion_notas','Rectificaciones oficiales'],
+    ['pdf_escrito','PDF escrito y respaldo'],
+    ['escritura_ceros','Escritura automática de ceros']
+  ];
+  return <details data-r57-readiness="superadmin" style={{border:'1px solid var(--line)',borderRadius:10,padding:'10px 12px',margin:'10px 0 14px',background:'#FAFBFE'}}>
+    <summary style={{fontSize:12,fontWeight:850,cursor:'pointer'}}>Diagnóstico de preparación R57 · solo superadmin</summary>
+    <p style={{fontSize:11.5,color:'var(--ink-3)',margin:'8px 0'}}>Consulta de solo lectura: no activa exámenes, modifica notas ni crea solicitudes.</p>
+    <button type="button" className="btn btn-ghost" onClick={inspect} disabled={busy}>{busy?'Verificando…':'Revisar estado R57'}</button>
+    {error&&<p role="alert" style={{fontSize:12,color:'#991B1B'}}>{error}</p>}
+    {data&&<div style={{fontSize:12,marginTop:12,display:'grid',gap:8}}>
+      <div><strong>Política B5:</strong> {data.b5_configurado?'Configurada':'Pendiente'} · <strong>Solicitud:</strong> {data.b5_listo?'Lista':'No lista'} · <strong>Escrito 48 h:</strong> {data.escrito_48h_listo?'Listo':'No listo'}</div>
+      {items.map(([key,label])=><div key={key} style={{display:'flex',justifyContent:'space-between',gap:10,borderTop:'1px solid var(--line)',paddingTop:5}}>
+        <span>{label}</span><strong>{data.flags?.[key]===true?'SI':'NO'}</strong>
+      </div>)}
+      {data.flags?.escritura_ceros===true&&<p role="alert" style={{color:'#991B1B',fontWeight:850}}>Atención: escritura automática de ceros habilitada. Requiere revisión independiente.</p>}
+      <div style={{fontWeight:850,marginTop:5}}>Hojas operativas (sin datos de estudiantes)</div>
+      {(data.hojas||[]).map(s=><div key={s.nombre} style={{borderTop:'1px solid var(--line)',paddingTop:5}}>
+        {s.nombre}: <strong>{s.existe?(s.cabeceras_ok?'OK':'Columnas incompletas'):'NO EXISTE'}</strong>
+        {Array.isArray(s.faltantes)&&s.faltantes.length>0&&<div style={{color:'#991B1B'}}>Faltan: {s.faltantes.join(', ')}</div>}
+      </div>)}
+    </div>}
+  </details>;
+}
+
 function ReposicionesR57Admin(){
   const ses=typeof getSesion==='function'?getSesion():null;
   const isSuper=String(ses?.rol||'').toLowerCase()==='superadmin';
@@ -300,6 +340,7 @@ function ReposicionesR57Admin(){
       <button type="button" className="btn btn-ghost" onClick={load} disabled={loading||!!busy}>{loading?'Actualizando…':'Actualizar bandeja R57'}</button>
     </div>
     <p style={{fontSize:12,color:'var(--ink-3)',margin:'0 0 12px'}}>La decisión del superadmin es Sí o No, sin comprobación de pago en el Campus.</p>
+    {isSuper&&<ReposicionesR57Diagnostico/>}
     {error&&<div role="alert" style={{color:'#991B1B',padding:8,background:'#FDECEA',borderRadius:8,marginBottom:7}}>{error}</div>}
     {!pending.length&&<div style={{fontSize:12,color:'var(--ink-3)'}}>No hay solicitudes nuevas pendientes.</div>}
     <div style={{display:'flex',flexDirection:'column',gap:8}}>

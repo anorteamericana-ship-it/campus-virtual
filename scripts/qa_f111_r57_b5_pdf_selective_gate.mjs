@@ -91,5 +91,13 @@ check(f92.includes('data-r57-legacy-history="true"')&&
 check(!f92.includes('if(loading)return <div className="card">Cargando solicitudes de examen…</div>')&&
  f92.includes('Cargando historial anterior…'),
  'R57 admin inbox mounts independently of legacy F92 loading');
+check(f92.includes('function ReposicionesR57Diagnostico()')&&
+ f92.includes("f92Post('reposListarCiclosR57',{incluir_diagnostico:true})"),
+ 'superadmin diagnostic reuses authenticated R57 read-only endpoint');
+check(f92.includes('data.flags?.escritura_ceros===true')&&
+ f92.includes('No activés procesos de escritura.'),
+ 'readiness warns about zero-write flag and safely handles read failures');
+check(f92.includes('{isSuper&&<ReposicionesR57Diagnostico/>}'),
+ 'readiness UI stays inaccessible to teacher/student roles');
 console.log('F111_R57_B5_PDF_SELECTIVE '+passed+'/'+passed+
  ' PASS; finance_writes=0; production_writes=0; release=NOT_AUTHORIZED');
