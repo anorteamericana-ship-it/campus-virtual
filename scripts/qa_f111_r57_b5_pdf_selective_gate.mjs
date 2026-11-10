@@ -75,5 +75,21 @@ check(app.includes('F111R57WRITTENPDF20261109B')&&html.includes('F111R57WRITTENP
  'parent and iframe share PDF bundle cache version');
 check(!app.includes('src/social_skill_docente_f111.jsx'),
  'unrelated Social Skill not loaded in selective branch');
+check(f92.includes('data-r57-admin-requests="unavailable"')&&
+ f92.includes('Reintentar consulta')&&f92.includes('Bandeja R57 no disponible'),
+ 'admin inbox remains visible with safe retry when the R57 read fails');
+check(f92.includes("if(!Array.isArray(r.rows))throw new Error('r57_formato_listado_invalido')")&&
+ f92.includes('setRows([]);setEnabled(false);'),
+ 'invalid R57 list cannot display stale admin decisions');
+check(f92.includes('Actualizar bandeja R57')&&
+ f92.includes('disabled={loading||!!busy}'),
+ 'manual read-only refresh blocks concurrent R57 decisions');
+check(f92.includes('data-r57-legacy-history="true"')&&
+ f92.includes('HISTORIAL · SISTEMA ANTERIOR (F92)')&&
+ f92.includes('No hay reposiciones en el sistema anterior.'),
+ 'legacy F92 records are clearly separated from R57 and have truthful empty state');
+check(!f92.includes('if(loading)return <div className="card">Cargando solicitudes de examen…</div>')&&
+ f92.includes('Cargando historial anterior…'),
+ 'R57 admin inbox mounts independently of legacy F92 loading');
 console.log('F111_R57_B5_PDF_SELECTIVE '+passed+'/'+passed+
  ' PASS; finance_writes=0; production_writes=0; release=NOT_AUTHORIZED');
