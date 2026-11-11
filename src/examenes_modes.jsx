@@ -883,6 +883,7 @@ function TeacherWrittenLiveInbox() {
   const [focus, setFocus] = useState(null);
   const [focusError, setFocusError] = useState('');
   const requestSeq = React.useRef(0);
+  const lastLoadedGroup = React.useRef('');
   const selectedRef = React.useRef(null);
   useEffect(() => { selectedRef.current=selected; },[selected]);
   // EXUI-05C: focus comes only from the same-origin authenticated Campus parent.
@@ -928,7 +929,13 @@ function TeacherWrittenLiveInbox() {
       setErr('No se encontró un grupo docente asignado para consultar entregas.');
       return;
     }
-    setRows([]); setSummary(null); setLoading(true); setErr(''); if (!silent) setMsg('');
+    // Retain already verified rows during the 15-second same-group refresh,
+    // but never show previous-group rows while a new group is being checked.
+    if(lastLoadedGroup.current!==g){
+      setRows([]);setSummary(null);
+      lastLoadedGroup.current=g;
+    }
+    setLoading(true); setErr(''); if (!silent) setMsg('');
     // A forged group in a UI message is NOT a teacher permission: only this
     // authorized server response may populate the scoped inbox.
     const r = await postExamBackend('examReviewInbox', { cod_grupo:g, queue:'NEEDS_ACTION', limit:120 });
@@ -978,7 +985,7 @@ function TeacherWrittenLiveInbox() {
       lesson===scopedFocus.leccion&&
       (!scopedFocus.cod_estudiante||student===scopedFocus.cod_estudiante);
   }):rows;
-  const panelGroups=grupo&&!grupos.includes(grupo)?[grupo,...grupos]:grupos;
+  const panelGroups=grupos;
 
   return (
     <div className="tchwrap">
@@ -995,8 +1002,10 @@ function TeacherWrittenLiveInbox() {
       </div>
 
       <div className="tch-groups-panel">
-        <div className="tch-groups-label">ELEGÍ EL GRUPO CON UNA TARJETA</div>
-        <div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
+        <div className="tch-groups-label">
+          {scopedFocus?'GRUPO SELECCIONADO EN MIS EXÁMENES':'ELEGÍ EL GRUPO CON UNA TARJETA'}
+        </div>
+        {!scopedFocus&&<div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
           {panelGroups.length ? panelGroups.map(g => (
             <button key={g} type="button" role="tab" aria-selected={grupo===g}
               className={`tch-group-card${grupo===g?' active':''}`}
@@ -1006,15 +1015,22 @@ function TeacherWrittenLiveInbox() {
             </button>
           )) : <div className="tch-group-empty">Sin grupos asignados en la sesión.</div>}
           <button type="button" className="tch-refresh" disabled={loading || !grupo} onClick={()=>load(false)}>{loading ? 'Actualizando…' : 'Actualizar entregas'}</button>
-        </div>
+        </div>}
         {scopedFocus&&<div data-f111-written-focus="true" role="status"
           style={{padding:'10px 12px',marginTop:10,border:'1px solid #C9D7E6',borderRadius:8,background:'#F3F7FC',fontSize:12}}>
           <b>Consulta contextual:</b> {scopedFocus.grupo} · {scopedFocus.nivel} ·
           lección {scopedFocus.leccion}
           {scopedFocus.cod_estudiante?' · estudiante '+scopedFocus.cod_estudiante:''}
           <button type="button" className="tch-refresh"
-            style={{marginLeft:10}} onClick={()=>{setFocus(null);setFocusError('');}}>
+            style={{marginLeft:10}} onClick={()=>{
+              setFocus(null);setFocusError('');
+              if(!grupos.includes(grupo))setGrupo(grupos[0]||'');
+            }}>
             Ver todas las entregas de este grupo
+          </button>
+          <button type="button" className="tch-refresh" disabled={loading}
+            onClick={()=>load(false)} style={{marginLeft:8}}>
+            {loading?'Actualizando…':'Actualizar entregas'}
           </button>
           <div style={{fontSize:11,marginTop:5}}>
             Solo se muestran entregas que el servidor autorizó para el grupo. Consultar aquí no habilita ni crea exámenes.
