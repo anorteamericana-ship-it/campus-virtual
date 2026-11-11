@@ -238,13 +238,14 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
  let info=null,busy=false;
  const context=()=>({cod_grupo:select.value,nivel:'B1',leccion:lesson});
  async function refresh(){
-  toggle.disabled=true;info=null;
+  toggle.disabled=true;previewBtn.disabled=true;reviewBtn.disabled=true;info=null;
   if(!select.value){toggle.textContent='SIN GRUPO SELECCIONADO';status.textContent='Seleccioná un grupo autorizado.';return;}
   try{
    const data=await postQuiz('qzProgressTeacherAvailability',context());
    if(data.grupo!==select.value||Number(data.leccion)!==lesson||data.digital_disponible!==true)
     throw Error('Grupo o lección no habilitados');
    info=data;
+   previewBtn.disabled=false;reviewBtn.disabled=false;
    toggle.textContent=data.estado==='ABIERTO'?'CERRAR QUIZ PARA ESTUDIANTES':'ACTIVAR QUIZ PARA ESTUDIANTES';
    toggle.disabled=busy||(data.estado!=='ABIERTO'&&data.puede_abrir!==true);
    status.textContent='Quiz '+String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' · '+
@@ -284,7 +285,7 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
   const pinned=String(preferredGroup||'').trim().toUpperCase();
   if(pinned&&groups.some(x=>String(x.cod_grupo).trim().toUpperCase()===pinned)){
    select.value=groups.find(x=>String(x.cod_grupo).trim().toUpperCase()===pinned).cod_grupo;
-   previewBtn.disabled=false;reviewBtn.disabled=false;void refresh();
+   void refresh();
   }else{toggle.textContent='NO AUTORIZADO';status.textContent=groups.length?
     'El grupo seleccionado no está autorizado para este docente.':'No hay grupos B1 asignados.';}
  }).catch(e=>{status.textContent='Grupos no disponibles: '+String(e.message||e);});
