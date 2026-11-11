@@ -27,8 +27,8 @@ assert.ok(quiz.includes('Object.keys(allowed).length!==25'),'paridad de 25 campo
 assert.ok(quiz.includes('b1_pc01_listening_track01.mp3'),'audio autenticado original');
 assert.ok(quiz.includes('b1_pc01_original_photo.png'),'foto aprobada intacta');
 assert.ok(teacherView.includes('data-f111-lesson-quiz="B1-L4"'),'preview amarillo conservado');
-assert.ok(teacher.includes('data-f111-quiz-activation'),'acción de apertura docente en drawer');
-assert.ok(teacher.includes('GUARDAR Y CERRAR CLASE'),'apertura UI sólo en lección iniciada');
+assert.ok(teacher.includes('confirmGroupQuizInvitation(select.value'),'apertura docente contextual desde la tarjeta PC01');
+assert.ok(teacher.includes('gate.puede_abrir!==true'),'apertura PC01 exige elegibilidad real del servidor');
 for(const fn of ['qzProgressTeacherAvailability','qzProgressTeacherSetAvailability',
   'qzProgressTeacherList','qzProgressTeacherReview'])
  assert.ok(teacher.includes("'"+fn+"'"),'API docente '+fn);
@@ -65,7 +65,8 @@ assert.ok(quiz.includes('liveUncertain=true')&&quiz.includes('Verificar entrega'
 assert.ok(quiz.includes("params.get('review')==='1'"),'mismo banco original en modo docente de solo lectura');
 assert.ok(quiz.includes("event.origin!==location.origin||event.source!==window.parent"),'mensajes de revisión solo desde la ventana Campus');
 assert.ok(quiz.includes("var persist=function(){if(reviewMode)return;"),'revisión docente jamás persiste borradores locales');
-assert.ok(teacher.includes('openReviewWorkspace'),'revisión amplia, no formulario incrustado en tarjeta estrecha');
+assert.ok(teacher.includes('function openReviewWorkspace(group)'),'revisión amplia con grupo explícito y sin selector adicional');
+assert.ok(!teacher.includes('QZ_GROUP'),'se eliminó el grupo fijo PC01');
 assert.ok(teacher.includes('f111-tqr-workspace-columns')&&teacher.includes('f111-tqr-student-list'),'listado de alumnos a la izquierda y examen a la derecha');
 assert.ok(teacher.includes("url.searchParams.set('review','1')"),'abrir banco de 25 preguntas del estudiante, sin duplicarlo');
 assert.ok(teacher.includes("frame.contentWindow.postMessage(payload,location.origin)")&&teacher.includes("type:'F111_PC01_TEACHER_REVIEW'")&&teacher.includes("answers:parseAnswers(row),keys,nonce"),'respuestas y clave privada al iframe desde profesor autenticado, sin URL ni almacenamiento');
