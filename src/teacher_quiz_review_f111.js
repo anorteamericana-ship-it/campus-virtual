@@ -220,6 +220,25 @@ function authorizedB1Groups(){
  });
  return b1GroupsCache;
 }
+// EXUI-05B: lectura read-only para la CTA de hoy. Ninguna apertura se hace
+// al montar la vista: QUIZ valida rol, grupo, nivel, lección y sesión.
+async function f111TeacherQuizEligibility(lesson,group){
+ const code=String(group||'').trim().toUpperCase(),number=Number(lesson);
+ if(!code||!LESSONS.some(item=>item[0]===number))
+  throw Error('Seleccioná un grupo B1 y una lección Progress Check válida.');
+ const authorized=await authorizedB1Groups();
+ const groups=Array.isArray(authorized?.grupos)?authorized.grupos:[];
+ if(!groups.some(g=>String(g.cod_grupo||'').trim().toUpperCase()===code&&String(g.nivel||'').toUpperCase()==='B1'))
+  throw Error('El grupo no está autorizado en QUIZ para este docente.');
+ const reply=await postQuiz('qzProgressTeacherAvailability',{cod_grupo:code,nivel:'B1',leccion:number});
+ if(String(reply.grupo||'').trim().toUpperCase()!==code||Number(reply.leccion)!==number||
+    (reply.nivel&&String(reply.nivel).toUpperCase()!=='B1')||
+    reply.digital_disponible!==true||Number(reply.peso_oficial)!==0)
+  throw Error('QUIZ no confirmó el grupo, nivel, lección y peso formativo.');
+ return Object.freeze({grupo:code,nivel:'B1',leccion:number,estado:String(reply.estado||''),
+  puede_abrir:reply.puede_abrir===true,digital_disponible:true,peso_oficial:0});
+}
+window.F111_QZ_getTeacherEligibilityF111=f111TeacherQuizEligibility;
 // R9: the assigned teacher explicitly selects a B1 group; no automatic opening.
 // Only the backend decides if the lesson/date/role permits activation.
 function buildB1TeacherOpenControls(lesson,preferredGroup){
