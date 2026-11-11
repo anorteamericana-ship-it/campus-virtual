@@ -239,7 +239,7 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
  const context=()=>({cod_grupo:select.value,nivel:'B1',leccion:lesson});
  async function refresh(){
   toggle.disabled=true;info=null;
-  if(!select.value){status.textContent='Seleccioná un grupo autorizado.';return;}
+  if(!select.value){toggle.textContent='SIN GRUPO SELECCIONADO';status.textContent='Seleccioná un grupo autorizado.';return;}
   try{
    const data=await postQuiz('qzProgressTeacherAvailability',context());
    if(data.grupo!==select.value||Number(data.leccion)!==lesson||data.digital_disponible!==true)
@@ -249,7 +249,7 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
    toggle.disabled=busy||(data.estado!=='ABIERTO'&&data.puede_abrir!==true);
    status.textContent='Quiz '+String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' · '+
     (data.estado==='ABIERTO'?'Abierto por docente':data.puede_abrir?'Cerrado; requiere activación expresa':'No elegible según fecha, clase o permisos');
-  }catch(e){status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;}
+  }catch(e){toggle.textContent='NO DISPONIBLE';status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;}
  }
  select.addEventListener('change',()=>{previewBtn.disabled=!select.value;reviewBtn.disabled=!select.value;void refresh();});
  previewBtn.addEventListener('click',()=>{if(select.value){if(Number(lesson)===4)preview(select.value);else previewB1Protected(lesson,select.value);}});
@@ -259,8 +259,8 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
   const next=info.estado==='ABIERTO'?'CERRADO':'ABIERTO';
   if(next==='ABIERTO'&&info.puede_abrir!==true)return;
   if(next==='ABIERTO'&&Number(lesson)===4){
-   busy=true;try{await confirmGroupQuizInvitation(select.value,toggle,status,refresh);}
-   finally{busy=false;}return;
+   busy=true;try{await confirmGroupQuizInvitation(select.value,toggle,status,()=>{});}
+   finally{busy=false;void refresh();}return;
   }
   if(!window.confirm((next==='ABIERTO'?'¿ACTIVAR':'¿CERRAR')+' el Quiz '+
       String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' del grupo '+select.value+
@@ -285,8 +285,8 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
   if(pinned&&groups.some(x=>String(x.cod_grupo).trim().toUpperCase()===pinned)){
    select.value=groups.find(x=>String(x.cod_grupo).trim().toUpperCase()===pinned).cod_grupo;
    previewBtn.disabled=false;reviewBtn.disabled=false;void refresh();
-  }else status.textContent=groups.length?
-    'Elegí un grupo B1 autorizado antes de abrir o revisar.':'No hay grupos B1 asignados.';
+  }else{toggle.textContent='NO AUTORIZADO';status.textContent=groups.length?
+    'El grupo seleccionado no está autorizado para este docente.':'No hay grupos B1 asignados.';}
  }).catch(e=>{status.textContent='Grupos no disponibles: '+String(e.message||e);});
  return wrap;
 }
