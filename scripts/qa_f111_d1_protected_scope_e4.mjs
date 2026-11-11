@@ -16,8 +16,24 @@ for(const n of protectedFiles){
  const current=read(n),immutable=previous(n);
  if(n==='examenes_modes.jsx'&&current!==immutable){
   const digest=createHash('sha256').update(current,'utf8').digest('hex');
-  assert.equal(digest,r57ApprovedModesSha256,
-   'Protected exam modes changed beyond reviewed R57 written PDF UI+submission warning');
+  if(digest!==r57ApprovedModesSha256){
+   // EXUI-05C permits ONLY the teacher inbox's read-only navigation change.
+   // Check the complete source outside that function equals the prior shipped
+   // 05B source, leaving review writes, PDF, student and admin code immutable.
+   assert.equal(digest,'44921523ac32314bf1f4849d42a533f55a790e5ac808d57952346584cb15c058',
+    'Protected exam modes changed beyond approved 05C read-only inbox');
+   const base05b=execFileSync('git',['show',
+    'efbad33163466cca97ed7db4b481a59ed37055af:src/examenes_modes.jsx'],
+    {encoding:'utf8',maxBuffer:32*1024*1024}).replace(/\r\n/g,'\n');
+   function outsideTeacherInbox(src){
+    const a=src.indexOf('function TeacherWrittenLiveInbox()');
+    const b=src.indexOf('function TeacherReview(',a);
+    assert(a>=0&&b>a,'Inbox boundaries must exist');
+    return src.slice(0,a)+'EXUI05C_INBOX'+src.slice(b);
+   }
+   assert.equal(outsideTeacherInbox(current),outsideTeacherInbox(base05b),
+    'Only read-only teacher inbox may differ from shipped 05B');
+  }
   assert(current.includes("postExamBackend('reposGenerarPdfEscritoR57'")&&
     current.includes('reposicionSyncPending')&&
     current.includes('closed && pushed && pdfState'),
