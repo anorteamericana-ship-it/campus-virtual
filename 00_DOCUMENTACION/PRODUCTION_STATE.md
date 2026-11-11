@@ -1,3 +1,8 @@
+## CORTE VIGENTE F111 EXÁMENES DOCENTE — 11-nov-2026
+El corte 06-nov que sigue abajo es HISTÓRICO, no el último estado de producción. Frontend main 9e0242d8ffb5b313bdc11df78cf2d887fdfa66b3 y Apps Script CORE @499 activo, confirmado por captura de Administrar implementaciones; QUIZ @477 es último readback técnico, no visible en esa captura.
+Auditoría vigente y único inventario de botones: 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md, issue GitHub #499. Duplicidad: ocho quizzes superiores más otros ocho en revisión de material, historial/banco repetidos y selectors independientes. P0: controlador legacy Quiz1 codifica grupo B1-KJ18-C3-0826; no activar quizzes con esa vía general. Ningún Quiz2 de L08 certificado E2 completo.
+Porcentaje histórico F111 16/35 (45,7%), R57 27/48 (56,3%), B6 3/4 (75%), Fase1 R57 4/4 (100%); EXUI 1/5 hitos de aceptación completos (20%). No incrementar matrices globales por publicación visual. No borrar ni mutar notas/ausencias/pagos/cero o contenido Cambridge. Mantener colores por nivel.
+
 # CAMPUS VIRTUAL · Estado de producción
 
 

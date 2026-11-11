@@ -1,3 +1,6 @@
+## FUENTE VIGENTE EXUI-05 — 11-nov-2026
+El encabezado F98/CS21A99 que sigue es HISTÓRICO para Exámenes Docente. La fuente canónica actual es 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md y issue #499. Frontend main 9e0242d8, CORE @499 confirmado por captura, QUIZ @477 último readback; no trabajar sobre código F98 antiguo.
+
 # FUENTE VERDADERA — F98.4-Z6-CS21A99
 
 Estado: frontend CS21A99 guardado en GitHub `main`; backend integral CS21A99 generado y validado estáticamente; publicación de Apps Script y prueba de producción no verificadas.
