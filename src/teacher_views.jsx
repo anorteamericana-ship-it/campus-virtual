@@ -1141,19 +1141,8 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             {!loading&&sessionCheck==='ok'&&<>
               {abierta&&esExamen&&<button className="btn btn-primary" type="button" onClick={abrirExamen} style={{gridColumn:'1/-1',background:'#16834A',borderColor:'#16834A'}}>EXÁMENES</button>}
               <TeacherMaterialButtonF82 lesson={lesson} nivel={nivel}/>
-              {rielLeccion==='curso'&&tvUpper(nivel)==='B1'&&Number(lesson?.leccion)===4&&
-               tvUpper(code)==='B1-KJ18-C3-0826'&&canOperateRail&&!closed&&!sesionCerrada&&
-                <button type="button" data-f111-lesson-quiz="B1-L4"
-                  title="Vista previa docente: no habilita entregas de estudiantes."
-                  className="btn" style={{background:'#F2C83D',border:'1px solid #D8AD28',color:'#173959',fontSize:12,fontWeight:900}}
-                  onClick={()=>{
-                    if(typeof window.f111PC01TeacherLaunch==='function')return window.f111PC01TeacherLaunch();
-                    const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',window.location.href));
-                    url.searchParams.set('preview','1');
-                    url.searchParams.set('grupo',code);
-                    url.searchParams.set('rol','docente');
-                    window.open(url.href,'_blank','noopener,noreferrer');
-                  }}>ABRIR QUIZ · VISTA DOCENTE</button>}
+              {/* EXUI-05A: Quiz 1 se gestiona solo en Mis exámenes,
+                  por grupo autorizado; se retiró la segunda entrada del drawer. */}
 
               {!closed&&!sesionCerrada&&!abierta&&!otherGlobal&&(tvUpper(lesson?.estado)==='PROGRAMADA'||!lesson?.estado)&&<button className="btn btn-ghost" onClick={()=>setSuspOpen(true)}>SOLICITAR SUSPENSIÓN O REPROGRAMACIÓN</button>}
             </>}
@@ -1903,16 +1892,21 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                 <div style={{fontSize:10,color:'#6B6259',marginBottom:9}}>
                   {event?.fecha?String(event.fecha).slice(0,10):tr('Disponibilidad por verificar','Availability to verify')}
                 </div>
-                {nivel==='B1'&&i>=1
-                  ?<button className="btn btn-ghost" type="button"
-                    onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
-                      if(typeof launch==='function')launch(lesson,groupCode);
-                      else openExtra();}}
-                    style={{fontSize:11,borderColor:pal.dark,color:pal.dark,fontWeight:850}}>
-                    {tr('Gestionar Quiz '+(i+1),'Manage Quiz '+(i+1))}
-                  </button>
-                  :<button className="btn btn-ghost" type="button" onClick={openExtra}
-                    style={{fontSize:11}}>{tr('Consultar material','Check material')}</button>}
+                {nivel==='B1'
+                   ?<button className="btn btn-ghost" type="button"
+                     onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
+                       if(typeof launch==='function'){
+                         if(launch(lesson,groupCode)!==false)return;
+                         window.alert(tr('No se pudo abrir el control: grupo o Quiz no reconocido.',
+                           'Could not open controls: group or quiz not recognized.'));
+                       }else window.alert(tr('El control protegido de Quiz no está cargado. Volvé a intentar.',
+                         'Protected quiz controls are not loaded. Please retry.'));}}
+                     style={{fontSize:11,borderColor:pal.dark,color:pal.dark,fontWeight:850}}>
+                     {tr('Gestionar Quiz '+(i+1),'Manage Quiz '+(i+1))}
+                   </button>
+                   :<span role="status" style={{fontSize:11,color:'#6B6259'}}>
+                     {tr('Banco digital no habilitado para este nivel','Digital quiz bank not enabled for this level')}
+                   </span>}
               </div>;
             })}
           </div>

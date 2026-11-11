@@ -20,8 +20,13 @@ assert(preview.includes('NO PUBLICADO')&&preview.includes('No permite entregar n
 assert(preview.includes('No se registra información de estudiantes.'));
 assert(!/fetch\s*\(|XMLHttpRequest|qzProgressSubmit|qzProgressSaveDraft|window\.parent\.postMessage|localStorage|sessionStorage/.test(preview),'preview cannot call backend or persist student progress');
 assert(!/claves\s*[:=]\s*[{\[]/.test(preview),'no answer key published in preview');
-assert(teacher.includes("}else if(level==='B1'){"),'all B1 PC02-08 have protected material previews');
-assert(teacher.includes("editorial.dataset.f111QuizPreview='B1-L8-EDITORIAL'"),'PC02 preserves editorial mock');
+assert(teacher.includes('function buildB1TeacherOpenControls(lesson,preferredGroup)'),
+ 'all B1 PC02–08 use one contextual teacher control');
+assert(teacher.includes('previewB1Protected(lesson,select.value)'),
+ 'protected PDF/audio preview remains reachable through the selected group');
+assert(!teacher.includes('function renderGrid('),'duplicate quiz grid removed');
+assert(teacher.includes('function previewPC02()'),'PC02 editorial helper remains non-live');
+assert(!teacher.includes('VISTA EDITORIAL PC02 ↗'),'old editorial button no longer duplicates the main card');
 assert(teacher.includes('previewPC02'),'teacher preview opens correct non-live page');
 assert(!teacher.includes("qzProgressTeacherSetAvailability',Object.assign({},qzContext,{leccion:8"),'never activate L8 via current PC01 context');
 assert(campus.includes('teacher_quiz_review_f111.js?v=F111R49PDFDRIVELINK20261029'),'teacher asset cache updated');

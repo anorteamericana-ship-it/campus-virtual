@@ -1,43 +1,44 @@
-// F111 QZ32: contrato de revisión docente independiente y sin mutaciones.
+// EXUI-05A: regresión de contexto docente; sin tráfico a producción.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const catalog=read('src/teacher_quiz_review_f111.js');
-const lesson=read('src/teacher_views.jsx');
+const view=read('src/teacher_views.jsx');
 const campus=read('campus.html');
 const quiz=read('modulos/qz_b1_pc01_digital.html');
 const audio=readFileSync(new URL('../media/qz32/b1_pc01_listening_track01.mp3',import.meta.url));
 new Function(catalog);
-assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v='),'se carga en Campus independientemente del código de caché');
-assert.ok(catalog.includes('buildQuizOpenControls'),'cierre desde Exámenes al terminar clase');
-assert.ok(!catalog.includes("text.includes('B1-KJ18-C3-0826')"),'no exigir código largo ausente del encabezado');
-assert.ok(catalog.includes("drawer.querySelector('[data-f111-lesson-quiz=\"B1-L4\"]')"),'el botón autorizado en JSX delimita grupo real');
-assert.ok(catalog.includes('Servidor: '),'error explícito cuando la configuración bloquea la apertura');
-assert.ok(catalog.includes('Revisión de material de quizzes'),'existe la sección docente');
-assert.ok(catalog.includes('section[data-screen-label="Docente · Exámenes"]'),'solo se monta en Exámenes docente');
-for(const code of ['B1','B2','I1','I2'])assert.ok(catalog.includes("['"+code+"'"),'nivel '+code);
-for(const lessonNumber of [4,8,13,16,21,24,28,30])assert.ok(new RegExp('\\['+lessonNumber+',').test(catalog),'PC '+lessonNumber);
-assert.ok(catalog.includes("level==='B1'&&lesson===4"),'solo 1/32 quiz digital disponible');
-assert.ok(catalog.includes('Pendiente de digitalizar'),'31 no fingen estar publicados');
-assert.ok(catalog.includes('data-f111-quiz-preview'),'botón de catálogo identificado');
-assert.ok(lesson.includes('data-f111-lesson-quiz="B1-L4"'),'botón contextual del drawer');
-assert.ok(lesson.includes("tvUpper(code)==='B1-KJ18-C3-0826'"),'grupo Diego 0826');
-assert.ok(lesson.includes("rielLeccion==='curso'")&&lesson.includes("Number(lesson?.leccion)===4"),'solo PC01 y riel curso');
-assert.ok(lesson.includes('canOperateRail&&!closed&&!sesionCerrada'),'respetar permisos del profesor');
-for(const source of [catalog,lesson]){
- assert.ok(source.includes("url.searchParams.set('preview','1')"),'abrir modo preview');
- assert.ok(source.includes("url.searchParams.set('rol','docente')"),'marcar vista docente');
-}
-assert.ok(quiz.includes('b1_pc01_listening_track01.mp3'),'audio original enlazado');
-assert.ok(quiz.includes('b1_pc01_original_photo.png'),'foto aprobada');
-assert.ok(audio.byteLength>100000,'asset MP3 binario existe');
-for(const operation of ['qzProgressSubmit','qzProgressSaveDraft','registrarNotaComponenteOficial','docenteCerrarClaseConAsistenciaF87']){
- assert.ok(!catalog.includes(operation),'docente no entrega quiz del alumno ni altera asistencia: '+operation);
-}
-assert.ok(catalog.includes("'qzProgressTeacherReview'"),'revisión con nota y comentario de PC');
-assert.ok(catalog.includes("'qzProgressTeacherSetAvailability'"),'apertura explícita por docente');
-assert.ok(catalog.includes('window.getSessionToken'),'acciones por sesión autenticada, sin token en URL');
-assert.ok(catalog.includes('comentario_progress_check:comment.value.trim()'),'comentario PC independiente de asistencia');
-assert.ok(catalog.includes("gradeInput.type='text'")&&catalog.includes("gradeInput.readOnly=true")&&catalog.includes("nota:savedScore.percentage")&&catalog.includes("data.points>25"),'resultado docente textual pero nota guardada 0–100 calculada con rango protegido');
-assert.ok(catalog.includes("GUARDAR Y CERRAR CLASE"),'botón habilitador solo al iniciar lección');
-console.log('PASS F111 QZ32 docente: revisión previa, apertura clase, nota PC 0-100, comentario separado de asistencia');
+assert.ok(campus.includes('src/teacher_quiz_review_f111.js?v='),'Campus sigue cargando el motor protegido');
+assert.ok(campus.includes('teacherexams=F111EXUI05A20261111'),'caché actualizado para código nuevo');
+assert.ok(!catalog.includes("QZ_GROUP"),'ningún grupo constante del docente en controlador');
+assert.ok(!catalog.includes("const qzContext={cod_grupo:'B1-KJ18-C3-0826'"),'sin contexto fijo');
+assert.ok(!catalog.includes('function buildQuizOpenControls('),'sin segundo activador legacy');
+assert.ok(!catalog.includes('function attachLessonAction('),'sin activación inyectada al drawer');
+assert.ok(!catalog.includes('function renderGrid('),'sin segundo grid de 8 quizzes');
+assert.ok(!catalog.includes('function build(){'),'sin catálogo duplicado');
+assert.ok(catalog.includes('function openReviewWorkspace(group)'),'PC01 recibe el grupo concreto');
+assert.ok(catalog.includes("const qzContext={cod_grupo:groupCode,nivel:'B1',leccion:4}"),
+ 'revisión e invitación PC01 tienen grupo contextual');
+assert.ok(catalog.includes("qzProgressTeacherB1Groups"),'lista autorizada proveniente del backend');
+assert.ok(catalog.includes("groups.some(x=>String(x.cod_grupo)"),'grupo seleccionado debe pertenecer a lista autorizada');
+assert.ok(catalog.includes("Number(lesson)===4)openReviewWorkspace(select.value)"),'PC01 revisa grupo seleccionado');
+assert.ok(catalog.includes("confirmGroupQuizInvitation(select.value"),'PC01 apertura ligada al grupo del modal');
+assert.ok(catalog.includes("gate.puede_abrir!==true"),'segunda validación de elegibilidad antes de activar PC01');
+assert.ok(catalog.includes("gate.grupo!==groupCode"),'respuesta debe pertenecer al grupo');
+assert.ok(catalog.includes("if(number<1||number>8"),'modal único PC01–PC08');
+assert.ok(catalog.includes("!slot.querySelector('[data-f111-teacher-exam-center]')"),'historial avanzado se monta una sola vez');
+assert.ok(!catalog.includes('modern.append(buildTeacherExamsF111(),build())'),'ningún duplicado de catálogo en extras');
+assert.ok(view.includes('launch(lesson,groupCode)'),'una sola acción por quiz del grupo actual');
+assert.ok(!view.includes('i>=1\n                   ?<button'),'Quiz1 ya no apunta a extras');
+assert.ok(view.includes("Banco digital no habilitado para este nivel"),'B2/I1/I2 sin falsa disponibilidad');
+assert.ok(!view.includes('data-f111-lesson-quiz="B1-L4"'),'sin botón adicional de Quiz1 en el drawer');
+assert.ok(catalog.includes("window.getSessionToken"),'QUiZ exige sesión docente');
+assert.ok(catalog.includes("isQuiz&&window.F111_QZ_API_URL"),'QUIZ separado del CORE');
+assert.ok(catalog.includes("'qzProgressTeacherReview'"),'revisión histórica preservada');
+assert.ok(catalog.includes("'qzProgressTeacherSetAvailability'"),'apertura con confirmación preservada');
+assert.ok(catalog.includes("comentario_progress_check:comment.value.trim()"),'comentario diagnóstico aparte de asistencia');
+for(const op of ['registrarNotaComponenteOficial','docenteCerrarClaseConAsistenciaF87','qzProgressSaveDraft','qzProgressSubmit'])
+ assert.ok(!catalog.includes(op),'control docente no escribe calificaciones/asistencia/entregas: '+op);
+assert.ok(quiz.includes('b1_pc01_listening_track01.mp3'),'audio original intacto');
+assert.ok(audio.byteLength>100000,'audio real retenido');
+console.log('PASS EXUI-05A: PC01–PC08 contextual, grupo autorizado, sin duplicados ni activación fija');
