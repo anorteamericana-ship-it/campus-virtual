@@ -14,12 +14,14 @@ const read=x=>fs.readFileSync(x,'utf8').replace(/\r\n/g,'\n');
 const atBase=x=>execFileSync('git',['show',BASE+':'+x],{encoding:'utf8',maxBuffer:32*1024*1024}).replace(/\r\n/g,'\n');
 const sha=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 const app=read('src/app.jsx');
+// EXUI-05B #757: exact approved teacher UI pins refreshed; all immutable R57
+// baseline checks and protected server routes remain strict.
 const uiPins={
-  'campus.html':'6ad5d0840f436bae4e00e464d15a5ada11d8a0f5c9fad14de091a8c749d7c63b',
-  'src/app.jsx':'eecbca79201b407c70e4f3e58155993aff7cfc8ada147ac279fa48eab6ebc9a4',
-  'src/teacher_views.jsx':'f9d89e3109e3c9e7f97ec73f847686fde53d02fb9a14f8fc2c447cd47f1a0504',
+  'campus.html':'8792212716cf49c1e0f3c22c096793845322efd273db137203e7ddfdfd47feba',
+  'src/app.jsx':'4a4cf0da387c3992e734865d2c52085e4d7613609497f5ee323b6e3fac69fb13',
+  'src/teacher_views.jsx':'9afbdd606ff92ce0db0df142ec55955aca9e46f90aed1b43fe80f4b2f8b6c42a',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
-  'src/teacher_quiz_review_f111.js':'5cf912ee07b5647792822486faeb3325554ea0ed3350698abfa2289df1c63b06'
+  'src/teacher_quiz_review_f111.js':'a85280bc13af59bab30596848e18f8a0b46423092e257178590aefa58bf9be4e'
 };
 const f92=read('src/solicitudes_unificadas.jsx'),mode=read('src/examenes_modes.jsx');
 const html=read('modulos/examenes.html'),bundle=read('src/examenes_bundle.jsx');

@@ -296,6 +296,29 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
  }).catch(e=>{toggle.textContent='NO DISPONIBLE';status.textContent='Grupos no disponibles: '+String(e.message||e);});
  return wrap;
 }
+// EXUI-05B: consulta estrictamente read-only para la Acción de hoy.
+// La asignación docente y la elegibilidad de un PC se comprueban contra QUIZ;
+// no habilita estudiantes, no crea entregas, no asigna notas.
+async function readB1TeacherAvailabilityForToday(lesson,group){
+ const number=Number(lesson),pinned=String(group||'').trim().toUpperCase();
+ if(!LESSONS.some(x=>Number(x[0])===number)||!pinned)
+  return {ok:false,reason:'invalid_context'};
+ const assigned=await authorizedB1Groups();
+ const groups=Array.isArray(assigned?.grupos)?assigned.grupos:[];
+ if(!groups.some(x=>String(x.cod_grupo||'').trim().toUpperCase()===pinned&&x.nivel==='B1'))
+  return {ok:false,reason:'not_assigned'};
+ const data=await postQuiz('qzProgressTeacherAvailability',{cod_grupo:group,nivel:'B1',leccion:number});
+ if(data?.ok!==true||String(data.grupo||'').trim().toUpperCase()!==pinned||
+    Number(data.leccion)!==number||data.digital_disponible!==true||
+    (data.nivel&&String(data.nivel).toUpperCase()!=='B1'))
+  return {ok:false,reason:'not_available'};
+ const estado=String(data.estado||'').toUpperCase();
+ if(!['ABIERTO','CERRADO'].includes(estado))
+  return {ok:false,reason:'not_available'};
+ return {ok:true,estado,eligible:estado==='ABIERTO'||data.puede_abrir===true,
+   alreadyOpen:estado==='ABIERTO'};
+}
+window.F111_QZ_readTeacherAvailability=readB1TeacherAvailabilityForToday;
 // El mismo control de PC02–08 que usa el panel histórico puede abrirse
 // directamente desde la tarjeta del grupo. Sin nuevas rutas ni permisos.
 function openB1ProgressFromExamCard(lesson,group){
