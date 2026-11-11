@@ -1,3 +1,6 @@
+## PROMPT VIGENTE F111 EXAMS — 11-nov-2026
+No reutilizar el prompt CS21A60 de julio para Exámenes. Copiar ÍNTEGRA la sección 8 del archivo 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md y leer issue #499. P0: Quiz1 legacy grupo hardcodeado; Quiz2 no certificado con estudiantes; preservar CORE @499, QUIZ @477 y cero académico legítimo.
+
 # CONTINUIDAD — F98.4-Z6-CS21A60
 
 Estado vigente:

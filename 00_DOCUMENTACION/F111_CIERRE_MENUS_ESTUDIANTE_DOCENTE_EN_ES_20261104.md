@@ -1,3 +1,6 @@
+## ADENDA MENÚ DOCENTE EXÁMENES — 11-nov-2026
+Este corte de traducción del 04-nov no certifica el uso de los exámenes. La nueva vista docente está aprobada visualmente, pero Herramientas adicionales duplica banco, historial y ocho quizzes. Auditoría de botones, destinos y EN/ES: 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md. Conservar traducciones y medios oficiales.
+
 # F111 — Última pasada de menús EN/ES · estudiante y docente
 
 **Corte:** 04-nov-2026 · Academia Norteamericana. **Fuente de seguimiento:** issue #499. No equivale a certificación E2 con cuentas reales.

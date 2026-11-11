@@ -1,3 +1,6 @@
+## CONTINUIDAD VIGENTE F111 EXÁMENES — 11-nov-2026
+Este archivo CS21 de julio es HISTÓRICO. Abrir antes 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md, PRODUCTION_STATE.md primer bloque y issue #499. Frontend main 9e0242d8, CORE @499 confirmado, QUIZ @477 último readback; no crear otro Campus ni borrar motores protegidos.
+
 # CAMPUS VIRTUAL ACADEMIA NORTEAMERICANA — CONTINUIDAD VIGENTE
 
 **Versión frontend:** F98.4-Z6-CS21A106  

@@ -1,3 +1,7 @@
+## ROADMAP VIGENTE DE EXÁMENES — EXUI-05A..05E (11-nov-2026)
+El plan F98/CS21 que aparece abajo es histórico para este módulo. Fuente: 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md, issue #499.
+A (P0) quitar vía Quiz1 de grupo fijo y segundo catálogo redundante manteniendo motor; B un único CTA de evaluación realmente habilitada por servidor; C F91/R57/borradores, pendientes escritos e historial en la misma ficha del alumno/grupo; D Quiz1–8 con control único y PC02 auditado por roles y media protegida, sin CONSULTANDO permanente; E E2 docente multigrupo, estudiante autorizado, escritorio/móvil, cero escrituras de QA en notas. EXUI acceptance 1/5 cerrado; no afirmar 100% por CI, Pages o la captura. GH013 exige PR/guard; eliminar rama efímera al fusionar.
+
 # Roadmap visual priorizado
 
 Base: **F98.4-Z6-CS21A90-CONSOLIDADO**. Próxima versión nueva: **CS21A91**.

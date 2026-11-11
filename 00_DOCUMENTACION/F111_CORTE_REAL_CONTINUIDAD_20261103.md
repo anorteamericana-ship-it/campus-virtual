@@ -1,3 +1,6 @@
+## ADENDA VIGENTE — 11-nov-2026 · EXÁMENES DOCENTE
+Conservar esta matriz original 16/35 como historial. Para continuar EXUI-05, leer primero 00_DOCUMENTACION/F111_EXAMS_DOCENTE_AUDITORIA_Y_CONTINUIDAD_20261111.md y comentario más reciente del issue maestro #499. Frontend main 9e0242d8, CORE @499 activo según captura, QUIZ @477 último readback técnico. El nuevo menú fue aprobado visualmente, pero la biblioteca de controles de quizzes y modelos sigue duplicada. Quiz1 tiene grupo fijo, Quiz2 no tiene E2 completo. No confundir 0/15 componentes registrados con ausencia o nota cero.
+
 # F111 — Corte comprobable, 19 casillas pendientes y continuidad
 > **Anexo de continuidad 04-nov-2026:** [Auditoría de 10 hallazgos P2, reconciliación de caché, fecha CR y plan verificable](F111_AUDITORIA_P2_Y_FECHA_CR_20261104.md). Este anexo NO cambia el corte académico 16/35 ni certifica E2.
 
