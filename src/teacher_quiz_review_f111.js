@@ -222,7 +222,7 @@ function authorizedB1Groups(){
 }
 // R9: the assigned teacher explicitly selects a B1 group; no automatic opening.
 // Only the backend decides if the lesson/date/role permits activation.
-function buildB1TeacherOpenControls(lesson){
+function buildB1TeacherOpenControls(lesson,preferredGroup){
  const wrap=make('div',null,'f111-tqr-r9-controls');
  const select=make('select',null,'f111-tqr-r9-group');
  select.setAttribute('aria-label','Grupo B1 autorizado');
@@ -275,12 +275,49 @@ function buildB1TeacherOpenControls(lesson){
    .filter(x=>x.nivel==='B1'&&typeof x.cod_grupo==='string');
   const empty=make('option','Seleccioná tu grupo B1');empty.value='';select.append(empty);
   for(const group of groups){const option=make('option',group.cod_grupo);option.value=group.cod_grupo;select.append(option);}
-  status.textContent=groups.length?'Elegí el grupo de la lección.':'No hay grupos B1 asignados.';
+  const pinned=String(preferredGroup||'').trim().toUpperCase();
+  if(pinned&&groups.some(x=>String(x.cod_grupo).trim().toUpperCase()===pinned)){
+   select.value=groups.find(x=>String(x.cod_grupo).trim().toUpperCase()===pinned).cod_grupo;
+   previewBtn.disabled=false;reviewBtn.disabled=false;void refresh();
+  }else status.textContent=groups.length?
+    'Elegí un grupo B1 autorizado antes de abrir o revisar.':'No hay grupos B1 asignados.';
  }).catch(e=>{status.textContent='Grupos no disponibles: '+String(e.message||e);});
  return wrap;
 }
+// El mismo control de PC02–08 que usa el panel histórico puede abrirse
+// directamente desde la tarjeta del grupo. Sin nuevas rutas ni permisos.
+function openB1ProgressFromExamCard(lesson,group){
+ const number=LESSONS.findIndex(x=>x[0]===Number(lesson))+1;
+ if(number<2||number>8||!String(group||'').trim())return false;
+ if(document.querySelector('[data-f111-b1-focus-control]'))return true;
+ installStyle();
+ const overlay=make('div',null,'f111-tqr-workspace-backdrop');
+ overlay.dataset.f111B1FocusControl='true';
+ overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
+ overlay.setAttribute('aria-label','Control docente del Quiz '+number);
+ const card=make('section',null,'f111-tqr-workspace');
+ card.style.cssText='height:auto;max-height:90vh;width:min(630px,100%);overflow:auto';
+ const header=make('header',null,'f111-tqr-workspace-header');
+ const intro=make('div');
+ intro.append(make('small','BÁSICO I · LECCIÓN '+lesson),
+   make('h2','Quiz '+number+' · grupo '+String(group)),
+   make('p','Material protegido, estado de apertura y revisión. El servidor valida cada operación.'));
+ const close=make('button','CERRAR','f111-tqr-close');close.type='button';
+ header.append(intro,close);
+ const body=make('div',null,'f111-teacher-exam-card');
+ body.style.cssText='margin:17px;display:grid;gap:12px';
+ body.append(make('p','La apertura del Quiz exige autorización docente para el grupo y la lección. No altera notas oficiales.'),
+   buildB1TeacherOpenControls(Number(lesson),String(group)));
+ card.append(header,body);overlay.append(card);document.body.append(overlay);
+ function dismiss(){overlay.remove();document.removeEventListener('keydown',onKey);}
+ function onKey(e){if(e.key==='Escape'){e.preventDefault();dismiss();}}
+ close.onclick=dismiss;
+ overlay.addEventListener('click',e=>{if(e.target===overlay)dismiss();});
+ document.addEventListener('keydown',onKey);close.focus();return true;
+}
+window.F111_QZ_openTeacherControls=openB1ProgressFromExamCard;
 function previewPC02(){
- // PC02 no está autorizado en GAS PROD; solo cuestionario de revisión editorial.
+ // Vista editorial histórica, nunca concede acceso de estudiantes.
  const url=new URL('modulos/qz_b1_pc02_preview.html',new URL('./',location.href));
  url.searchParams.set('preview','1');
  window.open(url.href,'_blank','noopener,noreferrer');

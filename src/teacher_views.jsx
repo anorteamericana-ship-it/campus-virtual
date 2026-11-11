@@ -1574,6 +1574,40 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
     }).catch(()=>{if(current)setR57Lookup({status:'error',group:groupCode,level:nivel,rows:[]});});
     return()=>{current=false;};
   },[groupCode,nivel]);
+  // EXUI-04: F91 and oral drafts from a separate server endpoint with
+  // no setup(), deadline sync, grade change or historical reconciliation.
+  const [legacyLookup,setLegacyLookup]=React.useState({status:'idle',group:'',level:'',rows:[]});
+  React.useEffect(()=>{
+    let current=true;
+    if(!groupCode||!nivel){setLegacyLookup({status:'idle',group:'',level:'',rows:[]});
+      return()=>{current=false;};}
+    setLegacyLookup({status:'loading',group:groupCode,level:nivel,rows:[]});
+    postTeacher('examTeacherStatusSnapshotF111',{cod_grupo:groupCode,nivel},30000).then(reply=>{
+      if(!reply||reply.ok!==true||reply.solo_lectura!==true||
+         reply.production_writes!==0||!Array.isArray(reply.rows)||
+         String(reply.grupo)!==groupCode||tvUpper(reply.nivel)!==tvUpper(nivel))
+        throw Error('exui_read_incomplete');
+      if(current)setLegacyLookup({status:'ready',group:groupCode,level:nivel,rows:reply.rows});
+    }).catch(()=>{if(current)setLegacyLookup({status:'error',group:groupCode,level:nivel,rows:[]});});
+    return()=>{current=false;};
+  },[groupCode,nivel]);
+  const legacyVerified=legacyLookup.status==='ready'&&legacyLookup.group===groupCode&&
+    legacyLookup.level===nivel;
+  const extraForExam=d=>!legacyVerified?[]:legacyLookup.rows.filter(r=>
+    Number(r.leccion)===d.lesson&&tvUpper(r.tipo_examen)===(d.kind==='oral'?'ORAL':'ESCRITO'));
+  const extraStatusLabel=r=>{
+    const st=tvUpper(r?.estado),source=r?.source||'';
+    if(source==='F91'){
+      const approved=['JUSTIFICADA_GRATUITA','PAGADA_AUTORIZADA','PROGRAMADA'].includes(st);
+      return approved?tr('Reposición histórica autorizada · ver control especial','Legacy make-up authorized · special controls'):
+        tr('Reposición histórica: '+(st||'SIN ESTADO'),'Legacy make-up: '+(st||'NO STATUS'));
+    }
+    if(source==='ORAL_R57_BORRADOR')return st==='BORRADOR'?
+      tr('Borrador de reposición oral','Oral make-up draft'):
+      tr('Reposición oral: '+st,'Oral make-up: '+st);
+    return st==='BORRADOR'?tr('Borrador oral pendiente','Pending oral draft'):
+      tr('Oral ordinario: '+st,'Regular oral: '+st);
+  };
   const r57Verified=r57Lookup.status==='ready'&&r57Lookup.group===groupCode&&
     r57Lookup.level===nivel;
   const r57ForExam=d=>!r57Verified?[]:r57Lookup.rows.filter(r=>
@@ -1706,6 +1740,11 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
               const cyclePerStudent=[...new Map(examCycles.map(r=>[String(r.COD_ESTUDIANTE),r]).reverse()).values()];
               const makeupReady=cyclePerStudent.filter(r=>tvUpper(r.ESTADO)==='AUTORIZADA_48H').length;
               const makeupPending=cyclePerStudent.filter(r=>['INVITADA','SOLICITADA'].includes(tvUpper(r.ESTADO))).length;
+              const extraRows=extraForExam(d).filter(r=>(roster||[]).some(s=>String(s.code)===String(r.cod_estudiante)));
+              const drafts=[...new Set(extraRows.filter(r=>r.source!=='F91'&&tvUpper(r.estado)==='BORRADOR')
+                .map(r=>String(r.cod_estudiante)))].length;
+              const historical=[...new Set(extraRows.filter(r=>r.source==='F91')
+                .map(r=>String(r.cod_estudiante)))].length;
               const tone=active?pal.dark:finished?'#915B10':nextUp?'#16834A':'#6B6259';
               const status=active?tr('Sesión activa','Active session'):finished?
                 tr('Lección cerrada','Lesson closed'):nextUp?tr('Próxima','Next'):tr('Programada','Scheduled');
@@ -1730,6 +1769,12 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                   <div style={{fontSize:11,color:'#4A413A',marginTop:5}}>
                     <strong>{count}</strong> / {total} {tr('con componente oficial registrado','with a registered official grade component')}
                   </div>
+                  {legacyVerified&&(drafts>0||historical>0)&&
+                    <div style={{fontSize:10.5,color:pal.dark,marginTop:4,fontWeight:800}}>
+                      {drafts>0&&tr(drafts+' borrador(es)',''+drafts+' draft(s)')}
+                      {drafts>0&&historical>0?' · ':''}
+                      {historical>0&&tr(historical+' reposición(es) histórica(s)',historical+' historical make-up(s)')}
+                    </div>}
                   {r57Verified&&(makeupReady>0||makeupPending>0)&&
                     <div style={{fontSize:10.5,color:pal.dark,marginTop:4,fontWeight:800}}>
                       {makeupReady>0&&tr(makeupReady+' reposición(es) autorizada(s)',makeupReady+' authorized make-up(s)')}
@@ -1781,6 +1826,9 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                 const official=c?.registrado===true;
                 const studentCycles=r57ForExam(selected).filter(r=>String(r.COD_ESTUDIANTE)===String(s.code));
                 const r57=studentCycles[0]||null;
+                const otherStatuses=extraForExam(selected).filter(r=>String(r.cod_estudiante)===String(s.code));
+                const hasLegacy=otherStatuses.some(r=>r.source==='F91');
+                const hasRegularDraft=otherStatuses.some(r=>r.source==='ORAL_ORDINARIO'&&tvUpper(r.estado)==='BORRADOR');
                 const [makeupText,makeupAuthorized]=r57StatusLabel(r57?.ESTADO);
                 const conflicting=studentCycles.filter(r=>tvUpper(r.ESTADO)==='AUTORIZADA_48H').length>1;
                 const canApply=!!r57Verified&&!official&&!conflicting&&makeupAuthorized&&
@@ -1794,6 +1842,22 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                       {official?tr('Nota oficial','Official grade')+': '+c.puntos+' / '+c.max:
                         tr('Sin nota oficial registrada','No official grade recorded')}
                     </span>
+                    {legacyVerified&&otherStatuses.map(r=><span key={r.source+'|'+r.id}
+                      style={{fontSize:10.5,fontWeight:800,color:'#63521F',
+                        padding:'4px 7px',borderRadius:8,background:'#FFF5DC'}}>
+                      {extraStatusLabel(r)}
+                    </span>)}
+                    {legacyVerified&&hasLegacy&&<button className="btn btn-ghost" type="button"
+                      style={{fontSize:10.5}} onClick={openExtra}>
+                      {tr('Ver reposición histórica','View legacy make-up')}
+                    </button>}
+                    {legacyVerified&&hasRegularDraft&&sessionFor(selected.lesson)&&
+                      <button className="btn btn-primary" type="button" onClick={()=>
+                        onNavigate&&onNavigate('examen_oral',{oral:{
+                          grupo:groupCode,nivel,leccion:selected.lesson,
+                          fecha:String(findLesson(selected.lesson)?.fecha||'').slice(0,10)}})}>
+                        {tr('Continuar borrador oral','Continue oral draft')}
+                      </button>}
                     {r57Verified&&r57&&<span style={{fontSize:10.5,fontWeight:800,
                       color:conflicting||official&&makeupAuthorized?'#8B1F1F':makeupAuthorized?pal.dark:'#6B6259',
                       padding:'4px 7px',borderRadius:8,background:pal.light}}>
@@ -1820,8 +1884,8 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
               })}
             </div>}
           <div style={{padding:'9px 15px',background:'#FBF8F2',fontSize:11,color:'#6B6259'}}>
-            {tr('Los ciclos R57 aparecen aquí únicamente si el servidor confirmó grupo, nivel, estudiante y examen. Los borradores orales y las reposiciones históricas F91 continúan en Herramientas especiales hasta contar con una consulta consolidada sin efectos secundarios.',
-              'R57 cycles appear here only when the server verifies group, level, student and exam. Oral drafts and legacy F91 make-ups remain in Special tools until a side-effect-free consolidated read is available.')}
+            {tr('Estados R57, F91 y borradores proceden de lecturas independientes sin escrituras; solo el motor del examen concede permiso para aplicar. Los controles históricos se conservan en Herramientas especiales.',
+              'R57, F91 and draft statuses come from independent read-only calls; only the exam engine authorizes an attempt. Historical controls remain available in Special tools.')}
           </div>
         </section>}
         <section style={{display:'grid',gap:10}}>
@@ -1839,14 +1903,22 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                 <div style={{fontSize:10,color:'#6B6259',marginBottom:9}}>
                   {event?.fecha?String(event.fecha).slice(0,10):tr('Disponibilidad por verificar','Availability to verify')}
                 </div>
-                <button className="btn btn-ghost" type="button" onClick={openExtra}
-                  style={{fontSize:11}}>{tr('Consultar material','Check material')}</button>
+                {nivel==='B1'&&i>=1
+                  ?<button className="btn btn-ghost" type="button"
+                    onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
+                      if(typeof launch==='function')launch(lesson,groupCode);
+                      else openExtra();}}
+                    style={{fontSize:11,borderColor:pal.dark,color:pal.dark,fontWeight:850}}>
+                    {tr('Gestionar Quiz '+(i+1),'Manage Quiz '+(i+1))}
+                  </button>
+                  :<button className="btn btn-ghost" type="button" onClick={openExtra}
+                    style={{fontSize:11}}>{tr('Consultar material','Check material')}</button>}
               </div>;
             })}
           </div>
           <p style={{margin:0,fontSize:11,color:'#6B6259'}}>
-            {tr('Quiz 2 (L08): consultar el contenido y la revisión protegida; no se marca listo sin respuesta del backend.',
-              'Quiz 2 (L08): inspect protected content and review; never marked ready without a server response.')}
+            {tr('Quiz 2 (L08): el botón abre el control docente oficial del grupo. La activación y la revisión dependen de permisos y disponibilidad verificados por el servidor.',
+              'Quiz 2 (L08): the button opens the assigned group’s official teacher controls. Availability and review still depend on server authorization.')}
           </p>
         </section>
       </>}

@@ -29,11 +29,11 @@ for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solici
  check(read(target)===before,'untouched '+target);
 }
 const uiPins={
-  'campus.html':'d9611baeb88d620a8d8c537c37f40e30ee05754610e7235e73e3079f7857998f',
-  'src/app.jsx':'2a5f722779dc63cf28f3596f601143b5a805b0916cbe9fe094ad6865728702c3',
-  'src/teacher_views.jsx':'f097024e4e269aac9d7c0ac4eb2ab5660cde222998f9649cf21e72c8ae0b3013',
+  'campus.html':'6ad5d0840f436bae4e00e464d15a5ada11d8a0f5c9fad14de091a8c749d7c63b',
+  'src/app.jsx':'eecbca79201b407c70e4f3e58155993aff7cfc8ada147ac279fa48eab6ebc9a4',
+  'src/teacher_views.jsx':'f9d89e3109e3c9e7f97ec73f847686fde53d02fb9a14f8fc2c447cd47f1a0504',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
-  'src/teacher_quiz_review_f111.js':'594ceacaf67d40f823da98b734bac01874549800b9c45f825f4cb38b824d2a2f'
+  'src/teacher_quiz_review_f111.js':'5cf912ee07b5647792822486faeb3325554ea0ed3350698abfa2289df1c63b06'
 };
 for(const [path,pin] of Object.entries(uiPins))
  check(sha(read(path))===pin,'approved teacher UI source pinned '+path);
@@ -142,5 +142,23 @@ check(!teacherArea.includes("postTeacher('reposListarExamenes'")&&
 check(teacherArea.includes("tr('Reposición autorizada · 48 h','Make-up authorized · 48 h')")&&
  teacherArea.includes("tr('Reposición vencida · sin nueva nota','Make-up expired · no new grade')"),
  'make-up states bilingual without auto-zero claims');
+const quizReview=read('src/teacher_quiz_review_f111.js');
+check(teacherArea.includes("postTeacher('examTeacherStatusSnapshotF111',{cod_grupo:groupCode,nivel},30000)")&&
+ teacherArea.includes('reply.solo_lectura!==true')&&
+ teacherArea.includes('reply.production_writes!==0'),
+ 'historical F91 and oral drafts only through separate verified status-only endpoint');
+check(teacherArea.includes("const hasLegacy=otherStatuses.some(r=>r.source==='F91')")&&
+ teacherArea.includes("r.source==='ORAL_ORDINARIO'&&tvUpper(r.estado)==='BORRADOR'"),
+ 'teacher exam roster identifies historical and ordinary oral draft statuses');
+check(teacherArea.includes("legacyVerified&&hasRegularDraft&&sessionFor(selected.lesson)")&&
+ teacherArea.includes("legacyVerified&&hasLegacy&&<button"),
+ 'ordinary draft resume only for active oral lesson; historical status routes to special controls');
+check(quizReview.includes('window.F111_QZ_openTeacherControls=openB1ProgressFromExamCard')&&
+ teacherArea.includes("if(typeof launch==='function')launch(lesson,groupCode)"),
+ 'quiz 2–8 primary card opens the existing official teacher controls for selected group');
+check(quizReview.includes("postQuiz('qzProgressTeacherAvailability',context())")&&
+ quizReview.includes("postQuiz('qzProgressTeacherSetAvailability',{...context(),estado:next})")&&
+ quizReview.includes('buildB1TeacherOpenControls(Number(lesson),String(group))'),
+ 'quiz 2 uses teacher-owned server availability with real readback, not an invented second quiz motor');
 console.log('F111_R57_B5_PDF_SELECTIVE '+passed+'/'+passed+
  ' PASS; finance_writes=0; production_writes=0; release=PHASE1_AUTHORIZED_DATE_PENDING');

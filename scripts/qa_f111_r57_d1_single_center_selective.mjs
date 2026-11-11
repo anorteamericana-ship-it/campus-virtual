@@ -15,11 +15,11 @@ const atBase=x=>execFileSync('git',['show',BASE+':'+x],{encoding:'utf8',maxBuffe
 const sha=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 const app=read('src/app.jsx');
 const uiPins={
-  'campus.html':'d9611baeb88d620a8d8c537c37f40e30ee05754610e7235e73e3079f7857998f',
-  'src/app.jsx':'2a5f722779dc63cf28f3596f601143b5a805b0916cbe9fe094ad6865728702c3',
-  'src/teacher_views.jsx':'f097024e4e269aac9d7c0ac4eb2ab5660cde222998f9649cf21e72c8ae0b3013',
+  'campus.html':'6ad5d0840f436bae4e00e464d15a5ada11d8a0f5c9fad14de091a8c749d7c63b',
+  'src/app.jsx':'eecbca79201b407c70e4f3e58155993aff7cfc8ada147ac279fa48eab6ebc9a4',
+  'src/teacher_views.jsx':'f9d89e3109e3c9e7f97ec73f847686fde53d02fb9a14f8fc2c447cd47f1a0504',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
-  'src/teacher_quiz_review_f111.js':'594ceacaf67d40f823da98b734bac01874549800b9c45f825f4cb38b824d2a2f'
+  'src/teacher_quiz_review_f111.js':'5cf912ee07b5647792822486faeb3325554ea0ed3350698abfa2289df1c63b06'
 };
 const f92=read('src/solicitudes_unificadas.jsx'),mode=read('src/examenes_modes.jsx');
 const html=read('modulos/examenes.html'),bundle=read('src/examenes_bundle.jsx');
