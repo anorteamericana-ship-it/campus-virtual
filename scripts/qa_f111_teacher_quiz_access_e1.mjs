@@ -31,7 +31,7 @@ assert.ok(!catalog.includes('modern.append(buildTeacherExamsF111(),build())'),'n
 assert.ok(view.includes('launch(lesson,groupCode)'),'una sola acción por quiz del grupo actual');
 assert.ok(!view.includes('i>=1\n                   ?<button'),'Quiz1 ya no apunta a extras');
 assert.ok(view.includes("Banco digital no habilitado para este nivel"),'B2/I1/I2 sin falsa disponibilidad');
-assert.ok(view.includes('data-f111-lesson-quiz="B1-L4"'),'preview contextual antiguo mantiene modo seguro');
+assert.ok(!view.includes('data-f111-lesson-quiz="B1-L4"'),'sin botón adicional de Quiz1 en el drawer');
 assert.ok(catalog.includes("window.getSessionToken"),'QUiZ exige sesión docente');
 assert.ok(catalog.includes("isQuiz&&window.F111_QZ_API_URL"),'QUIZ separado del CORE');
 assert.ok(catalog.includes("'qzProgressTeacherReview'"),'revisión histórica preservada');
