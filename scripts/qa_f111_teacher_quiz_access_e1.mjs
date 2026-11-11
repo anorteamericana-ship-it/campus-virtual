@@ -114,6 +114,10 @@ assert.ok(modes.includes("const r = await postExamBackend('examReviewInbox', { c
 assert.ok(modes.includes("const scoped=r.rows.filter(row=>String(row.COD_GRUPO||'').trim().toUpperCase()===g)"),
  'un grupo ajeno o sin código verificable jamás se mezcla en la bandeja');
 assert.ok(modes.includes('if(seq!==requestSeq.current)return;'),'resultados asíncronos vencidos no contaminan el grupo nuevo');
+assert.ok(modes.includes('{!scopedFocus&&<div className="tch-groups-row"'),
+ 'el contexto tiene un solo selector de grupo, el original es opcional');
+assert.ok(modes.includes('if(lastLoadedGroup.current!==g)'),
+ 'actualizaciones read-only no vacían filas cada 15 segundos en el mismo grupo');
 assert.ok(modes.includes('if(selectedRef.current)'),'nunca descartar una revisión en curso por cambiar de grupo');
 assert.ok(view.includes('data-f111-student-assessment-record="true"'),
  'ficha R57/F91 y nota oficial dentro del mismo estudiante');
