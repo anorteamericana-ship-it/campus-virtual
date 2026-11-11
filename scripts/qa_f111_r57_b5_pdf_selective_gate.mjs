@@ -30,18 +30,32 @@ for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solici
 }
 // EXUI-05B: updated SHA256 exact pins after protected today-action review (#757).
 // Every unrelated R57/B5/finance baseline and mutating endpoint remains unchanged.
+// EXUI-05C: exact source pins renewed for contextual read-only inbox and
+// oral rubric navigation; R57, PDF, grade, financial and lazy-route checks stay strict.
 const uiPins={
-  'campus.html':'8792212716cf49c1e0f3c22c096793845322efd273db137203e7ddfdfd47feba',
-  'src/app.jsx':'4a4cf0da387c3992e734865d2c52085e4d7613609497f5ee323b6e3fac69fb13',
-  'src/teacher_views.jsx':'9afbdd606ff92ce0db0df142ec55955aca9e46f90aed1b43fe80f4b2f8b6c42a',
+  'campus.html':'9d6aaebf47fbef23ef6be92de54b1e318e7dd3e254755bb42558b05ac3f5a940',
+  'src/app.jsx':'0c59d9888bfe31f6d99fbf6beafa9867ebcbc2e3d3e7ee5eb91eb078785e39f2',
+  'src/teacher_views.jsx':'b5897788559e824b0844335784795ab15d583efc7a1bd288a51520d3fe6b0e7f',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
-  'src/teacher_quiz_review_f111.js':'a85280bc13af59bab30596848e18f8a0b46423092e257178590aefa58bf9be4e'
+  'src/teacher_quiz_review_f111.js':'053794b19ebae1b17f9d2cd6a63bce9ad25f3bc56203df4da6a5cf3175626305'
 };
 for(const [path,pin] of Object.entries(uiPins))
  check(sha(read(path))===pin,'approved teacher UI source pinned '+path);
-check(sha(modes)==='0321e49e09f221e7a27d3020717d65a0f95cf7dd7a623a4e917d229e7a5b3c7b',
+check(sha(modes)==='44921523ac32314bf1f4849d42a533f55a790e5ac808d57952346584cb15c058',
  'written review source pinned exact SHA');
 check(bundle.includes(modes),'served exam bundle includes pinned official PDF UI source');
+const previouslyShipped=execFileSync('git',['show',
+ 'efbad33163466cca97ed7db4b481a59ed37055af:src/examenes_modes.jsx'],
+ {encoding:'utf8',maxBuffer:32e6}).replace(/\r\n/g,'\n');
+function outsideInbox(source){
+ const start=source.indexOf('function TeacherWrittenLiveInbox()');
+ const end=source.indexOf('function TeacherReview(',start);
+ assert.ok(start>=0&&end>start,'written inbox module boundaries');
+ return source.slice(0,start)+'EXUI05C_READONLY_INBOX'+source.slice(end);
+}
+check(outsideInbox(modes)===outsideInbox(previouslyShipped),
+ 'EXUI-05C changes only read-only inbox: official review, grades and PDF unchanged');
+
 const m=parseF96LazyMap(app);
 check(Object.keys(m).length===33,'33 original lazy route keys preserved');
 check(Object.values(m).flat().length===68,'68 original lazy asset refs preserved');
