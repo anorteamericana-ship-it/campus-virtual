@@ -98,3 +98,19 @@ CONTINUAMOS CAMPUS VIRTUAL — F111 / EXAMS DOCENTE — EXUI-05A..05E. No volver
 11. NO hacer preguntas ya contestadas; avanzar con auditoría E1 y cambios seguros de interfaz; si el cambio muta notas, ceros, pagos o abre estudiantes en QUIZ se requiere permiso funcional nuevo. Priorizar cierre real, no demos visuales.
 
 FIN DEL DOCUMENTO CANÓNICO F111 EXAMS DOCENTE.
+
+## 9. Corte real EXUI-05A — 11-nov-2026, POSTERIOR A LA AUDITORÍA
+
+**Implementado, integrado y publicado en Pages:** [frontend PR #756](https://github.com/anorteamericana-ship-it/campus-virtual/pull/756) MERGED por squash en `main` SHA `70c5b179f023cefdb34b267f7dd3514134381b66`. El PR técnico pasó **13/13 workflows CI** con conclusión SUCCESS, incluidos `English LAB Source Truth Guard`, `F111 QZ32 Frontend E1 QA`, `Virtual Campus Review CS21A137` y validación responsive. La rama temporal técnica fue eliminada tras el merge (búsqueda de ramas: 0).
+
+**HTTP real oficial 11-nov, sin login ni mutaciones:** `https://anorteamerican.com/campus-virtual/campus.html?exui05a=20261111` → 200, HTML con `teacherexams=F111EXUI05A20261111`; `https://anorteamerican.com/campus-virtual/src/teacher_quiz_review_f111.js?exui05a=20261111` → 200, incluye `function openReviewWorkspace(group)`, no contiene `QZ_GROUP`. Esto certifica archivos servidos, NO autorización efectiva ni ciclo E2 docente/estudiante.
+
+**Componentes concretos:**
+- `src/teacher_quiz_review_f111.js`: eliminado `QZ_GROUP` fijo del Quiz 1, localizados contextos de lectura, revisión y activación por grupo B1; el grupo se comprueba con `qzProgressTeacherB1Groups` y cada disponibilidad con `qzProgressTeacherAvailability`. El servidor decide rol, lección y `puede_abrir`, no el frontend; revisiones se filtran por grupo, nivel y lección antes y después del readback. Un modal PC01–08 por selección primaria, sin otro selector visible. Mensajes SIN GRUPO / NO DISPONIBLE / NO AUTORIZADO, sin spinner de error perpetuo.
+- `src/teacher_views.jsx`: ocho tarjetas B1 conectadas al modal contextual; B2/I1/I2 sin falsa acción de abrir banco digital. Retirado el botón duplicado de Quiz1 del drawer; preservados calendario, color del nivel, encuentros martes+jueves, violeta I CAN, padrón y calificaciones.
+- Eliminado únicamente el render del segundo catálogo de ocho quizzes, segundo banco de modelos y activador PC01 legacy. **Conservados** `openReviewWorkspace(group)` de PC01, `openB1TeacherReview` PC02–08, `previewB1Protected`, `buildTeacherExamsF111` (historial oral avanzado), los materiales, los motores, el iframe escrito, los controles F91 y R57 existentes.
+- `campus.html` cache invalidado. Scripts E1 actualizados para no exigir el catálogo obsoleto y probar grupo ajeno, Quiz1 sin elegibilidad, revisión sintética con readback y 0 escrituras oficiales.
+
+**Lectura de avance:** EXUI-05A tiene **implementación + CI + publicación de archivos**; NO hay verificación E2 humana con autenticación Diego/Keylor, ni entrega PC02 alumno. No confundir 13/13 CI con evaluación completada. EXUI-05B (acción hoy), -05C (ficha y accesos escritos/F91/R57), -05D (certificación PC02 y bancos B2/I1/I2), -05E (E2 0826,0526,sin INA escritorio/móvil) permanecen abiertos. Se mantienen F111 16/35=45,7%; R57 27/48=56,3%; B6 3/4=75%; R57 fase 1 4/4=100%; EXUI aceptación 1/5=20% porque no hubo aceptación humana del hito. Ninguna nota, cero, matrícula, asistencia, pago, proforma, certificado o entrega real cambió.
+
+**Fuentes al cierre:** frontend `main` `70c5b179f023cefdb34b267f7dd3514134381b66`; backend `main` último verificado `273d4c42fb96e849b582622e3e21e0429a7eae31`; CORE @499 por captura del propietario; QUIZ @477 último readback, sin re-deploy ni confirmación nueva. Seguimiento único issue #499. **Siguiente operación de código: EXUI-05B, no reabrir la auditoría ni restaurar UI retirada.**
