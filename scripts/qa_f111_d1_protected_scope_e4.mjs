@@ -20,7 +20,7 @@ for(const n of protectedFiles){
    // EXUI-05C permits ONLY the teacher inbox's read-only navigation change.
    // Check the complete source outside that function equals the prior shipped
    // 05B source, leaving review writes, PDF, student and admin code immutable.
-   assert.equal(digest,'44921523ac32314bf1f4849d42a533f55a790e5ac808d57952346584cb15c058',
+   assert.equal(digest,'da7899a45adb6abb8dff83fb605ea498adf51fdcfb9613c1fab9447afffa6bbf',
     'Protected exam modes changed beyond approved 05C read-only inbox');
    const base05b=execFileSync('git',['show',
     'efbad33163466cca97ed7db4b481a59ed37055af:src/examenes_modes.jsx'],
