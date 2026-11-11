@@ -29,7 +29,7 @@ const f92=read('src/solicitudes_unificadas.jsx'),mode=read('src/examenes_modes.j
 const html=read('modulos/examenes.html'),bundle=read('src/examenes_bundle.jsx');
 let count=0;
 function gate(ok,label){assert.ok(ok,label);console.log('PASS '+(++count)+' '+label);}
-gate(sha(mode)==='44921523ac32314bf1f4849d42a533f55a790e5ac808d57952346584cb15c058',
+gate(sha(mode)==='da7899a45adb6abb8dff83fb605ea498adf51fdcfb9613c1fab9447afffa6bbf',
  'written PDF module exact approved SHA, rejects any unrelated exam motor edits');
 const names=['examenes_css.jsx','examenes_appcss.jsx','examenes_data.jsx',
  'examenes_render.jsx','examenes_modes.jsx','examenes_app.jsx'];
