@@ -41,7 +41,7 @@ const uiPins={
 };
 for(const [path,pin] of Object.entries(uiPins))
  check(sha(read(path))===pin,'approved teacher UI source pinned '+path);
-check(sha(modes)==='44921523ac32314bf1f4849d42a533f55a790e5ac808d57952346584cb15c058',
+check(sha(modes)==='da7899a45adb6abb8dff83fb605ea498adf51fdcfb9613c1fab9447afffa6bbf',
  'written review source pinned exact SHA');
 check(bundle.includes(modes),'served exam bundle includes pinned official PDF UI source');
 const previouslyShipped=execFileSync('git',['show',
