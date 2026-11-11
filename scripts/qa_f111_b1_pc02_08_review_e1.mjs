@@ -50,10 +50,12 @@ try{
  '<script src="/teacher.js"></script></body></html>';
  await page.route(ROOT+'/teacher',r=>r.fulfill({status:200,contentType:'text/html',body:markup}));
  await page.goto(ROOT+'/teacher');
- await page.waitForSelector('.f111-tqr-r9-controls');
- assert.equal(await page.locator('.f111-tqr-r9-controls').count(),7);
- const first=page.locator('.f111-tqr-r9-controls').first();
- await first.locator('select').selectOption('QA-F111-B1');
+ await page.evaluate(()=>window.F111_QZ_openTeacherControls(8,'QA-F111-B1'));
+ const first=page.locator('[data-f111-b1-focus-control] .f111-tqr-r9-controls');
+ await first.waitFor();
+ await page.waitForFunction(()=>document.querySelector('.f111-tqr-r9-group')?.value==='QA-F111-B1');
+ assert.equal(await page.locator('.f111-tqr-grid').count(),0,'no segundo catálogo de quizzes');
+ assert.equal(await first.locator('select').isHidden(),true,'sin segundo selector visible');
  await first.getByRole('button',{name:'REVISAR ENTREGAS'}).click();
  const modal=page.locator('[data-f111-b1-review]');
  await modal.waitFor();
@@ -67,5 +69,5 @@ try{
  assert.equal(calls.filter(x=>x.fn==='qzProgressTeacherReview').length,1);
  assert.ok(calls.filter(x=>x.fn==='qzProgressTeacherList').length>=2,'readback requeridó');
  assert.equal(errors.length,0,errors.join('\n'));
- console.log('F111 B1 PC02–08 TEACHER REVIEW PASS: 7 cards, protected group, numeric diagnostic, required comment, readback, 0 official-grade writes');
+ console.log('F111 EXUI-05A B1 PC02–08 TEACHER REVIEW PASS: one contextual card, protected group, numeric diagnostic, required comment, readback, 0 official-grade writes');
 }finally{await browser.close();}
