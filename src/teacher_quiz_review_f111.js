@@ -524,10 +524,11 @@ function openReviewWorkspace(group){
        Number(result.nota)!==savedScore.percentage||Number(result.peso_oficial)!==0)
       throw Error('Sin confirmación de resultado diagnóstico');
     const verified=await postQuiz('qzProgressTeacherList',qzContext);
-    const saved=(Array.isArray(verified.intentos)?verified.intentos:[]).find(r=>getCode(r)===code);
+    const inScope=r=>r&&String(r.COD_GRUPO||'')===groupCode&&String(r.NIVEL||'')==='B1'&&Number(r.LECCION)===4;
+    const saved=(Array.isArray(verified.intentos)?verified.intentos:[]).find(r=>inScope(r)&&getCode(r)===code);
     if(!saved||saved.ESTADO!=='REVISADO'||Number(saved.RESULTADO)!==savedScore.percentage)
       throw Error('Sin lectura de regreso del resultado. Revisá el listado antes de reintentar.');
-    rows=(Array.isArray(verified.intentos)?verified.intentos:[]).filter(r=>getCode(r));
+    rows=(Array.isArray(verified.intentos)?verified.intentos:[]).filter(r=>inScope(r)&&getCode(r));
     displaySelection();showStudent(saved);
    }catch(err){
     feedback.textContent='No se pudo confirmar la revisión: '+String(err.message||'Error')+'. Consultá el listado antes de reintentar.';
