@@ -897,6 +897,23 @@ function attach(){
  attachLessonAction();
  const screen=document.querySelector('section[data-screen-label="Docente · Exámenes"]');
  if(!screen||screen.querySelector('[data-f111-teacher-quizzes]'))return;
+ const modern=screen.querySelector('[data-f111-exams-tool-slot]');
+ if(modern){
+  // Load protected history/quiz tools only after the teacher explicitly
+  // expands Extras. Avoid hidden queries and duplicate operating cards.
+  const parent=modern.closest('details');
+  if(!parent)return;
+  if(!parent.dataset.f111QuizAttach){
+   parent.dataset.f111QuizAttach='true';
+   parent.addEventListener('toggle',()=>{
+    if(parent.open&&modern.isConnected&&!modern.querySelector('[data-f111-teacher-quizzes]'))
+     modern.append(buildTeacherExamsF111(),build());
+   });
+  }
+  if(parent.open&&!modern.querySelector('[data-f111-teacher-quizzes]'))
+   modern.append(buildTeacherExamsF111(),build());
+  return;
+ }
  const heading=Array.from(screen.children).find(el=>(el.textContent||'').includes('EXÁMENES DEL DOCENTE'));
  if(!heading)return;
  heading.insertAdjacentElement('afterend',build());

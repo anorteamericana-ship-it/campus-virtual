@@ -317,9 +317,9 @@
   }
   function itemKey(it){ return `${it.riel}:${codeOf(it.g)}:${it.slot.day}:${it.slot.hora_i || it.slot.hourLabel}:${it.slot.hora_f || ''}`; }
 
-  function MisGruposSwitcherCS19F({ grupos, activo, onSelect, activeSession }) {
+  function MisGruposSwitcherCS19F({ grupos, activo, onSelect, activeSession, modeOverride }) {
     const lista = Array.isArray(grupos) ? grupos : [];
-    const mode = currentAgendaMode();
+    const mode = modeOverride === 'all' ? 'all' : currentAgendaMode();
     const byDay = buildWeeklyItems(lista, mode);
     const autoNextKeys = computeAutoNextKeys(byDay);
     const Card = ({ it, idx }) => {
@@ -343,12 +343,12 @@
       const title = isIcan ? `Club I CAN · ${slot.dayLabel} de ${hourLabel} - ${cicloOf(g)}` : `${groupDaysLabel(g)} de ${hourLabel} - ${cicloOf(g)}`;
       const palette = isIcan ? ICAN_COLOR : { dark:pal.dark, light:pal.light, border:pal.border || pal.dark, badge:pal.dark };
       const badge = sessionHere ? 'ACTIVA' : pendingClose ? 'PENDIENTE DE CIERRE' : nextHere ? 'PRÓXIMA' : active ? 'SELECCIONADO' : '';
-      const badgeBg = sessionHere ? STATUS_COLOR.active : pendingClose ? '#A45D00' : nextHere ? STATUS_COLOR.next : (isIcan ? ICAN_COLOR.badge : STATUS_COLOR.selected);
+      const badgeBg = sessionHere ? palette.dark : pendingClose ? '#A45D00' : nextHere ? STATUS_COLOR.next : (isIcan ? ICAN_COLOR.badge : STATUS_COLOR.selected);
       const actionLine = nextHere && canOperate(g, riel) ? (isIcan ? 'Activar / pasar lista' : 'Activar clase') : '';
-      const bg = sessionHere ? '#FFF1F1' : pendingClose ? '#FFF8E8' : (active || nextHere ? palette.light : (isIcan ? '#FFFBFF' : '#FFFFFF'));
-      const borderColor = sessionHere ? STATUS_COLOR.active : pendingClose ? '#A45D00' : (active || nextHere ? palette.border : 'rgba(15,23,42,.12)');
+      const bg = sessionHere || pendingClose || active || nextHere ? palette.light : (isIcan ? '#FFFBFF' : '#FFFFFF');
+      const borderColor = sessionHere || pendingClose || active || nextHere ? palette.border : 'rgba(15,23,42,.12)';
       const shadow = sessionHere
-        ? '0 0 0 2px rgba(198,40,40,.12), 0 8px 18px rgba(198,40,40,.08)'
+        ? '0 0 0 2px '+palette.border+'33, 0 8px 18px '+palette.border+'18'
         : nextHere
           ? (isIcan ? '0 0 0 2px rgba(91,33,130,.10), 0 8px 18px rgba(91,33,130,.10)' : '0 0 0 2px rgba(7,76,142,.08), 0 8px 18px rgba(7,76,142,.08)')
           : active
@@ -356,7 +356,7 @@
             : '0 2px 8px rgba(8,30,60,.045)';
       return <button className="cs19f-agenda-card" key={`${cod}-${riel}-${slot.day}-${slot.hora_i || idx}-${slot.hora_f || ''}`} type="button" onClick={() => onSelect && onSelect(cod)} title={title} style={{
         border:`1.5px solid ${borderColor}`,
-        borderLeft:`5px solid ${sessionHere ? STATUS_COLOR.active : palette.border}`,
+        borderLeft:`5px solid ${palette.border}`,
         background:bg, borderRadius:12, padding:'8px 10px', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
         boxShadow:shadow, position:'relative', height:76, minHeight:76, width:'100%', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'space-between', color:'inherit'

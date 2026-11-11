@@ -615,8 +615,8 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession, lecciones=
                     const hourLabel=isIcan?tvIcanHoraLabelF82(g):lab.hora;
                     const title=isIcan?`Club I CAN · ${tvF111ScheduleText(tvDiasLabel(g?.dias_ican||''))} · ${hourLabel} - ${lab.ciclo}`:tvF111ScheduleText(lab.full);
                     return <button key={`${day.key}-${code}-${riel}`} type="button" onClick={()=>onSelect(code)} title={title} style={{
-                      border:`1.5px solid ${sessionHere?'#C62828':active?dark:'var(--line)'}`, borderLeft:`4px solid ${sessionHere?'#C62828':dark}`,
-                      background:sessionHere?'#FDECEA':active?light:'#FFF', borderRadius:10,
+                      border:`1.5px solid ${sessionHere||active?dark:'var(--line)'}`, borderLeft:`4px solid ${dark}`,
+                      background:sessionHere||active?light:'#FFF', borderRadius:10,
                       padding:'8px 9px', textAlign:'left', cursor:active?'default':'pointer', fontFamily:'inherit',
                       boxShadow:active?(isIcan?'0 0 0 3px rgba(87,33,127,.18), 0 8px 18px rgba(87,33,127,.12)':'0 0 0 2px rgba(7,59,122,.10)'):(isIcan?'0 4px 12px rgba(87,33,127,.12)':'0 2px 8px rgba(8,30,60,.05)'), position:'relative', minHeight:68,
                     }}>
@@ -625,7 +625,7 @@ function MisGruposSwitcher({ grupos, activo, onSelect, activeSession, lecciones=
                       <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                         <span style={{ fontSize:9.5, fontWeight:900, fontFamily:'var(--f-mono)', color:'var(--ink-2)' }}>{lab.ciclo}</span>
                         <span style={{ fontSize:8, fontWeight:900, color:dark, background:light, borderRadius:999, padding:'1px 5px' }}>{isIcan?'I CAN':n}</span>
-                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#C62828', borderRadius:999, padding:'2px 5px' }}>{tvF111Translate('SESIÓN ACTIVA')}</span> : isNextTile ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#16834A', borderRadius:999, padding:'2px 5px' }}>{tvF111Translate('PRÓXIMA')}</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }} >{tvF111Translate('SELECCIONADO')}</span>}
+                        {sessionHere ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:dark, borderRadius:999, padding:'2px 5px' }}>{tvF111Translate('SESIÓN ACTIVA')}</span> : isNextTile ? <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:'#16834A', borderRadius:999, padding:'2px 5px' }}>{tvF111Translate('PRÓXIMA')}</span> : active && <span style={{ marginLeft:'auto', fontSize:7.5, fontWeight:900, color:'#FFF', background:isIcan?dark:'var(--an-navy)', borderRadius:999, padding:'2px 5px' }} >{tvF111Translate('SELECCIONADO')}</span>}
                       </div>
                     </button>;
                   })}
@@ -1533,6 +1533,270 @@ function tvSelectContactTextF104(event){
   selection.removeAllRanges();
   selection.addRange(range);
 }
+// F111 EXAMS-UI-01 — Operación docente por grupo, sobre el MISMO
+// calendario autorizado F80 y los componentes de notas oficiales.
+// El modelo de Claude es referencia visual: nada de alumnos ni estados ficticios.
+const TV_EXAM_DEFS_F111=[
+  {key:'ORAL_1',kind:'oral',n:1,lesson:9,units:'1–4'},
+  {key:'ORAL_2',kind:'oral',n:2,lesson:17,units:'5–8'},
+  {key:'ORAL_3',kind:'oral',n:3,lesson:25,units:'9–12'},
+  {key:'ORAL_4',kind:'oral',n:4,lesson:31,units:'13–16'},
+  {key:'ESCRITO_1',kind:'written',n:1,lesson:18,units:'1–8'},
+  {key:'ESCRITO_2',kind:'written',n:2,lesson:32,units:'9–16'}
+];
+const TV_EXAM_QUIZ_F111=[
+  [4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],
+  [21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']
+];
+function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
+  const teacher=useTeacherSession(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
+  const {grupos,codGrupo,cambiarGrupo,meta,nivel,roster,notasGrupo,lecciones,programa,loading,error,recargarPanel}=teacher;
+  const [examKey,setExamKey]=React.useState('');
+  const [preview,setPreview]=React.useState(null);
+  const en=window.AN_I18N?.getLang?.()==='en';
+  const tr=(es,english)=>en?english:es;
+  const pal=nivelPal(nivel);
+  const groupLabel=tvGrupoLabel(meta);
+  const groupCode=String(codGrupo||'');
+  const plan=tvUpper(programa)==='INA'?'CON_INA':'SIN_INA';
+  const sessions=(lecciones||[]).filter(l=>tvLessonRielF97(l)==='curso');
+  const findLesson=number=>sessions.find(l=>Number(l.leccion)===number);
+  const closed=l=>['CERRADA','CERRADO','FINALIZADA'].includes(tvUpper(l?.estado));
+  const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
+  const activeLesson=Number(activeSession?.LECCION||activeSession?.leccion||0);
+  const sessionOpen=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA';
+  const sessionFor=lesson=>sessionOpen&&activeCode===groupCode&&activeLesson===lesson&&
+    tvUpper(activeSession?.RIEL||activeSession?.riel||'curso')!=='ICAN';
+  const courseNext=sessions.filter(l=>!closed(l)&&tvUpper(l.estado)!=='SUSPENDIDA')
+    .slice().sort((a,b)=>Number(a.leccion)-Number(b.leccion))[0];
+  const milestones=[
+    ...TV_EXAM_DEFS_F111.map(d=>({lesson:d.lesson,title:(d.kind==='oral'?'Oral ':'Escrito ')+d.n})),
+    ...TV_EXAM_QUIZ_F111.map(([lesson],i)=>({lesson,title:'Progress Check '+(i+1)}))
+  ].sort((a,b)=>a.lesson-b.lesson);
+  const next=courseNext?milestones.find(x=>x.lesson>=Number(courseNext.leccion)):null;
+  const selected=TV_EXAM_DEFS_F111.find(x=>x.key===examKey);
+  const renderLabel=d=>(d.kind==='oral'?tr('Oral ','Oral '):tr('Escrito ','Written '))+d.n;
+  const registered=d=>(roster||[]).filter(s=>notasGrupo?.[s.code]?.componentes?.[d.key]?.registrado===true).length;
+  const openExtra=()=>{
+    const node=document.querySelector('[data-f111-exams-extras]');
+    if(node){node.open=true;requestAnimationFrame(()=>node.scrollIntoView({block:'start',behavior:'smooth'}));}
+  };
+  const openModel=d=>{
+    const url=new URL(d.kind==='oral'?'modulos/examen_oral.html':'modulos/examenes.html',
+      new URL('./',window.location.href));
+    if(d.kind==='oral'){
+      url.searchParams.set('preview','1');
+      url.searchParams.set('nivel',nivel);
+      url.searchParams.set('leccion',String(d.lesson));
+      url.searchParams.set('plan',plan);
+    }else{
+      url.searchParams.set('view','teacher_preview');
+      url.searchParams.set('nivel',nivel);
+      url.searchParams.set('test',d.n===1?'TEST1':'TEST2');
+      url.searchParams.set('opcion','A');
+      url.searchParams.set('plan',plan.toLowerCase());
+    }
+    setPreview({title:renderLabel(d),url:url.href});
+  };
+  return <div data-f111-exams-workspace="20261110" style={{display:'grid',gap:16,minWidth:0}}>
+    <header style={{padding:'22px 24px',border:'1px solid #E8DFD2',borderRadius:18,background:'#FFF'}}>
+      <div style={{fontSize:11,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'#8B1E3F'}}>
+        {tr('Evaluación y comunicación · Docente','Assessment & communication · Teacher')}
+      </div>
+      <h1 style={{margin:'5px 0 3px',fontSize:29,fontWeight:800,color:'#001E47'}}>
+        {tr('Mis exámenes','My exams')}
+      </h1>
+      <p style={{margin:0,fontSize:13,color:'#615850'}}>
+        {tr('Elegí un grupo y seleccioná el examen. La autorización y las notas siempre se verifican en el servidor.',
+          'Choose a group and exam. Authorization and grades are always verified by the server.')}
+      </p>
+    </header>
+    <section aria-label={tr('Mis grupos','My groups')}>
+      <h2 style={{fontSize:12,letterSpacing:'.12em',fontWeight:900,color:'#6B6259',margin:'0 0 10px'}}>
+        {tr('1 · MIS GRUPOS','1 · MY GROUPS')}
+      </h2>
+      {grupos?.length>0?<MisGruposSwitcher grupos={grupos} activo={codGrupo}
+        onSelect={code=>{setExamKey('');cambiarGrupo(code);}} activeSession={activeSession}
+        modeOverride="all" lecciones={lecciones}/>
+       :<div className="card" role="status" style={{padding:15}}>
+         {loading?tr('Verificando grupos autorizados…','Checking authorized groups…'):
+           error||tr('No se encontraron grupos autorizados.','No authorized groups found.')}
+       </div>}
+    </section>
+    {!!groupCode&&<section style={{padding:'20px 22px 24px',border:'1px solid #E8DFD2',borderRadius:18,
+      background:'#FFF',display:'grid',gap:20,minWidth:0}} aria-label={tr('Exámenes del grupo','Exams of this group')}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',alignItems:'center'}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:900,letterSpacing:'.12em',color:'#6B6259'}}>
+            {tr('2 · EXÁMENES DE ESTE GRUPO','2 · EXAMS OF THIS GROUP')}
+          </div>
+          <h2 style={{margin:'5px 0',fontSize:20,color:'#001E47'}}>
+            {tvF111ScheduleText(groupLabel.full||groupCode)}
+          </h2>
+          <div style={{fontSize:12,color:'#615850'}}>{groupCode} · {tr('Padrón académico','Academic roster')}: {loading?'…':roster.length} · {tr('Programa','Program')}: {plan==='CON_INA'?'INA':tr('Sin INA','Non-INA')}</div>
+        </div>
+        <div style={{display:'inline-flex',gap:7,flexWrap:'wrap',alignItems:'center'}}>
+          <span style={{border:'1px solid '+pal.dark,background:pal.light,color:pal.dark,
+            borderRadius:10,padding:'8px 12px',fontWeight:900,fontSize:12}}>
+            {en?window.AN_I18N?.level?.(nivel)||nivel:tvNivelLabel(meta)} · {tr('nivel actual','current level')}
+          </span>
+          <button className="btn btn-ghost" type="button" onClick={recargarPanel}>
+            {tr('Actualizar grupo','Refresh group')}
+          </button>
+        </div>
+      </div>
+      {error&&<p role="alert" style={{color:'#8B1F1F',fontSize:12,margin:0}}>{error}</p>}
+      {next&&<div role="status" style={{padding:'12px 14px',background:pal.light,
+        border:'1px solid '+pal.dark,borderRadius:12,color:pal.dark,fontWeight:800,fontSize:13}}>
+        {tr('Próxima evaluación según cronograma','Next assessment in the timetable')}: {next.title} · L{String(next.lesson).padStart(2,'0')}
+        <span style={{fontWeight:500,fontSize:11,display:'block',marginTop:3}}>
+          {tr('Esto identifica la siguiente evaluación, no concede permiso para abrirla.',
+            'This identifies the next assessment; it does not grant permission to open it.')}
+        </span>
+      </div>}
+      {loading?<div role="status" style={{padding:14}}>{tr('Consultando lecciones y notas…','Loading lessons and grades…')}</div>:<>
+        {[
+          {kind:'oral',title:tr('Exámenes orales','Oral exams'),items:TV_EXAM_DEFS_F111.filter(x=>x.kind==='oral')},
+          {kind:'written',title:tr('Exámenes escritos','Written exams'),items:TV_EXAM_DEFS_F111.filter(x=>x.kind==='written')}
+        ].map(group=><div key={group.kind} style={{display:'grid',gap:10}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:9,flexWrap:'wrap'}}>
+            <h3 style={{fontSize:16,color:'#001E47',margin:0}}>{group.title}</h3>
+            <span style={{fontSize:12,color:'#6B6259'}}>
+              {group.kind==='oral'?'4 × 15%':(plan==='CON_INA'?'2 × 5%':'2 × 15%')}
+            </span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:13}}>
+            {group.items.map(d=>{
+              const lesson=findLesson(d.lesson),active=sessionFor(d.lesson),finished=closed(lesson),
+                count=registered(d),total=roster.length,chosen=selected?.key===d.key,
+                nextUp=next?.lesson===d.lesson&&next?.title.includes(String(d.n));
+              const tone=active?pal.dark:finished?'#915B10':nextUp?'#16834A':'#6B6259';
+              const status=active?tr('Sesión activa','Active session'):finished?
+                tr('Lección cerrada','Lesson closed'):nextUp?tr('Próxima','Next'):tr('Programada','Scheduled');
+              return <article key={d.key} style={{padding:'15px 16px',borderRadius:15,
+                border:'1px solid '+(chosen?pal.dark:'#E8DFD2'),borderLeft:'4px solid '+pal.dark,
+                background:chosen?pal.light:'#FFF',display:'grid',gap:10,minWidth:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
+                  <div><strong style={{fontSize:17,color:'#001E47'}}>{renderLabel(d)}</strong>
+                    <div style={{fontSize:11,color:'#615850'}}>{tr('Lección','Lesson')} {d.lesson} · U{d.units}</div></div>
+                  <span style={{fontSize:10,fontWeight:900,whiteSpace:'nowrap',color:active?'#FFF':tone,
+                    background:active?pal.dark:pal.light,padding:'4px 8px',borderRadius:999}}>
+                    {status}
+                  </span>
+                </div>
+                <div style={{fontSize:11,color:'#615850'}}>
+                  {lesson?.fecha?String(lesson.fecha).slice(0,10):tr('Fecha pendiente en el calendario','Date not provided by timetable')}
+                </div>
+                <div>
+                  <div style={{height:7,borderRadius:999,background:'#EEE8DC',overflow:'hidden'}}>
+                    <div style={{height:'100%',width:(total?Math.min(100,Math.round(count/total*100)):0)+'%',background:pal.dark}}/>
+                  </div>
+                  <div style={{fontSize:11,color:'#4A413A',marginTop:5}}>
+                    <strong>{count}</strong> / {total} {tr('con componente oficial registrado','with a registered official grade component')}
+                  </div>
+                </div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:7,alignItems:'center'}}>
+                  <button type="button" onClick={()=>setExamKey(chosen?'':d.key)}
+                    style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,padding:'10px 12px',
+                      fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                    {tr('Ver estudiantes','See students')}
+                  </button>
+                  <button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
+                    style={{fontSize:11}}>{tr('Ver modelo','View model')}</button>
+                  {active&&d.kind==='oral'&&<button className="btn btn-primary" type="button"
+                    onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
+                      grupo:groupCode,nivel,leccion:d.lesson,fecha:String(lesson?.fecha||'').slice(0,10)}})}>
+                    {tr('Abrir oral activo','Open active oral')}
+                  </button>}
+                  {active&&d.kind==='written'&&<button className="btn btn-ghost" type="button"
+                    onClick={openExtra}>{tr('Abrir control de escrito','Open written controls')}</button>}
+                </div>
+              </article>;
+            })}
+          </div>
+        </div>)}
+        {!!selected&&<section style={{border:'1px solid #E8DFD2',borderRadius:14,overflow:'hidden'}}
+          aria-label={tr('Estudiantes del examen seleccionado','Students in selected exam')}>
+          <div style={{padding:'15px 17px',background:'#FBF8F2',display:'flex',
+            justifyContent:'space-between',flexWrap:'wrap',gap:10,alignItems:'center'}}>
+            <div><div style={{fontSize:10,color:'#6B6259',letterSpacing:'.12em',fontWeight:900}}>
+              {tr('3 · ESTUDIANTES DEL EXAMEN','3 · EXAM STUDENTS')}
+            </div><strong style={{fontSize:16}}>{renderLabel(selected)} · {tr('Lección','Lesson')} {selected.lesson}</strong></div>
+            <button className="btn btn-ghost" onClick={()=>setExamKey('')} type="button">
+              {tr('Cerrar lista','Collapse list')}
+            </button>
+          </div>
+          {roster.length===0?<p style={{padding:14}}>{tr('Sin estudiantes confirmados para el grupo.','No verified roster for this group.')}</p>:
+            <div style={{maxHeight:420,overflow:'auto'}}>
+              {roster.map(s=>{
+                const c=notasGrupo?.[s.code]?.componentes?.[selected.key];
+                const official=c?.registrado===true;
+                return <div key={s.code} style={{display:'flex',justifyContent:'space-between',
+                  alignItems:'center',flexWrap:'wrap',gap:8,padding:'10px 15px',borderTop:'1px solid #EEE8DC',fontSize:12}}>
+                  <div><strong>{s.name||s.code}</strong>
+                    <div style={{fontSize:10,color:'#6B6259'}}>{s.code} · {s.estatus}</div></div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                    <span style={{fontSize:11,color:official?'#146C2E':'#6B6259',fontWeight:800}}>
+                      {official?tr('Nota oficial','Official grade')+': '+c.puntos+' / '+c.max:
+                        tr('Sin nota oficial registrada','No official grade recorded')}
+                    </span>
+                    <button type="button" className="btn btn-ghost"
+                      onClick={()=>onNavigate&&onNavigate('grupos')}
+                      style={{fontSize:11}}>{tr('Ver expediente','Open roster')}</button>
+                  </div>
+                </div>;
+              })}
+            </div>}
+          <div style={{padding:'9px 15px',background:'#FBF8F2',fontSize:11,color:'#6B6259'}}>
+            {tr('Los borradores, reposiciones y autorizaciones se consultan por separado hasta que el servidor confirme su relación con el examen.',
+              'Drafts, make-ups and authorizations remain separate until the server confirms their link to this exam.')}
+          </div>
+        </section>}
+        <section style={{display:'grid',gap:10}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
+            <h3 style={{margin:0,fontSize:16,color:'#001E47'}}>Progress Check · {tr('Quizzes','Quizzes')}</h3>
+            <span style={{fontSize:11,color:'#6B6259'}}>{tr('8 por nivel · no alteran nota oficial','8 per level · no official-grade changes')}</span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:8}}>
+            {TV_EXAM_QUIZ_F111.map(([lesson,units],i)=>{
+              const event=findLesson(lesson),isNext=next?.lesson===lesson&&next.title==='Progress Check '+(i+1);
+              return <div key={lesson} style={{border:'1px solid '+(isNext?pal.dark:'#E8DFD2'),
+                borderLeft:'4px solid '+pal.dark,borderRadius:11,padding:12,background:isNext?pal.light:'#FFF'}}>
+                <strong style={{fontSize:13}}>Quiz {i+1}</strong>
+                <div style={{fontSize:11,color:'#6B6259',margin:'4px 0'}}>{tr('Lección','Lesson')} {lesson} · U{units}</div>
+                <div style={{fontSize:10,color:'#6B6259',marginBottom:9}}>
+                  {event?.fecha?String(event.fecha).slice(0,10):tr('Disponibilidad por verificar','Availability to verify')}
+                </div>
+                <button className="btn btn-ghost" type="button" onClick={openExtra}
+                  style={{fontSize:11}}>{tr('Consultar material','Check material')}</button>
+              </div>;
+            })}
+          </div>
+          <p style={{margin:0,fontSize:11,color:'#6B6259'}}>
+            {tr('Quiz 2 (L08): consultar el contenido y la revisión protegida; no se marca listo sin respuesta del backend.',
+              'Quiz 2 (L08): inspect protected content and review; never marked ready without a server response.')}
+          </p>
+        </section>
+      </>}
+    </section>}
+    {preview&&<div role="dialog" aria-modal="true" aria-label={preview.title}
+      style={{position:'fixed',inset:0,zIndex:2100,background:'rgba(7,22,45,.55)',padding:14,
+        display:'flex',alignItems:'center',justifyContent:'center'}}
+      onMouseDown={e=>{if(e.currentTarget===e.target)setPreview(null);}}>
+      <div style={{width:'min(1250px,100%)',height:'min(94vh,930px)',background:'#FFF',borderRadius:15,
+        display:'flex',flexDirection:'column',overflow:'hidden'}}>
+        <div style={{padding:'10px 14px',display:'flex',justifyContent:'space-between',gap:12}}>
+          <strong>{tr('Modelo docente','Teacher preview')} · {preview.title} · {nivel}</strong>
+          <button className="btn btn-ghost" type="button" onClick={()=>setPreview(null)}>{tr('Cerrar','Close')}</button>
+        </div>
+        <iframe title={preview.title} src={preview.url} style={{border:0,width:'100%',flex:1}}
+          sandbox="allow-scripts allow-same-origin allow-modals allow-presentation"
+          referrerPolicy="same-origin"/>
+      </div>
+    </div>}
+  </div>;
+}
+
 function GruposView({ onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const { codGrupo, grupos, meta, nivel, nombre, programa, roster, loading, error, asistenciaGrupo, asistenciaDetalle, comentariosDetalle, notasGrupo, resumenGrupo, lecciones, leccionHoy, cambiarGrupo, recargarPanel } = useTeacherSession(activeSession?.COD_GRUPO || activeSession?.cod_grupo || '');
   const lista=grupos||[];
