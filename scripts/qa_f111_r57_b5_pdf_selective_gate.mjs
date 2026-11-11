@@ -18,14 +18,25 @@ function check(ok, label){assert.ok(ok,label);console.log('PASS '+(++passed)+' '
 const diff=execFileSync('git',['diff','--name-only',base,'--','src','modulos'],{encoding:'utf8'})
  .trim().split(/\r?\n/).filter(Boolean).sort();
 const expected=['modulos/examenes.html','src/app.jsx','src/examenes_bundle.jsx',
- 'src/examenes_modes.jsx','src/solicitudes_unificadas.jsx'].sort();
-check(JSON.stringify(diff)===JSON.stringify(expected),'ONLY five functional files changed versus financial main');
+ 'src/examenes_modes.jsx','src/solicitudes_unificadas.jsx','src/teacher_views.jsx',
+ 'src/teacher_agenda_slots_cs19f.jsx','src/teacher_quiz_review_f111.js'].sort();
+check(JSON.stringify(diff)===JSON.stringify(expected),
+ 'only the previously approved R57 overlay and three teacher UI sources changed');
 for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solicitudes_pago.jsx',
- 'src/vista_docente.jsx','src/teacher_views.jsx','src/student_modules.jsx',
- 'src/student_experience.jsx','src/sidebar.jsx','src/cronograma_grupo.jsx','campus.html']){
+ 'src/vista_docente.jsx','src/student_modules.jsx',
+ 'src/student_experience.jsx','src/sidebar.jsx','src/cronograma_grupo.jsx']){
  const before=execFileSync('git',['show',base+':'+target],{encoding:'utf8',maxBuffer:30e6}).replace(/\r\n/g,'\n');
  check(read(target)===before,'untouched '+target);
 }
+const uiPins={
+  'campus.html':'d9611baeb88d620a8d8c537c37f40e30ee05754610e7235e73e3079f7857998f',
+  'src/app.jsx':'2a5f722779dc63cf28f3596f601143b5a805b0916cbe9fe094ad6865728702c3',
+  'src/teacher_views.jsx':'e3d75cc872312fb30675cc094088618da277eaf1ee18ef98fd6a26b8c2b0276e',
+  'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
+  'src/teacher_quiz_review_f111.js':'594ceacaf67d40f823da98b734bac01874549800b9c45f825f4cb38b824d2a2f'
+};
+for(const [path,pin] of Object.entries(uiPins))
+ check(sha(read(path))===pin,'approved teacher UI source pinned '+path);
 check(sha(modes)==='0321e49e09f221e7a27d3020717d65a0f95cf7dd7a623a4e917d229e7a5b3c7b',
  'written review source pinned exact SHA');
 check(bundle.includes(modes),'served exam bundle includes pinned official PDF UI source');

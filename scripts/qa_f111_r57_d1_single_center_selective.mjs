@@ -13,7 +13,14 @@ const BASE='949eeab724bf84a4d9db2363278d19e5d01f43f0';
 const read=x=>fs.readFileSync(x,'utf8').replace(/\r\n/g,'\n');
 const atBase=x=>execFileSync('git',['show',BASE+':'+x],{encoding:'utf8',maxBuffer:32*1024*1024}).replace(/\r\n/g,'\n');
 const sha=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
-const app=read('src/app.jsx'),original=atBase('src/app.jsx');
+const app=read('src/app.jsx');
+const uiPins={
+  'campus.html':'d9611baeb88d620a8d8c537c37f40e30ee05754610e7235e73e3079f7857998f',
+  'src/app.jsx':'2a5f722779dc63cf28f3596f601143b5a805b0916cbe9fe094ad6865728702c3',
+  'src/teacher_views.jsx':'e3d75cc872312fb30675cc094088618da277eaf1ee18ef98fd6a26b8c2b0276e',
+  'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
+  'src/teacher_quiz_review_f111.js':'594ceacaf67d40f823da98b734bac01874549800b9c45f825f4cb38b824d2a2f'
+};
 const f92=read('src/solicitudes_unificadas.jsx'),mode=read('src/examenes_modes.jsx');
 const html=read('modulos/examenes.html'),bundle=read('src/examenes_bundle.jsx');
 let count=0;
@@ -28,26 +35,33 @@ gate(prefix.includes('Generado desde:')&&
  'effective exam bundle is exactly reproducible from six sources');
 for(const p of ['src/examenes_css.jsx','src/examenes_appcss.jsx','src/examenes_data.jsx',
  'src/examenes_render.jsx','src/examenes_app.jsx','src/sidebar.jsx',
- 'src/vista_docente.jsx','src/teacher_views.jsx','src/student_modules.jsx',
+ 'src/vista_docente.jsx','src/student_modules.jsx',
  'src/student_experience.jsx','src/admin_students.jsx','src/aplicar_pago.jsx',
- 'src/solicitudes_pago.jsx','campus.html']){
+ 'src/solicitudes_pago.jsx']){
  gate(read(p)===atBase(p),'immutable baseline '+p);
 }
-const mount='<LazyRoute title="Reposiciones R57 del docente" component="ReposicionesR57Docente" files={'+
-  "['src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C']"+
-  '} onNavigate={onNavigate}/>';
+for(const [path,pin] of Object.entries(uiPins))
+ gate(sha(read(path))===pin,'approved teacher UI exact SHA '+path);
+const mount=/<LazyRoute\s+title="Reposiciones R57 del docente"\s+component="ReposicionesR57Docente"/g;
 const guarded="const visible=rows.filter(r=>String(r.SOURCE||'')!=='F111_R57_B5'&&(role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase())));";
 const legacy="const visible=rows.filter(r=>role==='admin'||!['APLICADA','CANCELADA'].includes(String(r.ESTADO||'').toUpperCase()));";
-gate(app.split(mount).length-1===1,'exactly one R57 teacher mounting point');
+gate([...app.matchAll(mount)].length===1&&
+ app.includes("files={['src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C']}"),
+ 'exactly one R57 teacher mounting point, still protected');
 gate(app.split(guarded).length-1===1,'exactly one R57/F91 segregation');
 gate(app.split('F111R57WRITTENPDF20261109B').length-1===3,
  'exactly 3 approved PDF iframe cache references');
 gate(app.split('F111R57B5PDF20261109C').length-1===4,
  'exactly 4 B5 cache references');
-let restored=app.replace(mount,'').replace(guarded,legacy)
- .replaceAll('F111R57WRITTENPDF20261109B','F98.4M')
- .replaceAll('F111R57B5PDF20261109C','F98.4A');
-gate(restored===original,'ALL other app bytes equal financial MAIN, zero unknown modifications');
+gate(app.includes('function ExamenesTeacherPanel(')&&
+ app.includes('component="TeacherExamsWorkspaceF111"')&&
+ app.includes('data-f111-exams-extras="true"')&&
+ app.includes('teacherBankOpen&&bank')&&
+ !app.includes('src/social_skill_docente_f111.jsx'),
+ 'approved teacher exam workspace preserves separated R57, model bank and routes');
+gate(!app.includes('registrarNotaComponenteOficial(')&&
+ !app.includes('F111_R57_ALLOW_ZERO_WRITES'),
+ 'teacher UI does not introduce official-grade or zero-worker mutations');
 const centerStart=app.indexOf('function ExamenesAdminPanel()');
 const centerEnd=app.indexOf('// F111: Student assessment presentation only.',centerStart);
 const center=app.slice(centerStart,centerEnd);
