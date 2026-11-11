@@ -26,7 +26,7 @@ assert.ok(quiz.includes('if(!liveMode)sessionStorage.setItem'),'respuestas reale
 assert.ok(quiz.includes('Object.keys(allowed).length!==25'),'paridad de 25 campos con servidor');
 assert.ok(quiz.includes('b1_pc01_listening_track01.mp3'),'audio autenticado original');
 assert.ok(quiz.includes('b1_pc01_original_photo.png'),'foto aprobada intacta');
-assert.ok(teacherView.includes('data-f111-lesson-quiz="B1-L4"'),'preview amarillo conservado');
+assert.ok(!teacherView.includes('data-f111-lesson-quiz="B1-L4"'),'sin segunda entrada del Quiz1 en drawer');
 assert.ok(teacher.includes('confirmGroupQuizInvitation(select.value'),'apertura docente contextual desde la tarjeta PC01');
 assert.ok(teacher.includes('gate.puede_abrir!==true'),'apertura PC01 exige elegibilidad real del servidor');
 for(const fn of ['qzProgressTeacherAvailability','qzProgressTeacherSetAvailability',
