@@ -662,6 +662,40 @@ function f111AuthorizedCourseGroups(data){
  }
  return out;
 }
+// EXUI-05C: acceso contextual al expediente oral ya existente; SOLO lectura
+// de grupos asignados e historia real. Un contexto suministrado por la UI
+// nunca concede permisos, ni crea borradores, notas o archivos PDF.
+async function openSavedOralForStudent(context){
+ const group=String(context?.grupo||'').trim().toUpperCase(),
+   level=String(context?.nivel||'').trim().toUpperCase(),
+   lesson=Number(context?.leccion),
+   student=String(context?.cod_estudiante||'').trim();
+ if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)||
+    !['B1','B2','I1','I2'].includes(level)||
+    ![9,17,25,31].includes(lesson)||!/^[A-Za-z0-9_-]{2,60}$/.test(student))
+  return {ok:false,reason:'contexto_invalido'};
+ try{
+  const owned=await postQuiz('getDocenteGruposActuales',{});
+  if(!f111AuthorizedCourseGroups(owned).some(x=>String(x).trim().toUpperCase()===group))
+   return {ok:false,reason:'grupo_no_asignado'};
+  const result=await postQuiz('oralListEvaluacionesDocente',{cod_grupo:group});
+  if(result?.ok===false||!Array.isArray(result?.rows))
+   return {ok:false,reason:'historial_no_verificable'};
+  const matching=result.rows.filter(r=>
+   String(r.nivel||'').trim().toUpperCase()===level&&Number(r.leccion)===lesson&&
+   String(r.cod_estudiante||'').trim()===student&&
+   (!r.cod_grupo||String(r.cod_grupo).trim().toUpperCase()===group));
+  if(matching.length!==1)return {ok:false,reason:matching.length?'historial_ambiguo':'sin_expediente'};
+  const record=matching[0];
+  f111TeacherExamModal('Expediente oral · '+level+' · L'+lesson,
+   f111ExamPageUrl('modulos/examen_oral.html',{
+    historial:1,grupo:group,nivel:level,leccion:lesson,
+    fecha:String(record.fecha||''),cod_estudiante:student
+   }));
+  return {ok:true};
+ }catch(_){return {ok:false,reason:'consulta_no_disponible'};}
+}
+window.F111_QZ_openSavedOral=openSavedOralForStudent;
 function buildTeacherExamsF111(){
  const section=make('section',null,'f111-teacher-exam-center');
  section.dataset.f111TeacherExamCenter='true';
