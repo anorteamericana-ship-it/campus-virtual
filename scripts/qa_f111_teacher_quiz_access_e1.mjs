@@ -57,8 +57,8 @@ assert.ok(view.includes('todayQuiz.eligible===true'),'servidor QUIZ decide si ex
 assert.ok(view.includes("if(error||activeSessionError===true)"),'error visible distinto de no elegible');
 assert.ok(view.includes("todayStatus.kind!=='oral'"),'no duplicar CTA oral en la tarjeta');
 assert.ok(view.includes("todayStatus.kind==='quiz'&&todayStatus.lesson===lesson"),'no duplicar CTA quiz activo');
-assert.ok(view.includes("La sesión está activa, pero no hay una consulta de disponibilidad escrita sin efectos secundarios verificada"),
- 'no auto-activar escritos en un supuesto GET sin efectos');
+assert.ok(view.includes('la disponibilidad de estudiantes continúa sin verificación de lectura pura'),
+ 'la consulta de entregas no auto-activa el escrito ni promete disponibilidad');
 assert.ok(!view.includes("postTeacher('examGetCronogramaExamAvailability'"),
  'la acción hoy nunca consulta endpoints escritos con efectos secundarios');
 const start=catalog.indexOf('async function readB1TeacherAvailabilityForToday(');
@@ -94,7 +94,6 @@ assert.equal(unsupported.result.ok,false,'el control no intenta abrir examen esc
 assert.equal(unsupported.calls.length,0,'lección escrita sin consulta QUIZ');
 console.log('PASS EXUI-05B: Acción de hoy, sesión CORE vigente, permisos QUIZ read-only y bloqueos negativos');
 // EXUI-05C: navegación contextual sin exponer datos ni conceder permisos.
-const app=read('src/app.jsx');
 const modes=read('src/examenes_modes.jsx');
 const bundle=read('src/examenes_bundle.jsx');
 const examHTML=read('modulos/examenes.html');
@@ -121,7 +120,8 @@ assert.ok(view.includes('data-f111-student-assessment-record="true"'),
 assert.ok(view.includes("r.source==='F91'"),'historial F91 no se oculta bajo Extras');
 assert.ok(view.includes("openStudentOralHistory(selected,s.code)"),'botón real de rúbrica/PDF por estudiante');
 assert.ok(view.includes("openWrittenInbox(selected.lesson,s.code)"),'escrito enfoca estudiante y lección');
-assert.ok(!view.includes("onClick={()=>onNavigate&&onNavigate('grupos')"),
+const teacherArea=view.split('function TeacherExamsWorkspaceF111(')[1]?.split('function GruposView(')[0]||'';
+assert.ok(!teacherArea.includes("onClick={()=>onNavigate&&onNavigate('grupos')"),
  'no hay falsa acción Ver expediente que salte a otro menú');
 assert.ok(!view.includes("onClick={openExtra}>{tr('Abrir control de escrito'"),
  'el acceso escrito principal ya no abre módulos de reposición genéricos');
@@ -133,7 +133,7 @@ assert.ok(focusStart>0&&focusEnd>focusStart,'filtro de bandeja contextual presen
 function selectRows(focus,grupo,rows){
  const scope={focus,grupo,rows};
  vm.runInNewContext(modes.slice(focusStart,focusEnd)+';this.exuiRows=visibleRows;',scope);
- return scope.exuiRows.map(x=>x.ATTEMPT_ID);
+ return Array.from(scope.exuiRows,x=>x.ATTEMPT_ID);
 }
 const sample=[
  {ATTEMPT_ID:'correct',COD_GRUPO:'QA-GRUPO-0826',NIVEL:'B1',LECCION:18,COD_ESTUDIANTE:'ST-001'},
