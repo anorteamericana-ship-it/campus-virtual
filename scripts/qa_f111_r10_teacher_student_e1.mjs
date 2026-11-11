@@ -79,6 +79,21 @@ try {
  await page.locator('[data-f111-b1-focus-control] .f111-tqr-close').click();
  fs.mkdirSync(new URL('../qa-capturas/',import.meta.url),{recursive:true});
  await page.screenshot({path:new URL('../qa-capturas/QZ32_R10_TEACHER_DESKTOP.png',import.meta.url).pathname,fullPage:true});
+ // EXUI-05A P0: un grupo ajeno no obtiene siquiera la disponibilidad del servidor.
+ await page.evaluate(()=>window.F111_QZ_openTeacherControls(4,'QA-GRUPO-AJENO'));
+ await page.waitForFunction(()=>document.querySelector('.f111-tqr-r9-controls')?.textContent?.includes('no está autorizado'));
+ assert.equal(await page.locator('.f111-tqr-r9-controls .f111-tqr-activate').isDisabled(),true);
+ assert.equal(requests.some(x=>x.fn==='qzProgressTeacherAvailability'&&x.group==='QA-GRUPO-AJENO'),false,
+  'grupo ajeno bloqueado antes de disponibilidad');
+ await page.locator('[data-f111-b1-focus-control] .f111-tqr-close').click();
+ // PC01 puede estar asignado pero no abierto por fecha/estado: sin escribir.
+ await page.evaluate(()=>window.F111_QZ_openTeacherControls(4,'QA-F111-B1'));
+ await page.waitForFunction(()=>document.querySelector('.f111-tqr-r9-controls')?.textContent?.includes('No elegible'));
+ assert.equal(await page.locator('.f111-tqr-r9-controls .f111-tqr-activate').isDisabled(),true,
+  'PC01 no habilita estudiantes si el servidor deniega permiso');
+ assert.equal(requests.filter(x=>x.fn==='qzProgressTeacherSetAvailability'&&x.lesson===4).length,0,
+  'la lectura y apertura del modal no activan PC01');
+ await page.locator('[data-f111-b1-focus-control] .f111-tqr-close').click();
  const studentPage=await browser.newPage({viewport:{width:390,height:844}});
  await wire(studentPage,'student');
  await studentPage.goto(ROOT+'/student');
