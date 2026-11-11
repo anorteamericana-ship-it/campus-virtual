@@ -225,14 +225,16 @@ function authorizedB1Groups(){
 function buildB1TeacherOpenControls(lesson,preferredGroup){
  const wrap=make('div',null,'f111-tqr-r9-controls');
  const select=make('select',null,'f111-tqr-r9-group');
+ // EXUI-05A: el grupo se fija en el selector único de Mis exámenes.
  select.setAttribute('aria-label','Grupo B1 autorizado');
+ select.hidden=true;
  const status=make('small','Consultando grupos docentes…','f111-tqr-feedback');
  status.setAttribute('role','status');
  const previewBtn=make('button','VER PDF + AUDIO DEL GRUPO','f111-tqr-open');
  const toggle=make('button','CONSULTANDO…','f111-tqr-activate');
  const reviewBtn=make('button','REVISAR ENTREGAS','f111-tqr-open');
  for(const b of [previewBtn,toggle,reviewBtn]){b.type='button';b.disabled=true;}
- wrap.append(select,previewBtn,toggle,reviewBtn,status);
+ wrap.append(make('strong','Grupo seleccionado: '+String(preferredGroup||'sin grupo')),select,previewBtn,toggle,reviewBtn,status);
  let info=null,busy=false;
  const context=()=>({cod_grupo:select.value,nivel:'B1',leccion:lesson});
  async function refresh(){
@@ -250,12 +252,16 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
   }catch(e){status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;}
  }
  select.addEventListener('change',()=>{previewBtn.disabled=!select.value;reviewBtn.disabled=!select.value;void refresh();});
- previewBtn.addEventListener('click',()=>{if(select.value)previewB1Protected(lesson,select.value);});
- reviewBtn.addEventListener('click',()=>{if(select.value)openB1TeacherReview(lesson,select.value);});
+ previewBtn.addEventListener('click',()=>{if(select.value){if(Number(lesson)===4)preview(select.value);else previewB1Protected(lesson,select.value);}});
+ reviewBtn.addEventListener('click',()=>{if(select.value){if(Number(lesson)===4)openReviewWorkspace(select.value);else openB1TeacherReview(lesson,select.value);}});
  toggle.addEventListener('click',async()=>{
   if(busy||!info||!select.value)return;
   const next=info.estado==='ABIERTO'?'CERRADO':'ABIERTO';
   if(next==='ABIERTO'&&info.puede_abrir!==true)return;
+  if(next==='ABIERTO'&&Number(lesson)===4){
+   busy=true;try{await confirmGroupQuizInvitation(select.value,toggle,status,refresh);}
+   finally{busy=false;}return;
+  }
   if(!window.confirm((next==='ABIERTO'?'¿ACTIVAR':'¿CERRAR')+' el Quiz '+
       String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' del grupo '+select.value+
       '? Esta acción afecta la disponibilidad para estudiantes reales.'))return;
@@ -264,7 +270,7 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
    const data=await postQuiz('qzProgressTeacherSetAvailability',{...context(),estado:next});
    if(data.estado!==next)throw Error('Servidor no confirmó el estado');
    const readback=await postQuiz('qzProgressTeacherAvailability',context());
-   if(readback.estado!==next)throw Error('La lectura posterior no coincide');
+   if(readback.estado!==next||readback.grupo!==select.value||Number(readback.leccion)!==Number(lesson))throw Error('La lectura posterior no coincide');
    status.textContent='Confirmado: '+next;
   }catch(e){status.textContent='Cambio no confirmado: '+String(e.message||e);}
   finally{busy=false;select.disabled=false;void refresh();}
@@ -288,7 +294,7 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
 // directamente desde la tarjeta del grupo. Sin nuevas rutas ni permisos.
 function openB1ProgressFromExamCard(lesson,group){
  const number=LESSONS.findIndex(x=>x[0]===Number(lesson))+1;
- if(number<2||number>8||!String(group||'').trim())return false;
+ if(number<1||number>8||!String(group||'').trim())return false;
  if(document.querySelector('[data-f111-b1-focus-control]'))return true;
  installStyle();
  const overlay=make('div',null,'f111-tqr-workspace-backdrop');
@@ -415,7 +421,9 @@ function openReviewWorkspace(group){
  async function loadRows(selectFirst){
   const delivered=await postQuiz('qzProgressTeacherList',qzContext);
   rows=Array.isArray(delivered.intentos)?delivered.intentos:[];
-  rows=rows.filter(r=>r&&getCode(r)&&['ENTREGADO','REVISADO'].includes(String(r.ESTADO)));
+  rows=rows.filter(r=>r&&getCode(r)&&String(r.COD_GRUPO||'')===groupCode&&
+   String(r.NIVEL||'')==='B1'&&Number(r.LECCION)===4&&
+   ['ENTREGADO','REVISADO'].includes(String(r.ESTADO)));
   // Los nombres proceden del padrón autorizado; una falla no oculta entregas.
   try{
    const r=await postQuiz('getEstudiantesParaCierre',{cod_grupo:groupCode,nivel:'B1'});
