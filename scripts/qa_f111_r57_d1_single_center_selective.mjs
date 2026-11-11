@@ -16,18 +16,20 @@ const sha=s=>crypto.createHash('sha256').update(s,'utf8').digest('hex');
 const app=read('src/app.jsx');
 // EXUI-05B #757: exact approved teacher UI pins refreshed; all immutable R57
 // baseline checks and protected server routes remain strict.
+// EXUI-05C: exact source pins renewed for contextual read-only inbox and
+// oral rubric navigation; R57, PDF, grade, financial and lazy-route checks stay strict.
 const uiPins={
-  'campus.html':'8792212716cf49c1e0f3c22c096793845322efd273db137203e7ddfdfd47feba',
-  'src/app.jsx':'4a4cf0da387c3992e734865d2c52085e4d7613609497f5ee323b6e3fac69fb13',
-  'src/teacher_views.jsx':'9afbdd606ff92ce0db0df142ec55955aca9e46f90aed1b43fe80f4b2f8b6c42a',
+  'campus.html':'9d6aaebf47fbef23ef6be92de54b1e318e7dd3e254755bb42558b05ac3f5a940',
+  'src/app.jsx':'0c59d9888bfe31f6d99fbf6beafa9867ebcbc2e3d3e7ee5eb91eb078785e39f2',
+  'src/teacher_views.jsx':'b5897788559e824b0844335784795ab15d583efc7a1bd288a51520d3fe6b0e7f',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
-  'src/teacher_quiz_review_f111.js':'a85280bc13af59bab30596848e18f8a0b46423092e257178590aefa58bf9be4e'
+  'src/teacher_quiz_review_f111.js':'053794b19ebae1b17f9d2cd6a63bce9ad25f3bc56203df4da6a5cf3175626305'
 };
 const f92=read('src/solicitudes_unificadas.jsx'),mode=read('src/examenes_modes.jsx');
 const html=read('modulos/examenes.html'),bundle=read('src/examenes_bundle.jsx');
 let count=0;
 function gate(ok,label){assert.ok(ok,label);console.log('PASS '+(++count)+' '+label);}
-gate(sha(mode)==='0321e49e09f221e7a27d3020717d65a0f95cf7dd7a623a4e917d229e7a5b3c7b',
+gate(sha(mode)==='da7899a45adb6abb8dff83fb605ea498adf51fdcfb9613c1fab9447afffa6bbf',
  'written PDF module exact approved SHA, rejects any unrelated exam motor edits');
 const names=['examenes_css.jsx','examenes_appcss.jsx','examenes_data.jsx',
  'examenes_render.jsx','examenes_modes.jsx','examenes_app.jsx'];

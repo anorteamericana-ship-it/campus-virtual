@@ -72,7 +72,7 @@ const F96_LAZY = {
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
   student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C','src/student_modules.jsx?v=F111PROFILECANONICAL20261020&four=F111FOURTABSEN20261104A'],
   syllabus_views: ['src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023'],
-  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI041110','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110'],
+  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI05C20261111','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110'],
   english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20H'],
   vista_docente: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R-HOTFIX-DATES-SUPER'],
@@ -83,7 +83,7 @@ const F96_LAZY = {
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
   cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A'],
   calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A','src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/calendario_grupo.jsx?v=F98.4Z6CM'],
-  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI041110','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110','src/docente_operativo.jsx?v=F96.5G'],
+  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI05C20261111','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP&hotfix=F111ANTICIPOS20261103'],
@@ -254,8 +254,46 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
 // Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F111R57WRITTENPDF20261109B`;
+  const src = `modulos/examenes.html?view=${view}&v=F111R57WRITTENPDF20261109B&exui05c=F111EXUI05C20261111`;
   const [teacherBankOpen,setTeacherBankOpen]=React.useState(false);
+  const [writtenFocus,setWrittenFocus]=React.useState(null);
+  const writtenFrameRef=React.useRef(null),writtenBankRef=React.useRef(null);
+  const postWrittenFocus=React.useCallback(()=>{
+    if(view!=='teacher'||!writtenFocus||!writtenFrameRef.current?.contentWindow)return;
+    writtenFrameRef.current.contentWindow.postMessage({
+      type:'F111_EXUI05C_WRITTEN_FOCUS',grupo:writtenFocus.grupo,
+      nivel:writtenFocus.nivel,leccion:writtenFocus.leccion,
+      cod_estudiante:writtenFocus.cod_estudiante
+    },window.location.origin);
+  },[view,writtenFocus]);
+  React.useEffect(()=>{
+    if(view!=='teacher')return undefined;
+    const onReady=e=>{
+      if(e.origin!==window.location.origin||e.source!==writtenFrameRef.current?.contentWindow||
+         e.data?.type!=='F111_EXUI05C_WRITTEN_READY')return;
+      postWrittenFocus();
+    };
+    window.addEventListener('message',onReady);
+    return()=>window.removeEventListener('message',onReady);
+  },[view,postWrittenFocus]);
+  React.useEffect(()=>{
+    if(view!=='teacher'||!teacherBankOpen||!writtenFocus)return;
+    postWrittenFocus();
+    writtenBankRef.current?.scrollIntoView({block:'start',behavior:'smooth'});
+  },[view,teacherBankOpen,writtenFocus,postWrittenFocus]);
+  const openWrittenFocus=React.useCallback(context=>{
+    if(view!=='teacher')return false;
+    const grupo=String(context?.grupo||'').trim().toUpperCase(),
+      nivel=String(context?.nivel||'').trim().toUpperCase(),
+      leccion=Number(context?.leccion),cod=String(context?.cod_estudiante||'').trim();
+    if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(grupo)||
+       !['B1','B2','I1','I2'].includes(nivel)||![18,32].includes(leccion)||
+       (cod&&!/^[A-Za-z0-9_-]{2,60}$/.test(cod)))return false;
+    // Solo orienta la bandeja: el iframe consulta permisos de servidor.
+    setWrittenFocus({grupo,nivel,leccion,cod_estudiante:cod});
+    setTeacherBankOpen(true);
+    return true;
+  },[view]);
   const bank=<div style={{
         flex: 1, minHeight: 640,
         background: 'var(--surface, #fff)',
@@ -264,12 +302,16 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         boxShadow: 'var(--sh-1, 0 8px 30px rgba(0,0,0,0.08))',
       }}>
         <iframe
+          ref={writtenFrameRef}
           key={`${view}-F111R57WRITTENPDF20261109B`}
           title={iframeTitle}
           src={src}
           style={{ width: '100%', height: 'calc(100vh - 184px)', minHeight: 640, border: 0, display: 'block' }}
           loading="eager"
-          onLoad={(e) => { try { e.currentTarget.contentWindow.scrollTo(0, 0); } catch (_) {} }}
+          onLoad={(e) => {
+            try { e.currentTarget.contentWindow.scrollTo(0, 0); } catch (_) {}
+            postWrittenFocus();
+          }}
           referrerPolicy="same-origin"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-modals"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
@@ -294,9 +336,9 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 11px',borderRadius:999,background:'color-mix(in srgb, var(--an-gold, #D6A94A) 16%, transparent)',color:'var(--ink-2, #4A413A)',fontSize:11.5,fontWeight:800,whiteSpace:'nowrap'}}>{badge}</div>
       </div>}
 
-      {topContent || null}
-      {view==='teacher'?<details data-f111-written-bank="true"
-        onToggle={e=>setTeacherBankOpen(e.currentTarget.open)}
+      {typeof topContent==='function'?topContent(openWrittenFocus):(topContent || null)}
+      {view==='teacher'?<details data-f111-written-bank="true" ref={writtenBankRef}
+        open={teacherBankOpen} onToggle={e=>setTeacherBankOpen(e.currentTarget.open)}
         style={{border:'1px solid #E8DFD2',borderRadius:14,background:'#FFF',padding:'12px 15px'}}>
         <summary style={{fontSize:13,fontWeight:900,cursor:'pointer',color:'#001E47'}}>
           Banco de escritos y controles institucionales · Opciones A/B
@@ -304,6 +346,12 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
         <p style={{fontSize:11,color:'#6B6259'}}>
           Modelos y controles históricos. Esta sección no habilita estudiantes ni reabre lecciones.
         </p>
+        {teacherBankOpen&&writtenFocus&&<div role="status" style={{padding:'9px 11px',marginBottom:10,
+          background:'#F4F7FB',border:'1px solid #C9D7E6',borderRadius:9,fontSize:12,color:'#001E47'}}>
+          {writtenFocus.grupo} · {writtenFocus.nivel} · L{writtenFocus.leccion}
+          {writtenFocus.cod_estudiante?' · estudiante '+writtenFocus.cod_estudiante:''}
+          {' · consulta de entregas, sin activación automática'}
+        </div>}
         {teacherBankOpen&&bank}
       </details>:bank}
     </section>
@@ -549,10 +597,10 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSess
   const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
   :esEscrito?<WrittenSessionCardF929 session={s}/>
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
-  const top=<>
+  const top=onWrittenFocus=><>
     <LazyRoute title="Mis exámenes" component="TeacherExamsWorkspaceF111"
-      files={F96_LAZY.teacher_views} onNavigate={onNavigate} activeSession={s}
-      activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
+      files={F96_LAZY.teacher_views} onNavigate={onNavigate} onWrittenFocus={onWrittenFocus}
+      activeSession={s} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     <details data-f111-exams-extras="true" onToggle={e=>setExtraOpen(e.currentTarget.open)} style={{background:'#FFF',
       border:'1px solid #E8DFD2',borderRadius:14,padding:'13px 16px'}}>
       <summary style={{fontWeight:900,color:'#001E47',cursor:'pointer',fontSize:13}}>

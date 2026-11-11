@@ -2935,33 +2935,85 @@ function TeacherWrittenLiveInbox() {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [selected, setSelected] = useState(null);
-
+  const [focus, setFocus] = useState(null);
+  const [focusError, setFocusError] = useState('');
+  const requestSeq = React.useRef(0);
+  const lastLoadedGroup = React.useRef('');
+  const selectedRef = React.useRef(null);
+  useEffect(() => { selectedRef.current=selected; },[selected]);
+  // EXUI-05C: focus comes only from the same-origin authenticated Campus parent.
+  // It selects a group, lesson and optional student; never opens a draft or
+  // issues an activation POST. CORE's examReviewInbox verifies authorization.
+  useEffect(() => {
+    const onFocusMessage=e=>{
+      if(e.origin!==window.location.origin||e.source!==window.parent||
+         e.data?.type!=='F111_EXUI05C_WRITTEN_FOCUS')return;
+      const ses=getExamParentSession();
+      const role=String(ses?.rol||ses?.role||'').toLowerCase();
+      if(!['teacher','docente'].includes(role))return;
+      const g=String(e.data.grupo||'').trim().toUpperCase(),
+        level=String(e.data.nivel||'').trim().toUpperCase(),
+        lesson=Number(e.data.leccion),
+        student=String(e.data.cod_estudiante||'').trim();
+      if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(g)||
+        !['B1','B2','I1','I2'].includes(level)||![18,32].includes(lesson)||
+        (student&&!/^[A-Za-z0-9_-]{2,60}$/.test(student)))return;
+      if(selectedRef.current){
+        setFocusError('Cerrá la revisión actual antes de cambiar de estudiante o examen.');
+        return;
+      }
+      setFocus({grupo:g,nivel:level,leccion:lesson,cod_estudiante:student});
+      setFocusError('');
+      setGrupo(g);
+    };
+    window.addEventListener('message',onFocusMessage);
+    if(window.parent&&window.parent!==window)
+      window.parent.postMessage({type:'F111_EXUI05C_WRITTEN_READY'},window.location.origin);
+    return()=>window.removeEventListener('message',onFocusMessage);
+  },[]);
   useEffect(() => {
     if (!grupos.length) return;
-    if (!grupo || !grupos.includes(grupo)) setGrupo(grupos[0]);
+    if (!grupo) setGrupo(grupos[0]);
   }, [grupos.join('|')]);
 
   const load = useCallback(async (silent) => {
     const g = String(grupo || '').trim();
+    const seq = ++requestSeq.current;
     if (!g) {
       setRows([]); setSummary(null); setMsg('');
       setErr('No se encontró un grupo docente asignado para consultar entregas.');
       return;
     }
+    // Retain already verified rows during the 15-second same-group refresh,
+    // but never show previous-group rows while a new group is being checked.
+    if(lastLoadedGroup.current!==g){
+      setRows([]);setSummary(null);
+      lastLoadedGroup.current=g;
+    }
     setLoading(true); setErr(''); if (!silent) setMsg('');
+    // A forged group in a UI message is NOT a teacher permission: only this
+    // authorized server response may populate the scoped inbox.
     const r = await postExamBackend('examReviewInbox', { cod_grupo:g, queue:'NEEDS_ACTION', limit:120 });
+    if(seq!==requestSeq.current)return;
     setLoading(false);
-    if (r && r.ok) {
-      setRows(Array.isArray(r.rows) ? r.rows : []);
+    if (r && r.ok===true && Array.isArray(r.rows) &&
+        (!r.grupo || String(r.grupo).trim().toUpperCase()===g)) {
+      const scoped=r.rows.filter(row=>String(row.COD_GRUPO||'').trim().toUpperCase()===g);
+      if(scoped.length!==r.rows.length){
+        setRows([]);setSummary(null);
+        setErr('La bandeja devolvió entregas sin grupo verificable. No se muestran registros de otros grupos.');
+        return;
+      }
+      setRows(scoped);
       setSummary(r.summary || null);
-      if (!silent) setMsg(`Actualizado · ${r.total || 0} entrega(s) requieren atención.`);
+      if (!silent) setMsg(`Actualizado · ${scoped.length} entrega(s) en la bandeja autorizada.`);
     } else {
       setRows([]); setSummary(null);
-      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo consultar la bandeja de entregas. Intentá nuevamente.', 'review_inbox'));
+      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo verificar la bandeja de este grupo. No se muestran entregas.', 'review_inbox'));
     }
   }, [grupo]);
 
-  useEffect(() => { setSelected(null); load(true); }, [grupo, load]);
+  useEffect(() => { setSelected(null); load(true); }, [grupo, load, focus?.leccion, focus?.cod_estudiante]);
   useEffect(() => {
     if (!grupo || selected) return undefined;
     const refresh = () => load(true);
@@ -2979,6 +3031,16 @@ function TeacherWrittenLiveInbox() {
   const counts = summary || {};
   const pendingCount = Number(counts.needs_action != null ? counts.needs_action : rows.length) || 0;
   const pushedCount = Number(counts.pushed_to_notas || 0) || 0;
+  const scopedFocus=focus&&focus.grupo===grupo?focus:null;
+  const visibleRows=scopedFocus?rows.filter(row=>{
+    const lesson=Number(row.LECCION|| (String(row.TEST_CODE||'').toUpperCase()==='TEST2'?32:18));
+    const student=String(row.COD_ESTUDIANTE||row.CODIGO||'').trim();
+    return String(row.COD_GRUPO||'').trim().toUpperCase()===scopedFocus.grupo&&
+      String(row.NIVEL||'').trim().toUpperCase()===scopedFocus.nivel&&
+      lesson===scopedFocus.leccion&&
+      (!scopedFocus.cod_estudiante||student===scopedFocus.cod_estudiante);
+  }):rows;
+  const panelGroups=grupos;
 
   return (
     <div className="tchwrap">
@@ -2995,28 +3057,57 @@ function TeacherWrittenLiveInbox() {
       </div>
 
       <div className="tch-groups-panel">
-        <div className="tch-groups-label">ELEGÍ EL GRUPO CON UNA TARJETA</div>
-        <div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
-          {grupos.length ? grupos.map(g => (
+        <div className="tch-groups-label">
+          {scopedFocus?'GRUPO SELECCIONADO EN MIS EXÁMENES':'ELEGÍ EL GRUPO CON UNA TARJETA'}
+        </div>
+        {!scopedFocus&&<div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
+          {panelGroups.length ? panelGroups.map(g => (
             <button key={g} type="button" role="tab" aria-selected={grupo===g}
               className={`tch-group-card${grupo===g?' active':''}`}
-              onClick={()=>setGrupo(g)}>
+              onClick={()=>{setFocus(null);setFocusError('');setGrupo(g);}}>
               <span>{examTeacherGroupLabelF88(g)}</span>
               <small>{examTeacherShortGroupF940(g)}</small>
             </button>
           )) : <div className="tch-group-empty">Sin grupos asignados en la sesión.</div>}
           <button type="button" className="tch-refresh" disabled={loading || !grupo} onClick={()=>load(false)}>{loading ? 'Actualizando…' : 'Actualizar entregas'}</button>
-        </div>
+        </div>}
+        {scopedFocus&&<div data-f111-written-focus="true" role="status"
+          style={{padding:'10px 12px',marginTop:10,border:'1px solid #C9D7E6',borderRadius:8,background:'#F3F7FC',fontSize:12}}>
+          <b>Consulta contextual:</b> {scopedFocus.grupo} · {scopedFocus.nivel} ·
+          lección {scopedFocus.leccion}
+          {scopedFocus.cod_estudiante?' · estudiante '+scopedFocus.cod_estudiante:''}
+          <button type="button" className="tch-refresh"
+            style={{marginLeft:10}} onClick={()=>{
+              setFocus(null);setFocusError('');
+              if(!grupos.includes(grupo))setGrupo(grupos[0]||'');
+            }}>
+            Ver todas las entregas de este grupo
+          </button>
+          <button type="button" className="tch-refresh" disabled={loading}
+            onClick={()=>load(false)} style={{marginLeft:8}}>
+            {loading?'Actualizando…':'Actualizar entregas'}
+          </button>
+          <div style={{fontSize:11,marginTop:5}}>
+            Solo se muestran entregas que el servidor autorizó para el grupo. Consultar aquí no habilita ni crea exámenes.
+          </div>
+        </div>}
         {msg && <div className="ex-okmsg">✓ {msg}</div>}
         {err && <div className="ex-errmsg">⚠ {err}</div>}
+        {focusError && <div role="alert" className="ex-errmsg">⚠ {focusError}</div>}
       </div>
 
       <div className="tch-table-wrap">
         <table className="tch-table">
           <thead><tr><th>Estudiante</th><th>Examen</th><th>Enviado</th><th>Estado</th><th>Acción</th></tr></thead>
           <tbody>
-            {!rows.length && <tr><td colSpan="5"><div className="tch-empty-state"><b>No hay exámenes enviados que requieran atención.</b><span>Que el examen esté activo no significa que ya haya entregas. La lista cambia cuando el estudiante termina y presiona “Enviar examen”.</span></div></td></tr>}
-            {rows.map((r, i) => (
+            {!visibleRows.length && <tr><td colSpan="5"><div className="tch-empty-state">
+              <b>{loading?'Verificando entregas autorizadas…':err?'No se pueden mostrar entregas.':
+                scopedFocus?'Sin entregas pendientes para esta selección.':'No hay exámenes enviados que requieran atención.'}</b>
+              <span>{scopedFocus?
+                'Esta bandeja solo contiene entregas enviadas que requieren atención. No significa que el estudiante esté ausente, tenga nota cero ni que no exista un expediente histórico.':
+                'Que el examen esté activo no significa que ya haya entregas. La lista cambia cuando el estudiante termina y presiona “Enviar examen”.'}</span>
+            </div></td></tr>}
+            {visibleRows.map((r, i) => (
               <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>
                 <td><b>{r.NOMBRE || r.CODIGO || '—'}</b><span className="tch-code">{r.CODIGO || r.COD_ESTUDIANTE || '—'}</span></td>
                 <td><b>{r.NIVEL || '—'} · Lección {r.LECCION || (String(r.TEST_CODE||'').toUpperCase()==='TEST2'?32:18)}</b><span className="tch-code">{r.EXAM_ID || r.TEST_CODE || '—'}</span></td>
