@@ -17,7 +17,7 @@ const app=read('src/app.jsx');
 const uiPins={
   'campus.html':'d9611baeb88d620a8d8c537c37f40e30ee05754610e7235e73e3079f7857998f',
   'src/app.jsx':'2a5f722779dc63cf28f3596f601143b5a805b0916cbe9fe094ad6865728702c3',
-  'src/teacher_views.jsx':'469ccfe43237a18603be62544b3cf6e3af06a5ed57a136c6673966809025a58c',
+  'src/teacher_views.jsx':'f097024e4e269aac9d7c0ac4eb2ab5660cde222998f9649cf21e72c8ae0b3013',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
   'src/teacher_quiz_review_f111.js':'594ceacaf67d40f823da98b734bac01874549800b9c45f825f4cb38b824d2a2f'
 };

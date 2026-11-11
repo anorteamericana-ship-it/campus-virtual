@@ -31,7 +31,7 @@ for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solici
 const uiPins={
   'campus.html':'d9611baeb88d620a8d8c537c37f40e30ee05754610e7235e73e3079f7857998f',
   'src/app.jsx':'2a5f722779dc63cf28f3596f601143b5a805b0916cbe9fe094ad6865728702c3',
-  'src/teacher_views.jsx':'469ccfe43237a18603be62544b3cf6e3af06a5ed57a136c6673966809025a58c',
+  'src/teacher_views.jsx':'f097024e4e269aac9d7c0ac4eb2ab5660cde222998f9649cf21e72c8ae0b3013',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
   'src/teacher_quiz_review_f111.js':'594ceacaf67d40f823da98b734bac01874549800b9c45f825f4cb38b824d2a2f'
 };
@@ -121,5 +121,26 @@ check(f92.includes('data.auxiliares_preparadas')&&f92.includes('data.auxiliares_
 check(f92.includes("Object.values(data.flags||{}).some(v=>v===true)")&&
  f92.includes('No habilita exámenes ni reabre lecciones históricas.'),
  'superadmin date button disabled if any mutating flag is ON or history might reopen');
+// EXUI-03: new teacher card/list is read-only and must not trigger F91's
+// historical deadline synchronization from the main teacher workflow.
+const teacherView=read('src/teacher_views.jsx');
+const teacherArea=teacherView.split('function TeacherExamsWorkspaceF111(')[1]?.split('function GruposView(')[0]||'';
+check(teacherArea.includes("postTeacher('reposListarCiclosR57',{},30000)")&&
+ teacherArea.includes("String(r.SOURCE||'')==='F111_R57_B5'"),
+ 'teacher main list reads ONLY authenticated scoped R57 cycles');
+check(teacherArea.includes('String(r.COD_GRUPO||\'\')===groupCode')&&
+ teacherArea.includes('tvUpper(r.NIVEL)===tvUpper(nivel)')&&
+ teacherArea.includes('Number(r.LECCION)===d.lesson'),
+ 'make-up rows require exact group, level and exam lesson');
+check(teacherArea.includes("!!r57Verified&&!official&&!conflicting&&makeupAuthorized")&&
+ teacherArea.includes('reposicion_id:r57.REPOSICION_ID'),
+ 'only server-authorized make-up without official grade opens the oral');
+check(!teacherArea.includes("postTeacher('reposListarExamenes'")&&
+ !teacherArea.includes("postTeacher('reposResolverExamen'")&&
+ !teacherArea.includes("postTeacher('registrarNota"),
+ 'teacher focused list avoids historical deadline side effects and grade mutation');
+check(teacherArea.includes("tr('Reposición autorizada · 48 h','Make-up authorized · 48 h')")&&
+ teacherArea.includes("tr('Reposición vencida · sin nueva nota','Make-up expired · no new grade')"),
+ 'make-up states bilingual without auto-zero claims');
 console.log('F111_R57_B5_PDF_SELECTIVE '+passed+'/'+passed+
  ' PASS; finance_writes=0; production_writes=0; release=PHASE1_AUTHORIZED_DATE_PENDING');

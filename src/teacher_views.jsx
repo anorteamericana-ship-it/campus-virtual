@@ -1558,6 +1558,38 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
   const pal=nivelPal(nivel);
   const groupLabel=tvGrupoLabel(meta);
   const groupCode=String(codGrupo||'');
+  // EXUI-03: ciclos R57 de SOLO lectura. La fuente y los permisos pertenecen
+  // al servidor; nunca convertir ausencia de nota en ausencia/reposición.
+  const [r57Lookup,setR57Lookup]=React.useState({status:'idle',group:'',level:'',rows:[]});
+  React.useEffect(()=>{
+    let current=true;
+    if(!groupCode||!nivel){setR57Lookup({status:'idle',group:'',level:'',rows:[]});return()=>{current=false;};}
+    setR57Lookup({status:'loading',group:groupCode,level:nivel,rows:[]});
+    postTeacher('reposListarCiclosR57',{},30000).then(reply=>{
+      if(!reply||reply.ok!==true||!Array.isArray(reply.rows))throw Error('r57_read_failed');
+      if(!current)return;
+      setR57Lookup({status:'ready',group:groupCode,level:nivel,
+        rows:reply.rows.filter(r=>String(r.SOURCE||'')==='F111_R57_B5'&&
+          String(r.COD_GRUPO||'')===groupCode&&tvUpper(r.NIVEL)===tvUpper(nivel))});
+    }).catch(()=>{if(current)setR57Lookup({status:'error',group:groupCode,level:nivel,rows:[]});});
+    return()=>{current=false;};
+  },[groupCode,nivel]);
+  const r57Verified=r57Lookup.status==='ready'&&r57Lookup.group===groupCode&&
+    r57Lookup.level===nivel;
+  const r57ForExam=d=>!r57Verified?[]:r57Lookup.rows.filter(r=>
+    Number(r.LECCION)===d.lesson&&tvUpper(r.TIPO_EXAMEN)===(d.kind==='oral'?'ORAL':'ESCRITO'));
+  const r57StatusLabel=state=>{
+    const labels={
+      INVITADA:[tr('Invitación enviada','Invitation sent'),false],
+      SOLICITADA:[tr('Esperando decisión del superadmin','Awaiting superadmin decision'),false],
+      AUTORIZADA_48H:[tr('Reposición autorizada · 48 h','Make-up authorized · 48 h'),true],
+      VENCIDA_SIN_PRESENTACION:[tr('Reposición vencida · sin nueva nota','Make-up expired · no new grade'),false],
+      APLICADA:[tr('Reposición aplicada','Make-up graded'),false],
+      RECHAZADA:[tr('Reposición rechazada','Make-up rejected'),false],
+      CANCELADA:[tr('Reposición cancelada','Make-up cancelled'),false]
+    };
+    return labels[tvUpper(state)]||[tr('Estado por verificar','Status to verify'),false];
+  };
   const plan=tvUpper(programa)==='INA'?'CON_INA':'SIN_INA';
   const sessions=(lecciones||[]).filter(l=>tvLessonRielF97(l)==='curso');
   const findLesson=number=>sessions.find(l=>Number(l.leccion)===number);
@@ -1670,6 +1702,10 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
               const lesson=findLesson(d.lesson),active=sessionFor(d.lesson),finished=closed(lesson),
                 count=registered(d),total=roster.length,chosen=selected?.key===d.key,
                 nextUp=next?.lesson===d.lesson&&next?.title.includes(String(d.n));
+              const examCycles=r57ForExam(d).filter(r=>(roster||[]).some(s=>String(s.code)===String(r.COD_ESTUDIANTE)));
+              const cyclePerStudent=[...new Map(examCycles.map(r=>[String(r.COD_ESTUDIANTE),r]).reverse()).values()];
+              const makeupReady=cyclePerStudent.filter(r=>tvUpper(r.ESTADO)==='AUTORIZADA_48H').length;
+              const makeupPending=cyclePerStudent.filter(r=>['INVITADA','SOLICITADA'].includes(tvUpper(r.ESTADO))).length;
               const tone=active?pal.dark:finished?'#915B10':nextUp?'#16834A':'#6B6259';
               const status=active?tr('Sesión activa','Active session'):finished?
                 tr('Lección cerrada','Lesson closed'):nextUp?tr('Próxima','Next'):tr('Programada','Scheduled');
@@ -1694,6 +1730,12 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                   <div style={{fontSize:11,color:'#4A413A',marginTop:5}}>
                     <strong>{count}</strong> / {total} {tr('con componente oficial registrado','with a registered official grade component')}
                   </div>
+                  {r57Verified&&(makeupReady>0||makeupPending>0)&&
+                    <div style={{fontSize:10.5,color:pal.dark,marginTop:4,fontWeight:800}}>
+                      {makeupReady>0&&tr(makeupReady+' reposición(es) autorizada(s)',makeupReady+' authorized make-up(s)')}
+                      {makeupReady>0&&makeupPending>0?' · ':''}
+                      {makeupPending>0&&tr(makeupPending+' solicitud(es)/invitación(es)',makeupPending+' request(s)/invitation(s)')}
+                    </div>}
                 </div>
                 <div style={{display:'flex',flexWrap:'wrap',gap:7,alignItems:'center'}}>
                   <button type="button" onClick={()=>setExamKey(chosen?'':d.key)}
@@ -1721,7 +1763,13 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
             justifyContent:'space-between',flexWrap:'wrap',gap:10,alignItems:'center'}}>
             <div><div style={{fontSize:10,color:'#6B6259',letterSpacing:'.12em',fontWeight:900}}>
               {tr('3 · ESTUDIANTES DEL EXAMEN','3 · EXAM STUDENTS')}
-            </div><strong style={{fontSize:16}}>{renderLabel(selected)} · {tr('Lección','Lesson')} {selected.lesson}</strong></div>
+            </div><strong style={{fontSize:16}}>{renderLabel(selected)} · {tr('Lección','Lesson')} {selected.lesson}</strong>
+              <div style={{fontSize:11,color:'#665E55',marginTop:4}}>
+                {r57Lookup.status==='loading'?tr('Consultando autorizaciones R57…','Checking R57 authorizations…'):
+                 r57Verified?tr('Autorizaciones R57 consultadas con el servidor','R57 authorizations checked with server'):
+                 tr('R57 no verificable; no se habilitan reposiciones','R57 unavailable; no make-up actions enabled')}
+              </div>
+            </div>
             <button className="btn btn-ghost" onClick={()=>setExamKey('')} type="button">
               {tr('Cerrar lista','Collapse list')}
             </button>
@@ -1731,6 +1779,12 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
               {roster.map(s=>{
                 const c=notasGrupo?.[s.code]?.componentes?.[selected.key];
                 const official=c?.registrado===true;
+                const studentCycles=r57ForExam(selected).filter(r=>String(r.COD_ESTUDIANTE)===String(s.code));
+                const r57=studentCycles[0]||null;
+                const [makeupText,makeupAuthorized]=r57StatusLabel(r57?.ESTADO);
+                const conflicting=studentCycles.filter(r=>tvUpper(r.ESTADO)==='AUTORIZADA_48H').length>1;
+                const canApply=!!r57Verified&&!official&&!conflicting&&makeupAuthorized&&
+                  !!String(r57?.REPOSICION_ID||'').trim();
                 return <div key={s.code} style={{display:'flex',justifyContent:'space-between',
                   alignItems:'center',flexWrap:'wrap',gap:8,padding:'10px 15px',borderTop:'1px solid #EEE8DC',fontSize:12}}>
                   <div><strong>{s.name||s.code}</strong>
@@ -1740,6 +1794,24 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                       {official?tr('Nota oficial','Official grade')+': '+c.puntos+' / '+c.max:
                         tr('Sin nota oficial registrada','No official grade recorded')}
                     </span>
+                    {r57Verified&&r57&&<span style={{fontSize:10.5,fontWeight:800,
+                      color:conflicting||official&&makeupAuthorized?'#8B1F1F':makeupAuthorized?pal.dark:'#6B6259',
+                      padding:'4px 7px',borderRadius:8,background:pal.light}}>
+                      {conflicting?tr('Conflicto de autorizaciones · revisión administrativa','Authorization conflict · admin review'):
+                        official&&makeupAuthorized?tr('Ya tiene nota oficial · no duplicar','Already officially graded · no duplicate'):
+                        makeupText}
+                    </span>}
+                    {canApply&&selected.kind==='oral'&&<button className="btn btn-primary" type="button"
+                      onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
+                        grupo:groupCode,nivel,leccion:selected.lesson,
+                        reposicion_id:r57.REPOSICION_ID
+                      }})}>
+                      {tr('Abrir reposición oral','Open oral make-up')}
+                    </button>}
+                    {canApply&&selected.kind==='written'&&<button className="btn btn-ghost" type="button"
+                      onClick={openExtra}>
+                      {tr('Consultar control del escrito','Check written-exam controls')}
+                    </button>}
                     <button type="button" className="btn btn-ghost"
                       onClick={()=>onNavigate&&onNavigate('grupos')}
                       style={{fontSize:11}}>{tr('Ver expediente','Open roster')}</button>
@@ -1748,8 +1820,8 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
               })}
             </div>}
           <div style={{padding:'9px 15px',background:'#FBF8F2',fontSize:11,color:'#6B6259'}}>
-            {tr('Los borradores, reposiciones y autorizaciones se consultan por separado hasta que el servidor confirme su relación con el examen.',
-              'Drafts, make-ups and authorizations remain separate until the server confirms their link to this exam.')}
+            {tr('Los ciclos R57 aparecen aquí únicamente si el servidor confirmó grupo, nivel, estudiante y examen. Los borradores orales y las reposiciones históricas F91 continúan en Herramientas especiales hasta contar con una consulta consolidada sin efectos secundarios.',
+              'R57 cycles appear here only when the server verifies group, level, student and exam. Oral drafts and legacy F91 make-ups remain in Special tools until a side-effect-free consolidated read is available.')}
           </div>
         </section>}
         <section style={{display:'grid',gap:10}}>
