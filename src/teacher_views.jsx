@@ -1537,7 +1537,7 @@ const TV_EXAM_QUIZ_F111=[
   [4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],
   [21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']
 ];
-function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
+function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=true,activeSessionError=false}){
   const teacher=useTeacherSession(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   const {grupos,codGrupo,cambiarGrupo,meta,nivel,roster,notasGrupo,lecciones,programa,loading,error,recargarPanel}=teacher;
   const [examKey,setExamKey]=React.useState('');
@@ -1620,8 +1620,35 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
   const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   const activeLesson=Number(activeSession?.LECCION||activeSession?.leccion||0);
   const sessionOpen=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA';
-  const sessionFor=lesson=>sessionOpen&&activeCode===groupCode&&activeLesson===lesson&&
+  // EXUI-05B: la última sesión visible nunca autoriza si falla su readback CORE.
+  const sessionVerified=activeSessionReady===true&&activeSessionError!==true;
+  const sameCourseSession=sessionVerified&&sessionOpen&&activeCode===groupCode&&
+    tvUpper(activeSession?.NIVEL||activeSession?.nivel||nivel)===tvUpper(nivel)&&
     tvUpper(activeSession?.RIEL||activeSession?.riel||'curso')!=='ICAN';
+  const sessionFor=lesson=>sameCourseSession&&activeLesson===lesson;
+  const quizForToday=TV_EXAM_QUIZ_F111.find(([lesson])=>Number(lesson)===activeLesson);
+  const [todayQuiz,setTodayQuiz]=React.useState({status:'idle',group:'',lesson:0});
+  React.useEffect(()=>{
+    let current=true;
+    if(!sameCourseSession||!quizForToday||nivel!=='B1'||loading||!!error){
+      setTodayQuiz({status:'idle',group:'',lesson:0});
+      return()=>{current=false;};
+    }
+    setTodayQuiz({status:'loading',group:groupCode,lesson:activeLesson});
+    const read=window.F111_QZ_readTeacherAvailability;
+    if(typeof read!=='function'){
+      setTodayQuiz({status:'error',group:groupCode,lesson:activeLesson});
+      return()=>{current=false;};
+    }
+    Promise.resolve().then(()=>read(activeLesson,groupCode)).then(reply=>{
+      if(!current)return;
+      setTodayQuiz({status:reply?.ok===true?'ready':'not_eligible',
+        group:groupCode,lesson:activeLesson,
+        eligible:reply?.ok===true&&reply.eligible===true,
+        alreadyOpen:reply?.ok===true&&reply.alreadyOpen===true});
+    }).catch(()=>{if(current)setTodayQuiz({status:'error',group:groupCode,lesson:activeLesson});});
+    return()=>{current=false;};
+  },[sameCourseSession,activeLesson,groupCode,nivel,loading,error]);
   const courseNext=sessions.filter(l=>!closed(l)&&tvUpper(l.estado)!=='SUSPENDIDA')
     .slice().sort((a,b)=>Number(a.leccion)-Number(b.leccion))[0];
   const milestones=[
@@ -1653,6 +1680,44 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
     }
     setPreview({title:renderLabel(d),url:url.href});
   };
+  // Única acción destacada. Un cronograma o una consulta fallida jamás producen permiso.
+  const todayStatus=(()=>{
+    if(!groupCode)return {title:tr('Seleccioná un grupo','Select a group'),
+      detail:tr('La acción se determina por grupo y sesión autorizada.','Actions depend on the assigned group and verified session.')};
+    if(loading||activeSessionReady!==true)return {title:tr('Verificando sesión y grupo…','Checking session and group…'),
+      detail:tr('No se habilitan acciones durante la consulta.','No actions are enabled while checking.')};
+    if(error||activeSessionError===true)return {title:tr('No se pudo verificar el acceso','Could not verify access'),
+      detail:tr('Falló la consulta de grupo o sesión. Actualizá para reintentar; no se concede permiso desde datos anteriores.','Group or session lookup failed. Refresh to retry; cached data cannot grant access.')};
+    if(!sessionOpen)return {title:tr('Sin examen activo','No active exam'),
+      detail:tr('No hay una sesión de evaluación abierta en este momento. El cronograma es informativo.','No exam session is open. The timetable is informational.')};
+    if(!sameCourseSession)return {title:tr('Sesión distinta del grupo seleccionado','Session differs from selected group'),
+      detail:tr('Seleccioná el grupo de la sesión de curso activa. I CAN y otros niveles no habilitan exámenes aquí.','Select the group of the active course session. I CAN and other levels do not authorize exams here.')};
+    const oral=TV_EXAM_DEFS_F111.find(d=>d.kind==='oral'&&d.lesson===activeLesson);
+    if(oral)return {kind:'oral',title:renderLabel(oral)+tr(' · sesión activa',' · active session'),
+      detail:tr('CORE confirmó la sesión del grupo. El motor oral verificará nuevamente los permisos al ingresar.','CORE confirmed this group session. The oral engine will recheck permissions on entry.')};
+    const written=TV_EXAM_DEFS_F111.find(d=>d.kind==='written'&&d.lesson===activeLesson);
+    if(written)return {title:renderLabel(written)+tr(' · acceso por verificar',' · access not verified'),
+      detail:tr('La sesión está activa, pero no hay una consulta de disponibilidad escrita sin efectos secundarios verificada. Usá el control institucional; no se abrirá automáticamente.','The session is active, but a side-effect-free written-availability check is not verified. Use institutional controls; no automatic opening.')};
+    if(quizForToday){
+      const number=TV_EXAM_QUIZ_F111.findIndex(([lesson])=>Number(lesson)===activeLesson)+1;
+      if(nivel!=='B1')return {title:tr('Quiz no habilitado para este nivel','Quiz unavailable for this level'),
+        detail:tr('No hay banco digital autorizado confirmado para este nivel.','No authorized digital bank is confirmed for this level.')};
+      if(todayQuiz.group!==groupCode||todayQuiz.lesson!==activeLesson||todayQuiz.status==='loading'||todayQuiz.status==='idle')
+        return {title:tr('Verificando Quiz '+number+'…','Checking Quiz '+number+'…'),
+          detail:tr('Consultando grupo autorizado y disponibilidad con QUIZ, sin modificar entregas.','Checking assigned group and quiz availability without modifying submissions.')};
+      if(todayQuiz.status==='error')return {title:tr('Quiz sin verificación','Quiz verification failed'),
+        detail:tr('El servidor QUIZ no confirmó permisos. No se habilita el control.','The QUIZ server did not confirm permissions. Controls remain unavailable.')};
+      if(todayQuiz.eligible===true)return {kind:'quiz',lesson:activeLesson,number,
+        title:'Quiz '+number+(todayQuiz.alreadyOpen===true?tr(' · abierto',' · open'):tr(' · elegible',' · eligible')),
+        detail:todayQuiz.alreadyOpen===true?
+          tr('El servidor confirma apertura. Podés revisar entregas; cualquier cierre requiere confirmación.','The server confirms it is open. You can review submissions; closing requires confirmation.'):
+          tr('El servidor confirma que el docente puede gestionar la apertura. Activar exige confirmación expresa dentro del control.','The server confirms the teacher can manage opening. Activation requires explicit confirmation in the controls.')};
+      return {title:'Quiz '+number+tr(' · no elegible',' · not eligible'),
+        detail:tr('El servidor no concedió disponibilidad para esta lección y grupo.','The server did not grant availability for this lesson and group.')};
+    }
+    return {title:tr('Sin examen habilitado en esta sesión','No exam enabled in this session'),
+      detail:tr('La lección activa no corresponde a un examen ordinario ni a un Quiz digital habilitado.','This active lesson does not match an authorized ordinary exam or digital quiz.')};
+  })();
   return <div data-f111-exams-workspace="20261110" style={{display:'grid',gap:16,minWidth:0}}>
     <header style={{padding:'22px 24px',border:'1px solid #E8DFD2',borderRadius:18,background:'#FFF'}}>
       <div style={{fontSize:11,fontWeight:900,letterSpacing:'.13em',textTransform:'uppercase',color:'#8B1E3F'}}>
@@ -1701,6 +1766,28 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
         </div>
       </div>
       {error&&<p role="alert" style={{color:'#8B1F1F',fontSize:12,margin:0}}>{error}</p>}
+      <section data-f111-today-action="true" aria-label={tr('Qué corresponde hacer hoy','What to do today')}
+        style={{border:'1px solid '+pal.dark,borderLeft:'5px solid '+pal.dark,
+          borderRadius:13,padding:'15px 17px',background:'#FFF',display:'grid',gap:8}}>
+        <div style={{fontSize:10.5,fontWeight:900,letterSpacing:'.12em',color:pal.dark}}>
+          {tr('QUÉ CORRESPONDE HACER HOY','WHAT TO DO TODAY')}
+        </div>
+        <strong style={{fontSize:17,color:'#001E47'}}>{todayStatus.title}</strong>
+        <p role="status" style={{margin:0,fontSize:12,color:'#615850'}}>{todayStatus.detail}</p>
+        {todayStatus.kind==='oral'&&<button type="button" className="btn btn-primary"
+          style={{justifySelf:'start'}} onClick={()=>{
+            const lesson=findLesson(activeLesson);
+            onNavigate&&onNavigate('examen_oral',{oral:{grupo:groupCode,nivel,leccion:activeLesson,
+              fecha:String(lesson?.fecha||'').slice(0,10)}});
+          }}>{tr('Abrir control oral activo','Open active oral controls')}</button>}
+        {todayStatus.kind==='quiz'&&<button type="button" className="btn btn-primary"
+          style={{justifySelf:'start'}} onClick={()=>{
+            const launch=window.F111_QZ_openTeacherControls;
+            if(typeof launch!=='function'||launch(todayStatus.lesson,groupCode)===false)
+              window.alert(tr('No se pudo abrir el control protegido. Actualizá y reintentá.',
+                'Protected controls could not open. Refresh and try again.'));
+          }}>{tr('Gestionar Quiz '+todayStatus.number,'Manage Quiz '+todayStatus.number)}</button>}
+      </section>
       {next&&<div role="status" style={{padding:'12px 14px',background:pal.light,
         border:'1px solid '+pal.dark,borderRadius:12,color:pal.dark,fontWeight:800,fontSize:13}}>
         {tr('Próxima evaluación según cronograma','Next assessment in the timetable')}: {next.title} · L{String(next.lesson).padStart(2,'0')}
@@ -1779,7 +1866,7 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                   </button>
                   <button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
                     style={{fontSize:11}}>{tr('Ver modelo','View model')}</button>
-                  {active&&d.kind==='oral'&&<button className="btn btn-primary" type="button"
+                  {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&<button className="btn btn-primary" type="button"
                     onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
                       grupo:groupCode,nivel,leccion:d.lesson,fecha:String(lesson?.fecha||'').slice(0,10)}})}>
                     {tr('Abrir oral activo','Open active oral')}
@@ -1892,7 +1979,7 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession}){
                 <div style={{fontSize:10,color:'#6B6259',marginBottom:9}}>
                   {event?.fecha?String(event.fecha).slice(0,10):tr('Disponibilidad por verificar','Availability to verify')}
                 </div>
-                {nivel==='B1'
+                {nivel==='B1'&&!(todayStatus.kind==='quiz'&&todayStatus.lesson===lesson)
                    ?<button className="btn btn-ghost" type="button"
                      onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
                        if(typeof launch==='function'){
