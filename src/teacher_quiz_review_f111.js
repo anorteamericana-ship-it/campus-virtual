@@ -276,6 +276,11 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
   }catch(e){status.textContent='Cambio no confirmado: '+String(e.message||e);}
   finally{busy=false;select.disabled=false;void refresh();}
  });
+ if(!String(preferredGroup||'').trim()){
+  toggle.textContent='SIN GRUPO SELECCIONADO';
+  status.textContent='Seleccioná primero un grupo en Mis exámenes.';
+  return wrap;
+ }
  authorizedB1Groups().then(data=>{
   if(!wrap.isConnected)return;
   const groups=(Array.isArray(data.grupos)?data.grupos:[])
@@ -288,7 +293,7 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
    void refresh();
   }else{toggle.textContent='NO AUTORIZADO';status.textContent=groups.length?
     'El grupo seleccionado no está autorizado para este docente.':'No hay grupos B1 asignados.';}
- }).catch(e=>{status.textContent='Grupos no disponibles: '+String(e.message||e);});
+ }).catch(e=>{toggle.textContent='NO DISPONIBLE';status.textContent='Grupos no disponibles: '+String(e.message||e);});
  return wrap;
 }
 // El mismo control de PC02–08 que usa el panel histórico puede abrirse
