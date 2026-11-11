@@ -1537,10 +1537,13 @@ const TV_EXAM_QUIZ_F111=[
   [4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],
   [21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']
 ];
-function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=true,activeSessionError=false}){
+function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,activeSessionReady=true,activeSessionError=false}){
   const teacher=useTeacherSession(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   const {grupos,codGrupo,cambiarGrupo,meta,nivel,roster,notasGrupo,lecciones,programa,loading,error,recargarPanel}=teacher;
   const [examKey,setExamKey]=React.useState('');
+  const [recordKey,setRecordKey]=React.useState('');
+  const [historyBusy,setHistoryBusy]=React.useState('');
+  const [historyFeedback,setHistoryFeedback]=React.useState('');
   const [preview,setPreview]=React.useState(null);
   const en=window.AN_I18N?.getLang?.()==='en';
   const tr=(es,english)=>en?english:es;
@@ -1663,6 +1666,32 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
     const node=document.querySelector('[data-f111-exams-extras]');
     if(node){node.open=true;requestAnimationFrame(()=>node.scrollIntoView({block:'start',behavior:'smooth'}));}
   };
+  // EXUI-05C: reader-only navigation. The backend examReviewInbox checks access;
+  // this is never an exam activation or a grade mutation.
+  const openWrittenInbox=(lesson,student='')=>{
+    if(typeof onWrittenFocus!=='function'||!groupCode||!nivel)return false;
+    return onWrittenFocus({grupo:groupCode,nivel,leccion:Number(lesson),
+      cod_estudiante:String(student||'')})===true;
+  };
+  const openStudentOralHistory=async(exam,student)=>{
+    const key=groupCode+'|'+nivel+'|'+exam.lesson+'|'+student;
+    if(historyBusy)return;
+    setHistoryBusy(key);setHistoryFeedback('');
+    try{
+      const reader=window.F111_QZ_openSavedOral;
+      if(typeof reader!=='function')throw Error('missing_reader');
+      const reply=await reader({grupo:groupCode,nivel,leccion:exam.lesson,cod_estudiante:student});
+      if(reply?.ok!==true){
+        const reason=reply?.reason==='sin_expediente'?
+          tr('No hay rúbrica oral guardada para este estudiante y examen.','No stored oral rubric for this student and exam.'):
+          reply?.reason==='historial_ambiguo'?
+          tr('Hay más de un expediente: consultá el historial avanzado sin modificar notas.','Multiple records exist: consult advanced history without changing grades.'):
+          tr('No se pudo verificar el expediente o los permisos.','Could not verify the record or access.');
+        setHistoryFeedback(reason);
+      }
+    }catch(_){setHistoryFeedback(tr('No se pudo consultar el historial oral.','Oral history could not be checked.'));}
+    finally{setHistoryBusy('');}
+  };
   const openModel=d=>{
     const url=new URL(d.kind==='oral'?'modulos/examen_oral.html':'modulos/examenes.html',
       new URL('./',window.location.href));
@@ -1696,8 +1725,10 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
     if(oral)return {kind:'oral',title:renderLabel(oral)+tr(' · sesión activa',' · active session'),
       detail:tr('CORE confirmó la sesión del grupo. El motor oral verificará nuevamente los permisos al ingresar.','CORE confirmed this group session. The oral engine will recheck permissions on entry.')};
     const written=TV_EXAM_DEFS_F111.find(d=>d.kind==='written'&&d.lesson===activeLesson);
-    if(written)return {title:renderLabel(written)+tr(' · acceso por verificar',' · access not verified'),
-      detail:tr('La sesión está activa, pero no hay una consulta de disponibilidad escrita sin efectos secundarios verificada. Usá el control institucional; no se abrirá automáticamente.','The session is active, but a side-effect-free written-availability check is not verified. Use institutional controls; no automatic opening.')};
+    if(written)return {kind:'written_read',lesson:written.lesson,
+      title:renderLabel(written)+tr(' · revisión de entregas',' · submitted work review'),
+      detail:tr('Podés consultar entregas de este grupo. Esta acción NO activa el escrito; la disponibilidad de estudiantes continúa sin verificación de lectura pura.',
+        'You can inspect submitted work for this group. This does NOT activate the written exam; student availability still lacks a read-only verification.')};
     if(quizForToday){
       const number=TV_EXAM_QUIZ_F111.findIndex(([lesson])=>Number(lesson)===activeLesson)+1;
       if(nivel!=='B1')return {title:tr('Quiz no habilitado para este nivel','Quiz unavailable for this level'),
@@ -1780,6 +1811,11 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
             onNavigate&&onNavigate('examen_oral',{oral:{grupo:groupCode,nivel,leccion:activeLesson,
               fecha:String(lesson?.fecha||'').slice(0,10)}});
           }}>{tr('Abrir control oral activo','Open active oral controls')}</button>}
+        {todayStatus.kind==='written_read'&&<button type="button" className="btn btn-primary"
+          style={{justifySelf:'start'}} onClick={()=>{
+            if(!openWrittenInbox(todayStatus.lesson))
+              window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
+          }}>{tr('Revisar entregas escritas','Review written submissions')}</button>}
         {todayStatus.kind==='quiz'&&<button type="button" className="btn btn-primary"
           style={{justifySelf:'start'}} onClick={()=>{
             const launch=window.F111_QZ_openTeacherControls;
@@ -1871,8 +1907,12 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
                       grupo:groupCode,nivel,leccion:d.lesson,fecha:String(lesson?.fecha||'').slice(0,10)}})}>
                     {tr('Abrir oral activo','Open active oral')}
                   </button>}
-                  {active&&d.kind==='written'&&<button className="btn btn-ghost" type="button"
-                    onClick={openExtra}>{tr('Abrir control de escrito','Open written controls')}</button>}
+                  {d.kind==='written'&&!(active&&todayStatus.kind==='written_read')&&
+                    <button className="btn btn-ghost" type="button"
+                    onClick={()=>{
+                      if(!openWrittenInbox(d.lesson))
+                        window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
+                    }}>{tr('Consultar entregas escritas','Check written submissions')}</button>}
                 </div>
               </article>;
             })}
@@ -1895,6 +1935,8 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
               {tr('Cerrar lista','Collapse list')}
             </button>
           </div>
+          {historyFeedback&&<div role="alert" style={{padding:'9px 15px',color:'#8B1F1F',
+            borderTop:'1px solid #EEE8DC',fontSize:12}}>{historyFeedback}</div>}
           {roster.length===0?<p style={{padding:14}}>{tr('Sin estudiantes confirmados para el grupo.','No verified roster for this group.')}</p>:
             <div style={{maxHeight:420,overflow:'auto'}}>
               {roster.map(s=>{
@@ -1909,7 +1951,9 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
                 const conflicting=studentCycles.filter(r=>tvUpper(r.ESTADO)==='AUTORIZADA_48H').length>1;
                 const canApply=!!r57Verified&&!official&&!conflicting&&makeupAuthorized&&
                   !!String(r57?.REPOSICION_ID||'').trim();
-                return <div key={s.code} style={{display:'flex',justifyContent:'space-between',
+                const key=groupCode+'|'+nivel+'|'+selected.key+'|'+s.code;
+                const recordOpen=recordKey===key;
+                return <React.Fragment key={s.code}><div style={{display:'flex',justifyContent:'space-between',
                   alignItems:'center',flexWrap:'wrap',gap:8,padding:'10px 15px',borderTop:'1px solid #EEE8DC',fontSize:12}}>
                   <div><strong>{s.name||s.code}</strong>
                     <div style={{fontSize:10,color:'#6B6259'}}>{s.code} · {s.estatus}</div></div>
@@ -1924,8 +1968,8 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
                       {extraStatusLabel(r)}
                     </span>)}
                     {legacyVerified&&hasLegacy&&<button className="btn btn-ghost" type="button"
-                      style={{fontSize:10.5}} onClick={openExtra}>
-                      {tr('Ver reposición histórica','View legacy make-up')}
+                      style={{fontSize:10.5}} onClick={()=>setRecordKey(recordOpen?'':key)}>
+                      {tr('Ver historial F91','View F91 history')}
                     </button>}
                     {legacyVerified&&hasRegularDraft&&sessionFor(selected.lesson)&&
                       <button className="btn btn-primary" type="button" onClick={()=>
@@ -1948,15 +1992,53 @@ function TeacherExamsWorkspaceF111({onNavigate,activeSession,activeSessionReady=
                       }})}>
                       {tr('Abrir reposición oral','Open oral make-up')}
                     </button>}
-                    {canApply&&selected.kind==='written'&&<button className="btn btn-ghost" type="button"
-                      onClick={openExtra}>
-                      {tr('Consultar control del escrito','Check written-exam controls')}
+                    {selected.kind==='written'&&<button className="btn btn-ghost" type="button"
+                      onClick={()=>{
+                        if(!openWrittenInbox(selected.lesson,s.code))
+                          window.alert(tr('La consulta escrita no está disponible.','Written inbox is unavailable.'));
+                      }} style={{fontSize:10.5}}>
+                      {tr('Consultar entregas de este estudiante','Check this student’s submissions')}
+                    </button>}
+                    {selected.kind==='oral'&&<button className="btn btn-ghost" type="button"
+                      disabled={!!historyBusy} onClick={()=>openStudentOralHistory(selected,s.code)}
+                      style={{fontSize:10.5}}>
+                      {historyBusy===groupCode+'|'+nivel+'|'+selected.lesson+'|'+s.code?
+                        tr('Verificando historial…','Checking history…'):
+                        tr('Ver rúbrica / PDF oral','View oral rubric / PDF')}
                     </button>}
                     <button type="button" className="btn btn-ghost"
-                      onClick={()=>onNavigate&&onNavigate('grupos')}
-                      style={{fontSize:11}}>{tr('Ver expediente','Open roster')}</button>
+                      onClick={()=>setRecordKey(recordOpen?'':key)}
+                      style={{fontSize:11}}>
+                      {recordOpen?tr('Cerrar ficha','Close record'):tr('Ficha de evaluación','Assessment record')}
+                    </button>
                   </div>
-                </div>;
+                </div>
+                {recordOpen&&<div data-f111-student-assessment-record="true" role="region"
+                  aria-label={tr('Ficha de evaluación del estudiante','Student assessment record')}
+                  style={{padding:'11px 16px 15px',background:'#F8FAFD',borderTop:'1px solid #DCE4F0',
+                    fontSize:12,display:'grid',gap:6}}>
+                  <strong>{s.name||s.code} · {renderLabel(selected)} · {tr('lección','lesson')} {selected.lesson}</strong>
+                  <div>{official?
+                    tr('Nota oficial registrada: ','Registered official score: ')+c.puntos+' / '+c.max:
+                    tr('Sin componente oficial registrado; no equivale a nota cero ni ausencia.',
+                       'No registered grade component; not a zero or an absence.')}</div>
+                  <div><b>R57 · </b>{r57Lookup.status==='loading'?
+                    tr('Consultando…','Checking…'):r57Verified?
+                    (studentCycles.length?studentCycles.map(r=>tvUpper(r.ESTADO)||'SIN ESTADO').join(' · '):
+                      tr('Sin ciclo R57 registrado','No R57 cycle recorded')):
+                    tr('No se pudo verificar R57','R57 unavailable')}</div>
+                  <div><b>F91 / {tr('borradores','drafts')} · </b>{
+                    legacyLookup.status==='loading'?tr('Consultando…','Checking…'):
+                    legacyVerified?(otherStatuses.length?
+                      otherStatuses.map(r=>String(r.source||'')+': '+(tvUpper(r.estado)||'SIN ESTADO')).join(' · '):
+                      tr('Sin expediente adicional registrado','No additional record')):
+                    tr('No se pudo verificar historial','History unavailable')}</div>
+                  <small style={{color:'#6B6259'}}>
+                    {tr('Ficha de consulta de solo lectura. La autorización de una reposición, un PDF y el registro de notas permanecen exclusivamente en sus motores oficiales.',
+                      'Read-only record. Make-up authorization, PDF access and grade writes remain within their official engines.')}
+                  </small>
+                </div>}
+                </React.Fragment>;
               })}
             </div>}
           <div style={{padding:'9px 15px',background:'#FBF8F2',fontSize:11,color:'#6B6259'}}>
