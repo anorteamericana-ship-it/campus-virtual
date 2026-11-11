@@ -537,7 +537,7 @@ function WrittenSessionCardF929({ session }) {
   </>;
 }
 
-function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
+function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSessionReady=true, activeSessionError=false }) {
   const [extraOpen,setExtraOpen]=React.useState(false);
   const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
   const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
@@ -551,7 +551,8 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate }) {
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
   const top=<>
     <LazyRoute title="Mis exámenes" component="TeacherExamsWorkspaceF111"
-      files={F96_LAZY.teacher_views} onNavigate={onNavigate} activeSession={s}/>
+      files={F96_LAZY.teacher_views} onNavigate={onNavigate} activeSession={s}
+      activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
     <details data-f111-exams-extras="true" onToggle={e=>setExtraOpen(e.currentTarget.open)} style={{background:'#FFF',
       border:'1px solid #E8DFD2',borderRadius:14,padding:'13px 16px'}}>
       <summary style={{fontWeight:900,color:'#001E47',cursor:'pointer',fontSize:13}}>
@@ -1039,7 +1040,8 @@ function App() {
       // CALGRUPO_F66_20260618_ASISTENCIA_UNICA_DESDE_CRONOGRAMA
       asistencia:  <LazyRoute title="Asistencia" component="CronogramaGrupo" files={F96_LAZY.cronograma_grupo} rol="teacher" onNavigate={navigateTo} />,
       cronograma_grupo: <LazyRoute title="Cronograma Inglés Conversacional" component="CronogramaDocenteSeguroF82" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
-      examenes:    <ExamenesTeacherPanel activeState={activeTeacherState} pendingOral={pendingOral} onNavigate={navigateTo} />,
+      examenes:    <ExamenesTeacherPanel activeState={activeTeacherState} pendingOral={pendingOral} onNavigate={navigateTo}
+        activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
       examen_oral: <LazyRoute title="Examen oral" component="ExamenOralView" files={F96_LAZY.student_modules} context={pendingOral} onNavigate={navigateTo} />,
       materiales:  <LazyRoute title="Biblioteca del Programa" component="MaterialesView" files={F96_LAZY.syllabus_views} onNavigate={navigateTo} />,
       ican:        <LazyRoute title="Club I CAN" component="ClubICANDocenteView" files={F96_LAZY.teacher_views} onNavigate={navigateTo} activeSession={activeTeacherSession} activeSessionReady={activeTeacherCheck.ready} activeSessionError={activeTeacherCheck.error} />,
