@@ -93,4 +93,3 @@ const unsupported=await probe(assigned,{ok:true,grupo:'QA-F111-B1',leccion:18,di
 assert.equal(unsupported.result.ok,false,'el control no intenta abrir examen escrito como Quiz');
 assert.equal(unsupported.calls.length,0,'lección escrita sin consulta QUIZ');
 console.log('PASS EXUI-05B: Acción de hoy, sesión CORE vigente, permisos QUIZ read-only y bloqueos negativos');
-
