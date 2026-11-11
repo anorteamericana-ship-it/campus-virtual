@@ -39,7 +39,7 @@ function previewB1Protected(lesson,authorizedGroup){
  frame.title='Progress Check B1 · vista privada docente';
  const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
  url.searchParams.set('teacher_preview','1');
- url.searchParams.set('grupo',authorizedGroup||QZ_GROUP);
+ url.searchParams.set('grupo',authorizedGroup);
  url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(lesson));
  frame.src=url.href;
@@ -322,14 +322,13 @@ function previewPC02(){
  url.searchParams.set('preview','1');
  window.open(url.href,'_blank','noopener,noreferrer');
 }
-function preview(){
+function preview(group){
  const url=new URL('modulos/qz_b1_pc01_digital.html',new URL('./',location.href));
  url.searchParams.set('preview','1');
  url.searchParams.set('rol','docente');
+ if(group)url.searchParams.set('grupo',String(group));
  window.open(url.href,'_blank','noopener,noreferrer');
 }
-const QZ_GROUP='B1-KJ18-C3-0826';
-const qzContext={cod_grupo:QZ_GROUP,nivel:'B1',leccion:4};
 async function postQuiz(fn,data){
  const token=window.getSessionToken?window.getSessionToken():'';
  // Las operaciones Progress Check usan @467; padrón docente y login siguen en @462.
@@ -346,7 +345,10 @@ async function postQuiz(fn,data){
 }
 // Revisión ampliada: listado primero, luego examen REAL en vista de solo lectura.
 // No crea exámenes ni reescribe notas oficiales o comentarios de asistencia.
-function openReviewWorkspace(){
+function openReviewWorkspace(group){
+ const groupCode=String(group||'').trim().toUpperCase();
+ if(!groupCode)return;
+ const qzContext={cod_grupo:groupCode,nivel:'B1',leccion:4};
  if(document.querySelector('[data-f111-review-workspace]'))return;
  const previous=document.activeElement;
  const backdrop=make('div',null,'f111-tqr-workspace-backdrop');
@@ -416,7 +418,7 @@ function openReviewWorkspace(){
   rows=rows.filter(r=>r&&getCode(r)&&['ENTREGADO','REVISADO'].includes(String(r.ESTADO)));
   // Los nombres proceden del padrón autorizado; una falla no oculta entregas.
   try{
-   const r=await postQuiz('getEstudiantesParaCierre',{cod_grupo:QZ_GROUP,nivel:'B1'});
+   const r=await postQuiz('getEstudiantesParaCierre',{cod_grupo:groupCode,nivel:'B1'});
    (Array.isArray(r.estudiantes)?r.estudiantes:[]).forEach(person=>{
     const code=String(person.code||person.codigo||person.CODIGO||'').trim();
     const name=String(person.name||person.nombre||person.NOMBRE||'').trim();
@@ -530,10 +532,17 @@ function openReviewWorkspace(){
  });
  close.focus();
 }
-async function confirmGroupQuizInvitation(button,feedback,refresh){
+async function confirmGroupQuizInvitation(group,button,feedback,refresh){
+ const groupCode=String(group||'').trim().toUpperCase();
+ if(!groupCode){feedback.textContent='Seleccioná un grupo autorizado.';return;}
+ const qzContext={cod_grupo:groupCode,nivel:'B1',leccion:4};
  button.disabled=true;feedback.textContent='Consultando lista de estudiantes…';
  try{
-  const r=await postQuiz('getEstudiantesParaCierre',{cod_grupo:QZ_GROUP,nivel:'B1'});
+  const gate=await postQuiz('qzProgressTeacherAvailability',qzContext);
+  if(gate.grupo!==groupCode||Number(gate.leccion)!==4||gate.digital_disponible!==true||
+     gate.estado!=='CERRADO'||gate.puede_abrir!==true)
+   throw Error('Apertura no autorizada para grupo/lección');
+  const r=await postQuiz('getEstudiantesParaCierre',{cod_grupo:groupCode,nivel:'B1'});
   const students=Array.isArray(r.estudiantes)?r.estudiantes:[];
   const list=[...new Map(students.map(s=>{
    const code=String(s.code||s.codigo||s.CODIGO||'').trim();
@@ -558,163 +567,7 @@ async function confirmGroupQuizInvitation(button,feedback,refresh){
  }
 }
 
-function attachLessonAction(){
- const drawers=document.querySelectorAll('aside[data-teacher-level="B1"][data-teacher-lesson="4"][data-teacher-rail="curso"]');
- drawers.forEach(drawer=>{
-  const previewButton=drawer.querySelector('[data-f111-lesson-quiz="B1-L4"]');
-  if(!previewButton||drawer.querySelector('[data-f111-quiz-activation]'))return;
-  const text=drawer.textContent||'';
-  // La vista previa B1-L4 solo se renderiza en JSX para el grupo Diego autorizado.
-  // El encabezado docente muestra horario/0826, no el codigo largo de grupo.
-  if(!text.includes('GUARDAR Y CERRAR CLASE'))return;
-  const button=make('button','Consultando apertura del quiz…','f111-tqr-activate');
-  button.type='button';button.dataset.f111QuizActivation='B1-L4';button.disabled=true;
-  const feedback=make('small','','f111-tqr-feedback');
-  previewButton.parentNode.insertBefore(button,previewButton.nextSibling);
-  button.after(feedback);
-  const refresh=()=>{
-   postQuiz('qzProgressTeacherAvailability',qzContext).then(r=>{
-    if(r.digital_disponible!==true)throw Error('Quiz no disponible');
-    button.dataset.status=r.estado;
-    button.textContent=r.estado==='ABIERTO'?'Cerrar quiz para estudiantes':'Habilitar Quiz 1 para estudiantes';
-    button.disabled=false;
-    feedback.textContent=r.estado==='ABIERTO'?'Abierto: los estudiantes pueden guardar y entregar.':'Todavía no disponible para estudiantes.';
-   }).catch(err=>{button.disabled=true;button.textContent='Activación pendiente del servidor';feedback.textContent='Servidor: '+String(err.message||'No disponible')+'. La vista previa sigue disponible.';});
-  };
-  button.addEventListener('click',async()=>{
-   const next=button.dataset.status==='ABIERTO'?'CERRADO':'ABIERTO';
-   if(next==='ABIERTO'){void confirmGroupQuizInvitation(button,feedback,refresh);return;}
-   if(!confirm('¿Cerrar el Quiz 1? No podrán enviar nuevas respuestas.'))return;
-   button.disabled=true;feedback.textContent='Actualizando…';
-   try{
-    const r=await postQuiz('qzProgressTeacherSetAvailability',Object.assign({},qzContext,{estado:next}));
-    if(r.estado!==next)throw Error('Apertura sin confirmación');
-    refresh();
-   }catch(err){feedback.textContent='No se confirmó el cambio: '+err.message;refresh();}
-  });
-  window.f111PC01TeacherLaunch=()=>{
-   if(!button.isConnected||button.disabled||button.dataset.status==='ABIERTO'){preview();return;}
-   const invite=window.confirm('¿Querés enviar la invitación del Quiz 1 a los estudiantes del grupo? Aceptar: revisar lista y habilitar. Cancelar: abrir solo la vista docente.');
-   if(invite){void confirmGroupQuizInvitation(button,feedback,refresh);}
-   else preview();
-  };
-  refresh();
- });
-}
-
-
-function buildQuizOpenControls(){
- const wrapper=make('div',null,'f111-tqr-open-controls');
- wrapper.dataset.f111QuizStatus='B1-L4';
- const state=make('small','Consultando estado del Quiz 1…','f111-tqr-feedback');
- state.setAttribute('role','status');
- const toggle=make('button','Consultando disponibilidad…','f111-tqr-activate');
- toggle.type='button';toggle.disabled=true;toggle.dataset.mode='DESCONOCIDO';
- const refresh=()=>{
-  postQuiz('qzProgressTeacherAvailability',qzContext).then(r=>{
-   if(!wrapper.isConnected)return;
-   if(r.digital_disponible!==true)throw Error('no_disponible');
-   toggle.dataset.mode=r.estado;
-   toggle.disabled=false;
-   toggle.textContent=r.estado==='ABIERTO'?'CERRAR QUIZ 1':'ACTIVAR QUIZ 1 · INVITAR ESTUDIANTES';
-   state.textContent=r.estado==='ABIERTO'?'Quiz abierto: continuará disponible después de cerrar la clase hasta que lo cerrés aquí.':'Sin habilitar: para activarlo, primero debe estar abierta la lección 4.';
-  }).catch(err=>{
-   if(!wrapper.isConnected)return;
-   toggle.disabled=true;
-   state.textContent='Activación no disponible: '+String(err.message||'error del servidor')+'. La vista previa permanece disponible.';
-  });
- };
- toggle.onclick=async()=>{
-  if(toggle.disabled)return;
-  if(toggle.dataset.mode!=='ABIERTO'){
-   await confirmGroupQuizInvitation(toggle,state,refresh);
-   return;
-  }
-  if(!window.confirm('¿Cerrar el Quiz 1 para el grupo? Los estudiantes ya no podrán enviar respuestas nuevas. Las entregas guardadas se conservan.'))return;
-  toggle.disabled=true;state.textContent='Cerrando y confirmando estado…';
-  try{
-   const response=await postQuiz('qzProgressTeacherSetAvailability',Object.assign({},qzContext,{estado:'CERRADO'}));
-   if(response.estado!=='CERRADO')throw Error('cierre_no_confirmado');
-   const verify=await postQuiz('qzProgressTeacherAvailability',qzContext);
-   if(verify.estado!=='CERRADO')throw Error('readback_no_confirmado');
-   state.textContent='Quiz cerrado. Las entregas existentes permanecen para revisión.';
-  }catch(_){
-   state.textContent='No se confirmó el cierre. Consultá de nuevo el estado antes de repetir la operación.';
-  }finally{refresh();}
- };
- wrapper.append(toggle,state);
- refresh();
- return wrapper;
-}
-function renderGrid(container,level){
- container.replaceChildren();
- LESSONS.forEach(([lesson,units],i)=>{
-  const ready=level==='B1'&&lesson===4;
-  const card=make('div',null,'f111-tqr-card'+(ready?' is-ready':''));
-  card.append(make('small','PROGRESS CHECK '+String(i+1).padStart(2,'0')));
-  card.append(make('strong','Lección '+lesson));
-  card.append(make('span','Unidades '+units));
-  if(ready){
-    const button=make('button','VER QUIZ ↗','f111-tqr-open');
-    button.type='button';
-    button.setAttribute('data-f111-quiz-preview','B1-L4');
-    button.addEventListener('click',preview);
-    card.append(button);
-    const gradeBtn=make('button','REVISAR ENTREGAS Y CALIFICAR','f111-tqr-open');
-    gradeBtn.type='button';
-    gradeBtn.dataset.f111QuizTeacherReviews='B1-L4';
-    gradeBtn.addEventListener('click',openReviewWorkspace);
-    card.append(gradeBtn);
-    card.append(buildQuizOpenControls());
-  }else if(level==='B1'){
-    const track=String(i+1).padStart(2,'0');
-    card.append(make('em','Cuestionario Cambridge 25 puntos · MP3 original '+track+' localizado en Drive privado'));
-    if(lesson===8){
-      const editorial=make('button','VISTA EDITORIAL PC02 ↗','f111-tqr-open');
-      editorial.type='button';editorial.dataset.f111QuizPreview='B1-L8-EDITORIAL';
-      editorial.addEventListener('click',previewPC02);card.append(editorial);
-    }
-    // R9: group must be selected from a list verified by the backend.
-    // No fallback to historic PC01's hardcoded group for PC02–PC08.
-    card.append(buildB1TeacherOpenControls(lesson));
-    card.append(make('em','Activación por grupo, fecha elegible y confirmación expresa del docente; no se abre al visitar esta pantalla.'));
-  }else{
-    card.append(make('em','Pendiente de digitalizar'));
-  }
-  container.append(card);
- });
-}
-function build(){
- const box=make('section',null,'f111-tqr');
- box.setAttribute('aria-label','Revisión de material de quizzes');
- box.setAttribute('data-f111-teacher-quizzes','true');
- box.append(make('small','PROGRESS CHECK · MATERIAL DOCENTE'));
- box.append(make('h3','Revisión de material de quizzes'));
- box.append(make('p','Revisá las preguntas antes de iniciar la lección.'));
- const nav=make('div',null,'f111-tqr-levels');
- nav.setAttribute('role','group');
- nav.setAttribute('aria-label','Seleccionar nivel');
- const grid=make('div',null,'f111-tqr-grid');
- let selected='B1';
- const buttons=[];
- LEVELS.forEach(([code,label,color])=>{
-  const b=make('button',code+' · '+label,'f111-tqr-level');
-  b.type='button';
-  b.dataset.level=code;
-  b.style.setProperty('--f111-level-color',color);
-  b.addEventListener('click',()=>{
-   selected=code;
-   buttons.forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.level===selected)));
-   renderGrid(grid,selected);
-  });
-  buttons.push(b);nav.append(b);
- });
- box.append(nav,grid,make('p','Vista previa docente · No habilita estudiantes ni registra notas.','f111-tqr-foot'));
- buttons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.level===selected)));
- renderGrid(grid,selected);
- return box;
-}
-
+// EXUI-05A: sin activación inyectada ni segundo catálogo visual.
 // F111 D3: Extensión del MISMO centro docente existente. No muta los
 // componentes React ni el paquete inmutable de exámenes escritos EX04.
 function f111TeacherExamModal(title,url){
@@ -892,70 +745,23 @@ function buildTeacherExamsF111(){
  lookup.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupBtn.click();}});
  select.addEventListener('change',loadHistory);
  refresh.addEventListener('click',loadAuthorizedGroups);
- const catalog=make('article',null,'f111-teacher-exam-card');
- catalog.append(make('h4','Banco y vista previa de exámenes'),
-  make('p','Modelo escrito o rúbrica oral para explicar el formato a los estudiantes. Sin lanzamiento ni registro.'));
- const form=make('div',null,'f111-teacher-exam-controls');
- const level=make('select'),type=make('select'),option=make('select'),plan=make('select');
- level.setAttribute('aria-label','Nivel de examen');
- type.setAttribute('aria-label','Lección de examen');
- option.setAttribute('aria-label','Opción de examen escrito');
- plan.setAttribute('aria-label','Programa del modelo');
- for(const value of ['B1','B2','I1','I2']){const opt=make('option',value);opt.value=value;level.append(opt);}
- for(const [value,label] of [[9,'Oral L09'],[17,'Oral L17'],[18,'Escrito L18'],[25,'Oral L25'],[31,'Oral L31'],[32,'Escrito L32']]){
-  const opt=make('option',label);opt.value=value;type.append(opt);
- }
- for(const value of ['A','B']){const opt=make('option','Opción '+value);opt.value=value;option.append(opt);}
- for(const value of ['SIN_INA','CON_INA']){
-  const opt=make('option',value.replace('_',' '));opt.value=value;plan.append(opt);
- }
- const view=make('button','ABRIR MODELO','f111-tqr-open');view.type='button';
- const updateType=()=>{const written=[18,32].includes(Number(type.value));option.disabled=!written;};
- type.addEventListener('change',updateType);updateType();
- view.addEventListener('click',()=>{
-  const lec=Number(type.value);
-  const written=lec===18||lec===32;
-  const params=written?{view:'teacher_preview',nivel:level.value,
-    test:lec===18?'TEST1':'TEST2',opcion:option.value,
-    plan:plan.value.toLowerCase()}:
-    {preview:1,nivel:level.value,leccion:lec,plan:plan.value};
-  f111TeacherExamModal((written?'Modelo escrito':'Rúbrica oral')+' · '+level.value+' · L'+lec+' · '+plan.value.replace('_',' '),
-   f111ExamPageUrl(written?'modulos/examenes.html':'modulos/examen_oral.html',params));
- });
- form.append(level,type,option,plan,view);catalog.append(form);
- catalog.append(make('small','La vista escrita muestra respuestas ocultas inicialmente. No proyectés la clave docente.'));
- summary.append(history,catalog);section.append(summary);
+ summary.append(history);section.append(summary);
  // Cargar solo cuando se conecta esta tarjeta, y luego por cambio o botón.
  queueMicrotask(()=>{if(section.isConnected)void loadAuthorizedGroups();});
  return section;
 }
 
 function attach(){
- attachLessonAction();
  const screen=document.querySelector('section[data-screen-label="Docente · Exámenes"]');
- if(!screen||screen.querySelector('[data-f111-teacher-quizzes]'))return;
- const modern=screen.querySelector('[data-f111-exams-tool-slot]');
- if(modern){
-  // Load protected history/quiz tools only after the teacher explicitly
-  // expands Extras. Avoid hidden queries and duplicate operating cards.
-  const parent=modern.closest('details');
-  if(!parent)return;
-  if(!parent.dataset.f111QuizAttach){
-   parent.dataset.f111QuizAttach='true';
-   parent.addEventListener('toggle',()=>{
-    if(parent.open&&modern.isConnected&&!modern.querySelector('[data-f111-teacher-quizzes]'))
-     modern.append(buildTeacherExamsF111(),build());
-   });
-  }
-  if(parent.open&&!modern.querySelector('[data-f111-teacher-quizzes]'))
-   modern.append(buildTeacherExamsF111(),build());
-  return;
- }
- const heading=Array.from(screen.children).find(el=>(el.textContent||'').includes('EXÁMENES DEL DOCENTE'));
- if(!heading)return;
- heading.insertAdjacentElement('afterend',build());
- const quizzes=screen.querySelector('[data-f111-teacher-quizzes]');
- if(quizzes)quizzes.insertAdjacentElement('beforebegin',buildTeacherExamsF111());
+ const slot=screen&&screen.querySelector('[data-f111-exams-tool-slot]');
+ const details=slot&&slot.closest('details');
+ if(!details)return;
+ const mount=()=>{
+  if(details.open&&slot.isConnected&&!slot.querySelector('[data-f111-teacher-exam-center]'))
+   slot.append(buildTeacherExamsF111());
+ };
+ if(!details.dataset.f111QuizAttach){details.dataset.f111QuizAttach='true';details.addEventListener('toggle',mount);}
+ mount();
 }
 function installStyle(){
  if(document.getElementById(STYLE))return;
