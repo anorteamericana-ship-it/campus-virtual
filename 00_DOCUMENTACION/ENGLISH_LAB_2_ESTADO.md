@@ -398,3 +398,33 @@ Misma rama y mismo PR borrador (#764). Sin fusionar ni publicar. Contenido en `B
 - Revisión pendiente: Natalia puntúa audiovisual, claridad y escenas; docentes revisan voces/contenido. No anunciar a prospectos sin esos resultados.
 
 **Estado de publicación confirmado (12-nov-2026):** PR #764 **MERGED** en `main` por squash `69df288247b274504c584bb9716120c5371bea29`. GitHub Pages workflow `43260908080` SUCCESS. Readback HTTP HEAD desde el equipo autorizado: `presentacion.html` **200 text/html** (10.770 bytes), `aventura-001.html?revision=1` **200 text/html** (7.722 bytes), `media/corner_cup_intro_480.mp4` **200 video/mp4** (516.707 bytes), `aventura-002.html` **200 text/html** (5.358 bytes). E3 limitada a publicación estática y presencia de recursos; no es prueba humana de audio, ni integración al Campus autenticado.
+
+## 18. Northbound con sonido desde la introducción · cierre técnico 12-nov-2026
+
+**Estado:** piloto audiovisual independiente publicado. Se completó en el PR [#766](https://github.com/anorteamericana-ship-it/campus-virtual/pull/766), fusionado por squash en `main` SHA `b3c58ff6ff77cc2e818b8d6ab93f93ccea19a4c5`. No se tocó `login.html`, el backend Apps Script, expedientes, asistencia, pagos ni notas.
+
+### Entrega técnica
+
+- `nb_intro_audio.js`: banda sonora original generada en tiempo real con Web Audio (capas de acordes suaves, ambiente y campanilla). El MP4 conserva su pista de video sin audio incrustado. El soundtrack se inicia de forma sincronizada al evento `playing` del video.
+- `aventura-001.html` y `aventura-002.html` muestran entrada accesible: **Comenzar con sonido**, **Ver video en silencio**, **Omitir video y jugar**. El motor `nb_cine.js` desbloquea el contexto de sonido desde el clic, ofrece `Esc` para omitir, detiene pista al cerrar y evita reproducción sonora automática por políticas del navegador.
+- Clave versionada de introducción `nb_intro_sound_v2_seen_<ID>`: los revisores que vieron la demo antigua reciben una muestra de la entrada sonora una vez; después podrán repetirla desde la portada.
+- `presentacion.html`: conserva seis pantallas promocionales; el tráiler incorpora elección explícita **Ver tráiler con sonido / Ver en silencio**, botón para silenciar y controles nativos tras la decisión.
+- `nb_cine.css`: adaptación móvil, navegación por teclado y estados visuales. Si el video o AudioContext falla, el juego continúa por una ruta silenciosa.
+- El sonido inicial es una creación procedimental original. Las **voces** continúan siendo síntesis local del dispositivo (variable por navegador/OS), no audio narrado por actores profesionales.
+
+### Evidencia certificada
+
+- GitHub Actions, Playwright con **Google Chrome real**: `qa_lab2_e1.mjs` **15/15 PASS**, `qa_aventura_e1.mjs` **21/21 PASS**; **36/36 grupos**. Ejecución `43268054501` sobre `0b5bd33c93d7e6b8acb77ab4293cda09517e947e`.
+- QA incluye señal de audio no nula medida con AnalyserNode, audio desde el primer tramo al pulsar, video 720p y 480p móvil, pausa/omisión, replay, final natural a los 10 segundos, accesibilidad con movimiento reducido, alternativa sin AudioContext, fallo de video y controles de sonido. Sin llamadas a Apps Script.
+- `English LAB Source Truth Guard` PASS sobre el PR y la fusión en `main`. GitHub Pages publicación SUCCESS en workflow `43268565540` para el SHA anterior.
+- Lectura HTTP HEAD desde dispositivo conectado: `presentacion.html` 200 (14593 bytes), `aventura-001.html?revision=1` 200 (8958 bytes), `aventura-002.html` 200 (6594 bytes), `nb_intro_audio.js` 200 (6555 bytes), `media/corner_cup_intro_480.mp4` 200 (516707 bytes, video/mp4). Se comprobó GET con `findstr` de los botones de sonido en la web publicada.
+
+### Rutas públicas para revisión Natalia
+
+- Presentación: `https://anorteamericana-ship-it.github.io/campus-virtual/prototipos/english_lab_2/presentacion.html#northbound`.
+- Juego 001 y feedback de Natalia: `https://anorteamericana-ship-it.github.io/campus-virtual/prototipos/english_lab_2/aventura-001.html?revision=1`.
+- Juego 002: `https://anorteamericana-ship-it.github.io/campus-virtual/prototipos/english_lab_2/aventura-002.html`.
+
+**Limitaciones:** GitHub Pages es público para cualquier persona con la URL; `revision=1` no es autorización ni privacidad. No se anunció a alumnos. El QA automatizado no demuestra la percepción humana de la mezcla, la calidad de voz o el desempeño en Safari/iPhone físico. Deben evaluarlo Natalia y un docente antes de invitar prospectos. E3 de recursos estáticos confirmado; integración con cuenta/sesión de Campus todavía NO.
+
+**Resultado de esta pasada:** 6/6 operaciones técnicas cerradas (módulo sonoro, entrada al juego, presentación, alternativas/fallback, E1 y Pages+readback). **0/2 revisiones humanas** completadas (Natalia y docente). No expresar 100 % del producto completo; la extensión a más unidades sigue en cola.
