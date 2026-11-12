@@ -81,7 +81,7 @@
     root.innerHTML = '<p class="l2-boot">No se pudo abrir el reto. Recargá la página y probá nuevamente.</p>';
     return;
   }
-  window.LAB2.mount(root, { preview: true, usuario: null });
+  window.LAB2.mount(root, { preview: true, usuario: { codigo: 'WEEK01_DEMO' } });
 
   var search = new URLSearchParams(window.location.search);
   if (search.get('revision') === '1') {
