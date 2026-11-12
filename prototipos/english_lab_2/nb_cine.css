@@ -1,0 +1,57 @@
+/* Northbound · capa audiovisual de la aventura 001. Todo cuelga de .nb-* o de body.nb-page. */
+body.nb-page { background: #0d1531; }
+body.nb-locked { overflow: hidden; }
+.nb-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; max-width: 50rem; margin: 0 auto; padding: .9rem 1rem; font-family: "Barlow", system-ui, sans-serif; font-size: .85rem; }
+.nb-top a { color: #eef0fa; text-decoration: none; }
+.nb-top strong { color: #f2b441; }
+.nb-top a:focus-visible, .nb-foot a:focus-visible { outline: 3px solid #f2b441; outline-offset: 3px; }
+.nb-intro { position: fixed; inset: 0; z-index: 40; background: #0d1531; display: grid; place-items: center; font-family: "Barlow", system-ui, sans-serif; color: #eef0fa; }
+.nb-intro[hidden] { display: none; }
+.nb-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d1531 center / cover no-repeat; }
+.nb-intro.is-card .nb-video { filter: brightness(.24) saturate(.8) blur(4px); }
+.nb-caption { position: absolute; left: 1rem; right: 1rem; bottom: 4.6rem; text-align: center; font-size: .95rem; text-shadow: 0 1px 6px #000; margin: 0; }
+.nb-intro.is-card .nb-caption { display: none; }
+.nb-skip { position: absolute; right: 1rem; bottom: 1.2rem; }
+.nb-btn { min-height: 2.9rem; padding: .6rem 1.3rem; border-radius: .5rem; border: 1px solid #be1e2d; background: #be1e2d; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.nb-btn:disabled { opacity: .45; cursor: default; }
+.nb-btn-ghost { background: rgba(13, 21, 49, .7); border-color: #aab4d8; }
+.nb-btn:focus-visible, .nb-link:focus-visible, .nb-input:focus-visible, .nb-sound button:focus-visible { outline: 3px solid #f2b441; outline-offset: 2px; }
+.nb-title { position: relative; z-index: 1; width: min(34rem, 100% - 2rem); display: flex; flex-direction: column; gap: .9rem; }
+.nb-title[hidden] { display: none; }
+.nb-kicker { margin: 0; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: .85rem; color: #f2b441; }
+.nb-title h1 { margin: 0; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: clamp(2.4rem, 10vw, 4.2rem); line-height: .98; text-transform: uppercase; text-wrap: balance; }
+.nb-title h1 em { font-style: normal; color: #f2b441; }
+.nb-title p { margin: 0; line-height: 1.5; }
+.nb-form { display: flex; flex-direction: column; gap: .5rem; }
+.nb-form label { font-weight: 600; }
+.nb-row { display: flex; flex-wrap: wrap; gap: .6rem; }
+.nb-input { flex: 1 1 11rem; min-width: 0; min-height: 2.9rem; padding: .5rem .8rem; border-radius: .5rem; border: 2px solid #c9c0aa; background: #fffdf8; color: #1a2142; font: inherit; font-size: 1.1rem; }
+.nb-link { background: none; border: 0; padding: .3rem 0; color: #aab4d8; text-decoration: underline; font: inherit; cursor: pointer; align-self: flex-start; }
+.nb-status { font-size: .88rem; color: #aab4d8; min-height: 1.2em; }
+.nb-sound { position: fixed; z-index: 20; left: 50%; bottom: .6rem; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .3rem; padding: .35rem .5rem; border-radius: 999px; background: rgba(22, 33, 80, .96); border: 1px solid #33427f; font-family: "Barlow", system-ui, sans-serif; font-size: .82rem; color: #aab4d8; max-width: calc(100% - 1rem); }
+.nb-sound[hidden] { display: none; }
+.nb-sound-label { padding: 0 .3rem; }
+.nb-sound button { min-height: 2.2rem; padding: .2rem .7rem; border-radius: 999px; border: 1px solid #33427f; background: transparent; color: #aab4d8; font: inherit; cursor: pointer; }
+.nb-sound button[aria-pressed="true"] { background: #f2b441; border-color: #f2b441; color: #2a1d00; font-weight: 600; }
+.nb-sound button[aria-pressed="false"] { text-decoration: line-through; }
+body.nb-page .l2-main { padding-bottom: 6rem; }
+.nb-portrait { flex: none; width: 4.6rem; height: 4.6rem; border-radius: 50%; }
+.nb-head { transform-origin: 50% 70%; transform-box: fill-box; transition: transform .25s ease; }
+.nb-confused .nb-head { transform: rotate(-6deg); }
+.nb-happy .nb-head { animation: nb-nod .55s ease 1; }
+.nb-eye { transform-origin: center; transform-box: fill-box; animation: nb-blink 5.5s infinite; }
+@keyframes nb-nod { 0%, 100% { transform: none; } 40% { transform: translateY(3px) rotate(2deg); } }
+@keyframes nb-blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+.nb-souvenir { position: fixed; inset: 0; z-index: 50; background: rgba(8, 13, 34, .86); display: grid; place-items: center; padding: 1rem; overflow: auto; font-family: "Barlow", system-ui, sans-serif; }
+.nb-souvenir[hidden] { display: none; }
+.nb-souvenir-card { width: min(26rem, 100%); background: #f5f0e4; color: #1a2142; border-radius: 1rem; padding: 1.4rem; display: flex; flex-direction: column; gap: .7rem; align-items: center; text-align: center; }
+.nb-souvenir-card .nb-kicker { color: #8e1f2f; }
+.nb-souvenir-card h2 { margin: 0; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 1.9rem; line-height: 1.05; }
+.nb-souvenir-card p { margin: 0; line-height: 1.45; }
+.nb-cup { width: 9.5rem; height: auto; animation: nb-pop .5s ease 1; }
+@keyframes nb-pop { from { transform: translateY(1rem) rotate(-6deg); opacity: .3; } to { transform: none; opacity: 1; } }
+.nb-next { font-size: .92rem; border-top: 1px dashed #c9c0aa; padding-top: .7rem; }
+.nb-foot { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 6rem; font-family: "Barlow", system-ui, sans-serif; font-size: .85rem; color: #aab4d8; line-height: 1.5; }
+.nb-foot a { color: #eef0fa; }
+@media (max-width: 30rem) { .nb-portrait { width: 3.6rem; height: 3.6rem; } .nb-sound-label { display: none; } .nb-sound { flex-wrap: nowrap; gap: .2rem; padding: .3rem; font-size: .76rem; } .nb-sound button { padding: .2rem .5rem; white-space: nowrap; } }
+@media (prefers-reduced-motion: reduce) { .nb-happy .nb-head, .nb-eye, .nb-cup { animation: none; } .nb-head { transition: none; } }

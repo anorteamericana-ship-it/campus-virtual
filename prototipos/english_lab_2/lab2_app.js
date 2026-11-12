@@ -158,6 +158,7 @@
     function done(res) {
       LAB2.voice.stop();
       if (!res.silent) lg.current.push({ i: index, kind: step.kind, firstTry: !!res.firstTry, tries: res.tries || 1, review: res.review || null, spoken: !!res.spoken });
+      LAB2.emit('step-done', { scene: scene.id, index: index, kind: step.kind });
       if (index >= scene.steps.length - 1) { props.onFinish(lg.current); return; }
       props.onProgress(index + 1, lg.current);
       setIndex(index + 1);
@@ -224,7 +225,11 @@
     var content = window.LAB2_CONTENT;
     var userKey = userKeyOf(props.usuario);
     var st = useState(function () { return LAB2.store.load(userKey); }); var state = st[0], setState = st[1];
-    var vw = useState({ name: 'home' }); var view = vw[0], setView = vw[1];
+    /* startEpisode: una portada externa (por ejemplo una introducción) ya pidió el nombre y abre directo el episodio. */
+    var vw = useState(function () {
+      var ep = props.startEpisode && state.player && content.episodes.some(function (e) { return e.id === props.startEpisode; });
+      return ep ? { name: 'episode', episode: props.startEpisode } : { name: 'home' };
+    }); var view = vw[0], setView = vw[1];
     function commit(next) { setState(next); LAB2.store.save(userKey, next); }
     function patchScene(id, patch) {
       var scenes = Object.assign({}, state.scenes);
@@ -240,6 +245,7 @@
       var rec = state.scenes[sceneId] || LAB2.emptyScene();
       var resume = !fresh && !rec.completed && rec.resume ? rec.resume : null;
       patchScene(sceneId, { started: true, resume: resume, lastAt: new Date().toISOString() });
+      LAB2.emit('scene-start', { scene: sceneId });
       setView({ name: 'scene', episode: view.episode, scene: sceneId, resume: resume, run: Date.now() });
     }
     function finish(log) {
@@ -250,6 +256,7 @@
         started: true, completed: true, attempts: (prev.attempts || 0) + 1, lastFirstTry: firstTry,
         bestFirstTry: Math.max(prev.bestFirstTry || 0, firstTry), total: total, skills: scene.skills, lastAt: new Date().toISOString(), resume: null
       });
+      LAB2.emit('scene-end', { scene: scene.id, firstTry: firstTry, total: total, player: state.player });
       setView({ name: 'result', episode: view.episode, scene: scene.id, record: rec,
         result: { total: total, firstTry: firstTry, spoken: log.some(function (x) { return x.spoken; }),
           review: log.filter(function (x) { return x.review; }).map(function (x) { return x.review; }) } });

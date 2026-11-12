@@ -266,3 +266,71 @@ El repositorio es público y GitHub Pages no controla acceso a una ruta. `noinde
 - **Próxima aceptación:** Dirección y Natalia abren la URL en su navegador; docente revisa correspondencia curricular; registran observaciones; luego se planifica activación pública del CTA/escenarios. Si se exige acceso sólo para tres identidades, implementar puerta de acceso real antes de compartir el piloto.
 
 **Matriz piloto por hitos:** anteproyecto 1/1, prototipo jugable 1/1, E1 aislado 1/1, despliegue Pages 1/1, readback URL 0/1, revisión humana 0/1, acceso privado por identidad 0/1. Total operacional 4/7 (57,1 %). No equivale a avance de 16 unidades ni a integración del Campus.
+
+## 15. Aventura 001 audiovisual — 11-nov-2026 CR (Claude)
+
+**Línea base:** `main` `50e7ed9`. **Rama:** `feat/northbound-cafe-audiovisual`. **Estado:** desarrollo, PR borrador, sin fusionar ni publicar.
+
+### Video 001 «Bienvenido a The Corner Cup»
+
+| Dato | Valor |
+|---|---|
+| ¿Video generado por IA? | **NO.** Había una herramienta de video generativo disponible (Canva conectado). Consume el límite mensual de IA de la cuenta; Leonardo decidió no usarla. |
+| Qué es | Animación 2D original dibujada con Canvas y codificada con ffmpeg. Es un archivo de video real, no una animación CSS dentro de la página, pero no es material filmado ni generativo. |
+| Archivos | `prototipos/english_lab_2/media/corner_cup_intro.mp4` (1280×720, 10,0 s, 30 fps, H.264 Main, 1,14 MB, sin audio) · `corner_cup_intro_480.mp4` (854×480, 0,52 MB) · `corner_cup_poster.jpg` (54 KB) |
+| Fuente reproducible | `media_src/corner_cup_scene.html` + `media_src/render_video_001.mjs` (13 s de render) |
+| Reproducción verificada | Chrome real: 1280×720, duración 10,0 s, avanza, en silencio (E1) |
+| Límite | Estilo ilustrado plano, sin personajes con rostro. No alcanza calidad cinematográfica; eso requiere video generativo o producción. |
+
+Corrección de coherencia hecha durante el trabajo: el primer borrador era de noche; la historia ocurre a las 10:15 a. m. y enseña *Good morning*, así que la escena es de mañana.
+
+### Qué cambió en la experiencia (`aventura-001.html`, aislada; `reto-semana.html` queda intacta)
+
+- **Entrada:** video → portada «Tu primera entrevista en inglés» → nombre → «Comenzar aventura» → entra directo al episodio. El video se ve una sola vez por navegador; se omite con botón o Escape; con movimiento reducido o ahorro de datos no se descarga.
+- **La escena contesta:** cada opción equivocada tiene una reacción del personaje en inglés (`react`) antes de la explicación en español, y cada acierto una continuación (`then`). Se puede reintentar siempre.
+- **Decisión con continuidad:** paso nuevo `pick` (sin respuesta incorrecta). Sam ofrece café, té o agua; la elección vuelve en un diálogo posterior (`{drink}`) y en el recuerdo final. Sobrevive a recargar.
+- **Escuchar primero:** `listen: true` deja el texto detrás de «Ver subtítulos»; nunca se quita.
+- **Personajes:** retratos SVG de Ms. Rivera y Sam con tres expresiones (neutral, sonríe, extrañada) ligadas a la respuesta.
+- **Recuerdo:** vaso de la cafetería con el nombre del estudiante y la bebida elegida, y aviso de la próxima historia sin fecha.
+- **Sonido:** campanilla de puerta, murmullo, tazas, vapor de la máquina, acierto, error suave y fin de escena. Todo sintetizado en el navegador (Web Audio): cero archivos, cero licencias. Controles independientes de Voz, Ambiente y Efectos, con memoria. El ambiente baja al 18 % mientras habla un personaje. Nada suena antes del primer clic.
+- **Voces:** síntesis del dispositivo, con perfil distinto por personaje (voz preferida si existe, tono como respaldo) y botón «Más lento». **No es voz profesional** y cambia entre equipos; no se pudo escuchar en esta prueba (el navegador de pruebas no tiene voces instaladas).
+
+### Cambios en motores compartidos (aditivos)
+
+`lab2_core.js`: `LAB2.on/emit`, `LAB2.flags` con `{clave}` en textos, perfil de voz por personaje y silencio. `lab2_steps.js`: `Reply`, `mood` y `listen` en `Speaker`, botón «Más lento», eventos `answer`, paso `pick`. `lab2_app.js`: `startEpisode`, eventos `scene-start`, `scene-end`, `step-done`. `lab2.css`: estilos de respuesta y decisión. La prueba existente sigue en 15/15.
+
+### Estado por columna
+
+| Elemento | Implementado | Probado aislado (E1) | Revisado académicamente | Integrado al Campus | Publicado |
+|---|---|---|---|---|---|
+| Video 001 (animación) | Sí | Sí | No aplica | No | No |
+| Portada e introducción | Sí | Sí | No aplica | No | No |
+| Reacciones y continuaciones | Sí | Sí | No | No | No |
+| Decisión `pick` y recuerdo | Sí | Sí | No | No | No |
+| Sonido ambiente y efectos | Sí | Lógica sí; **no escuchado por una persona** | No aplica | No | No |
+| Voces por personaje | Sí | Lógica sí; **no escuchadas** | No | No | No |
+| Retratos con expresión | Sí | Sí | Pendiente Natalia | No | No |
+| Pieza comercial 9:16 | No | No | — | — | — |
+
+**Pruebas:** `qa_aventura_e1.mjs` 12/12 grupos (video real, omitir, portada, tres escenas con errores, continuidad tras recargar, recuerdo, controles de sonido, movimiento reducido, celular 390 px, conexión lenta, video caído, enlaces). `qa_lab2_e1.mjs` 15/15. Control `qa_cs21a202_source_truth` pasa en local.
+
+**Sin probar:** Safari y Firefox, celular físico, lector de pantalla, y sobre todo el oído humano: nadie ha escuchado todavía el ambiente ni las voces.
+
+**Avance de esta pasada (base: 8 entregables de la orden):** video, integración, interacciones, audio, personajes, pruebas y continuidad = 7 hechos; pieza comercial = 0. 7/8 (87,5 %) construidos; 0/8 validados por personas.
+
+### Para Natalia (decisiones que necesitan su ojo)
+
+1. **Estilo del video y de los retratos:** ilustración plana geométrica, sin rostros en el video y con rostro simple en los retratos. ¿Se mantiene, o se busca ilustración con más carácter hecha por ella?
+2. **Paleta:** azul institucional de noche + ámbar + rojo solo en la acción principal; el video usa azules de mañana con el interior cálido de la cafetería.
+3. **Tipografía:** Barlow Condensed en títulos, Barlow en texto.
+4. **Retratos:** están en una sola función (`LAB2.portrait` en `nb_cine.js`). Se pueden sustituir por sus ilustraciones (tres expresiones por personaje) sin tocar el juego.
+5. **Video:** si se aprueba usar video generativo o producir uno, se reemplaza el archivo MP4 y el póster; la página no cambia.
+
+### REVISIÓN CRUZADA — CHATGPT · entrega 3
+
+1. ¿Los cambios aditivos a `lab2_steps.js` y `lab2_core.js` rompen algo de `reto-semana.html` que la prueba de 15 grupos no cubre?
+2. `pick` cuenta como acierto a la primera en el resultado. ¿Debe quedar fuera del conteo, como debería quedar `say`?
+3. *Coffee or tea? It's on the house.* es vocabulario fuera de la Unidad 1. ¿Se acepta como transparente o se marca como adelanto?
+4. Las reacciones en inglés (`react`) usan humor y frases sobre el nivel (*That's my line*). ¿Ayudan o distraen en Básico I?
+5. Pendiente de la entrega anterior de Claude, guardado sin publicar (`git stash` local, no está en GitHub): clasificación de respuestas escritas (equivalente válido, error conocido, error de ortografía) y `say` fuera del resultado. Hay que rehacerlo sobre este `main`.
+6. PR de seguridad `campus_backend#137` (EL2-SEC-01) sigue en borrador; esta aventura no llama a ese backend.

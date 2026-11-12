@@ -6,6 +6,13 @@
   'use strict';
   var LAB2 = window.LAB2 = window.LAB2 || {};
 
+  /* ---------- eventos: capas opcionales (sonido, personajes, cinemática) escuchan sin tocar los motores ---------- */
+  var listeners = [];
+  LAB2.on = function (fn) { listeners.push(fn); };
+  LAB2.emit = function (name, detail) { listeners.forEach(function (fn) { try { fn(name, detail || {}); } catch (_) {} }); };
+  /* Datos de la partida que el contenido puede citar con {clave}, además de {name}. */
+  LAB2.flags = {};
+
   /* ---------- utilidades ---------- */
   LAB2.shuffle = function (list) {
     var a = list.slice();
@@ -38,7 +45,8 @@
     return String(text || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z]/g, '');
   };
   LAB2.fill = function (text, player) {
-    return String(text || '').replace(/\{name\}/g, (player && player.name) || 'Alex');
+    return String(text || '').replace(/\{name\}/g, (player && player.name) || 'Alex')
+      .replace(/\{([a-z_]+)\}/g, function (all, key) { return LAB2.flags[key] != null ? LAB2.flags[key] : all; });
   };
   LAB2.cleanName = function (raw) {
     var first = String(raw || '').trim().split(/\s+/)[0] || '';
@@ -49,10 +57,12 @@
   /* ---------- voz: síntesis del navegador, con alternativa visible ---------- */
   var synth = null;
   try { synth = window.speechSynthesis || null; } catch (_) { synth = null; }
-  function pickVoice() {
+  function pickVoice(prefer) {
     if (!synth) return null;
     var voices = [];
     try { voices = synth.getVoices() || []; } catch (_) { voices = []; }
+    var us = voices.filter(function (v) { return /^en[-_]US/i.test(v.lang); });
+    if (prefer) { var hit = us.filter(function (v) { return prefer.test(v.name); })[0]; if (hit) return hit; }
     return voices.filter(function (v) { return /^en[-_]US/i.test(v.lang); })[0] ||
       voices.filter(function (v) { return /^en/i.test(v.lang); })[0] || null;
   }
@@ -66,12 +76,19 @@
       opts = opts || {};
       try {
         synth.cancel();
-        var voice = pickVoice();
-        (Array.isArray(parts) ? parts : [parts]).forEach(function (text) {
+        if (LAB2.voice.muted) return false;
+        /* Perfil por personaje: voz preferida si el dispositivo la tiene, y tono distinto como respaldo. */
+        var prof = (LAB2.voice.profiles || {})[opts.who] || {};
+        var voice = pickVoice(prof.prefer);
+        var list = Array.isArray(parts) ? parts : [parts];
+        list.forEach(function (text, i) {
           var u = new window.SpeechSynthesisUtterance(String(text));
           u.lang = (voice && voice.lang) || 'en-US';
           if (voice) u.voice = voice;
-          u.rate = opts.rate || 0.9;
+          u.rate = (opts.rate || 0.9) * (prof.rate || 1);
+          u.pitch = prof.pitch || 1;
+          if (i === 0) u.onstart = function () { LAB2.emit('voice-start', { who: opts.who }); };
+          if (i === list.length - 1) u.onend = u.onerror = function () { LAB2.emit('voice-end', { who: opts.who }); };
           synth.speak(u);
         });
         return true;

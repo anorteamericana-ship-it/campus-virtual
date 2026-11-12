@@ -15,17 +15,35 @@
   }
 
   /* Burbuja de quien habla, con botón para escuchar. El texto siempre está visible. */
+  /* mood: 'neutral' | 'happy' | 'confused'. Si una capa visual registra LAB2.portrait, se usa su retrato.
+   * listen: el texto queda detrás de "Ver subtítulos" para que primero se escuche; nunca se quita. */
   function Speaker(props) {
     var c = castOf(props.ctx, props.who);
     var text = LAB2.fill(props.say, props.ctx.player);
-    return h('div', { className: 'l2-speaker l2-tone-' + c.tone },
-      h('div', { className: 'l2-avatar', 'aria-hidden': 'true' }, c.name.replace(/^Mrs?\.\s*/, '').charAt(0)),
+    var canHear = LAB2.voice.available() && !LAB2.voice.muted;
+    var sub = useState(!(props.listen && canHear)); var showText = sub[0], setShowText = sub[1];
+    var portrait = LAB2.portrait ? LAB2.portrait(c.id, props.mood || 'neutral') : null;
+    return h('div', { className: 'l2-speaker l2-tone-' + c.tone + (portrait ? ' has-portrait' : '') + ' is-' + (props.mood || 'neutral') },
+      portrait || h('div', { className: 'l2-avatar', 'aria-hidden': 'true' }, c.name.replace(/^M(rs?|s)\.\s*/, '').charAt(0)),
       h('div', { className: 'l2-bubble' },
         h('div', { className: 'l2-who' }, c.name, c.role ? h('span', null, ' · ' + c.role) : null),
-        h('p', { className: 'l2-say', lang: 'en' }, text),
-        LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text); } }, 'Escuchar') : null
+        showText ? h('p', { className: 'l2-say', lang: 'en' }, text)
+          : h('p', { className: 'l2-say l2-say-hidden' }, 'Escuchá lo que dice. ',
+              h('button', { type: 'button', className: 'l2-link', onClick: function () { setShowText(true); } }, 'Ver subtítulos')),
+        LAB2.voice.available() ? h('div', { className: 'l2-listen-row' },
+          h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id }); } }, 'Escuchar'),
+          h('button', { type: 'button', className: 'l2-listen l2-listen-slow', onClick: function () { LAB2.voice.speak(text, { who: c.id, rate: 0.6 }); } }, 'Más lento')) : null
       )
     );
+  }
+  /* Lo que el personaje contesta: la escena reacciona en inglés antes de explicar en español. */
+  function Reply(props) {
+    if (!props.text) return null;
+    var c = castOf(props.ctx, props.who);
+    var text = LAB2.fill(props.text, props.ctx.player);
+    return h('div', { className: 'l2-reply l2-tone-' + c.tone },
+      h('span', { className: 'l2-reply-who' }, c.name + ': '), h('span', { lang: 'en' }, text),
+      LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id }); } }, 'Escuchar') : null);
   }
 
   function Feedback(props) {
@@ -56,12 +74,12 @@
     var last = wrong.length ? options.filter(function (x) { return x.id === wrong[wrong.length - 1]; })[0] : null;
     function pick(item) {
       if (done) return;
-      if (item.o.ok) { setDone(true); return; }
-      if (wrong.indexOf(item.id) < 0) setWrong(wrong.concat([item.id]));
+      if (item.o.ok) { setDone(true); LAB2.emit('answer', { ok: true, who: step.who, kind: 'choice' }); return; }
+      if (wrong.indexOf(item.id) < 0) { setWrong(wrong.concat([item.id])); LAB2.emit('answer', { ok: false, who: step.who, kind: 'choice' }); }
     }
     var right = step.options.filter(function (o) { return o.ok; })[0];
     return h('div', { className: 'l2-step' },
-      h(Speaker, { ctx: ctx, who: step.who, say: step.say }),
+      h(Speaker, { ctx: ctx, who: step.who, say: step.say, listen: step.listen, mood: done ? 'happy' : (last ? 'confused' : 'neutral') }),
       h('p', { className: 'l2-ask' }, step.ask_es),
       h('div', { className: 'l2-options', role: 'group', 'aria-label': 'Opciones de respuesta' },
         options.map(function (item) {
@@ -74,7 +92,9 @@
           }, LAB2.fill(item.o.t, ctx.player));
         })
       ),
+      !done && last ? h(Reply, { ctx: ctx, who: step.who, text: last.o.react }) : null,
       !done && last ? h(Feedback, { ok: false }, last.o.why_es, ' Probá otra.') : null,
+      done ? h(Reply, { ctx: ctx, who: step.who, text: step.then }) : null,
       done ? h(Feedback, { ok: true }, step.explain_es) : null,
       done ? h(Continue, { onClick: function () {
         props.onDone({ firstTry: wrong.length === 0, tries: wrong.length + 1,
@@ -100,6 +120,7 @@
       if (done || !LAB2.lettersOf(value)) return;
       var res = LAB2.checkSpelling(value, word, content.letterTraps);
       setResult(res);
+      LAB2.emit('answer', { ok: res.ok, who: step.who, kind: 'spell' });
       if (!res.ok) setTries(tries + 1);
     }
     var sounds = word.split('').map(function (ch) { return content.letterSounds[ch] || ch; });
@@ -159,13 +180,15 @@
     function add(tile) { if (!done) { setBuilt(built.concat([tile])); setStatus(''); } }
     function remove(tile) { if (!done) { setBuilt(built.filter(function (x) { return x.id !== tile.id; })); setStatus(''); } }
     function check() {
-      if (built.map(function (x) { return x.w; }).join(' ') === answer.join(' ')) setStatus('ok');
+      var good = built.map(function (x) { return x.w; }).join(' ') === answer.join(' ');
+      LAB2.emit('answer', { ok: good, who: step.who, kind: 'build' });
+      if (good) setStatus('ok');
       else { setTries(tries + 1); setStatus('no'); }
     }
     var left = tiles.filter(function (x) { return !built.some(function (y) { return y.id === x.id; }); });
     var usedExtra = built.filter(function (x) { return (step.extra || []).indexOf(x.w) >= 0 && answer.indexOf(x.w) < 0; })[0];
     return h('div', { className: 'l2-step' },
-      h(Speaker, { ctx: ctx, who: step.who, say: step.say }),
+      h(Speaker, { ctx: ctx, who: step.who, say: step.say, mood: status === 'ok' ? 'happy' : (status === 'no' ? 'confused' : 'neutral') }),
       h('p', { className: 'l2-ask' }, step.ask_es),
       h('div', { className: 'l2-line' + (status ? ' is-' + status : ''), 'aria-label': 'Tu frase', lang: 'en' },
         built.length ? built.map(function (tile) {
@@ -181,6 +204,7 @@
       status === 'no' ? h(Feedback, { ok: false },
         usedExtra ? 'La palabra "' + usedExtra.w + '" sobra en esta frase.' : (built.length !== answer.length ? 'Faltan o sobran palabras.' : 'Las palabras están, pero en otro orden.'),
         tries >= (ctx.noHints ? 3 : 2) ? h('button', { type: 'button', className: 'l2-link', onClick: function () { setStatus('shown'); } }, 'Ver la respuesta') : null) : null,
+      status === 'ok' ? h(Reply, { ctx: ctx, who: step.who, text: step.then }) : null,
       status === 'ok' ? h(Feedback, { ok: true }, step.explain_es) : null,
       status === 'shown' ? h(Feedback, { ok: false, title: 'La frase era:' }, h('span', { lang: 'en' }, answer.join(' ')), '. ', step.explain_es) : null,
       done ? h(Continue, { onClick: function () {
@@ -203,7 +227,9 @@
     function check(e) {
       if (e) e.preventDefault();
       if (done || !LAB2.normEnglish(value)) return;
-      if (accept.indexOf(LAB2.normEnglish(value)) >= 0) setStatus('ok');
+      var good = accept.indexOf(LAB2.normEnglish(value)) >= 0;
+      LAB2.emit('answer', { ok: good, who: step.who, kind: 'type' });
+      if (good) setStatus('ok');
       else { setTries(tries + 1); setStatus('no'); }
     }
     return h('div', { className: 'l2-step' },
@@ -218,6 +244,7 @@
       status === 'no' ? h(Feedback, { ok: false },
         tries === 1 ? 'Esa no es la frase que se usa aquí. Pensá en las frases de cortesía de la unidad.' : 'Revisá la ortografía, palabra por palabra.',
         tries >= (ctx.noHints ? 3 : 2) ? h('button', { type: 'button', className: 'l2-link', onClick: function () { setStatus('shown'); } }, 'Ver la respuesta') : null) : null,
+      status === 'ok' ? h(Reply, { ctx: ctx, who: step.who, text: step.then }) : null,
       status === 'ok' ? h(Feedback, { ok: true }, step.explain_es) : null,
       status === 'shown' ? h(Feedback, { ok: false, title: 'Una respuesta correcta:' }, h('span', { lang: 'en' }, model), ' ', step.explain_es) : null,
       done ? h(Continue, { onClick: function () {
@@ -242,5 +269,26 @@
     );
   }
 
-  LAB2.steps = { line: LineStep, choice: ChoiceStep, spell: SpellStep, build: BuildStep, type: TypeStep, say: SayStep };
+  /* ---------- pick: una decisión sin respuesta incorrecta ----------
+   * Guarda la elección en LAB2.flags[step.flag]; el contenido la cita después con {flag}.
+   * Sirve para que una decisión chica cambie una línea posterior de la historia. */
+  function PickStep(props) {
+    var step = props.step, ctx = props.ctx;
+    var c = useState(null); var chosen = c[0], setChosen = c[1];
+    function pick(o) { if (chosen) return; LAB2.flags[step.flag] = o.value; setChosen(o); LAB2.emit('answer', { ok: true, who: step.who, kind: 'pick' }); }
+    return h('div', { className: 'l2-step' },
+      h(Speaker, { ctx: ctx, who: step.who, say: step.say, listen: step.listen, mood: chosen ? 'happy' : 'neutral' }),
+      h('p', { className: 'l2-ask' }, step.ask_es),
+      h('div', { className: 'l2-options l2-options-pick', role: 'group', 'aria-label': 'Tu decisión' },
+        step.options.map(function (o, i) {
+          return h('button', { key: i, type: 'button', lang: 'en', disabled: !!chosen && chosen !== o,
+            className: 'l2-option' + (chosen === o ? ' is-right' : ''), onClick: function () { pick(o); } }, o.t);
+        })),
+      chosen ? h(Reply, { ctx: ctx, who: step.who, text: chosen.then }) : null,
+      chosen && step.explain_es ? h('p', { className: 'l2-note' }, step.explain_es) : null,
+      chosen ? h(Continue, { onClick: function () { props.onDone({ firstTry: true, tries: 1, review: null }); } }) : null
+    );
+  }
+
+  LAB2.steps = { line: LineStep, choice: ChoiceStep, spell: SpellStep, build: BuildStep, type: TypeStep, say: SayStep, pick: PickStep };
 })();
