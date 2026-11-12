@@ -68,7 +68,7 @@ try {
   await page.waitForSelector('#nb-audio-gate:not([hidden])');
   assert.equal(await page.locator('#nb-enter-sound').isVisible(), true);
   assert.deepEqual(media, [], 'no descargar MP4 antes del consentimiento');
-  assert.deepEqual(await page.evaluate(() => window.NBIntroAudio.state()), { available:true, context:'none', active:false, starts:0, error:'' });
+  assert.deepEqual(await page.evaluate(() => window.NBIntroAudio.state()), { available:true, context:'none', active:false, starts:0, error:'', rms:0 });
   await page.click('#nb-enter-sound');
   await page.waitForFunction(() => {
     const v = document.getElementById('nb-video'), a = window.NBIntroAudio.state();
@@ -81,6 +81,7 @@ try {
   });
   assert.deepEqual([v.w,v.h,v.muted,v.paused,v.src,v.gameAudio], [1280,720,true,false,'corner_cup_intro.mp4','none']);
   assert(Math.abs(v.d - 10) < 0.2, '10 s');
+  await page.waitForFunction(() => window.NBIntroAudio.state().rms > 0.0001, null, { timeout:5000 });
   assert.equal(await page.isVisible('#nb-title'), false);
   if (shots) { await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 5.4); await page.screenshot({ path: shots + '/a1_video.png' }); }
   ok('entrada con sonido real', 'audio Web Audio activo y sincronizado al MP4 720p solo después del clic');
@@ -276,6 +277,7 @@ try {
     const v=document.querySelector('#nb-promo-video'), a=window.NBIntroAudio.state();
     return v && v.currentTime > 0.2 && v.videoWidth >= 854 && a.context === 'running' && a.active;
   }, null, {timeout:12000});
+  await page.waitForFunction(() => window.NBIntroAudio.state().rms > 0.0001, null, { timeout:5000 });
   assert(await page.locator('#nb-promo-mute').isVisible(), 'control para silenciar');
   await page.click('#nb-promo-mute');
   assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false, 'tráiler silenciado inmediatamente');
