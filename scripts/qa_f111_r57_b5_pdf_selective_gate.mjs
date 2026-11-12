@@ -19,7 +19,9 @@ const diff=execFileSync('git',['diff','--name-only',base,'--','src','modulos'],{
  .trim().split(/\r?\n/).filter(Boolean).sort();
 const expected=['modulos/examenes.html','src/app.jsx','src/examenes_bundle.jsx',
  'src/examenes_modes.jsx','src/solicitudes_unificadas.jsx','src/teacher_views.jsx',
- 'src/teacher_agenda_slots_cs19f.jsx','src/teacher_quiz_review_f111.js'].sort();
+ 'src/teacher_agenda_slots_cs19f.jsx','src/teacher_quiz_review_f111.js',
+ // Existing main source added after the historical R57 baseline, not changed by ATT-EDIT.
+ 'src/northbound_weekly_pilot_cta.js'].sort();
 check(JSON.stringify(diff)===JSON.stringify(expected),
  'only the previously approved R57 overlay and three teacher UI sources changed');
 for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solicitudes_pago.jsx',
@@ -44,6 +46,10 @@ for(const [path,pin] of Object.entries(uiPins))
  check(sha(read(path))===pin,'approved teacher UI source pinned '+path);
 check(sha(modes)==='da7899a45adb6abb8dff83fb605ea498adf51fdcfb9613c1fab9447afffa6bbf',
  'written review source pinned exact SHA');
+// Protect the pre-existing weekly CTA added to main since the old R57 baseline.
+check(sha(read('src/northbound_weekly_pilot_cta.js'))===
+ 'd4b4c1d7ac618962acc6db8d46b512e1a44be77aaa84b64e55c61657a932b4f3',
+ 'pre-existing weekly CTA source unchanged by attendance patch');
 check(bundle.includes(modes),'served exam bundle includes pinned official PDF UI source');
 const previouslyShipped=execFileSync('git',['show',
  'efbad33163466cca97ed7db4b481a59ed37055af:src/examenes_modes.jsx'],
