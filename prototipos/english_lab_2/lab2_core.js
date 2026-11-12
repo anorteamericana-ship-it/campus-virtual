@@ -28,6 +28,12 @@
     return String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ').trim();
   };
+  /* Para escritura inglesa: no aceptar la ausencia de apostrofe como equivalente a una contraccion correcta. */
+  LAB2.normEnglish = function (text) {
+    return String(text || '').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/[\u2018\u2019]/g, "'")
+      .replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  };
   LAB2.lettersOf = function (text) {
     return String(text || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z]/g, '');
   };
