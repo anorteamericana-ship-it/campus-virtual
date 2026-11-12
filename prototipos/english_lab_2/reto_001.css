@@ -1,0 +1,42 @@
+/* Semana 001: escena de cafetería provisional, reemplazable por Natalia.
+ * No se introducen estilos globales en campus.html ni dependencias adicionales.
+ */
+body.l2-weekly-page{background:#112342;color:#f8f1e8}
+.weekly-nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:1100px;margin:auto;padding:1.05rem 1.25rem;font-family:"Barlow",sans-serif}
+.weekly-nav a{color:#f8f1e8;text-decoration:none}
+.weekly-brand{font-size:.85rem;letter-spacing:.06em;font-weight:700}.weekly-brand strong{color:#e5b960}
+.weekly-back{font-size:.88rem;border:1px solid #8496c0;border-radius:50px;padding:.5rem .85rem}
+.weekly-nav a:focus-visible,.weekly-after a:focus-visible,.weekly-review :focus-visible{outline:3px solid #e5b960;outline-offset:3px}
+.weekly-hero{max-width:1100px;margin:0 auto 1.75rem;padding:2.7rem 1.25rem;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(240px,.85fr);align-items:center;gap:2rem}
+.weekly-kicker{font-size:.78rem;letter-spacing:.16em;font-weight:800;color:#e5b960;text-transform:uppercase}
+.weekly-hero h1{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:clamp(3rem,6vw,5.4rem);line-height:.95;text-transform:uppercase;margin:.7rem 0;letter-spacing:.02em}
+.weekly-hero h1 em{font-style:normal;color:#e5b960}
+.weekly-hero-content>p:not(.weekly-kicker){font-size:1.08rem;line-height:1.65;max-width:42ch;color:#d6dfef}
+.weekly-meta{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.4rem}
+.weekly-meta span{border:1px solid #91a0c1;border-radius:99px;padding:.35rem .7rem;font-size:.8rem}
+.weekly-art{height:280px;position:relative;border-radius:1rem;overflow:hidden;background:linear-gradient(#243f6a 0 45%,#495e71 45% 66%,#203050 66%);box-shadow:0 20px 50px #0004}
+.weekly-moon{position:absolute;top:27px;right:44px;width:40px;height:40px;border-radius:50%;background:#e5b960;box-shadow:0 0 45px #e5b96044}
+.weekly-awning{position:absolute;left:10%;right:10%;top:31%;height:40px;background:repeating-linear-gradient(90deg,#a12843 0 34px,#f8e2ba 34px 68px);border-radius:8px 8px 2px 2px;box-shadow:0 6px 0 #172648}
+.weekly-cafe-window{position:absolute;top:45%;left:16%;height:43%;width:47%;border:7px solid #e8cda4;background:linear-gradient(130deg,#4c3658,#9a705a);display:flex;align-items:center;flex-direction:column;gap:.4rem;padding:9px;color:#fff8dc;text-align:center}
+.weekly-window-sign{font-size:.77rem;font-weight:900;letter-spacing:.1em}
+.weekly-window-open{font-size:.67rem;background:#fff1cb;color:#6a2d31;padding:5px 8px;font-weight:900;transform:rotate(-5deg)}
+.weekly-cup{font-size:2.1rem}
+.weekly-cafe-door{position:absolute;top:45%;right:13%;width:20%;height:55%;border:8px solid #e8cda4;background:linear-gradient(110deg,#3e3b5b,#70566a)}
+.weekly-cafe-door:after{content:"";position:absolute;left:13%;top:43%;width:8px;height:8px;border-radius:50%;background:#e5b960}
+body.l2-weekly-page #lab2-root{border-top:1px solid #41597a}
+body.l2-weekly-page .l2-main{max-width:800px}
+body.l2-weekly-page .l2-root .l2-hero h1{font-size:clamp(2.3rem,6vw,3.8rem)}
+.weekly-after,.weekly-review{max-width:900px;margin:2rem auto;padding:2.25rem 1.25rem}
+.weekly-after{border-top:1px solid #637a9e}
+.weekly-after h2,.weekly-review h2{font-family:"Barlow Condensed",sans-serif;font-size:clamp(2rem,5vw,3.1rem);margin:0 0 .8rem}
+.weekly-after>p:not(.weekly-kicker),.weekly-review>p{line-height:1.6;color:#d5ddef}
+.weekly-after-links{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.2rem}
+.weekly-after-links a{background:#ac2540;text-decoration:none;border-radius:8px;color:white;font-weight:700;padding:.78rem 1rem;min-height:44px}
+.weekly-after-links a:first-child{background:#263d6f;border:1px solid #7793ca}
+.weekly-disclaimer{font-size:.82rem;color:#b9c5dd!important;margin-top:1.6rem}
+.weekly-review{border-top:3px solid #e5b960;background:#1a2c4d}
+.weekly-review[hidden]{display:none!important}
+.weekly-review label{display:block;margin:1rem 0;font-weight:700}
+.weekly-review textarea,.weekly-review select{display:block;width:100%;max-width:100%;background:#f9f7f1;color:#132344;border:2px solid #9eaac6;border-radius:7px;padding:.7rem;font:inherit;margin-top:.4rem}
+.weekly-review button{border:0;border-radius:8px;background:#e5b960;color:#19274b;font-weight:800;padding:.8rem 1.2rem;cursor:pointer}
+@media(max-width:730px){.weekly-hero{grid-template-columns:1fr;padding:1.5rem 1rem}.weekly-art{height:225px}.weekly-meta span{font-size:.74rem}.weekly-nav{flex-wrap:wrap}}
