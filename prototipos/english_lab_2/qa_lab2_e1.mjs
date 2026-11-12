@@ -87,7 +87,7 @@ async function playStep(page, step, name, mistakes) {
     await page.waitForSelector('.l2-feedback.is-ok');
     return go(page);
   }
-  if (step.kind === 'say') return page.click('.l2-actions .l2-btn-go');
+  if (step.kind === 'say') return page.click('.l2-actions .l2-say-manual');
   throw new Error('tipo de paso sin prueba: ' + step.kind);
 }
 

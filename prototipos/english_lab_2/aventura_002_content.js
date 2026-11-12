@@ -1,4 +1,4 @@
-/* Northbound · Aventura 002 · "Un recuerdo de Port Hazel".
+/* Northbound · Aventura 002 · "Un recuerdo de North City".
  * Solo datos: usa los mismos motores que la aventura 001 (choice, pick, build, spell, type, say, line).
  * Fuente curricular: src/syllabus.jsx · Básico I · Unit 2, lecciones 3 y 4
  *   L3: nombrar objetos y posesiones con adjetivos posesivos · L4: pronombres posesivos ("Is this your book? Yes, it's mine").
@@ -12,8 +12,8 @@
   if (!base) throw new Error('Northbound: falta lab2_content.js');
   var ep = {
     id: 'ADV002-SOUVENIR-B1', level: 'B1', unit: 2, number: 2,
-    title: 'A Souvenir from Port Hazel', title_es: 'Un recuerdo de Port Hazel',
-    place: 'Harbor Gifts · Port Hazel', status: 'BORRADOR IA',
+    title: 'A Souvenir from North City', title_es: 'Un recuerdo de North City',
+    place: 'City Gifts · North City', status: 'BORRADOR IA',
     syllabus: {
       source: 'src/syllabus.jsx · Básico I · Unit 2, L3–L4; repaso de Unit 1',
       objectives: [
@@ -22,10 +22,10 @@
         'Repaso U1: saludar por la tarde, deletrear tu nombre, agradecer y despedirte.'
       ]
     },
-    story_es: 'Sábado, 3:30 de la tarde. Querés mandarle un recuerdo a tu familia y entrás a Harbor Gifts. Adentro hay más de una cosa sin dueño, y alguien que ya conocés.',
+    story_es: 'Sábado, 3:30 de la tarde. Querés mandarle un recuerdo a tu familia y entrás a City Gifts. Adentro hay más de una cosa sin dueño, y alguien que ya conocés.',
     cast: [
-      { id: 'okafor', name: 'Mr. Okafor', role: 'dueño de Harbor Gifts', tone: 'amber' },
-      { id: 'sam', name: 'Sam', role: 'tu conocido de The Corner Cup', tone: 'teal' }
+      { id: 'okafor', name: 'Mr. Okafor', role: 'dueño de City Gifts', tone: 'amber' },
+      { id: 'sam', name: 'Sam', role: 'tu conocido de North Coffee', tone: 'teal' }
     ],
     scenes: [
       {
@@ -34,8 +34,8 @@
         goal_es: 'Nombrar lo que hay en la tienda: uno o varios, con a o con an (B1/U2).',
         why_es: 'Mr. Okafor te va enseñando la tienda. Primero reconocés.',
         steps: [
-          { kind: 'line', clock: '15:30', text_es: 'Sábado, 3:30 de la tarde. Empujás la puerta de Harbor Gifts y suena una campanilla. Detrás del mostrador hay un señor de anteojos.' },
-          { kind: 'choice', clock: '15:30', who: 'okafor', listen: true, say: 'Good afternoon! Welcome to Harbor Gifts.', ask_es: '¿Cómo lo saludás a esta hora?',
+          { kind: 'line', clock: '15:30', text_es: 'Sábado, 3:30 de la tarde. Empujás la puerta de City Gifts y suena una campanilla. Detrás del mostrador hay un señor de anteojos.' },
+          { kind: 'choice', clock: '15:30', who: 'okafor', listen: true, say: 'Good afternoon! Welcome to City Gifts.', ask_es: '¿Cómo lo saludás a esta hora?',
             options: [
               { t: 'Good afternoon!', ok: true },
               { t: 'Good morning!', react: 'Morning? It\'s half past three!', why_es: 'Good morning es antes del mediodía. Son las 3:30 de la tarde.' },
@@ -54,14 +54,14 @@
               { t: 'They\'re postcards.', ok: true },
               { t: 'It\'s a postcard.', react: 'One? I have five here!', why_es: 'It\'s a es para una sola. Son varias: They\'re + plural.' },
               { t: 'This is postcards.', react: 'Hmm... These are postcards.', why_es: 'This es para una cosa. Con varias se usa these, o They\'re.' }
-            ], then: 'Yes! Postcards of Port Hazel.', explain_es: 'Varias cosas: What are these? — They\'re + objeto en plural.' },
+            ], then: 'Yes! Postcards of North City.', explain_es: 'Varias cosas: What are these? — They\'re + objeto en plural.' },
           { kind: 'line', clock: '15:33', text_es: 'Junto a la puerta hay un paraguas azul. Lo señala.' },
           { kind: 'choice', clock: '15:33', who: 'okafor', say: 'And this? What\'s this?', ask_es: 'Umbrella empieza con sonido de vocal.',
             options: [
               { t: 'It\'s an umbrella.', ok: true },
               { t: 'It\'s a umbrella.', react: 'Almost! Listen: AN umbrella.', why_es: 'Antes de un sonido de vocal se usa an: an umbrella, an apple.' },
               { t: 'They\'re umbrellas.', react: 'Only one umbrella, I\'m afraid.', why_es: 'Hay un solo paraguas: It\'s an...' }
-            ], then: 'Good! You need it in Port Hazel.', explain_es: 'A antes de consonante (a mug), an antes de vocal (an umbrella).' },
+            ], then: 'Good! You need it in North City.', explain_es: 'A antes de consonante (a mug), an antes de vocal (an umbrella).' },
           { kind: 'pick', clock: '15:34', who: 'okafor', flag: 'gift', say: 'So, what would you like? A mug, a postcard or a keychain?',
             ask_es: 'Elegí tu recuerdo. No hay respuesta incorrecta: te lo llevás al final.',
             options: [
@@ -78,7 +78,7 @@
         why_es: 'Hay un teléfono olvidado en el mostrador y entra alguien conocido. Ahora armás las frases vos.',
         steps: [
           { kind: 'line', clock: '15:40', text_es: 'Suena la campanilla otra vez. Es Sam, el de la cafetería. En el mostrador hay un teléfono que no es tuyo.' },
-          { kind: 'choice', clock: '15:40', who: 'sam', say: 'Hey, {name}! Good to see you again! One {drink} on Monday?', ask_es: 'Ya se conocen: se vieron en The Corner Cup.',
+          { kind: 'choice', clock: '15:40', who: 'sam', say: 'Hey, {name}! Good to see you again! One {drink} on Monday?', ask_es: 'Ya se conocen: se vieron en North Coffee.',
             options: [
               { t: 'Hi, Sam! Good to see you, too.', ok: true },
               { t: 'Nice to meet you.', react: 'We met at the café, remember?', why_es: 'Nice to meet you es solo para la primera vez. A alguien que ya conocés: Good to see you.' },
@@ -127,14 +127,14 @@
               { t: 'Yes, they\'re mine.', react: 'They? It\'s just one bag.', why_es: 'Es una sola bolsa: it\'s.' }
             ], then: 'You\'re welcome!', explain_es: 'It\'s mine = es mío. Es lo mismo que It\'s my bag, más corto.' },
           { kind: 'say', clock: '15:54', who: 'okafor', say: 'Have a nice afternoon!', phrase: 'Thank you! Goodbye!', ask_es: 'Despedite en voz alta.' },
-          { kind: 'line', clock: '15:55', text_es: 'Salís de Harbor Gifts con tu recuerdo. Sam sale detrás, con su teléfono y sus llaves: «See you Monday at the café!».' }
+          { kind: 'line', clock: '15:55', text_es: 'Salís de City Gifts con tu recuerdo. Sam sale detrás, con su teléfono y sus llaves: «See you Monday at the café!».' }
         ]
       }
     ]
   };
   window.LAB2_CONTENT = Object.assign({}, base, {
     version: 'adventure-002.0.1', weekly: true, weeklyId: ep.id,
-    stops: { B1: [{ unit: 2, topic: 'Aventura · Un recuerdo en Harbor Gifts', episode: ep.id }], B2: [], I1: [], I2: [] },
+    stops: { B1: [{ unit: 2, topic: 'Aventura · Un recuerdo en City Gifts', episode: ep.id }], B2: [], I1: [], I2: [] },
     episodes: [ep]
   });
 })();

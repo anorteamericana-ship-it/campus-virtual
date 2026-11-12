@@ -68,12 +68,64 @@
   }
   LAB2.voice = {
     /* true solo si el navegador tiene síntesis. No garantiza que suene: por eso siempre hay texto y pistas. */
-    available: function () { return !!(synth && typeof window.SpeechSynthesisUtterance === 'function'); },
-    stop: function () { try { if (synth) synth.cancel(); } catch (_) {} },
-    /* Debe llamarse desde un clic del usuario. Devuelve false si no pudo iniciar. */
+    available: function () { return recorded() || !!(synth && typeof window.SpeechSynthesisUtterance === 'function'); },
+    stop: function () { stopClips(); try { if (synth) synth.cancel(); } catch (_) {} },
+    /* Clave de una línea grabada. Misma regla que media_src/make_voices.py:
+     * el nombre del estudiante se quita ("Thank you, {name}." -> "Thank you."); si es parte esencial, no hay grabación. */
+    keyFor: function (who, tpl) {
+      var t = String(tpl || '').replace(/,\s*\{name\}/g, '');
+      if (!who || t.indexOf('{name}') >= 0) return '';
+      return who + '|' + LAB2.fill(t, null).replace(/\u2019/g, "'").toLowerCase().replace(/\s+/g, ' ').trim();
+    },
+    state: function () { return { source: lastSource, playing: !!(clip && !clip.paused), file: clip ? clip.getAttribute('src') : '' }; },
+    /* Debe llamarse desde un clic del usuario. Devuelve false si no pudo iniciar.
+     * Primero la voz grabada (opts.tpl = texto original de la línea); si no existe o falla, la voz del dispositivo. */
     speak: function (parts, opts) {
-      if (!LAB2.voice.available()) return false;
       opts = opts || {};
+      if (LAB2.voice.muted) { LAB2.voice.stop(); return false; }
+      var file = recorded() && opts.tpl ? window.LAB2_VOICE.files[LAB2.voice.keyFor(opts.who, opts.tpl)] : '';
+      if (file) return playClips([file], opts, function () { speakSynth(parts, opts); });
+      return speakSynth(parts, opts);
+    },
+    spell: function (word, slow) {
+      var letters = LAB2.lettersOf(word).split('');
+      var files = recorded() ? letters.map(function (ch) { return window.LAB2_VOICE.files['letter|' + ch.toLowerCase()]; }) : [];
+      var opts = { rate: slow ? 0.55 : 0.75, gap: slow ? 420 : 160, who: 'letter' };
+      if (files.length && files.every(Boolean)) return playClips(files, opts, function () { speakSynth(letters, opts); });
+      /* Cada letra es una frase aparte para que haya pausa entre letras. */
+      return speakSynth(letters, opts);
+    }
+  };
+  /* ----- voz grabada: archivos por línea, se piden solo al tocar Escuchar ----- */
+  var clip = null, clipTimer = null, clipRun = 0, lastSource = 'none';
+  function recorded() { return !!(window.LAB2_VOICE && window.LAB2_VOICE.files); }
+  function stopClips() {
+    clipRun++;
+    if (clipTimer) { window.clearTimeout(clipTimer); clipTimer = null; }
+    if (clip) { try { clip.pause(); } catch (_) {} LAB2.emit('voice-end', {}); clip = null; }
+  }
+  function playClips(files, opts, fallback) {
+    LAB2.voice.stop();
+    var run = clipRun, i = 0, slow = (opts.rate || 0.9) < 0.7;
+    function next() {
+      if (run !== clipRun) return;
+      if (i >= files.length) { clip = null; LAB2.emit('voice-end', { who: opts.who }); return; }
+      var a = new window.Audio(window.LAB2_VOICE.base + files[i]);
+      clip = a; a.preload = 'auto';
+      a.playbackRate = slow ? 0.78 : 1;                     /* más lento sin cambiar el tono */
+      if ('preservesPitch' in a) a.preservesPitch = true;
+      a.onended = function () { i++; clipTimer = window.setTimeout(next, opts.gap || 0); };
+      a.onerror = function () { if (run !== clipRun) return; clip = null; clipRun++; lastSource = 'synth'; fallback(); };
+      if (i === 0) { lastSource = 'file'; LAB2.emit('voice-start', { who: opts.who }); }
+      var p; try { p = a.play(); } catch (_) { a.onerror(); return; }
+      if (p && p.catch) p.catch(function () { a.onerror(); });
+    }
+    next();
+    return true;
+  }
+  function speakSynth(parts, opts) {
+      if (!(synth && typeof window.SpeechSynthesisUtterance === 'function')) return false;
+      lastSource = 'synth';
       try {
         synth.cancel();
         if (LAB2.voice.muted) return false;
@@ -93,12 +145,7 @@
         });
         return true;
       } catch (_) { return false; }
-    },
-    spell: function (word, slow) {
-      /* Cada letra es una frase aparte para que haya pausa entre letras. */
-      return LAB2.voice.speak(LAB2.lettersOf(word).split(''), { rate: slow ? 0.55 : 0.75 });
-    }
-  };
+  }
 
   /* ---------- progreso ----------
    * Contrato único de guardado. Hoy lo cumple un adaptador local (este navegador).

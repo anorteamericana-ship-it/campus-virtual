@@ -31,8 +31,8 @@
           : h('p', { className: 'l2-say l2-say-hidden' }, 'Escuchá lo que dice. ',
               h('button', { type: 'button', className: 'l2-link', onClick: function () { setShowText(true); } }, 'Ver subtítulos')),
         LAB2.voice.available() ? h('div', { className: 'l2-listen-row' },
-          h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id }); } }, 'Escuchar'),
-          h('button', { type: 'button', className: 'l2-listen l2-listen-slow', onClick: function () { LAB2.voice.speak(text, { who: c.id, rate: 0.6 }); } }, 'Más lento')) : null
+          h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id, tpl: props.say }); } }, 'Escuchar'),
+          h('button', { type: 'button', className: 'l2-listen l2-listen-slow', onClick: function () { LAB2.voice.speak(text, { who: c.id, tpl: props.say, rate: 0.6 }); } }, 'Más lento')) : null
       )
     );
   }
@@ -43,7 +43,7 @@
     var text = LAB2.fill(props.text, props.ctx.player);
     return h('div', { className: 'l2-reply l2-tone-' + c.tone },
       h('span', { className: 'l2-reply-who' }, c.name + ': '), h('span', { lang: 'en' }, text),
-      LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id }); } }, 'Escuchar') : null);
+      LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id, tpl: props.text }); } }, 'Escuchar') : null);
   }
 
   function Feedback(props) {
@@ -255,17 +255,92 @@
   }
 
   /* ---------- say: decirlo en voz alta. No se califica: no hay micrófono ni puntaje automático ---------- */
+  /* Qué tan parecido es lo que el navegador entendió a la frase pedida, de 0 a 1.
+   * Es tolerante a propósito: mide si se entendió, no si la pronunciación es perfecta. */
+  LAB2.heardLike = function (heard, target) {
+    var a = LAB2.norm(heard), b = LAB2.norm(target);
+    if (!a || !b) return 0;
+    var prev = [], i, j;
+    for (j = 0; j <= b.length; j++) prev[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      var cur = [i];
+      for (j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    var byLetters = 1 - prev[b.length] / Math.max(a.length, b.length);
+    var said = a.split(' '), want = b.split(' ');
+    var byWords = want.filter(function (w) { return said.indexOf(w) >= 0; }).length / want.length;
+    return Math.max(0, Math.min(1, Math.max(byLetters, byWords)));
+  };
+  LAB2.HEARD_OK = 0.6;
+
+  /* ---------- say: decirlo en voz alta ----------
+   * Si el navegador tiene reconocimiento de voz, escucha y muestra una barra: verde con check cuando
+   * entendió algo parecido a la frase. No muestra número ni transcripción y no es una nota de pronunciación.
+   * Sin reconocimiento, sin micrófono o sin permiso: queda la marca manual. */
   function SayStep(props) {
     var step = props.step, ctx = props.ctx;
     var phrase = LAB2.fill(step.phrase, ctx.player);
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var st = useState({ phase: SR ? 'idle' : 'manual', level: 0, tries: 0, msg: '' }); var s = st[0], setS = st[1];
+    var rec = useRef(null), best = useRef(0);
+    useEffect(function () { return function () { try { if (rec.current) rec.current.abort(); } catch (_) {} LAB2.emit('voice-end', {}); }; }, []);
+    function listen() {
+      if (!SR || s.phase === 'listening' || s.phase === 'ok') return;
+      LAB2.voice.stop();
+      var r; try { r = new SR(); } catch (_) { setS({ phase: 'manual', level: 0, tries: s.tries, msg: 'Este navegador no puede escucharte.' }); return; }
+      rec.current = r; best.current = 0;
+      r.lang = 'en-US'; r.interimResults = true; r.maxAlternatives = 5; r.continuous = false;
+      r.onresult = function (e) {
+        var top = 0, isFinal = false;
+        for (var i = 0; i < e.results.length; i++) {
+          if (e.results[i].isFinal) isFinal = true;
+          for (var k = 0; k < e.results[i].length; k++) top = Math.max(top, LAB2.heardLike(e.results[i][k].transcript, phrase));
+        }
+        best.current = Math.max(best.current, top);
+        if (best.current >= LAB2.HEARD_OK && isFinal) { try { r.stop(); } catch (_) {} }
+        setS(function (p) { return p.phase === 'listening' ? Object.assign({}, p, { level: best.current }) : p; });
+      };
+      r.onerror = function (e) {
+        var denied = e && (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture');
+        if (denied) { rec.current = null; LAB2.emit('voice-end', {}); setS({ phase: 'manual', level: 0, tries: s.tries, msg: 'No hay permiso para usar el micrófono. Podés marcarlo a mano.' }); }
+      };
+      r.onend = function () {
+        if (rec.current !== r) return;
+        rec.current = null; LAB2.emit('voice-end', {});
+        var good = best.current >= LAB2.HEARD_OK;
+        LAB2.emit('answer', { ok: good, who: step.who, kind: 'say' });
+        setS(function (p) {
+          if (p.phase !== 'listening') return p;
+          return good ? { phase: 'ok', level: 1, tries: p.tries + 1, msg: '' }
+            : { phase: 'idle', level: best.current, tries: p.tries + 1, msg: best.current >= 0.35 ? 'Casi. No se entendió del todo; escuchá el modelo y probá otra vez.' : best.current > 0 ? 'No se entendió la frase. Escuchá el modelo y probá otra vez.' : 'No escuché nada. Acercate al micrófono y probá otra vez.' };
+        });
+      };
+      LAB2.emit('voice-start', {});                       /* baja el ambiente para que el micrófono no lo capte */
+      setS({ phase: 'listening', level: 0, tries: s.tries, msg: '' });
+      try { r.start(); } catch (_) { rec.current = null; LAB2.emit('voice-end', {}); setS({ phase: 'manual', level: 0, tries: s.tries, msg: 'No se pudo abrir el micrófono.' }); }
+    }
+    var heard = s.phase === 'ok';
     return h('div', { className: 'l2-step' },
-      h(Speaker, { ctx: ctx, who: step.who, say: step.say }),
+      h(Speaker, { ctx: ctx, who: step.who, say: step.say, mood: heard ? 'happy' : 'neutral' }),
       h('p', { className: 'l2-ask' }, step.ask_es),
       h('p', { className: 'l2-phrase', lang: 'en' }, phrase),
-      h('p', { className: 'l2-note' }, 'Esto no se califica. Lo importante es que lo digás.'),
+      SR && s.phase !== 'manual' ? h('div', { className: 'l2-hear' + (heard ? ' is-ok' : '') + (s.phase === 'listening' ? ' is-on' : '') },
+        h('div', { className: 'l2-hear-bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(s.level * 100),
+          'aria-label': heard ? 'Se entendió la frase' : 'Qué tanto se entendió la frase' },
+          h('span', { style: { width: Math.round(s.level * 100) + '%' } })),
+        h('span', { className: 'l2-hear-check', 'aria-hidden': 'true' }, heard ? '✓' : '')) : null,
+      h('p', { className: 'l2-note', role: 'status', 'aria-live': 'polite' },
+        heard ? 'Se te entendió. Esto confirma que la frase se oyó clara; no es una nota de pronunciación.'
+          : s.phase === 'listening' ? 'Te estoy escuchando. Decí la frase.'
+          : s.msg || (SR ? 'Tocá Hablar y decí la frase. Tu voz la procesa el servicio de voz de tu navegador; el juego no la guarda.' : 'Este navegador no puede escucharte. Decilo en voz alta y marcalo.')),
       h('div', { className: 'l2-actions' },
-        LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-btn', onClick: function () { LAB2.voice.speak(phrase, { rate: 0.8 }); } }, 'Escuchar el modelo') : null,
-        h('button', { type: 'button', className: 'l2-btn l2-btn-go', onClick: function () { props.onDone({ firstTry: true, tries: 1, review: null, spoken: true }); } }, 'Marcar práctica realizada (sin verificación)'))
+        LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-btn', disabled: s.phase === 'listening', onClick: function () { LAB2.voice.speak(phrase, { who: 'model', tpl: step.phrase, rate: 0.8 }); } }, 'Escuchar el modelo') : null,
+        SR && s.phase !== 'manual' && !heard ? h('button', { type: 'button', className: 'l2-btn l2-btn-go l2-hear-btn', disabled: s.phase === 'listening', onClick: listen }, s.phase === 'listening' ? 'Escuchando…' : (s.tries ? 'Hablar otra vez' : 'Hablar')) : null,
+        heard ? h(Continue, { onClick: function () { props.onDone({ firstTry: s.tries === 1, tries: s.tries, review: null, spoken: true, heard: true }); } }) : null,
+        !heard ? h('button', { type: 'button', className: 'l2-btn ' + (SR && s.phase !== 'manual' ? 'l2-btn-quiet' : 'l2-btn-go') + ' l2-say-manual', disabled: s.phase === 'listening',
+          onClick: function () { props.onDone({ firstTry: true, tries: 1, review: null, spoken: true }); } },
+          SR && s.phase !== 'manual' ? 'No puedo hablar ahora' : 'Marcar práctica realizada (sin verificación)') : null)
     );
   }
 

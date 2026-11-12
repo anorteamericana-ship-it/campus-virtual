@@ -2,7 +2,7 @@
 ## Reto de la Semana 001 — Mi primera entrevista en inglés
 
 **Estado:** Prototipo visual y académico en BORRADOR IA. No aprobado para alumnos ni publicidad.
-**Ubicación:** Ciudad Port Hazel, cafetería ficticia *The Corner Cup*.
+**Ubicación:** Ciudad North City, cafetería ficticia *North Coffee*.
 **Duración objetivo:** 5–8 minutos, 3 escenas troncales + 1 bonus optativo.
 **Rol del participante:** Persona recién llegada que se presenta a una entrevista corta en una cafetería. No se promete un empleo real.
 
@@ -25,7 +25,7 @@ La ciudad es un hilo conductor, no un mundo abierto. La cámara se acerca a la c
 
 ## Encargos concretos para Natalia
 
-1. **Ambiente:** probar una vista exterior de The Corner Cup + interior sencillo con espacio para diálogo. ¿El escenario debe ocupar 35–45 % de la pantalla o funcionar como fondo discreto? Priorizar legibilidad móvil.
+1. **Ambiente:** probar una vista exterior de North Coffee + interior sencillo con espacio para diálogo. ¿El escenario debe ocupar 35–45 % de la pantalla o funcionar como fondo discreto? Priorizar legibilidad móvil.
 2. **Personajes:** bocetos coherentes de Ms. Rivera y Sam en 2 poses emocionales cada uno; evitar avatares genéricos con estilos incompatibles.
 3. **Flujo visual:** qué cambia entre saludar, responder mal, responder bien y obtener el sello. Una transición de escena reversible y ligera.
 4. **Interacción:** proponer **una decisión con consecuencia narrativa corta** (sin notas ni penalizaciones) que sea más interesante que simplemente marcar correcta/incorrecta.

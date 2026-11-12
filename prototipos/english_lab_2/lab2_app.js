@@ -157,7 +157,7 @@
     useEffect(function () { return function () { LAB2.voice.stop(); }; }, []);
     function done(res) {
       LAB2.voice.stop();
-      if (!res.silent) lg.current.push({ i: index, kind: step.kind, firstTry: !!res.firstTry, tries: res.tries || 1, review: res.review || null, spoken: !!res.spoken });
+      if (!res.silent) lg.current.push({ i: index, kind: step.kind, firstTry: !!res.firstTry, tries: res.tries || 1, review: res.review || null, spoken: !!res.spoken, heard: !!res.heard });
       LAB2.emit('step-done', { scene: scene.id, index: index, kind: step.kind });
       if (index >= scene.steps.length - 1) { props.onFinish(lg.current); return; }
       props.onProgress(index + 1, lg.current);
@@ -200,9 +200,10 @@
           h(Skills, { list: scene.skills })),
         h('div', { className: 'l2-ticket-stub' },
           h('div', { className: 'l2-stamp' + (gold ? ' is-gold' : '') },
-            h('span', null, gold ? 'Sello dorado' : 'Sello'), h('strong', { lang: 'en' }, 'Port Hazel')),
+            h('span', null, gold ? 'Sello dorado' : 'Sello'), h('strong', { lang: 'en' }, 'North City')),
           h('p', null, gold ? 'Casi todo a la primera.' : 'Escena completada. El dorado sale con 8 de cada 10 a la primera.'))),
-      r.spoken ? h('p', { className: 'l2-note' }, 'Marcaste que practicaste una frase en voz alta. El sistema no puede verificar tu pronunciación; llevala a clase.') : null,
+      r.heard ? h('p', { className: 'l2-note' }, 'Dijiste una frase en voz alta y se te entendió. No es una nota de pronunciación; seguí practicándola en clase.')
+        : r.spoken ? h('p', { className: 'l2-note' }, 'Marcaste que practicaste una frase en voz alta. El sistema no puede verificar tu pronunciación; llevala a clase.') : null,
       r.review.length ? h('section', { className: 'l2-review' },
         h('h2', null, r.review.length === 1 ? 'Una cosa para repasar' : r.review.length + ' cosas para repasar'),
         h('ul', null, r.review.map(function (item, i) {
@@ -258,9 +259,17 @@
       });
       LAB2.emit('scene-end', { scene: scene.id, firstTry: firstTry, total: total, player: state.player });
       setView({ name: 'result', episode: view.episode, scene: scene.id, record: rec,
-        result: { total: total, firstTry: firstTry, spoken: log.some(function (x) { return x.spoken; }),
+        result: { total: total, firstTry: firstTry, spoken: log.some(function (x) { return x.spoken; }), heard: log.some(function (x) { return x.heard; }),
           review: log.filter(function (x) { return x.review; }).map(function (x) { return x.review; }) } });
     }
+
+    /* autoPlay: al entrar desde una portada, empieza de una vez la primera escena pendiente.
+     * Si ya las terminó todas, se queda en la lista para que elija cuál repetir. */
+    useEffect(function () {
+      if (!props.autoPlay || view.name !== 'episode' || !episode) return;
+      var pending = episode.scenes.filter(function (s) { return !(state.scenes[s.id] && state.scenes[s.id].completed); })[0];
+      if (pending) play(pending.id, false);
+    }, []);
 
     var body;
     if (view.name === 'scene' && scene) {

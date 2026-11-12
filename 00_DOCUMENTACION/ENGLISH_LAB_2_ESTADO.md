@@ -444,3 +444,74 @@ Misma rama y mismo PR borrador (#764). Sin fusionar ni publicar. Contenido en `B
 **QA local ya observado (Google Chrome real sobre HTTP local):** `qa_guaria_preview.mjs` **7/7 grupos PASS**, incluyendo marca/3 secciones, vídeo con señal de audio no nula, CTA→tráiler→saltar→nombre→episodio real, primera escena, ausencia de llamadas al backend, ancho 390px sin overflow y Aventura 002. Verificación CI GitHub en PR #769 antes del merge. QA histórico separado de 15+21 grupos permanece como puerta de regresión.
 
 **Compuerta:** publicar la ruta de candidato solo tras CI y comprobar GET/HEAD del dominio GitHub Pages. **No distribuir a evaluadores** hasta que Leonardo revise diseño, ritmo y nombres. El enlace del candidato es público para quien lo conozca y `noindex` no lo convierte en privado. No tocar login, Apps Script, datos, matrículas, notas o pagos.
+
+## 17. North City: una sola ciudad y un solo juego de nombres — 12-nov-2026 CR (Claude)
+
+**Línea base:** `main` `94bf6f9`. **Rama:** `feat/northbound-north-city`. PR borrador, sin fusionar. Autorizado por Leonardo el 12-nov (pasos 1 a 4).
+
+**Decisión de Leonardo:** se descarta «Ciudad Guaria». La ciudad es **North City**, la cafetería **North Coffee** y la tienda **City Gifts**. Es una ciudad donde se habla inglés; quien llega de Costa Rica es el estudiante. Motivo: una ciudad tica donde le hablan inglés contradice la premisa, y Guaria era un reemplazo de texto sobre los mismos edificios.
+
+**Se conserva del candidato de ChatGPT:** paleta oficial (`#002F6C`, `#DA291C`, `#F3EEE6`), Poppins, la A institucional y la presentación de tres secciones.
+
+### Qué cambió
+
+| Tema | Antes | Ahora |
+|---|---|---|
+| Nombres | Port Hazel en las fuentes; Guaria aplicada encima con `guaria-content.js` al cargar | North City escrito directamente en contenido, páginas, pruebas y fuente del video. Sin capa de reemplazo |
+| Capa audiovisual | `guaria_cine.js` generado desde `nb_cine.js` por un script | Un solo `nb_cine.js` con la paleta oficial |
+| Páginas | `presentacion-guaria.html`, `guaria-001/002.html` | `north-city.html`, `north-001.html`, `north-002.html`. Las tres rutas Guaria redirigen |
+| Entrada al juego | Nombre → lista con cuatro botones «Jugar» → escena | Nombre → primera escena pendiente (`autoPlay`). Si ya terminó todo, ve la lista |
+| Tamaño en el juego | Opciones de ~17 px, retrato de 74 px | Opciones de 22 px, pregunta de 18 px, retrato de 104 px (medido en la prueba) |
+| Portada | El rótulo quemado en el video asomaba detrás del título | Video de fondo propio sin rótulo ni fundidos: `media/north_city_hero.mp4` (0,75 MB) |
+| Botón principal | «Jugar esta versión con video» | «Jugar la primera historia» |
+| Tarjetas de nivel | Texto de 13 px | Texto más grande; la primera dice qué se puede jugar hoy |
+| Videos | Rótulos de Guaria | Regenerados con NORTH COFFEE, CITY GIFTS y NORTH CITY, colores oficiales. Mismos nombres de archivo (`corner_cup_*`, `harbor_gifts_*`) |
+
+Las páginas del piloto (`reto-semana.html`, `aventura-001/002.html`, `presentacion.html`) siguen existiendo y ahora muestran también North City. Siguen ahí porque las pruebas de CI se apoyan en ellas; retirarlas es el paso siguiente y exige migrar esas pruebas.
+
+### Archivos que quedaron sin uso (NO borrados: requieren aprobación de la lista exacta)
+
+`guaria-content.js`, `guaria_cine.js`, `prepare_guaria_game.py`, `media_src/guaria_scene.html`, `media_src/prepare_guaria_media.py`, `media_src/render_guaria.mjs`, `media_src/render_guaria_posters.mjs`, `media/guaria_cafe_intro.mp4`, `media/guaria_cafe_intro_480.mp4`, `media/guaria_cafe_poster.jpg`, `media/guaria_gifts_intro.mp4`, `media/guaria_gifts_intro_480.mp4`, `media/guaria_gifts_poster.jpg` (3,5 MB en total). Ninguna página los carga ya.
+
+### Estado
+
+| Elemento | Implementado | Probado aislado (E1) | Revisado por personas | Integrado al Campus | Publicado |
+|---|---|---|---|---|---|
+| Nombres North City en todo | Sí | Sí | No | No | No |
+| Páginas `north-*` y redirecciones | Sí | Sí | No | No | No |
+| Entrada directa y letra grande | Sí | Sí | No | No | No |
+| Videos regenerados y fondo de portada | Sí | Reproducción sí; vistos tres cuadros | No | No | No |
+
+**Pruebas (Chrome real):** `qa_north_city.mjs` 9/9, `qa_aventura_e1.mjs` 21/21, `qa_lab2_e1.mjs` 15/15. **Sin probar:** sonido con oído humano, Safari, Firefox, celular físico, 320 px y tableta en el juego (sí en la presentación antes del cambio).
+
+**Pendiente de decisión:** técnica de video. La animación por código llegó a su techo. Opciones: ilustraciones de Natalia montadas en el mismo sistema (recomendada), o video generativo con costo sobre el límite de IA.
+
+### REVISIÓN CRUZADA — CHATGPT · entrega 5
+
+1. La auditoría de «Ciudad Guaria» que se pidió queda sin objeto: el concepto se retiró. Si se audita, que sea sobre `north-city.html` y `north-001/002.html`.
+2. Las claves de avance pasaron de `GP001REVIEW` a `NC001PLAY`. Quien probó Guaria empieza de cero; ¿importa para alguna revisión en curso?
+3. `autoPlay` vive en `lab2_app.js` y solo se activa desde `north-game.js`. ¿Debe ser el comportamiento por defecto también en las páginas del piloto?
+4. ¿Se aprueba la lista de archivos sin uso para borrarlos?
+
+## 18. Voces grabadas por línea — 12-nov-2026 CR (Claude)
+
+Misma rama y PR borrador (#770). Motivo: Leonardo escuchó la voz del dispositivo y la calificó de robótica.
+
+- **Qué cambió:** cada línea de personaje de las dos historias y las 26 letras tienen ahora un archivo de audio propio. «Escuchar» reproduce ese archivo; la síntesis del dispositivo queda solo como respaldo si el archivo falla. «Más lento» reproduce el mismo archivo al 78 % sin cambiar el tono.
+- **Cómo se generaron:** Kokoro-82M (licencia Apache-2.0) ejecutado localmente con `kokoro-onnx`. Sin servicio en línea y sin costo. **Son voces sintéticas neuronales, no grabaciones de personas.** Ms. Rivera `af_heart`, Sam `am_michael`, Mr. Okafor `am_onyx`, modelo de frase `af_sarah`.
+- **Archivos:** `media/voice/*.mp3` (122 clips, 222 s, 1,2 MB en total; se pide solo el que se toca), `voice_manifest.js` (generado), `media_src/make_voices.py` (reproducible).
+- **Nombre del estudiante:** no se puede grabar. Las líneas que lo llevan como vocativo se grabaron sin él («Thank you, {name}.» suena «Thank you.»). El subtítulo sí lo muestra: hay una diferencia pequeña entre audio y texto en esas líneas.
+- **Pruebas:** `qa_north_city.mjs` 10/10 (clip servido y sonando, lento, silencio, ambiente que cede, 100 % de líneas con archivo), `qa_aventura_e1.mjs` 21/21, `qa_lab2_e1.mjs` 15/15.
+- **Sin validar:** nadie ha escuchado los 122 clips. Las letras sueltas son el punto de mayor riesgo (un motor de voz puede leer «A.» como artículo). Requiere oído humano, idealmente de una docente.
+- **Motor de pronunciación:** se revisó el repo y **no existe** ninguno (no hay reconocimiento de voz ni uso de micrófono en `src/`, `modulos/` ni `campus.html`; `pronunciation_lab` en `academia_play.jsx` es una entrada de catálogo). El paso oral sigue siendo autodeclarado. Opción sin costo pendiente de decisión: reconocimiento de voz del navegador para medir si la frase se entendió (no mide pronunciación fonema por fonema, no funciona en Firefox y envía el audio al proveedor del navegador).
+- **Retratos:** Leonardo los considera infantiles. Pendiente de decisión: ilustraciones de Natalia o imágenes generadas.
+
+## 19. Paso oral con escucha del navegador y publicación para Natalia — 12-nov-2026 CR (Claude)
+
+- **Decisión de Leonardo:** el paso oral debe dar un check verde cuando el programa entiende algo parecido a la frase, sin mostrar número ni dato. Los retratos se dejan como están hasta la revisión con Natalia.
+- **Implementado:** `SayStep` usa el reconocimiento de voz del navegador (`SpeechRecognition`). Una barra se llena según lo entendido y pasa a verde con check al llegar al umbral (`LAB2.HEARD_OK = 0.6`, tolerante: «wats your naem» vale por «What's your name?»). No muestra transcripción, número ni porcentaje. Se puede reintentar sin límite.
+- **Respaldo:** sin reconocimiento (Firefox), sin micrófono o sin permiso queda la marca manual. «No puedo hablar ahora» siempre está disponible.
+- **Qué mide y qué no:** confirma que la frase se entendió. **No es una evaluación de pronunciación** y así lo dice la pantalla. El audio lo procesa el servicio de voz del navegador (Google o Apple); el juego no lo guarda.
+- **Pruebas:** `qa_north_city.mjs` 11/11 con reconocedor simulado (silencio, frase distinta, frase parecida, permiso denegado, sin reconocedor); `qa_aventura_e1.mjs` 21/21; `qa_lab2_e1.mjs` 15/15.
+- **Sin probar:** micrófono y reconocimiento reales. Ninguna persona lo ha usado todavía; el umbral 0,6 es una estimación y habrá que ajustarlo con estudiantes.
+- **Publicación:** Leonardo pidió el enlace para enviar el trabajo a Natalia, lo que requiere fusionar el PR #770 a `main` (GitHub Pages). Enlace: `https://anorteamericana-ship-it.github.io/campus-virtual/prototipos/english_lab_2/north-city.html`.

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#002F6C">
+<link rel="icon" href="../../assets/academy_a.svg" type="image/svg+xml">
+<title>Northbound · Un recuerdo de North City</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="lab2.css" rel="stylesheet"><link href="nb_cine.css" rel="stylesheet"><link href="north-game.css" rel="stylesheet">
+</head>
+<body class="l2-standalone nb-page nb-locked gp-game-page">
+<div id="gp-game-intro" class="gp-game-intro">
+  <video id="gp-game-video" muted playsinline preload="none" poster="media/harbor_gifts_poster.jpg" aria-label="Introducción animada de North City y City Gifts"></video>
+  <header class="gp-game-overlay-brand"><img src="../../assets/academy_a.svg" alt="" width="43" height="35"><span>ACADEMIA NORTEAMERICANA <b>NORTHBOUND</b></span></header>
+  <button type="button" id="gp-game-sound" class="gp-game-sound" aria-label="Activar audio del tráiler" title="Activar sonido">♪</button>
+  <button type="button" id="gp-game-skip" class="gp-game-skip">Saltar tráiler <span aria-hidden="true">→</span></button>
+  <section class="gp-name-stage" id="gp-name-stage" hidden>
+    <span class="gp-game-eyebrow">NORTH CITY · AVENTURA 002</span>
+    <h1>Un recuerdo de North City</h1>
+    <p>Visitá una tienda y encontrá tu recuerdo. Cada conversación cambia un pequeño detalle de tu historia.</p>
+    <form id="gp-name-form">
+      <label for="gp-name">¿Cómo te llamás?</label>
+      <div class="gp-name-fields"><input id="gp-name" type="text" maxlength="14" autocomplete="given-name" placeholder="Tu primer nombre">
+      <button type="submit" id="gp-begin" disabled>Empezar aventura <span aria-hidden="true">→</span></button></div>
+    </form>
+  </section>
+  <p id="gp-game-status" role="status" aria-live="polite" class="gp-game-status"></p>
+</div>
+<header class="gp-game-nav"><a href="north-city.html"><img src="../../assets/academy_a.svg" alt="" width="34" height="28"><span>ACADEMIA NORTEAMERICANA</span></a><span>NORTHBOUND / NORTH CITY</span></header>
+<div id="lab2-root" aria-label="Juego Northbound North City"></div>
+<noscript><p class="l2-boot">Necesitás JavaScript para jugar.</p></noscript>
+<div class="nb-sound" id="nb-sound" role="group" aria-label="Controles de sonido" hidden></div>
+<div class="nb-souvenir" id="nb-souvenir" hidden></div>
+<footer class="gp-game-footer">Northbound English Lab · Vista previa de diseño. Las respuestas se guardan solo en este navegador; no registran notas oficiales.</footer>
+<script src="../../vendor/react.js"></script><script src="../../vendor/react-dom.js"></script>
+<script src="lab2_content.js"></script><script src="aventura_002_content.js"></script>
+<script src="lab2_core.js"></script><script src="voice_manifest.js"></script><script src="lab2_steps.js"></script><script src="lab2_app.js"></script>
+<script>(function(){
+var drink='coffee';
+try{drink=(JSON.parse(localStorage.getItem('nb_flags_nc001'))||{}).drink||'coffee'}catch(_){}
+window.NB_CONFIG={id:'nc002',flags:{gift:'postcard'},fixed:{drink:drink},lastScene:'ADV002-S3',souvenir:'postcard',next:'tu próximo capítulo en North City'};
+})();
+window.NORTH_PAGE={"video": "media/harbor_gifts_intro.mp4", "small": "media/harbor_gifts_intro_480.mp4", "key": "NC002PLAY", "code": "NC002_PLAY", "title": "Un recuerdo de North City", "episode": "002", "prevKey": "NC001PLAY", "scene": "gifts"};</script>
+<script src="nb_intro_audio.js"></script><script src="nb_cine.js"></script><script src="north-game.js"></script>
+</body></html>

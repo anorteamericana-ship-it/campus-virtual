@@ -1,7 +1,7 @@
 /* Misma mecánica de juego: intro visual simplificada y persistencia aislada para revisión. */
 (function(){
 'use strict';
-var P=window.GUARIA_PAGE||{};
+var P=window.NORTH_PAGE||{};
 var root=document.getElementById('lab2-root');
 var overlay=document.getElementById('gp-game-intro');
 var film=document.getElementById('gp-game-video');
@@ -68,7 +68,7 @@ document.getElementById('gp-name-form').addEventListener('submit',function(e){
  overlay.hidden=true;document.body.classList.remove('nb-locked');
  document.getElementById('nb-sound').hidden=false;
  if(NB.audio.renderControls)NB.audio.renderControls();
- LAB2.mount(root,{preview:false,usuario:{codigo:P.code},startEpisode:LAB2_CONTENT.weeklyId});
+ LAB2.mount(root,{preview:false,usuario:{codigo:P.code},startEpisode:LAB2_CONTENT.weeklyId,autoPlay:true});
  window.scrollTo({top:0,behavior:'instant'});
 });
 startVideo();

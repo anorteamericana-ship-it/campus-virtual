@@ -68,3 +68,21 @@ text-align:center;font-size:.79rem;pointer-events:none;text-shadow:0 2px 8px bla
 .gp-name-fields button{width:100%}.gp-name-stage{padding:25px 18px}
 .gp-game-overlay-brand{font-size:.58rem}}
 @media(prefers-reduced-motion:reduce){.gp-game-intro>video{display:none}}
+
+/* El juego se lee como juego: letra grande, conversación al centro, sin media pantalla vacía */
+.gp-game-page .l2-main{max-width:54rem;padding-top:1.5rem;font-size:1.12rem}
+.gp-game-page .l2-scene{gap:1.5rem}
+.gp-game-page .l2-say{font-size:clamp(1.45rem,2.6vw,2rem);line-height:1.25;font-weight:600}
+.gp-game-page .l2-who{font-size:.95rem}
+.gp-game-page .l2-ask{font-size:1.15rem;color:#fff}
+.gp-game-page .l2-option{font-size:clamp(1.15rem,2vw,1.4rem);min-height:3.8rem;padding:.9rem 1.2rem;font-weight:600}
+.gp-game-page .l2-tile{font-size:1.25rem;min-height:3.1rem;padding:.5rem 1.1rem}
+.gp-game-page .l2-narration{font-size:clamp(1.25rem,2.2vw,1.6rem);line-height:1.45}
+.gp-game-page .l2-feedback,.gp-game-page .l2-reply{font-size:1.1rem}
+.gp-game-page .l2-listen{font-size:.95rem;min-height:2.4rem;padding:.3rem 1rem}
+.gp-game-page .l2-btn{font-size:1.05rem;min-height:3.1rem}
+.gp-game-page .l2-clock-time{font-size:1.9rem}
+.gp-game-page .nb-portrait{width:6.5rem;height:6.5rem}
+.gp-game-page .l2-input{font-size:1.3rem;min-height:3.3rem}
+.gp-game-page .l2-scene-title{font-size:1rem}
+@media(max-width:30rem){.gp-game-page .nb-portrait{width:4.2rem;height:4.2rem}.gp-game-page .l2-main{font-size:1.02rem}}

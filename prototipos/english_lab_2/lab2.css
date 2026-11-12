@@ -213,3 +213,12 @@ body.l2-standalone { margin: 0; background: #0d1531; color: #eef0fa; font-family
 .l2-reply-who { color: var(--l2-muted); font-size: .85rem; font-weight: 600; }
 .l2-options-pick { flex-direction: row; flex-wrap: wrap; }
 .l2-options-pick .l2-option { flex: 1 1 9rem; text-align: center; }
+
+/* paso oral: barra que se llena según lo entendido y check verde */
+.l2-hear { display: flex; align-items: center; gap: .7rem; }
+.l2-hear-bar { flex: 1; height: 1rem; border-radius: 999px; background: var(--l2-line); overflow: hidden; }
+.l2-hear-bar span { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--l2-amber); transition: width .25s ease; }
+.l2-hear.is-ok .l2-hear-bar span { background: #2fbf7a; }
+.l2-hear.is-on .l2-hear-bar { outline: 2px solid var(--l2-amber); outline-offset: 2px; }
+.l2-hear-check { width: 2.4rem; height: 2.4rem; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; font-weight: 700; color: #fff; background: var(--l2-line); }
+.l2-hear.is-ok .l2-hear-check { background: #2fbf7a; }

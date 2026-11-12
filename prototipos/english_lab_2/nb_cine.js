@@ -102,6 +102,7 @@
       return '<button type="button" data-k="' + i[0] + '" aria-pressed="' + settings[i[0]] + '">' + i[1] + '</button>';
     }).join('') + '<button type="button" data-k="all" class="nb-sound-all">' + (allOff ? 'Activar' : 'Silenciar') + '</button>';
   }
+  NB.audio.renderControls = renderControls;
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('#nb-sound button'); if (!b) return;
     var k = b.getAttribute('data-k');
@@ -155,32 +156,32 @@
     var gift = { mug: 'a mug', postcard: 'a postcard', keychain: 'a keychain' }[LAB2.flags.gift] || 'a postcard';
     if (CFG.souvenir === 'postcard') {
       el.innerHTML = '<div class="nb-souvenir-card" role="dialog" aria-modal="true" aria-labelledby="nb-sv-title">' +
-        '<p class="nb-kicker">Tu recuerdo de Harbor Gifts</p>' +
-        '<svg class="nb-cup nb-postcard" viewBox="0 0 300 200" role="img" aria-label="Una postal de Port Hazel con tu nombre">' +
+        '<p class="nb-kicker">Tu recuerdo de City Gifts</p>' +
+        '<svg class="nb-cup nb-postcard" viewBox="0 0 300 200" role="img" aria-label="Una postal de North City con tu nombre">' +
         '<rect x="4" y="4" width="292" height="192" rx="8" fill="#fffaf0" stroke="#d9c9a8" stroke-width="3"/>' +
         '<rect x="16" y="16" width="150" height="112" rx="4" fill="#7fb6ea"/><circle cx="48" cy="44" r="15" fill="#fbe9c4"/>' +
-        '<path d="M16 128 v-34 h22 v-20 h24 v30 h18 v-44 h26 v40 h20 v-22 h24 v16 h16 v34 z" fill="#1d2d6b"/><rect x="16" y="118" width="150" height="10" fill="#1f7a6d"/>' +
-        '<text x="91" y="150" text-anchor="middle" font-size="13" fill="#be1e2d" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2">GREETINGS FROM</text>' +
-        '<text x="91" y="174" text-anchor="middle" font-size="22" fill="#1d2d6b" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2" font-weight="700">PORT HAZEL</text>' +
-        '<rect x="246" y="18" width="34" height="42" fill="#be1e2d"/><path d="M186 92 h96 M186 116 h96 M186 140 h96" stroke="#c9c0aa" stroke-width="1.5"/>' +
+        '<path d="M16 128 v-34 h22 v-20 h24 v30 h18 v-44 h26 v40 h20 v-22 h24 v16 h16 v34 z" fill="#002F6C"/><rect x="16" y="118" width="150" height="10" fill="#1f7a6d"/>' +
+        '<text x="91" y="150" text-anchor="middle" font-size="13" fill="#DA291C" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2">GREETINGS FROM</text>' +
+        '<text x="91" y="174" text-anchor="middle" font-size="22" fill="#002F6C" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2" font-weight="700">NORTH CITY</text>' +
+        '<rect x="246" y="18" width="34" height="42" fill="#DA291C"/><path d="M186 92 h96 M186 116 h96 M186 140 h96" stroke="#c9c0aa" stroke-width="1.5"/>' +
         '<text x="234" y="86" text-anchor="middle" font-size="' + (name.length > 8 ? 15 : 19) + '" fill="#1b2340" font-family="Segoe Script, Bradley Hand, Comic Sans MS, cursive" transform="rotate(-3 234 86)">' + name + '</text>' +
         '<text x="234" y="111" text-anchor="middle" font-size="11" fill="#555a72" font-family="Barlow, sans-serif">bought ' + gift + '</text></svg>' +
         '<h2 id="nb-sv-title">Una postal para vos, ' + name + '</h2>' +
         '<p>Nombraste objetos, dijiste de quién era cada cosa y compraste tu recuerdo, todo en inglés. Es práctica, no una calificación.</p>' +
-        '<p class="nb-next"><strong>Próxima historia en Port Hazel:</strong> ' + CFG.next + '. En preparación, sin fecha.</p>' +
+        '<p class="nb-next"><strong>Próxima historia en North City:</strong> ' + CFG.next + '. En preparación, sin fecha.</p>' +
         '<button type="button" class="nb-btn" id="nb-sv-close">Seguir</button></div>';
     } else
     el.innerHTML = '<div class="nb-souvenir-card" role="dialog" aria-modal="true" aria-labelledby="nb-sv-title">' +
-      '<p class="nb-kicker">Tu recuerdo de The Corner Cup</p>' +
+      '<p class="nb-kicker">Tu recuerdo de North Coffee</p>' +
       '<svg class="nb-cup" viewBox="0 0 200 220" role="img" aria-label="Un vaso de la cafetería con tu nombre escrito a mano">' +
       '<path d="M48 40 h104 l-12 160 q-1 10 -11 10 h-58 q-10 0 -11 -10 z" fill="#fffaf0" stroke="#d9c9a8" stroke-width="3"/>' +
-      '<rect x="40" y="26" width="120" height="18" rx="6" fill="#1d2d6b"/><path d="M53 96 h94 l-5 62 h-84 z" fill="#be1e2d"/>' +
-      '<text x="100" y="124" text-anchor="middle" font-size="12" fill="#fff" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2">THE CORNER CUP</text>' +
+      '<rect x="40" y="26" width="120" height="18" rx="6" fill="#002F6C"/><path d="M53 96 h94 l-5 62 h-84 z" fill="#DA291C"/>' +
+      '<text x="100" y="124" text-anchor="middle" font-size="12" fill="#fff" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2">NORTH COFFEE</text>' +
       '<text x="100" y="148" text-anchor="middle" font-size="11" fill="#ffe7b0" font-family="Barlow, sans-serif">' + drink + '</text>' +
       '<text x="100" y="82" text-anchor="middle" font-size="' + (name.length > 8 ? 20 : 26) + '" fill="#1b2340" font-family="Segoe Script, Bradley Hand, Comic Sans MS, cursive" transform="rotate(-4 100 82)">' + name + '</text></svg>' +
       '<h2 id="nb-sv-title">Sam escribió tu nombre: ' + name + '</h2>' +
       '<p>Saludaste, te presentaste, deletreaste tu nombre y diste las gracias, todo en inglés. Es práctica, no una calificación.</p>' +
-      '<p class="nb-next"><strong>Próxima historia en Port Hazel:</strong> ' + CFG.next + '.' + (CFG.nextHref ? ' <a href="' + CFG.nextHref + '">Jugarla ahora</a>' : ' En preparación, sin fecha.') + '</p>' +
+      '<p class="nb-next"><strong>Próxima historia en North City:</strong> ' + CFG.next + '.' + (CFG.nextHref ? ' <a href="' + CFG.nextHref + '">Jugarla ahora</a>' : ' En preparación, sin fecha.') + '</p>' +
       '<button type="button" class="nb-btn" id="nb-sv-close">Seguir</button></div>';
     el.hidden = false;
     var close = document.getElementById('nb-sv-close'); close.focus();

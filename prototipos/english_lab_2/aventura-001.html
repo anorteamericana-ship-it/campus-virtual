@@ -17,11 +17,11 @@
 <div class="nb-intro" id="nb-intro">
   <!-- El video no tiene pista de audio. src se asigna por script solo si se va a reproducir, para no descargarlo en vano. -->
   <video class="nb-video" id="nb-video" muted playsinline preload="none" poster="media/corner_cup_poster.jpg"
-    aria-label="Introducción animada: una calle de Port Hazel por la mañana, la cafetería The Corner Cup y un cartel que dice We are hiring."></video>
+    aria-label="Introducción animada: una calle de North City por la mañana, la cafetería North Coffee y un cartel que dice We are hiring."></video>
   <section class="nb-audio-gate" id="nb-audio-gate" aria-label="Iniciar introducción">
   <p class="nb-kicker">NORTHBOUND · AVENTURA 001</p>
   <p class="nb-gate-eyebrow">UNA HISTORIA QUE VAS A VIVIR EN INGLÉS</p>
-  <h1>Bienvenido a <em>Port Hazel</em></h1>
+  <h1>Bienvenido a <em>North City</em></h1>
   <p class="nb-gate-desc">La aventura comienza con un video animado y una ambientación sonora original. Activá el sonido para escuchar la ciudad y entrar en la historia.</p>
   <div class="nb-gate-actions">
     <button type="button" class="nb-btn nb-btn-sound" id="nb-enter-sound">▶ Comenzar con sonido</button>
@@ -31,7 +31,7 @@
   <p class="nb-gate-note">El navegador requiere que pulses un botón para activar el audio. Podrás controlar voces, ambiente y efectos durante el juego.</p>
   <p class="nb-gate-status" id="nb-gate-status" role="status" aria-live="polite"></p>
 </section>
-<p class="nb-caption">Port Hazel, viernes, 10:15 a. m. En la puerta de The Corner Cup hay un cartel: <span lang="en">We are hiring</span>.</p>
+<p class="nb-caption">North City, viernes, 10:15 a. m. En la puerta de North Coffee hay un cartel: <span lang="en">We are hiring</span>.</p>
   <button type="button" class="nb-btn nb-btn-ghost nb-skip" id="nb-skip" hidden>Omitir introducción</button>
   <div class="nb-title" id="nb-title" hidden>
     <p class="nb-kicker">Northbound · Aventura 001 · Básico I, Unidad 1</p>
@@ -89,10 +89,10 @@
 <script src="lab2_content.js"></script>
 <script src="reto_001_content.js"></script>
 <script src="aventura_001_content.js"></script>
-<script src="lab2_core.js"></script>
+<script src="lab2_core.js"></script><script src="voice_manifest.js"></script>
 <script src="lab2_steps.js"></script>
 <script src="lab2_app.js"></script>
-<script>window.NB_CONFIG = { id: '001', flags: { drink: 'coffee' }, lastScene: 'ADV001-S3', souvenir: 'cup', next: 'comprar un recuerdo en Harbor Gifts', nextHref: 'aventura-002.html' };</script>
+<script>window.NB_CONFIG = { id: '001', flags: { drink: 'coffee' }, lastScene: 'ADV001-S3', souvenir: 'cup', next: 'comprar un recuerdo en City Gifts', nextHref: 'aventura-002.html' };</script>
 <script src="nb_intro_audio.js"></script>
 <script src="nb_cine.js"></script>
 <script>
