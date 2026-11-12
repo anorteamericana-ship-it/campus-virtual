@@ -38,6 +38,10 @@ jobs:
             node --check "$src"
           done
           node --check prototipos/english_lab_2/qa_aventura_e1.mjs
+          for src in prototipos/english_lab_2/{guaria-preview,guaria-game,guaria-content,guaria_cine}.js; do
+            node --check "$src"
+          done
+          node --check prototipos/english_lab_2/qa_guaria_preview.mjs
           ! grep -Eq '^(:root|html|body)[[:space:]]*\\{' prototipos/english_lab_2/lab2.css
           ! grep -Eq 'src/(app|academia_play)|script\\.google\\.com|APPS_SCRIPT_URL' prototipos/english_lab_2/index.html
       - name: Install isolated Playwright browser
@@ -53,3 +57,4 @@ jobs:
           trap 'kill $SERVER_PID || true' EXIT
           QA_CHANNEL=chrome node prototipos/english_lab_2/qa_lab2_e1.mjs
           QA_CHANNEL=chrome node prototipos/english_lab_2/qa_aventura_e1.mjs
+          QA_BASE_URL=http://127.0.0.1:4173 node prototipos/english_lab_2/qa_guaria_preview.mjs
