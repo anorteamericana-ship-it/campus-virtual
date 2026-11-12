@@ -397,4 +397,4 @@ Misma rama y mismo PR borrador (#764). Sin fusionar ni publicar. Contenido en `B
 - **No es acceso privado**: el repositorio Pages es público, y los parámetros `revision=1` o noindex no son autenticación. Pilotaje solo con información ficticia.
 - Revisión pendiente: Natalia puntúa audiovisual, claridad y escenas; docentes revisan voces/contenido. No anunciar a prospectos sin esos resultados.
 
-**Estado al redactar:** cambios listos en PR #764; CI E1 aprobada, pendiente merge y verificación del despliegue público.
+**Estado de publicación confirmado (12-nov-2026):** PR #764 **MERGED** en `main` por squash `69df288247b274504c584bb9716120c5371bea29`. GitHub Pages workflow `43260908080` SUCCESS. Readback HTTP HEAD desde el equipo autorizado: `presentacion.html` **200 text/html** (10.770 bytes), `aventura-001.html?revision=1` **200 text/html** (7.722 bytes), `media/corner_cup_intro_480.mp4` **200 video/mp4** (516.707 bytes), `aventura-002.html` **200 text/html** (5.358 bytes). E3 limitada a publicación estática y presencia de recursos; no es prueba humana de audio, ni integración al Campus autenticado.
