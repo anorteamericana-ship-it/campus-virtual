@@ -193,7 +193,7 @@
   /* ---------- type: escribir la respuesta ---------- */
   function TypeStep(props) {
     var step = props.step, ctx = props.ctx;
-    var accept = useMemo(function () { return step.accept.map(function (a) { return LAB2.norm(LAB2.fill(a, ctx.player)); }); }, [step]);
+    var accept = useMemo(function () { return step.accept.map(function (a) { return LAB2.normEnglish(LAB2.fill(a, ctx.player)); }); }, [step]);
     var v = useState(''); var value = v[0], setValue = v[1];
     var t = useState(0); var tries = t[0], setTries = t[1];
     var st = useState(''); var status = st[0], setStatus = st[1];
@@ -202,8 +202,8 @@
     model = model.charAt(0).toUpperCase() + model.slice(1) + '.';
     function check(e) {
       if (e) e.preventDefault();
-      if (done || !LAB2.norm(value)) return;
-      if (accept.indexOf(LAB2.norm(value)) >= 0) setStatus('ok');
+      if (done || !LAB2.normEnglish(value)) return;
+      if (accept.indexOf(LAB2.normEnglish(value)) >= 0) setStatus('ok');
       else { setTries(tries + 1); setStatus('no'); }
     }
     return h('div', { className: 'l2-step' },
@@ -214,7 +214,7 @@
         h('input', { id: 'l2-type-input', className: 'l2-input', type: 'text', lang: 'en', value: value, disabled: done, maxLength: 60,
           autoComplete: 'off', autoCorrect: 'off', spellCheck: false, placeholder: 'Escribí en inglés',
           onChange: function (e) { setValue(e.target.value); if (status === 'no') setStatus(''); } }),
-        !done ? h('button', { type: 'submit', className: 'l2-btn l2-btn-go', disabled: !LAB2.norm(value) }, 'Revisar') : null),
+        !done ? h('button', { type: 'submit', className: 'l2-btn l2-btn-go', disabled: !LAB2.normEnglish(value) }, 'Revisar') : null),
       status === 'no' ? h(Feedback, { ok: false },
         tries === 1 ? 'Esa no es la frase que se usa aquí. Pensá en las frases de cortesía de la unidad.' : 'Revisá la ortografía, palabra por palabra.',
         tries >= (ctx.noHints ? 3 : 2) ? h('button', { type: 'button', className: 'l2-link', onClick: function () { setStatus('shown'); } }, 'Ver la respuesta') : null) : null,
@@ -238,7 +238,7 @@
       h('p', { className: 'l2-note' }, 'Esto no se califica. Lo importante es que lo digás.'),
       h('div', { className: 'l2-actions' },
         LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-btn', onClick: function () { LAB2.voice.speak(phrase, { rate: 0.8 }); } }, 'Escuchar el modelo') : null,
-        h('button', { type: 'button', className: 'l2-btn l2-btn-go', onClick: function () { props.onDone({ firstTry: true, tries: 1, review: null, spoken: true }); } }, 'Ya lo dije en voz alta'))
+        h('button', { type: 'button', className: 'l2-btn l2-btn-go', onClick: function () { props.onDone({ firstTry: true, tries: 1, review: null, spoken: true }); } }, 'Marcar práctica realizada (sin verificación)'))
     );
   }
 
