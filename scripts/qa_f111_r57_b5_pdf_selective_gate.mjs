@@ -36,7 +36,7 @@ for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solici
 const uiPins={
   'campus.html':'c9a8e49133969f6a3eae292745684327b44d17cc895ed171b0cc71fcfaf8dcc3',
   'src/app.jsx':'47829cab5abd712d896aff7190584b068b262026760547b4c222f99c457534e5',
-  'src/teacher_views.jsx':'14f4a4fb645bb93a7ba49a556d8228c30ff2cf096c7be744f546c62ff06c192a',
+  'src/teacher_views.jsx':'35755560553d693b036e0809d9928792c6c681d3c9dd5f2da4912bf1b25503a0',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
   'src/teacher_quiz_review_f111.js':'053794b19ebae1b17f9d2cd6a63bce9ad25f3bc56203df4da6a5cf3175626305'
 };
