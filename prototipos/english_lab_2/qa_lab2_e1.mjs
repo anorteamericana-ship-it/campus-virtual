@@ -241,6 +241,50 @@ try {
   ok('presentación comercial', 'seis pantallas, CTA WhatsApp, demo, 375 px');
   await context.close();
 
+
+  // 13. Reto semanal: cuatro escenas usando los motores publicados, sin backend.
+  ({ page, context, problems, external } = await newPage(browser, { width: 390, height: 844, noVoice: true }));
+  await page.goto(URL.replace(/index\.html$/, 'reto-semana.html?revision=1'), { waitUntil:'load' });
+  await page.waitForSelector('.l2-home');
+  assert((await page.locator('.weekly-hero h1').textContent()).includes('Mi primera entrevista'));
+  assert.equal(await page.locator('.weekly-meta span').count(), 3);
+  assert(await page.locator('#weekly-review').isVisible(), 'ficha revisora en modo revision');
+  const week = await page.evaluate(() => window.LAB2_CONTENT.episodes[0]);
+  assert.equal(week.id, 'WEEK01-INTERVIEW-B1');
+  assert.equal(week.scenes.length, 4);
+  assert.equal(week.status, 'BORRADOR IA');
+  assert(week.scenes[3].goal_es.includes('U3') && week.scenes[3].goal_es.includes('U8'), 'bonus correctamente etiquetado');
+  assert(await noSideScroll(page), 'reto sin desplazamiento lateral móvil');
+  await page.fill('#l2-name', 'Ana');
+  await page.click('.l2-pass-form button[type=submit]');
+  await page.click('.l2-stop.is-open .l2-btn-go');
+  await page.waitForSelector('.l2-episode');
+  assert.equal(await page.locator('.l2-scene-card').count(), 4);
+  await page.click('.l2-scene-card:first-child .l2-btn');
+  for (let i = 0; i < week.scenes.length; i++) {
+    for (const step of week.scenes[i].steps) await playStep(page, step, 'Ana', false);
+    await page.waitForSelector('.l2-result');
+    if (i < week.scenes.length - 1) await page.click('.l2-actions .l2-btn-go');
+  }
+  await page.click('.l2-actions .l2-btn:text-is("Volver al episodio")');
+  assert.equal(await page.locator('.l2-scene-card.is-done').count(), 4);
+  assert(await noSideScroll(page), 'resultado del reto no desborda en móvil');
+  await page.fill('#weekly-review-notes', 'Revisar ritmo de la escena 2');
+  await page.click('#weekly-review-copy');
+  assert((await page.locator('#weekly-review-status').textContent()).length > 0);
+  assert.deepEqual(external, [], 'sin llamadas externas a Apps Script');
+  assert.deepEqual(problems, [], 'sin errores de consola');
+  ok('reto semanal completo', '4 escenas, 390 px, acceso sin voz, bonus, formulario revisor, cero Apps Script');
+  await context.close();
+
+  // 14. La ficha de revisión no debe ser visible en la ruta normal (sin ?revision).
+  ({ page, context } = await newPage(browser));
+  await page.goto(URL.replace(/index\.html$/, 'reto-semana.html'), { waitUntil:'load' });
+  assert.equal(await page.locator('#weekly-review').isVisible(), false);
+  assert.equal(await page.locator('.weekly-after a[href^="https://wa.me/50686860097"]').count(), 1);
+  ok('modo visitante', 'ficha interna oculta, CTA matrícula, sin redirección al backend');
+  await context.close();
+
   console.log('\nE1 PASS ·', results.length, 'grupos');
 } finally {
   await browser.close();
