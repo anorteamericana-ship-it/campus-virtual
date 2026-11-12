@@ -70,3 +70,31 @@ body.nb-page .l2-main { padding-bottom: 6rem; }
 .nb-review button:focus-visible,.nb-review :focus-visible{outline:3px solid #e5b960;outline-offset:3px}
 .nb-review-warning{font-size:.8rem}
 @media(max-width:650px){.nb-review-grid{grid-template-columns:1fr}}
+
+/* Entrada audiovisual: ninguna página debe intentar sonido sin interacción real. */
+.nb-intro.is-gate .nb-video{filter:brightness(.40) saturate(1.1)}
+.nb-intro.is-gate .nb-caption{display:none}
+.nb-audio-gate{
+  position:relative;z-index:3;box-sizing:border-box;
+  width:min(34rem,calc(100% - 2rem));max-height:calc(100dvh - 2rem);
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:clamp(1.3rem,4vw,2.2rem);
+  border:1px solid rgba(242,180,65,.65);border-radius:1.25rem;
+  background:linear-gradient(148deg,rgba(14,25,53,.97),rgba(29,50,82,.94));
+  box-shadow:0 20px 70px rgba(0,0,0,.48);text-align:left
+}
+.nb-audio-gate[hidden]{display:none!important}
+.nb-gate-eyebrow{font-weight:800;font-size:.77rem;letter-spacing:.08em;color:#d8e3fa;margin:1.1rem 0 0}
+.nb-audio-gate h1{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-size:clamp(2.5rem,7.5vw,4.25rem);line-height:1;margin:.45rem 0 1rem;text-wrap:balance;text-transform:uppercase}
+.nb-audio-gate h1 em{font-style:normal;color:#f2b441}
+.nb-gate-desc{line-height:1.55;color:#e0e6f5;font-size:1.05rem;margin:0 0 1.15rem}
+.nb-gate-actions{display:grid;gap:.7rem}
+.nb-gate-actions .nb-btn{min-height:3.25rem;width:100%;font-size:1rem}
+.nb-gate-actions .nb-btn-sound{background:#edbb59;border-color:#edbb59;color:#152440;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.nb-gate-actions .nb-btn-sound:hover{background:#ffcf75}
+.nb-gate-skip{min-height:2.6rem;border:0;background:transparent;color:#f6e0a9;text-decoration:underline;font:inherit;cursor:pointer}
+.nb-gate-skip:focus-visible,.nb-gate-actions button:focus-visible{outline:3px solid #f6d98a;outline-offset:3px}
+.nb-gate-note,.nb-gate-status{font-size:.82rem;line-height:1.5;color:#c5d1ea;margin:.9rem 0 0}
+.nb-gate-status:empty{display:none}
+@media(max-width:600px){.nb-audio-gate{padding:1.25rem}.nb-gate-eyebrow{margin:.7rem 0 0}.nb-gate-desc{font-size:.96rem}}
+@media(max-height:590px){.nb-audio-gate{max-height:calc(100dvh - .8rem);padding:1rem}.nb-audio-gate h1{font-size:2.3rem;margin:.4rem 0}.nb-gate-desc{margin:0 0 .6rem}}
