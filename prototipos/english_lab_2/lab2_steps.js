@@ -31,8 +31,8 @@
           : h('p', { className: 'l2-say l2-say-hidden' }, 'Escuchá lo que dice. ',
               h('button', { type: 'button', className: 'l2-link', onClick: function () { setShowText(true); } }, 'Ver subtítulos')),
         LAB2.voice.available() ? h('div', { className: 'l2-listen-row' },
-          h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id }); } }, 'Escuchar'),
-          h('button', { type: 'button', className: 'l2-listen l2-listen-slow', onClick: function () { LAB2.voice.speak(text, { who: c.id, rate: 0.6 }); } }, 'Más lento')) : null
+          h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id, tpl: props.say }); } }, 'Escuchar'),
+          h('button', { type: 'button', className: 'l2-listen l2-listen-slow', onClick: function () { LAB2.voice.speak(text, { who: c.id, tpl: props.say, rate: 0.6 }); } }, 'Más lento')) : null
       )
     );
   }
@@ -43,7 +43,7 @@
     var text = LAB2.fill(props.text, props.ctx.player);
     return h('div', { className: 'l2-reply l2-tone-' + c.tone },
       h('span', { className: 'l2-reply-who' }, c.name + ': '), h('span', { lang: 'en' }, text),
-      LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id }); } }, 'Escuchar') : null);
+      LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-listen', onClick: function () { LAB2.voice.speak(text, { who: c.id, tpl: props.text }); } }, 'Escuchar') : null);
   }
 
   function Feedback(props) {
@@ -264,7 +264,7 @@
       h('p', { className: 'l2-phrase', lang: 'en' }, phrase),
       h('p', { className: 'l2-note' }, 'Esto no se califica. Lo importante es que lo digás.'),
       h('div', { className: 'l2-actions' },
-        LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-btn', onClick: function () { LAB2.voice.speak(phrase, { rate: 0.8 }); } }, 'Escuchar el modelo') : null,
+        LAB2.voice.available() ? h('button', { type: 'button', className: 'l2-btn', onClick: function () { LAB2.voice.speak(phrase, { who: 'model', tpl: step.phrase, rate: 0.8 }); } }, 'Escuchar el modelo') : null,
         h('button', { type: 'button', className: 'l2-btn l2-btn-go', onClick: function () { props.onDone({ firstTry: true, tries: 1, review: null, spoken: true }); } }, 'Marcar práctica realizada (sin verificación)'))
     );
   }

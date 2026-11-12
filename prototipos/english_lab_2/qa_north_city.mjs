@@ -54,6 +54,26 @@ try{
  const px=await p.evaluate(()=>({opt:parseFloat(getComputedStyle(document.querySelector('.l2-option')).fontSize),ask:parseFloat(getComputedStyle(document.querySelector('.l2-ask')).fontSize),face:document.querySelector('.nb-portrait').getBoundingClientRect().width}));
  assert(px.opt>=18&&px.ask>=18&&px.face>=100,'letra y retrato grandes: '+JSON.stringify(px));
  ok('primera escena','opciones de '+px.opt+' px, pregunta de '+px.ask+' px, retrato de '+px.face+' px');
+ const clips=[];p.on('response',r=>{if(/media\/voice\/.+\.mp3/.test(r.url()))clips.push(r.status())});
+ await p.click('.l2-listen-row .l2-listen:not(.l2-listen-slow)');
+ await p.waitForFunction(()=>{const v=window.LAB2.voice.state();return v.source==='file'&&v.playing},null,{timeout:8000});
+ assert(/media\/voice\/r\d+\.mp3$/.test(await p.evaluate(()=>window.LAB2.voice.state().file)),'suena la línea grabada de Ms. Rivera');
+ assert.equal(await p.evaluate(()=>window.NB.audio.state().ducked),true,'el ambiente baja mientras habla');
+ await p.click('.l2-listen-slow');
+ await p.waitForFunction(()=>window.LAB2.voice.state().playing);
+ assert.equal(await p.evaluate(()=>{window.LAB2.voice.stop();return window.LAB2.voice.state().playing}),false);
+ await p.click('#nb-sound button[data-k="voice"]');
+ await p.click('.l2-listen-row .l2-listen:not(.l2-listen-slow)');
+ await p.waitForTimeout(300);
+ assert.equal(await p.evaluate(()=>window.LAB2.voice.state().playing),false,'con Voz apagada no suena');
+ await p.click('#nb-sound button[data-k="voice"]');
+ assert(clips.length>=1&&clips.every(c=>c===200||c===206),'clips servidos: '+clips);
+ const cov=await p.evaluate(()=>{const L=window.LAB2,e=window.LAB2_CONTENT.episodes[0];let hit=0,miss=0;
+  for(const sc of e.scenes)for(const st of sc.steps){const xs=[];if(st.who&&st.say)xs.push([st.who,st.say]);if(st.then)xs.push([st.who,st.then]);
+   for(const o of st.options||[]){if(o.react)xs.push([st.who,o.react]);if(o.then)xs.push([st.who,o.then])}
+   for(const [w,t] of xs){window.LAB2_VOICE.files[L.voice.keyFor(w,t)]?hit++:miss++}}return{hit,miss}});
+ assert.equal(cov.miss,0,'toda línea de personaje tiene grabación');
+ ok('voces grabadas',cov.hit+' líneas con archivo propio; Escuchar y Más lento reproducen el clip; Voz apagada lo silencia; el ambiente cede');
  await p.click('.l2-scene-bar .l2-back');
  await p.waitForSelector('.l2-episode');
  assert((await p.locator('.l2-episode').innerText()).includes('North Coffee'));

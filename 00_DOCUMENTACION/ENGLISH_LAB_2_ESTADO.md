@@ -492,3 +492,16 @@ Las páginas del piloto (`reto-semana.html`, `aventura-001/002.html`, `presentac
 2. Las claves de avance pasaron de `GP001REVIEW` a `NC001PLAY`. Quien probó Guaria empieza de cero; ¿importa para alguna revisión en curso?
 3. `autoPlay` vive en `lab2_app.js` y solo se activa desde `north-game.js`. ¿Debe ser el comportamiento por defecto también en las páginas del piloto?
 4. ¿Se aprueba la lista de archivos sin uso para borrarlos?
+
+## 18. Voces grabadas por línea — 12-nov-2026 CR (Claude)
+
+Misma rama y PR borrador (#770). Motivo: Leonardo escuchó la voz del dispositivo y la calificó de robótica.
+
+- **Qué cambió:** cada línea de personaje de las dos historias y las 26 letras tienen ahora un archivo de audio propio. «Escuchar» reproduce ese archivo; la síntesis del dispositivo queda solo como respaldo si el archivo falla. «Más lento» reproduce el mismo archivo al 78 % sin cambiar el tono.
+- **Cómo se generaron:** Kokoro-82M (licencia Apache-2.0) ejecutado localmente con `kokoro-onnx`. Sin servicio en línea y sin costo. **Son voces sintéticas neuronales, no grabaciones de personas.** Ms. Rivera `af_heart`, Sam `am_michael`, Mr. Okafor `am_onyx`, modelo de frase `af_sarah`.
+- **Archivos:** `media/voice/*.mp3` (122 clips, 222 s, 1,2 MB en total; se pide solo el que se toca), `voice_manifest.js` (generado), `media_src/make_voices.py` (reproducible).
+- **Nombre del estudiante:** no se puede grabar. Las líneas que lo llevan como vocativo se grabaron sin él («Thank you, {name}.» suena «Thank you.»). El subtítulo sí lo muestra: hay una diferencia pequeña entre audio y texto en esas líneas.
+- **Pruebas:** `qa_north_city.mjs` 10/10 (clip servido y sonando, lento, silencio, ambiente que cede, 100 % de líneas con archivo), `qa_aventura_e1.mjs` 21/21, `qa_lab2_e1.mjs` 15/15.
+- **Sin validar:** nadie ha escuchado los 122 clips. Las letras sueltas son el punto de mayor riesgo (un motor de voz puede leer «A.» como artículo). Requiere oído humano, idealmente de una docente.
+- **Motor de pronunciación:** se revisó el repo y **no existe** ninguno (no hay reconocimiento de voz ni uso de micrófono en `src/`, `modulos/` ni `campus.html`; `pronunciation_lab` en `academia_play.jsx` es una entrada de catálogo). El paso oral sigue siendo autodeclarado. Opción sin costo pendiente de decisión: reconocimiento de voz del navegador para medir si la frase se entendió (no mide pronunciación fonema por fonema, no funciona en Firefox y envía el audio al proveedor del navegador).
+- **Retratos:** Leonardo los considera infantiles. Pendiente de decisión: ilustraciones de Natalia o imágenes generadas.
