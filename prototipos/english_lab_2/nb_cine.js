@@ -199,7 +199,7 @@
     var enterQuiet = document.getElementById('nb-enter-quiet'), gateStatus = document.getElementById('nb-gate-status');
     var card = document.getElementById('nb-title'), skip = document.getElementById('nb-skip'), replay = document.getElementById('nb-replay');
     var nameInput = document.getElementById('nb-name'), start = document.getElementById('nb-start'), status = document.getElementById('nb-video-status');
-    var seen = !!load('nb_intro_seen_' + CFG.id, false), shownCard = false, playing = false;
+    var seen = !!load('nb_intro_seen_' + CFG.id, false), shownCard = false, playing = false, wantedSound = false;
     var conn = navigator.connection || {};
     var light = !!conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '') || window.innerWidth < 700;
     var soundtrack = window.NBIntroAudio || { start: function () { return false; }, stop: function () {} };
@@ -210,6 +210,7 @@
       shownCard = true;
       NB.skipIntro = null;
       stopIntroSound();
+      wantedSound = false;
       try { video.pause(); } catch (_) {}
       gate.hidden = true;
       root.classList.remove('is-gate');
@@ -239,10 +240,12 @@
       skip.hidden = false;
       NB.skipIntro = showCard;
       playing = true;
+      /* Desbloquear el AudioContext en este clic y sincronizar sus notas al evento playing.
+         Si la descarga tarda, el sonido nunca se adelanta al primer cuadro del video. */
+      wantedSound = !!withSound && !!(soundtrack.prime && soundtrack.prime());
+      if (withSound && !wantedSound) status.textContent = 'El sonido no está disponible aquí. Podés continuar con el video en silencio.';
       if (!video.getAttribute('src')) video.setAttribute('src', light ? opts.videoSmall : opts.video);
       try { video.currentTime = 0; } catch (_) {}
-      var audioOk = withSound ? soundtrack.start({ scene: CFG.id === '002' ? 'gifts' : 'cafe' }) : false;
-      if (withSound && !audioOk) status.textContent = 'El sonido no está disponible aquí. Podés continuar con el video en silencio.';
       var playPromise;
       try { playPromise = video.play(); } catch (_) { playPromise = null; showCard(); }
       if (playPromise && playPromise.catch) playPromise.catch(function () {
@@ -252,6 +255,10 @@
       });
       skip.focus();
     }
+    video.addEventListener('playing', function () {
+      if (!playing || !wantedSound) return;
+      soundtrack.start({ scene: CFG.id === '002' ? 'gifts' : 'cafe', offset: video.currentTime });
+    });
     video.addEventListener('ended', showCard);
     video.addEventListener('error', function () {
       status.textContent = 'El video no cargó; podés continuar con la imagen y el juego.';
@@ -260,6 +267,7 @@
     skip.addEventListener('click', showCard);
     enterSound.addEventListener('click', function () { playVideo(true); });
     enterQuiet.addEventListener('click', function () { playVideo(false); });
+    document.getElementById('nb-gate-skip').addEventListener('click', showCard);
     replay.addEventListener('click', showGate);
     window.addEventListener('pagehide', stopIntroSound);
     /* Pausar la pista si la pestaña pierde visibilidad. Nunca continuar sonido sin video. */
