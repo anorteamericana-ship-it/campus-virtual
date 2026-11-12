@@ -54,8 +54,7 @@
     src.start(t); src.stop(t + length + 0.05);
   }
 
-  function start(opts) {
-    opts = opts || {};
+  function prime() {
     if (!AC) { lastError = 'Este navegador no ofrece audio Web Audio.'; return false; }
     try {
       if (!ctx || ctx.state === 'closed') ctx = new AC();
@@ -63,6 +62,14 @@
         var p = ctx.resume();
         if (p && p.catch) p.catch(function () { lastError = 'El navegador bloqueó la reproducción de audio.'; });
       }
+      return true;
+    } catch (_) { lastError = 'No fue posible habilitar el sonido.'; return false; }
+  }
+
+  function start(opts) {
+    opts = opts || {};
+    if (!prime()) return false;
+    try {
       disconnectOld();
       var track = ctx.createGain(); active = track;
       track.gain.value = 0.62; track.connect(ctx.destination);
@@ -112,6 +119,7 @@
   }
 
   window.NBIntroAudio = {
+    prime: prime,
     start: start,
     stop: disconnectOld,
     state: function () { return { available: !!AC, context: ctx ? ctx.state : 'none', active: !!active, starts: started, error: lastError }; }
