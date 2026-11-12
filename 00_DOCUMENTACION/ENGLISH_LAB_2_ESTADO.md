@@ -222,3 +222,34 @@ Preguntas concretas:
 **Estado actual:** cambios guardados en rama; NO fusionado; NO desplegado; vista previa dentro de GitHub Pages **todavía no disponible**. Las correcciones de backend y Unidad 2 no se tocaron en esta pasada. El criterio de éxito es un flujo de demo seguro, no una afirmación de progreso académico persistente.
 
 **REVISIÓN CRUZADA — CHATGPT:** se confirmó E0 en `campus_backend/prod/43_Academia_Play.js` que `_aplayKey_` prioriza identificadores provenientes del navegador. No se ha establecido equivalencia con el despliegue Apps Script ni se han probado accesos cruzados reales. No usar el contrato actual para Northbound sin corrección y pruebas controladas.
+
+## 13. Reto semanal 001 — The Corner Cup Interview (11/12-nov-2026)
+
+**Estado:** prototipo y anteproyecto en PR #762, rama `feat/english-lab-2-fase-abc`; aún no hay fusión ni E3 público.
+
+### Entrega para Natalia y docentes
+
+- `prototipos/english_lab_2/BRIEF_NATALIA_RETO_001.md`: brief con escenario, decisiones visuales, revisión académica y criterios de aceptación.
+- `reto-semana.html`, `reto_001_content.js`, `reto_001.css`: demo ficticia, Port Hazel / The Corner Cup, 4 escenas; 3 principales B1/U1 y 1 bonus claramente etiquetado como adelanto de U3 y U8. Reutiliza 5 motores existentes, sin Apps Script ni alumnos reales.
+- `?revision=1`: formulario de observaciones para el equipo. El texto se copia manualmente para compartir; no se envía a ningún backend.
+- `src/northbound_weekly_pilot_cta.js` y `login.html`: botón junto a ¡Matricúlate aquí! y dock inferior derecho únicamente con `?reto=piloto`. Sin cambios de `src/login.jsx` ni del compilado de login. Los visitantes ordinarios no ven el botón.
+- `qa_lab2_e1.mjs`: añade recorrido real navegador del reto, test de CTA piloto y test de login ordinario. Registrar el resultado final de CI antes de considerar PASS.
+
+### Control de acceso
+
+El repositorio es público y GitHub Pages no controla acceso a una ruta. `noindex`, `?reto=piloto` y `?revision=1` **no son seguridad**. Para garantizar solo Natalia, Dirección y docentes, se necesita autenticación mediante servidor/proxy externo. Alternativa a decidir: enlace no anunciado con datos totalmente ficticios, aceptando que cualquiera con la URL puede abrirlo. Nunca publicar un PIN en JavaScript ni tratar el parámetro piloto como credencial.
+
+### Cola futura (sin fechas prometidas)
+
+| Reto | Situación | Sílabus | Estado |
+|---|---|---|---|
+| W001 | Mi primera entrevista en la cafetería | B1/U1, bonus U3 y U8 | Prototipo |
+| W002 | Comprar un souvenir | B1/U6 | Cola |
+| W003 | Pedir en una cafetería | B1/U9 | Cola |
+| W004 | Encontrar la estación | B1/U11 | Cola |
+| W005 | Plan de fin de semana | B1/U7 | Cola |
+| W006 | Narrar una experiencia de viaje | B1/U14 | Cola |
+
+**Cadencia:** no comprometer un juego semanal sin capacidad de revisión docente. «Reto Northbound» puede servir de marca sin una frecuencia fija.
+
+**Definición de piloto completo:** CI PASS sobre SHA final, control de acceso acorde con la decisión de Dirección, publicación real verificable E3, feedback de Natalia y docentes, y cero datos o escrituras productivas.
