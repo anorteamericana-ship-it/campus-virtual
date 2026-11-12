@@ -14,6 +14,8 @@ jobs:
   isolated-preview-e1:
     name: northbound-preview-e1
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
     timeout-minutes: 15
     steps:
       - name: Checkout PR revision
@@ -34,7 +36,7 @@ jobs:
       - name: Install isolated Playwright browser
         run: |
           npm install --no-save --ignore-scripts playwright@1.55.0
-          npx playwright install --with-deps chromium
+          # Chromium y librerías ya están incluidos en la imagen Playwright Noble.
       - name: Serve actual files and run browser QA
         run: |
           set -euo pipefail
