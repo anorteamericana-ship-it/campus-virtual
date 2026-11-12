@@ -271,6 +271,7 @@ try {
   assert(await noSideScroll(page), 'resultado del reto no desborda en móvil');
   await page.fill('#weekly-review-notes', 'Revisar ritmo de la escena 2');
   await page.click('#weekly-review-copy');
+  await page.waitForFunction(() => document.querySelector('#weekly-review-status')?.textContent?.trim().length > 0);
   assert((await page.locator('#weekly-review-status').textContent()).length > 0);
   assert.deepEqual(external, [], 'sin llamadas externas a Apps Script');
   assert.deepEqual(problems, [], 'sin errores de consola');
