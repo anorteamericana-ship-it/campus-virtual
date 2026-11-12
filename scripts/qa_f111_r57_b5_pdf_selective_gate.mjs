@@ -30,12 +30,13 @@ for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solici
 }
 // EXUI-05B: updated SHA256 exact pins after protected today-action review (#757).
 // Every unrelated R57/B5/finance baseline and mutating endpoint remains unchanged.
+// ATT-EDIT-01: exact pins renewed only for My Groups editor; exam engines untouched.
 // EXUI-05C: exact source pins renewed for contextual read-only inbox and
 // oral rubric navigation; R57, PDF, grade, financial and lazy-route checks stay strict.
 const uiPins={
-  'campus.html':'9d6aaebf47fbef23ef6be92de54b1e318e7dd3e254755bb42558b05ac3f5a940',
-  'src/app.jsx':'0c59d9888bfe31f6d99fbf6beafa9867ebcbc2e3d3e7ee5eb91eb078785e39f2',
-  'src/teacher_views.jsx':'b5897788559e824b0844335784795ab15d583efc7a1bd288a51520d3fe6b0e7f',
+  'campus.html':'c9a8e49133969f6a3eae292745684327b44d17cc895ed171b0cc71fcfaf8dcc3',
+  'src/app.jsx':'47829cab5abd712d896aff7190584b068b262026760547b4c222f99c457534e5',
+  'src/teacher_views.jsx':'14f4a4fb645bb93a7ba49a556d8228c30ff2cf096c7be744f546c62ff06c192a',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
   'src/teacher_quiz_review_f111.js':'053794b19ebae1b17f9d2cd6a63bce9ad25f3bc56203df4da6a5cf3175626305'
 };
