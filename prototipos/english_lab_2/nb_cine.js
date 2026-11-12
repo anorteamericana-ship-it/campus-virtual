@@ -261,6 +261,12 @@
       soundtrack.start({ scene: CFG.id === '002' ? 'gifts' : 'cafe', offset: video.currentTime });
     });
     video.addEventListener('ended', showCard);
+    /* Algunos navegadores no disparan ended tras buscar cerca del último cuadro.
+       Cerrar también por la línea de tiempo evita una pantalla inmóvil al acabar. */
+    video.addEventListener('timeupdate', function () {
+      if (playing && !shownCard && Number.isFinite(video.duration) &&
+          video.duration > 0 && video.currentTime >= video.duration - 0.22) showCard();
+    });
     video.addEventListener('error', function () {
       status.textContent = 'El video no cargó; podés continuar con la imagen y el juego.';
       showCard();
