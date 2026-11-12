@@ -16,7 +16,8 @@ async function open(browser, opts = {}) {
   page.on('pageerror', e => problems.push(String(e)));
   page.on('request', r => { const u = r.url(); if (/script\.google|googleusercontent/.test(u)) backend.push(u); if (/\.mp4/.test(u)) media.push(u.split('/').pop()); });
   if (opts.route) await opts.route(page);
-  await page.goto(URL, { waitUntil: 'load' });
+  if (opts.seed) await page.addInitScript(seed => { for (const k in seed) if (!localStorage.getItem(k)) localStorage.setItem(k, seed[k]); }, opts.seed);
+  await page.goto(opts.url || URL, { waitUntil: 'load' });
   return { context, page, problems, backend, media };
 }
 const noSideScroll = page => page.evaluate(() => document.scrollingElement.scrollWidth <= window.innerWidth + 1);
@@ -28,7 +29,7 @@ async function start(page, name) {
 }
 const go = page => page.click('.l2-step .l2-btn-go:not([disabled])');
 async function playStep(page, step, name, vars, mistakes) {
-  const fill = s => s.replaceAll('{name}', name).replaceAll('{drink}', vars.drink);
+  const fill = s => s.replaceAll('{name}', name).replaceAll('{drink}', vars.drink).replaceAll('{gift}', vars.gift || '');
   await page.waitForSelector('.l2-step');
   if (step.kind === 'line') return go(page);
   if (step.kind === 'say') return page.click('.l2-actions .l2-btn-go');
@@ -122,12 +123,13 @@ try {
   // 5. Recuerdo final
   await page.waitForSelector('#nb-souvenir:not([hidden])');
   const sv = await page.textContent('#nb-souvenir');
-  assert(sv.includes('Jose') && sv.includes('tea') && sv.includes('En preparación'));
+  assert(sv.includes('Jose') && sv.includes('tea') && sv.includes('Harbor Gifts'));
+  assert.equal(await page.getAttribute('#nb-souvenir .nb-next a', 'href'), 'aventura-002.html', 'el recuerdo lleva a la siguiente historia');
   if (shots) await page.screenshot({ path: shots + '/a4_recuerdo.png' });
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('#nb-souvenir'), false);
   await page.waitForSelector('.l2-result');
-  ok('recuerdo', 'vaso con el nombre y la bebida; se cierra con Escape; sin prometer fecha');
+  ok('recuerdo', 'vaso con el nombre y la bebida; se cierra con Escape; enlaza la siguiente historia');
 
   // 6. Controles de sonido independientes, con memoria; el ambiente baja cuando habla un personaje
   await page.click('#nb-sound button[data-k="voice"]');
@@ -193,6 +195,47 @@ try {
   assert((await page.getAttribute('.nb-foot a', 'href')).includes('wa.me/50686860097'));
   for (const f of ['media/corner_cup_poster.jpg', 'media/corner_cup_intro.mp4', 'media/corner_cup_intro_480.mp4']) assert.equal((await page.request.get(BASE + f)).status(), 200, f);
   ok('enlaces y archivos', 'navegación, WhatsApp institucional y los tres archivos de medios responden');
+  await context.close();
+
+  // 12. Aventura 002: mismos motores, solo datos nuevos. Hereda nombre y bebida de la 001.
+  const seed = { nb_flags_001: JSON.stringify({ drink: 'tea' }), an_english_lab_2_v1_ADV001DEMO: JSON.stringify({ player: { name: 'Jose' }, scenes: {} }) };
+  ({ page, context, problems, backend, media } = await open(browser, { url: BASE + 'aventura-002.html', seed }));
+  await page.waitForFunction(() => { const x = document.getElementById('nb-video'); return x.currentTime > 0.5 && x.videoWidth === 1280; }, null, { timeout: 15000 });
+  assert.deepEqual([...new Set(media)], ['harbor_gifts_intro.mp4']);
+  if (shots) { await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 5.6); await page.screenshot({ path: shots + '/b1_video.png' }); }
+  await page.click('#nb-skip');
+  assert.equal(await page.inputValue('#nb-name'), 'Jose', 'te reconoce por el nombre de la historia anterior');
+  await page.click('#nb-start'); await page.waitForSelector('.l2-episode');
+  const ep2 = await page.evaluate(() => window.LAB2_CONTENT.episodes[0]);
+  assert.equal(ep2.id, 'ADV002-SOUVENIR-B1'); assert.equal(ep2.unit, 2);
+  const kinds = new Set(ep2.scenes.flatMap(s => s.steps.map(x => x.kind)));
+  assert.deepEqual([...kinds].sort(), ['build', 'choice', 'line', 'pick', 'say', 'spell', 'type'], 'usa solo tipos de paso que ya existían');
+  const v2 = { drink: 'tea', gift: 'mug', pick: 'A mug, please.' };
+  for (let i = 0; i < ep2.scenes.length; i++) {
+    await page.click(`.l2-scene-card:nth-child(${i + 1}) .l2-btn`);
+    for (const step of ep2.scenes[i].steps) {
+      await page.waitForSelector('.l2-step');
+      if (step.say && step.say.includes('{drink}')) { await page.waitForSelector('.l2-say'); assert((await page.textContent('.l2-say')).includes('One tea on Monday?'), 'Sam recuerda lo que pediste en la cafetería'); }
+      if (step.say && step.say.includes('{gift}')) assert((await page.textContent('.l2-say')).includes("Here's your mug."), 'el recuerdo elegido vuelve en el diálogo');
+      if (step.listen && await page.locator('.l2-say-hidden .l2-link').count()) await page.click('.l2-say-hidden .l2-link');
+      if (i === 1 && step.kind === 'build' && shots && !v2.shot) { v2.shot = 1; await page.screenshot({ path: shots + '/b2_escena.png', fullPage: true }); }
+      await playStep(page, step, 'Jose', v2, true);
+    }
+    if (i < ep2.scenes.length - 1) { await page.waitForSelector('.l2-result'); await page.click('.l2-actions .l2-btn:text-is("Volver al episodio")'); }
+  }
+  await page.waitForSelector('#nb-souvenir:not([hidden])');
+  const sv2 = await page.textContent('#nb-souvenir');
+  assert(sv2.includes('Jose') && sv2.includes('bought a mug') && sv2.includes('tu primer día en The Corner Cup') && sv2.includes('En preparación'));
+  assert(await page.locator('#nb-souvenir .nb-postcard').count());
+  if (shots) await page.screenshot({ path: shots + '/b3_postal.png' });
+  await page.click('#nb-sv-close');
+  assert.deepEqual(problems, []); assert.deepEqual(backend, []);
+  ok('aventura 002 completa', '3 escenas con errores, mismos motores, continuidad de nombre y bebida, recuerdo elegido, postal final');
+  await context.close();
+  ({ page, context } = await open(browser, { url: BASE + 'aventura-002.html', width: 390, height: 780 }));
+  await start(page, 'Ana'); await page.click('.l2-scene-card:nth-child(1) .l2-btn'); await go(page);
+  assert(await noSideScroll(page)); assert(await page.locator('.nb-portrait[aria-label^="Mr. Okafor"]').count());
+  ok('aventura 002 en celular', '390 px sin desplazamiento lateral; retrato de Mr. Okafor');
   await context.close();
   console.log('\nE1 AVENTURA PASS ·', passed, 'grupos');
 } finally { await browser.close(); }

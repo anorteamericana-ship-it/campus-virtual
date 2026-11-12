@@ -334,3 +334,34 @@ Corrección de coherencia hecha durante el trabajo: el primer borrador era de no
 4. Las reacciones en inglés (`react`) usan humor y frases sobre el nivel (*That's my line*). ¿Ayudan o distraen en Básico I?
 5. Pendiente de la entrega anterior de Claude, guardado sin publicar (`git stash` local, no está en GitHub): clasificación de respuestas escritas (equivalente válido, error conocido, error de ortografía) y `say` fuera del resultado. Hay que rehacerlo sobre este `main`.
 6. PR de seguridad `campus_backend#137` (EL2-SEC-01) sigue en borrador; esta aventura no llama a ese backend.
+
+## 16. Aventura 002 «Un recuerdo de Port Hazel» — 12-nov-2026 CR (Claude)
+
+Misma rama y mismo PR borrador (#764). Sin fusionar ni publicar. Contenido en `BORRADOR IA`.
+
+**Qué es.** Segunda historia jugable: sábado 3:30 p. m., tienda Harbor Gifts. Personaje nuevo, Mr. Okafor; reaparece Sam. Básico I, Unidad 2 (`src/syllabus.jsx`, lecciones 3 y 4): nombrar objetos con *this/these* y *a/an*, decir de quién es algo con *my, your, his, her* y *mine*. Repasa la Unidad 1 (saludo de tarde, deletrear el nombre, cortesía).
+
+**Prueba de extensibilidad.** La historia entera es un archivo de datos, `aventura_002_content.js` (3 escenas, 17 pasos calificados). Usa solo tipos de paso que ya existían; la prueba lo comprueba. Fuera de los datos se tocó: `nb_cine.js` (configuración por aventura en `window.NB_CONFIG`, retrato de Mr. Okafor, recuerdo tipo postal) y la fuente del video (una segunda escena con parámetros). Los motores `lab2_*.js` no cambiaron en esta pasada.
+
+**Continuidad entre historias.** El recuerdo de la 001 enlaza a la 002. La 002 reconoce el nombre usado en la 001 y Sam recuerda la bebida que el estudiante pidió ahí (*One tea on Monday?*). La elección del recuerdo (taza, postal o llavero) vuelve en el diálogo y en la postal final. Todo vive en el navegador.
+
+**Video 002.** `media/harbor_gifts_intro.mp4` (1280×720, 10 s, 1,10 MB, sin audio), `harbor_gifts_intro_480.mp4` (0,50 MB), `harbor_gifts_poster.jpg`. Misma técnica que el 001: animación 2D, **no generativa**. `media_src/render_video_001.mjs --scene gifts`.
+
+| Elemento | Implementado | Probado aislado (E1) | Revisado académicamente | Integrado al Campus | Publicado |
+|---|---|---|---|---|---|
+| Aventura 002, tres escenas | Sí | Sí | No | No | No |
+| Video 002 (animación) | Sí | Sí | No aplica | No | No |
+| Continuidad 001 → 002 | Sí | Sí | No aplica | No | No |
+
+**Pruebas:** `qa_aventura_e1.mjs` 14/14 (las 12 anteriores más la 002 completa con errores y la 002 en celular). `qa_lab2_e1.mjs` 15/15. Sigue sin probar: Safari, Firefox, celular físico, y el sonido y las voces con oído humano.
+
+**Avance:** 2 de 16 unidades de Básico I con historia jugable; 0 revisadas por docente; 0 integradas al Campus.
+
+**Para revisión docente (Unidad 2):** *Here you are*, *Good to see you again*, *Whose phone is it?* y *half past three* aparecen sin haberse enseñado antes; decidir si se aceptan como exposición o se cambian. Confirmar que *mine* y *yours* corresponden a la lección 4.
+
+### REVISIÓN CRUZADA — CHATGPT · entrega 4
+
+1. ¿El contenido de la 002 calza con el alcance real de la Unidad 2, o adelanta estructuras de unidades posteriores?
+2. En las opciones erradas se muestran frases incorrectas a propósito (*It's a umbrella*, *This is postcards*). ¿Es aceptable en Básico I o conviene que los distractores sean siempre frases correctas en contexto equivocado?
+3. La continuidad entre historias depende del almacenamiento del navegador con claves por aventura (`nb_flags_001`, `ADV001DEMO`). Al integrar con sesión real debe pasar al contrato de progreso; ¿se agrega un campo de decisiones (`flags`) a ese contrato?
+4. `window.NB_CONFIG` como configuración por página: ¿se mantiene o pasa a vivir dentro del contenido del episodio?

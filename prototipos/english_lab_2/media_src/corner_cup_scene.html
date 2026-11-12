@@ -16,7 +16,17 @@
   function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
   function ease(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
   function lerp(a, b, k) { return a + (b - a) * k; }
-  var GROUND = 590, CAFE_X = 2300, CAFE_W = 560, SIGN = { x: CAFE_X + 452, y: 452 };
+  /* Una fuente, varias escenas: ?scene=cafe (Video 001) o ?scene=gifts (Video 002). */
+  var SCENES = {
+    cafe: { x: 2300, from: 520, sky: ['#274a8c', '#6f9bd0', '#f1c9a2', '#f7dcb4'], sun: [1010, 250], brick: '#3b2531', trim: '#2a1a25',
+      name: 'THE CORNER CUP', nameSize: 30, awn: ['#be1e2d', '#f5ead3'], door: ['#7a1722', '#9c1e2b'], interior: 'cafe',
+      sign: ['WE ARE', 'HIRING'], credit: ['PORT HAZEL', 'FRIDAY · 10:15 A.M.'], warm: 0.45 },
+    gifts: { x: 1500, from: 3050, sky: ['#2f6fc4', '#7fb6ea', '#cfe6f7', '#fbe9c4'], sun: [330, 170], brick: '#27464f', trim: '#183038',
+      name: 'HARBOR GIFTS', nameSize: 32, awn: ['#1f7a6d', '#f5ead3'], door: ['#14504a', '#1f7a6d'], interior: 'shop',
+      sign: ['COME IN', 'OPEN'], credit: ['PORT HAZEL', 'SATURDAY · 3:30 P.M.'], warm: 0.22 }
+  };
+  var SC = SCENES[new URLSearchParams(location.search).get('scene')] || SCENES.cafe;
+  var GROUND = 590, CAFE_X = SC.x, CAFE_W = 560, SIGN = { x: CAFE_X + 452, y: 452 };
 
   /* ----- ciudad, generada una sola vez con semilla fija ----- */
   var r1 = rnd(11), far = [], mid = [], shops = [];
@@ -38,7 +48,7 @@
   function camera(t) {
     var k = ease(t / 5.4);                       /* travelling por la calle */
     var z = ease((t - 4.9) / 3.6);               /* acercamiento a la puerta */
-    return { x: lerp(520, CAFE_X + 300, k) + (SIGN.x - (CAFE_X + 300)) * z, y: lerp(400, SIGN.y - 14, z), zoom: lerp(1, 3.05, z) };
+    return { x: lerp(SC.from, CAFE_X + 300, k) + (SIGN.x - (CAFE_X + 300)) * z, y: lerp(400, SIGN.y - 14, z), zoom: lerp(1, 3.05, z) };
   }
   function layer(cam, par, fn) {
     g.save(); g.translate(W / 2, H / 2); var z = 1 + (cam.zoom - 1) * par; g.scale(z, z);
@@ -80,48 +90,58 @@
 
   function cafe(t) {
     var x = CAFE_X, top = GROUND - 372;
-    g.fillStyle = '#3b2531'; g.fillRect(x, top, CAFE_W, 372);                              /* ladrillo */
+    g.fillStyle = SC.brick; g.fillRect(x, top, CAFE_W, 372);                              /* ladrillo */
     g.fillStyle = 'rgba(255,255,255,.035)'; for (var by = top + 8; by < GROUND; by += 13) g.fillRect(x, by, CAFE_W, 1.5);
-    g.fillStyle = '#2a1a25'; g.fillRect(x - 6, top - 12, CAFE_W + 12, 14);
+    g.fillStyle = SC.trim; g.fillRect(x - 6, top - 12, CAFE_W + 12, 14);
     windows({ x: x, w: CAFE_W }, top + 6, 5, 1, 0.6, 62, 78, 77);                           /* piso alto */
     /* rótulo */
     glow(x + CAFE_W / 2, top + 150, 230, 'rgba(255,196,110,.5)', 0.25);
     g.fillStyle = '#141b3c'; rr(x + 70, top + 124, CAFE_W - 140, 52, 6); g.fill();
     g.strokeStyle = '#f2b441'; g.lineWidth = 2; rr(x + 74, top + 128, CAFE_W - 148, 44, 4); g.stroke();
-    text('THE CORNER CUP', x + CAFE_W / 2, top + 151, 30, '#ffe7b0', 5, 'center');
+    text(SC.name, x + CAFE_W / 2, top + 151, SC.nameSize, '#ffe7b0', 5, 'center');
     /* toldo */
     var ay = top + 186;
-    for (var i = 0; i < 14; i++) { g.fillStyle = i % 2 ? '#f5ead3' : '#be1e2d'; g.beginPath(); g.moveTo(x + 10 + i * 38.6, ay); g.lineTo(x + 10 + (i + 1) * 38.6, ay); g.lineTo(x - 6 + (i + 1) * 40.9, ay + 42); g.lineTo(x - 6 + i * 40.9, ay + 42); g.fill(); }
+    for (var i = 0; i < 14; i++) { g.fillStyle = SC.awn[i % 2]; g.beginPath(); g.moveTo(x + 10 + i * 38.6, ay); g.lineTo(x + 10 + (i + 1) * 38.6, ay); g.lineTo(x - 6 + (i + 1) * 40.9, ay + 42); g.lineTo(x - 6 + i * 40.9, ay + 42); g.fill(); }
     g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x - 6, ay + 42, CAFE_W + 12, 7);
     /* vitrina con interior */
     var wx = x + 34, wy = top + 246, ww = 330, wh = 112;
     var gr = g.createLinearGradient(0, wy, 0, wy + wh); gr.addColorStop(0, '#ffd98a'); gr.addColorStop(1, '#e58b45'); g.fillStyle = gr; g.fillRect(wx, wy, ww, wh);
     g.fillStyle = 'rgba(120,52,30,.55)'; g.fillRect(wx, wy + 70, ww, 42);                    /* barra */
     [60, 165, 270].forEach(function (lx) { g.strokeStyle = 'rgba(70,30,20,.8)'; g.lineWidth = 2; g.beginPath(); g.moveTo(wx + lx, wy); g.lineTo(wx + lx, wy + 20); g.stroke(); g.fillStyle = '#fff6da'; g.beginPath(); g.arc(wx + lx, wy + 25, 8, 0, 6.3); g.fill(); glow(wx + lx, wy + 27, 44, 'rgba(255,240,190,.9)', 0.55); });
+    if (SC.interior === 'shop') {                                                            /* estantes con recuerdos */
+      var cols = ['#be1e2d', '#1d2d6b', '#f2b441', '#1f7a6d', '#fffaf0', '#7a4f78'], rq = rnd(31);
+      [34, 66].forEach(function (sy) { g.fillStyle = 'rgba(90,45,25,.75)'; g.fillRect(wx + 14, wy + sy, ww - 28, 4);
+        for (var q = 0; q < 11; q++) { var kind = Math.floor(rq() * 3), qx = wx + 26 + q * 27.5; g.fillStyle = cols[Math.floor(rq() * cols.length)];
+          if (kind === 0) { rr(qx, wy + sy - 17, 14, 17, 3); g.fill(); g.strokeStyle = g.fillStyle; g.lineWidth = 2.4; g.beginPath(); g.arc(qx + 15, wy + sy - 9, 4.5, -1.3, 1.3); g.stroke(); }   /* taza */
+          else if (kind === 1) { g.fillRect(qx, wy + sy - 15, 19, 13); g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(qx + 2, wy + sy - 13, 15, 9); }                                        /* postal */
+          else { g.beginPath(); g.arc(qx + 8, wy + sy - 9, 7, 0, 6.3); g.fill(); g.fillStyle = '#fff6da'; g.beginPath(); g.arc(qx + 8, wy + sy - 9, 2.6, 0, 6.3); g.fill(); } } });           /* llavero */
+      var kx = wx + 250 + Math.sin(t * 1.1) * 5; g.fillStyle = 'rgba(46,22,22,.82)'; g.beginPath(); g.arc(kx, wy + 80, 10, 0, 6.3); g.fill(); rr(kx - 13, wy + 90, 26, 24, 8); g.fill();
+    } else {
     seated(wx + 78, wy + 108, false); seated(wx + 150, wy + 108, true);
     var bx = wx + 262 + Math.sin(t * 1.3) * 7; g.fillStyle = 'rgba(46,22,22,.82)'; g.beginPath(); g.arc(bx, wy + 40, 11, 0, 6.3); g.fill(); rr(bx - 14, wy + 51, 28, 40, 9); g.fill();
     var st = (t * 0.6) % 1; g.strokeStyle = 'rgba(255,255,255,' + (0.35 * (1 - st)) + ')'; g.lineWidth = 3; g.beginPath(); g.moveTo(wx + 222, wy + 64 - st * 26); g.quadraticCurveTo(wx + 230, wy + 52 - st * 26, wx + 222, wy + 42 - st * 26); g.stroke();
+    }
     g.strokeStyle = '#f5ead3'; g.lineWidth = 6; g.strokeRect(wx, wy, ww, wh); g.lineWidth = 3; g.beginPath(); g.moveTo(wx + ww / 2, wy); g.lineTo(wx + ww / 2, wy + wh); g.stroke();
     /* puerta y cartel */
     var dx = x + 400, dy = top + 232, dw = 104, dh = 140;
-    g.fillStyle = '#7a1722'; rr(dx - 8, dy - 8, dw + 16, dh + 8, 4); g.fill();
+    g.fillStyle = SC.door[0]; rr(dx - 8, dy - 8, dw + 16, dh + 8, 4); g.fill();
     gr = g.createLinearGradient(0, dy, 0, dy + dh); gr.addColorStop(0, '#ffe2a0'); gr.addColorStop(1, '#eb9a50'); g.fillStyle = gr; g.fillRect(dx, dy, dw, dh - 26);
-    g.fillStyle = '#9c1e2b'; g.fillRect(dx, dy + dh - 26, dw, 26);
+    g.fillStyle = SC.door[1]; g.fillRect(dx, dy + dh - 26, dw, 26);
     g.fillStyle = '#f2b441'; g.beginPath(); g.arc(dx + 14, dy + 92, 4.5, 0, 6.3); g.fill();
     g.save(); g.translate(SIGN.x, SIGN.y); g.rotate(-0.045 + Math.sin(t * 1.1) * 0.012);
     g.strokeStyle = 'rgba(60,30,20,.7)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-22, -22); g.lineTo(0, -40); g.lineTo(22, -22); g.stroke();
     g.fillStyle = 'rgba(0,0,0,.25)'; rr(-39, -20, 80, 46, 3); g.fill(); g.fillStyle = '#fffaf0'; rr(-41, -23, 82, 46, 3); g.fill();
     g.strokeStyle = '#be1e2d'; g.lineWidth = 1.6; rr(-37, -19, 74, 38, 2); g.stroke();
-    text('WE ARE', 0, -8, 11.5, '#1d2d6b', 1.6, 'center'); text('HIRING', 0, 7, 15.5, '#be1e2d', 2, 'center');
+    text(SC.sign[0], 0, -8, 11.5, '#1d2d6b', 1.6, 'center'); text(SC.sign[1], 0, 7, 15.5, '#be1e2d', 2, 'center');
     g.restore();
-    glow(x + 250, GROUND - 60, 380, 'rgba(255,180,90,.55)', 0.45);
+    glow(x + 250, GROUND - 60, 380, 'rgba(255,180,90,.55)', SC.warm);
   }
 
   function draw(t) {
     var cam = camera(t), k;
-    var sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#274a8c'); sky.addColorStop(0.42, '#6f9bd0'); sky.addColorStop(0.72, '#f1c9a2'); sky.addColorStop(0.9, '#f7dcb4');
+    var sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, SC.sky[0]); sky.addColorStop(0.42, SC.sky[1]); sky.addColorStop(0.72, SC.sky[2]); sky.addColorStop(0.9, SC.sky[3]);
     g.fillStyle = sky; g.fillRect(0, 0, W, H);
-    glow(1010 - cam.x * 0.02, 250, 300, 'rgba(255,236,190,.95)', 0.75);                       /* sol de la mañana */
+    glow(SC.sun[0] - cam.x * 0.02, SC.sun[1], 300, 'rgba(255,236,190,.95)', 0.75);                       /* sol de la mañana */
     g.fillStyle = 'rgba(255,255,255,.5)'; [[180, 120, 150], [560, 80, 110], [900, 150, 170]].forEach(function (c) { var cx = c[0] - cam.x * 0.03 + t * 4; rr(cx, c[1], c[2], 18, 9); g.fill(); rr(cx + 30, c[1] - 12, c[2] * 0.5, 18, 9); g.fill(); });
     layer(cam, 0.16, function () { far.forEach(function (b) { g.fillStyle = '#8fa9d4'; g.fillRect(b.x, GROUND - 110 - b.h, b.w, b.h + 200); windows(b, GROUND - 110 - b.h, Math.max(2, Math.floor(b.w / 22)), Math.floor(b.h / 26), 0.05, 5, 7, b.s); }); });
     layer(cam, 0.45, function () { mid.forEach(function (b) { g.fillStyle = '#5672ad'; g.fillRect(b.x, GROUND - 40 - b.h, b.w, b.h + 100); windows(b, GROUND - 40 - b.h, Math.max(2, Math.floor(b.w / 40)), Math.floor(b.h / 44), 0.12, 13, 18, b.s); }); });
@@ -146,10 +166,10 @@
       }
       walkers.forEach(function (p) { person(p.x0 + p.v * t, GROUND + 26, p.s, p.ph, t, p.c, p.bag); });
     });
-    layer(cam, 1.5, function () { g.globalAlpha = 0.9; person(340 + 150 * t, GROUND + 190, 2.5, 0.9, t * 0.8, '#101842'); g.globalAlpha = 1; });
+    layer(cam, 1.5, function () { g.globalAlpha = 0.9 * (SC.from > CAFE_X ? 1 - ease((t - 3.4) / 0.8) : 1); /* en la escena 002 sale antes para no tapar la puerta */ person(SC.from < CAFE_X ? 340 + 150 * t : 3300 - 150 * t, GROUND + 190, 2.5, 0.9, t * 0.8, '#101842'); g.globalAlpha = 1; });
     var vg = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,18,50,.42)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
     k = ease((t - 0.2) / 0.9) * (1 - ease((t - 3.0) / 0.8));                                  /* crédito de lugar */
-    if (k > 0.01) { g.globalAlpha = k; text('PORT HAZEL', 76, 598, 46, '#ffffff', 9); text('FRIDAY · 10:15 A.M.', 78, 642, 18, '#ffe1a0', 4); g.globalAlpha = 1; }
+    if (k > 0.01) { g.globalAlpha = k; text(SC.credit[0], 76, 598, 46, '#ffffff', 9); text(SC.credit[1], 78, 642, 18, '#ffe1a0', 4); g.globalAlpha = 1; }
     k = 1 - ease(t / 0.5); if (k > 0) { g.fillStyle = 'rgba(13,21,49,' + k + ')'; g.fillRect(0, 0, W, H); }      /* entra desde el azul del juego */
     k = ease((t - 9.05) / 0.85); if (k > 0) { g.fillStyle = 'rgba(13,21,49,' + k + ')'; g.fillRect(0, 0, W, H); } /* y vuelve a él */
   }

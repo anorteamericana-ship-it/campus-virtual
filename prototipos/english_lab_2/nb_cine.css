@@ -55,3 +55,6 @@ body.nb-page .l2-main { padding-bottom: 6rem; }
 .nb-foot a { color: #eef0fa; }
 @media (max-width: 30rem) { .nb-portrait { width: 3.6rem; height: 3.6rem; } .nb-sound-label { display: none; } .nb-sound { flex-wrap: nowrap; gap: .2rem; padding: .3rem; font-size: .76rem; } .nb-sound button { padding: .2rem .5rem; white-space: nowrap; } }
 @media (prefers-reduced-motion: reduce) { .nb-happy .nb-head, .nb-eye, .nb-cup { animation: none; } .nb-head { transition: none; } }
+.nb-postcard { width: 15rem; }
+.nb-next a { color: #8e1f2f; font-weight: 700; }
+.nb-next a:focus-visible { outline: 3px solid #f2b441; outline-offset: 2px; }

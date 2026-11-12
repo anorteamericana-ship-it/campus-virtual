@@ -9,6 +9,8 @@
   var NB = window.NB = {};
   function load(key, fallback) { try { var v = JSON.parse(window.localStorage.getItem(key)); return v == null ? fallback : v; } catch (_) { return fallback; } }
   function save(key, value) { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
+  /* Cada aventura declara lo suyo en window.NB_CONFIG antes de cargar este archivo. */
+  var CFG = Object.assign({ id: '001', flags: { drink: 'coffee' }, lastScene: '', souvenir: 'cup', next: 'comprar un souvenir' }, window.NB_CONFIG || {});
   var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   /* ================= sonido ================= */
@@ -17,7 +19,8 @@
   LAB2.voice.muted = !settings.voice;
   LAB2.voice.profiles = {
     rivera: { prefer: /Samantha|Zira|Jenny|Aria|Ava|Allison|Google US English|Female/i, pitch: 1.1, rate: 0.98 },
-    sam: { prefer: /Alex|David|Guy|Fred|Aaron|Evan|Tom|Male/i, pitch: 0.8, rate: 1.04 }
+    sam: { prefer: /Alex|David|Guy|Fred|Aaron|Evan|Tom|Male/i, pitch: 0.8, rate: 1.04 },
+    okafor: { prefer: /Daniel|Fred|Ralph|Bruce|Mark|David|Male/i, pitch: 0.62, rate: 0.92 }
   };
   function noise(seconds) {
     var buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate), d = buf.getChannelData(0), last = 0;
@@ -84,11 +87,12 @@
     if (name === 'voice-start') { ducked = true; ambApply(); }
     if (name === 'voice-end') { ducked = false; ambApply(); }
     if (name === 'answer') NB.sfx(d.ok ? 'ok' : 'no');
-    if (name === 'scene-end') { NB.sfx('done'); if (/-S3$/.test(d.scene)) window.setTimeout(function () { NB.souvenir(d.player); }, 500); }
-    if (name === 'answer' && d.kind === 'pick') save('nb_flags_001', LAB2.flags);
+    if (name === 'scene-end') { NB.sfx('done'); if (CFG.lastScene ? d.scene === CFG.lastScene : /-S3$/.test(d.scene)) window.setTimeout(function () { NB.souvenir(d.player); }, 500); }
+    if (name === 'answer' && d.kind === 'pick') save('nb_flags_' + CFG.id, LAB2.flags);
   });
-  Object.assign(LAB2.flags, load('nb_flags_001', {}));
-  if (!LAB2.flags.drink) LAB2.flags.drink = 'coffee';
+  Object.assign(LAB2.flags, load('nb_flags_' + CFG.id, {}));
+  Object.keys(CFG.flags).forEach(function (k) { if (!LAB2.flags[k]) LAB2.flags[k] = CFG.flags[k]; });
+  Object.assign(LAB2.flags, CFG.fixed || {});       /* datos heredados de otra historia: siempre mandan los de origen */
 
   function renderControls() {
     var el = document.getElementById('nb-sound'); if (!el) return;
@@ -108,8 +112,10 @@
   /* ================= retratos ================= */
   var LOOK = {
     rivera: { skin: '#c98f6b', hair: '#2a1a1a', top: '#f5ead3', apron: '#8e1f2f', bg: '#f0a2ad' },
-    sam: { skin: '#8d5a3b', hair: '#17110f', top: '#2f4f7f', apron: '#1f7a6d', bg: '#63c7b8' }
+    sam: { skin: '#8d5a3b', hair: '#17110f', top: '#2f4f7f', apron: '#1f7a6d', bg: '#63c7b8' },
+    okafor: { skin: '#6b4630', hair: '#cfcfcf', top: '#d9a03a', apron: '#27464f', bg: '#f2b441', glasses: true, label: 'Mr. Okafor' }
   };
+  LOOK.rivera.bun = true; LOOK.rivera.label = 'Ms. Rivera'; LOOK.sam.label = 'Sam';
   LAB2.portrait = function (id, mood) {
     var L = LOOK[id]; if (!L) return null;
     var happy = mood === 'happy', conf = mood === 'confused';
@@ -118,22 +124,24 @@
         : h('ellipse', { className: 'nb-eye', cx: cx, cy: 47, rx: 2.9, ry: 3.4, fill: '#1b1420' });
     };
     return h('svg', { className: 'nb-portrait nb-' + mood, viewBox: '0 0 100 100', role: 'img',
-      'aria-label': (id === 'rivera' ? 'Ms. Rivera' : 'Sam') + (happy ? ', sonríe' : conf ? ', extrañada por la respuesta' : '') },
+      'aria-label': L.label + (happy ? ', sonríe' : conf ? ', no entendió la respuesta' : '') },
       h('circle', { cx: 50, cy: 50, r: 50, fill: L.bg }),
       h('g', { className: 'nb-body' },
         h('path', { d: 'M14 100 q4 -30 36 -30 q32 0 36 30 z', fill: L.top }),
         h('path', { d: 'M34 100 v-22 q16 8 32 0 v22 z', fill: L.apron }),
         h('rect', { x: 43, y: 60, width: 14, height: 16, rx: 6, fill: L.skin })),
       h('g', { className: 'nb-head' },
-        id === 'rivera' ? h('circle', { cx: 50, cy: 17, r: 10, fill: L.hair }) : null,
+        L.bun ? h('circle', { cx: 50, cy: 17, r: 10, fill: L.hair }) : null,
         h('ellipse', { cx: 50, cy: 45, rx: 21, ry: 24, fill: L.skin }),
-        id === 'rivera'
+        L.bun
           ? h('path', { d: 'M28 46 q-3 -30 22 -30 q25 0 22 30 q-5 -17 -22 -17 q-17 0 -22 17 z', fill: L.hair })
           : h('path', { d: 'M28 42 q-4 -28 22 -28 q26 0 22 28 q-3 -12 -8 -14 q-14 5 -28 0 q-5 2 -8 14 z', fill: L.hair }),
-        id === 'rivera' ? h('g', null, h('circle', { cx: 29, cy: 54, r: 2.2, fill: '#f2b441' }), h('circle', { cx: 71, cy: 54, r: 2.2, fill: '#f2b441' })) : null,
+        L.bun ? h('g', null, h('circle', { cx: 29, cy: 54, r: 2.2, fill: '#f2b441' }), h('circle', { cx: 71, cy: 54, r: 2.2, fill: '#f2b441' })) : null,
         h('path', { d: conf ? 'M35 39 l10 -3' : 'M35 38 q5 -3 10 0', stroke: L.hair, strokeWidth: 2.2, fill: 'none', strokeLinecap: 'round' }),
         h('path', { d: conf ? 'M55 35 l10 3' : 'M55 38 q5 -3 10 0', stroke: L.hair, strokeWidth: 2.2, fill: 'none', strokeLinecap: 'round' }),
         eye(40), eye(60),
+        L.glasses ? h('g', { fill: 'rgba(255,255,255,.18)', stroke: '#fff6da', strokeWidth: 2 }, h('circle', { cx: 40, cy: 47, r: 7.5 }), h('circle', { cx: 60, cy: 47, r: 7.5 }), h('path', { d: 'M47.5 47 h5 M32.5 46 l-5 -2 M67.5 46 l5 -2' })) : null,
+        L.glasses ? h('path', { d: 'M40 55 q10 -5 20 0 q-10 3 -20 0 z', fill: L.hair }) : null,
         happy ? h('path', { d: 'M40 57 q10 10 20 0 z', fill: '#fff', stroke: '#7a2a2a', strokeWidth: 1.6, strokeLinejoin: 'round' })
           : conf ? h('ellipse', { cx: 51, cy: 59, rx: 3.6, ry: 2.8, fill: '#7a2a2a' })
           : h('path', { d: 'M42 58 q8 4 16 0', stroke: '#7a2a2a', strokeWidth: 2.2, fill: 'none', strokeLinecap: 'round' })));
@@ -144,6 +152,24 @@
     var el = document.getElementById('nb-souvenir'); if (!el || !player) return;
     var name = String(player.name || '').replace(/[<>&"]/g, '');
     var drink = { coffee: 'coffee', tea: 'tea', water: 'water' }[LAB2.flags.drink] || 'coffee';
+    var gift = { mug: 'a mug', postcard: 'a postcard', keychain: 'a keychain' }[LAB2.flags.gift] || 'a postcard';
+    if (CFG.souvenir === 'postcard') {
+      el.innerHTML = '<div class="nb-souvenir-card" role="dialog" aria-modal="true" aria-labelledby="nb-sv-title">' +
+        '<p class="nb-kicker">Tu recuerdo de Harbor Gifts</p>' +
+        '<svg class="nb-cup nb-postcard" viewBox="0 0 300 200" role="img" aria-label="Una postal de Port Hazel con tu nombre">' +
+        '<rect x="4" y="4" width="292" height="192" rx="8" fill="#fffaf0" stroke="#d9c9a8" stroke-width="3"/>' +
+        '<rect x="16" y="16" width="150" height="112" rx="4" fill="#7fb6ea"/><circle cx="48" cy="44" r="15" fill="#fbe9c4"/>' +
+        '<path d="M16 128 v-34 h22 v-20 h24 v30 h18 v-44 h26 v40 h20 v-22 h24 v16 h16 v34 z" fill="#1d2d6b"/><rect x="16" y="118" width="150" height="10" fill="#1f7a6d"/>' +
+        '<text x="91" y="150" text-anchor="middle" font-size="13" fill="#be1e2d" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2">GREETINGS FROM</text>' +
+        '<text x="91" y="174" text-anchor="middle" font-size="22" fill="#1d2d6b" font-family="Barlow Condensed, Arial Narrow, sans-serif" letter-spacing="2" font-weight="700">PORT HAZEL</text>' +
+        '<rect x="246" y="18" width="34" height="42" fill="#be1e2d"/><path d="M186 92 h96 M186 116 h96 M186 140 h96" stroke="#c9c0aa" stroke-width="1.5"/>' +
+        '<text x="234" y="86" text-anchor="middle" font-size="' + (name.length > 8 ? 15 : 19) + '" fill="#1b2340" font-family="Segoe Script, Bradley Hand, Comic Sans MS, cursive" transform="rotate(-3 234 86)">' + name + '</text>' +
+        '<text x="234" y="111" text-anchor="middle" font-size="11" fill="#555a72" font-family="Barlow, sans-serif">bought ' + gift + '</text></svg>' +
+        '<h2 id="nb-sv-title">Una postal para vos, ' + name + '</h2>' +
+        '<p>Nombraste objetos, dijiste de quién era cada cosa y compraste tu recuerdo, todo en inglés. Es práctica, no una calificación.</p>' +
+        '<p class="nb-next"><strong>Próxima historia en Port Hazel:</strong> ' + CFG.next + '. En preparación, sin fecha.</p>' +
+        '<button type="button" class="nb-btn" id="nb-sv-close">Seguir</button></div>';
+    } else
     el.innerHTML = '<div class="nb-souvenir-card" role="dialog" aria-modal="true" aria-labelledby="nb-sv-title">' +
       '<p class="nb-kicker">Tu recuerdo de The Corner Cup</p>' +
       '<svg class="nb-cup" viewBox="0 0 200 220" role="img" aria-label="Un vaso de la cafetería con tu nombre escrito a mano">' +
@@ -154,7 +180,7 @@
       '<text x="100" y="82" text-anchor="middle" font-size="' + (name.length > 8 ? 20 : 26) + '" fill="#1b2340" font-family="Segoe Script, Bradley Hand, Comic Sans MS, cursive" transform="rotate(-4 100 82)">' + name + '</text></svg>' +
       '<h2 id="nb-sv-title">Sam escribió tu nombre: ' + name + '</h2>' +
       '<p>Saludaste, te presentaste, deletreaste tu nombre y diste las gracias, todo en inglés. Es práctica, no una calificación.</p>' +
-      '<p class="nb-next"><strong>Próxima historia en Port Hazel:</strong> comprar un souvenir. En preparación, sin fecha.</p>' +
+      '<p class="nb-next"><strong>Próxima historia en Port Hazel:</strong> ' + CFG.next + '.' + (CFG.nextHref ? ' <a href="' + CFG.nextHref + '">Jugarla ahora</a>' : ' En preparación, sin fecha.') + '</p>' +
       '<button type="button" class="nb-btn" id="nb-sv-close">Seguir</button></div>';
     el.hidden = false;
     var close = document.getElementById('nb-sv-close'); close.focus();
@@ -171,13 +197,13 @@
     var root = document.getElementById('nb-intro'), video = document.getElementById('nb-video');
     var card = document.getElementById('nb-title'), skip = document.getElementById('nb-skip'), replay = document.getElementById('nb-replay');
     var nameInput = document.getElementById('nb-name'), start = document.getElementById('nb-start'), status = document.getElementById('nb-video-status');
-    var seen = !!load('nb_intro_seen_001', false), shownCard = false;
+    var seen = !!load('nb_intro_seen_' + CFG.id, false), shownCard = false;
     var conn = navigator.connection || {};
     var light = !!conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '') || window.innerWidth < 700;
     function showCard() {
       if (shownCard) return; shownCard = true; NB.skipIntro = null;
       try { video.pause(); } catch (_) {}
-      root.classList.add('is-card'); skip.hidden = true; card.hidden = false; save('nb_intro_seen_001', true);
+      root.classList.add('is-card'); skip.hidden = true; card.hidden = false; save('nb_intro_seen_' + CFG.id, true);
       (nameInput.value ? start : nameInput).focus();
     }
     function playVideo() {
