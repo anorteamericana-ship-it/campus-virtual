@@ -232,7 +232,7 @@ Preguntas concretas:
 - `prototipos/english_lab_2/BRIEF_NATALIA_RETO_001.md`: brief con escenario, decisiones visuales, revisión académica y criterios de aceptación.
 - `reto-semana.html`, `reto_001_content.js`, `reto_001.css`: demo ficticia, Port Hazel / The Corner Cup, 4 escenas; 3 principales B1/U1 y 1 bonus claramente etiquetado como adelanto de U3 y U8. Reutiliza 5 motores existentes, sin Apps Script ni alumnos reales.
 - `?revision=1`: formulario de observaciones para el equipo. El texto se copia manualmente para compartir; no se envía a ningún backend.
-- `src/northbound_weekly_pilot_cta.js` y `login.html`: botón junto a ¡Matricúlate aquí! y dock inferior derecho únicamente con `?reto=piloto`. Sin cambios de `src/login.jsx` ni del compilado de login. Los visitantes ordinarios no ven el botón.
+- `src/northbound_weekly_pilot_cta.js`: propuesta técnica del futuro CTA junto a matrícula y dock; **NO integrada al login productivo**. El archivo `login.html` se ha restaurado al contenido idéntico de main para conservar los invariantes de CI. En el piloto los revisores entran por enlace directo.
 - `qa_lab2_e1.mjs`: añade recorrido real navegador del reto, test de CTA piloto y test de login ordinario. Registrar el resultado final de CI antes de considerar PASS.
 
 ### Control de acceso
