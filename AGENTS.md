@@ -110,6 +110,12 @@ La severidad se asigna por impacto y alcance, no por cantidad de archivos ni com
 - Supervisor de entrega: `skills/campus-release-supervisor/SKILL.md`.
 - LIVE HOTFIX: `skills/live-hotfix-campus/SKILL.md`.
 
+Roles de construcción del English Lab 2.0 (construyen; no se auditan a sí mismos):
+
+- Director del English Lab: `skills/english-lab-director/SKILL.md`.
+- Diseñador de aprendizaje del English Lab: `skills/english-lab-learning-designer/SKILL.md`.
+- Ingeniero de juegos del English Lab: `skills/english-lab-game-engineer/SKILL.md`.
+
 ## Reglas de consolidación y borrado
 
 - No borrar archivos por nombre, edad, sufijo de versión o apariencia.
