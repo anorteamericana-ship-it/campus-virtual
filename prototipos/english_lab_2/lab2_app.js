@@ -278,7 +278,9 @@
     return h('div', { className: 'l2-root' },
       props.preview ? h('div', { className: 'l2-preview', role: 'note' },
         h('strong', null, 'Prototipo. '), 'Contenido en estado BORRADOR IA, sin revisión docente. El avance se guarda solo en este navegador y no toca el campus ni las notas.',
-        h('button', { type: 'button', className: 'l2-link', onClick: function () { LAB2.store.clear(userKey); setState(LAB2.store.load(userKey)); setView({ name: 'home' }); } }, 'Borrar mi avance de prueba')) : null,
+        h('button', { type: 'button', className: 'l2-link', onClick: function () { LAB2.store.clear(userKey); setState(LAB2.store.load(userKey)); setView({ name: 'home' }); } }, 'Borrar mi avance de prueba'),
+        h('a', { href: './presentacion.html', className: 'l2-link' }, 'Conocer Academia Norteamericana'),
+        h('a', { href: 'https://wa.me/50686860097?text=Hola%2C%20quiero%20gestionar%20mi%20matr%C3%ADcula%20en%20Academia%20Norteamericana.', className: 'l2-link', target: '_blank', rel: 'noopener noreferrer' }, 'Gestionar matrícula')) : null,
       h('main', { className: 'l2-main' }, body));
   }
 
