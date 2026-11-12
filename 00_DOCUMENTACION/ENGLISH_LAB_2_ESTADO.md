@@ -197,3 +197,28 @@ Preguntas concretas:
 6. **Pedagogía**: ¿la tabla `letterSounds` y las trampas E/I, G/J, B/V son correctas para hispanohablantes? ¿Las listas `accept` de los pasos `type` dejan fuera respuestas válidas?
 7. **Dirección creativa**: ¿qué mecánica haría falta en Intermedio I y II que estos cinco tipos de paso no cubren?
 8. **Nivel activo**: ¿qué endpoint devuelve el nivel fresco del estudiante sin depender de `an_usuario`?
+
+## 12. Corte de continuidad ChatGPT · 11-nov-2026 CR · prepublicación
+
+**Reanudación tras pausa de Claude, sin fusionar ni tocar Apps Script.** Se continúa en la misma rama `feat/english-lab-2-fase-abc`, PR #762 en borrador. Main de referencia permanece `120775d`; los commits siguientes pertenecen únicamente al PR.
+
+### Cambios nuevos en este bloque
+
+- **CSS aislado:** `lab2.css` deja de aplicar reglas a `:root`, `html` y `body` globales; solo `.l2-root` y `body.l2-standalone`. Prepara integración sin sobrescribir estilos del campus.
+- **Cambio de identidad:** `lab2_app.js` remonta el estado de juego al variar la clave del usuario, evitando reutilizar el estado de la identidad previa en el mismo componente.
+- **Writing:** `lab2_core.js` agrega `normEnglish`, que preserva apostrofes en contracciones; `lab2_steps.js` lo utiliza. Se retiran del contenido las aceptaciones explícitas de `youre welcome` como equivalente ortográficamente correcto. El contenido sigue en BORRADOR IA.
+- **Fonética y speaking:** se corrige la descripción engañosa de Z y se explicita que el botón oral registra práctica declarada, no pronunciación verificada.
+- **CI reproducible:** nueva workflow `.github/workflows/qa-english-lab2-preview.yml` ejecuta sintaxis y la prueba Playwright aislada `qa_lab2_e1.mjs`. Se diagnosticaron problemas de infraestructura en la instalación de Chromium sobre Ubuntu 26.04 y en el shell de la imagen; se adaptó a la imagen Playwright Ubuntu Noble con Bash. **No afirmar QA E1 aprobado hasta constatar el último workflow.**
+- **Presentación promocional de seis pantallas:** `prototipos/english_lab_2/presentacion.html` enlaza a demo aislada, WhatsApp institucional 8686-0097 y acceso existente a login. Explicita que Northbound está en desarrollo y no genera resultados académicos.
+
+### Gating de la prueba humana
+
+1. Workflow `Northbound English Lab 2 Preview QA` y `English LAB Source Truth Guard` exitosos en **el SHA final**.
+2. QA de contenido, enlaces y vistas móviles; revisar que no se expongan datos reales, tokens, contraseñas ni endpoints de escritura.
+3. Autorizar por separado publicar el prototipo **independiente** en GitHub Pages a través de `main`. Aunque la página tiene `noindex`, **no es privada ni protegida por sesión**; cualquier persona con el enlace podrá entrar. Usar solo nombres ficticios.
+4. Tras publicar, verificar el URL público exacto y realizar prueba humana desde móvil/escritorio. **No considerar esto integración autenticada al campus.**
+5. La integración con rol, sesión, nivel y progreso de backend queda bloqueada por la revisión de identidad/ACL del backend, el source-truth-guard de English Lab y el release controlado.
+
+**Estado actual:** cambios guardados en rama; NO fusionado; NO desplegado; vista previa dentro de GitHub Pages **todavía no disponible**. Las correcciones de backend y Unidad 2 no se tocaron en esta pasada. El criterio de éxito es un flujo de demo seguro, no una afirmación de progreso académico persistente.
+
+**REVISIÓN CRUZADA — CHATGPT:** se confirmó E0 en `campus_backend/prod/43_Academia_Play.js` que `_aplayKey_` prioriza identificadores provenientes del navegador. No se ha establecido equivalencia con el despliegue Apps Script ni se han probado accesos cruzados reales. No usar el contrato actual para Northbound sin corrección y pruebas controladas.
