@@ -70,3 +70,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #ec9e
 
 /* Las decoraciones y el video son de borde a borde; nunca deben crear scroll horizontal. */
 html,body{max-width:100%;overflow-x:clip}
+
+/* En móvil prevalece el sello A y el nombre institucional, sin cortar el wordmark secundario. */
+@media(max-width:540px){.gp-header-side{display:none}}
