@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.55.0-noble
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 15
     steps:
       - name: Checkout PR revision
