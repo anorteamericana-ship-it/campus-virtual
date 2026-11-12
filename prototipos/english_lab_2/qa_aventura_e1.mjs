@@ -353,8 +353,9 @@ try {
   ({ page, context, problems } = await open(browser));
   await page.click('#nb-enter-sound');
   await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 0.3 && window.NBIntroAudio.state().active, null, {timeout:12000});
-  await page.locator('#nb-video').evaluate(v => { v.currentTime = Math.max(0, v.duration - 0.5); });
-  await page.waitForSelector('#nb-title:not([hidden])', {timeout:9000});
+  /* No forzar un salto temporal: el servidor Python de QA no garantiza HTTP Range.
+     Verificamos el final REAL después de reproducir el clip completo. */
+  await page.waitForSelector('#nb-title:not([hidden])', {timeout:16000});
   assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false, 'la música termina con el video');
   assert.equal(await page.locator('#nb-audio-gate').isVisible(), false);
   assert.deepEqual(problems, []);
