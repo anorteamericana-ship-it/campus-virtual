@@ -253,3 +253,16 @@ El repositorio es público y GitHub Pages no controla acceso a una ruta. `noinde
 **Cadencia:** no comprometer un juego semanal sin capacidad de revisión docente. «Reto Northbound» puede servir de marca sin una frecuencia fija.
 
 **Definición de piloto completo:** CI PASS sobre SHA final, control de acceso acorde con la decisión de Dirección, publicación real verificable E3, feedback de Natalia y docentes, y cero datos o escrituras productivas.
+
+## 14. Publicación técnica del piloto — 11-nov-2026 CR
+
+- **PR #762 MERGED** (squash): `d6399a53a2232558e45e3116e2af51a9506af0a0` en `main`. Archivos agregados; `login.html`, `src/login.jsx`, su compilado y Apps Script no se alteraron.
+- **E1 confirmado:** 15/15 grupos Playwright Chromium sobre el código servido localmente (run `43147104168`), incluyendo 4 escenas del reto, móvil 390px, alternativas sin voz, regreso, separaciones de identidad, presentación y login intacto.
+- **Controles del PR:** Source Truth Guard PASS, Audit delivery PASS y Virtual Campus Review PASS antes de fusionar.
+- **GitHub Pages:** workflow `43147390828` completado SUCCESS para `d6399a5`; entorno declarado `https://anorteamericana-ship-it.github.io/campus-virtual/`.
+- **Enlace candidato de revisión:** `https://anorteamericana-ship-it.github.io/campus-virtual/prototipos/english_lab_2/reto-semana.html?revision=1`.
+- **Límite de evidencia:** no se obtuvo lectura HTTP directa del archivo ya publicado por restricciones de red de los verificadores externos; la publicación Pages está certificada como job, pero la ruta exacta no tiene readback E3 ni prueba humana. No declarar ambas como PASS.
+- **Acceso:** la ruta es pública, no listada y no indexable por solicitud, pero **NO PRIVADA**; no cuenta con control de identidad. No compartir con público ni calificar producción académica. El enlace en login normal no fue activado.
+- **Próxima aceptación:** Dirección y Natalia abren la URL en su navegador; docente revisa correspondencia curricular; registran observaciones; luego se planifica activación pública del CTA/escenarios. Si se exige acceso sólo para tres identidades, implementar puerta de acceso real antes de compartir el piloto.
+
+**Matriz piloto por hitos:** anteproyecto 1/1, prototipo jugable 1/1, E1 aislado 1/1, despliegue Pages 1/1, readback URL 0/1, revisión humana 0/1, acceso privado por identidad 0/1. Total operacional 4/7 (57,1 %). No equivale a avance de 16 unidades ni a integración del Campus.
