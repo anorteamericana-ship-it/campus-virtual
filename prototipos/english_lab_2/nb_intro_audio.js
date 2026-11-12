@@ -6,7 +6,7 @@
  */
 (function () {
   'use strict';
-  var ctx = null, active = null, started = 0, lastError = '';
+  var ctx = null, active = null, analyser = null, started = 0, lastError = '';
   var AC = window.AudioContext || window.webkitAudioContext;
 
   function disconnectOld() {
@@ -57,7 +57,11 @@
   function prime() {
     if (!AC) { lastError = 'Este navegador no ofrece audio Web Audio.'; return false; }
     try {
-      if (!ctx || ctx.state === 'closed') ctx = new AC();
+      if (!ctx || ctx.state === 'closed') { ctx = new AC(); analyser = null; }
+      if (!analyser) {
+        analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+        analyser.connect(ctx.destination);
+      }
       if (ctx.state === 'suspended') {
         var p = ctx.resume();
         if (p && p.catch) p.catch(function () { lastError = 'El navegador bloqueó la reproducción de audio.'; });
@@ -72,13 +76,18 @@
     try {
       disconnectOld();
       var track = ctx.createGain(); active = track;
-      track.gain.value = 0.62; track.connect(ctx.destination);
+      track.gain.value = 0.62; track.connect(analyser);
       var offset = Math.max(0, Math.min(9.9, Number(opts.offset) || 0));
       var shop = opts.scene === 'gifts';
       /* Patrón armónico original; textura cálida en lugar de melodía invasiva. */
       var chords = shop
         ? [[0, [220, 261.63, 329.63], 2.9], [2.9, [196, 246.94, 293.66], 3.0], [5.9, [174.61, 220, 261.63], 4.05]]
         : [[0, [196, 246.94, 293.66], 3.1], [3.1, [174.61, 220, 261.63], 2.95], [6.05, [196, 246.94, 329.63], 3.85]];
+      /* Pequeña señal de apertura: audible desde el primer segundo, sin música invasiva. */
+      if (offset < 0.55) {
+        playNote(track, 0, 783.99, 0.55, 0.053, 'sine', 0.018);
+        playNote(track, 0.10, 1174.66, 0.62, 0.025, 'sine', 0.018);
+      }
       chords.forEach(function (chord) {
         chord[1].forEach(function (freq) {
           if (chord[0] + chord[2] <= offset) return;
@@ -118,11 +127,21 @@
     }
   }
 
+  function rmsLevel() {
+    if (!active || !analyser || !ctx || ctx.state !== 'running') return 0;
+    var data = new Float32Array(analyser.fftSize), sum = 0;
+    analyser.getFloatTimeDomainData(data);
+    for (var i = 0; i < data.length; i++) sum += data[i] * data[i];
+    return Math.round(Math.sqrt(sum / data.length) * 100000) / 100000;
+  }
   window.NBIntroAudio = {
     prime: prime,
     start: start,
     stop: disconnectOld,
-    state: function () { return { available: !!AC, context: ctx ? ctx.state : 'none', active: !!active, starts: started, error: lastError }; }
+    state: function () { return {
+      available: !!AC, context: ctx ? ctx.state : 'none',
+      active: !!active, starts: started, error: lastError, rms: rmsLevel()
+    }; }
   };
   document.addEventListener('visibilitychange', function () { if (document.hidden) disconnectOld(); });
 })();
