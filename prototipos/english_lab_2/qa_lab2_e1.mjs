@@ -232,7 +232,7 @@ try {
 
   // 10. La presentación comercial está aislada, tiene seis pantallas y un CTA real.
   ({ page, problems, context } = await newPage(browser, { width:375, height:700 }));
-  await page.goto(URL.replace(/index\\.html$/, 'presentacion.html'), { waitUntil:'load' });
+  await page.goto(URL.replace(/index\.html$/, 'presentacion.html'), { waitUntil:'load' });
   assert.equal(await page.locator('main section.slide').count(), 6, 'seis pantallas');
   assert.equal(await page.locator('a[href^="https://wa.me/50686860097"]').count(), 2, 'CTA institucional visible');
   assert(await page.locator('a[href="./index.html"]').count() > 0, 'enlace real a demo');
