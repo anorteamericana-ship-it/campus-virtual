@@ -1,0 +1,49 @@
+name: Northbound English Lab 2 Preview QA
+
+on:
+  pull_request:
+    paths:
+      - 'prototipos/english_lab_2/**'
+      - '.github/workflows/qa-english-lab2-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-preview-e1:
+    name: northbound-preview-e1
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR revision
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static JS syntax and isolation
+        run: |
+          set -euo pipefail
+          for src in prototipos/english_lab_2/{lab2_content,lab2_core,lab2_steps,lab2_app}.js; do
+            node --check "$src"
+          done
+          node --check prototipos/english_lab_2/qa_lab2_e1.mjs
+          ! grep -Eq '^(:root|html|body)[[:space:]]*\\{' prototipos/english_lab_2/lab2.css
+          ! grep -Eq 'src/(app|academia_play)|script\\.google\\.com|APPS_SCRIPT_URL' prototipos/english_lab_2/index.html
+      - name: Install isolated Playwright browser
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          # Chromium y librerías ya están incluidos en la imagen Playwright Noble.
+      - name: Serve actual files and run browser QA
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/northbound-preview-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          QA_CHANNEL=chromium node prototipos/english_lab_2/qa_lab2_e1.mjs

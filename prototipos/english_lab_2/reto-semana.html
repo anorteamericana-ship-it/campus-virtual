@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#122347">
+<link rel="icon" href="data:,">
+<title>Reto de la Semana · Mi primera entrevista | Academia Norteamericana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link href="lab2.css" rel="stylesheet">
+<link href="reto_001.css" rel="stylesheet">
+</head>
+<body class="l2-standalone l2-weekly-page">
+<header class="weekly-nav" aria-label="Acciones del reto">
+  <a class="weekly-brand" href="../../login.html">ACADEMIA <strong>NORTEAMERICANA</strong></a>
+  <a class="weekly-back" href="../../login.html">Volver al Campus</a>
+</header>
+<section class="weekly-hero" aria-label="Introducción al reto">
+  <div class="weekly-hero-content">
+    <p class="weekly-kicker">NORTHBOUND · RETO DE LA SEMANA 001</p>
+    <h1>Mi primera entrevista <em>en inglés</em></h1>
+    <p>En la cafetería <strong>The Corner Cup</strong> de Port Hazel te esperan tu primera presentación, una conversación y un pequeño desafío. ¿Te animás?</p>
+    <div class="weekly-meta">
+      <span>5–8 minutos</span>
+      <span>Básico I · Unidad 1</span>
+      <span>Bonus opcional: U3 y U8</span>
+    </div>
+  </div>
+  <div class="weekly-art" aria-hidden="true">
+    <div class="weekly-moon"></div><div class="weekly-awning"></div>
+    <div class="weekly-cafe-window">
+      <span class="weekly-window-sign">THE CORNER CUP</span>
+      <span class="weekly-window-open">WE ARE HIRING</span>
+      <span class="weekly-cup">☕</span>
+    </div>
+    <div class="weekly-cafe-door"></div>
+  </div>
+</section>
+<div id="lab2-root"><p class="l2-boot">Preparando tu entrevista…</p></div>
+<noscript><p class="l2-boot">Para participar necesitás activar JavaScript.</p></noscript>
+<section class="weekly-after" aria-label="Después del reto">
+  <p class="weekly-kicker">¿Querés seguir practicando inglés?</p>
+  <h2>Tu aventura puede continuar.</h2>
+  <p>Consultá las opciones de Inglés Conversacional y gestioná tu matrícula con Academia Norteamericana.</p>
+  <div class="weekly-after-links">
+    <a href="../../login.html">Conocer el Campus</a>
+    <a href="https://wa.me/50686860097?text=Hola%2C%20jugue%20el%20Reto%20de%20la%20Semana%20y%20quiero%20informacion%20para%20matricularme." target="_blank" rel="noopener noreferrer">Gestionar matrícula · 8686-0097</a>
+  </div>
+  <p class="weekly-disclaimer">Demostración de práctica, en borrador IA. Las respuestas y sellos se almacenan solo en este navegador. No se registran calificaciones oficiales ni se comprueba la pronunciación.</p>
+</section>
+<section id="weekly-review" class="weekly-review" hidden aria-label="Evaluación para Natalia y docentes">
+  <h2>Ficha de revisión del piloto</h2>
+  <p>Solo para el equipo evaluador. Escribí observaciones y copiá el informe para compartirlo. No se envía nada automáticamente a ningún servidor.</p>
+  <label>Tu rol
+    <select id="weekly-review-role"><option>Natalia · diseño</option><option>Docente · pedagogía</option><option>Dirección · experiencia</option></select>
+  </label>
+  <label>¿Qué funciona y qué no?
+    <textarea id="weekly-review-notes" rows="5" maxlength="1800" placeholder="Ej.: la escena 2 es lenta, el diálogo debería tener un personaje más visible…"></textarea>
+  </label>
+  <label>Prioridad principal
+    <select id="weekly-review-priority"><option>Claridad de instrucciones</option><option>Dificultad académica</option><option>Diseño visual</option><option>Audio y pronunciación</option><option>Navegación / fallo técnico</option></select>
+  </label>
+  <button type="button" id="weekly-review-copy">Copiar observaciones</button>
+  <p id="weekly-review-status" role="status" aria-live="polite"></p>
+</section>
+<script src="../../vendor/react.js"></script>
+<script src="../../vendor/react-dom.js"></script>
+<script src="lab2_content.js"></script>
+<script src="reto_001_content.js"></script>
+<script src="lab2_core.js"></script>
+<script src="lab2_steps.js"></script>
+<script src="lab2_app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('lab2-root');
+  if (!window.React || !window.ReactDOM || !window.LAB2 || !window.LAB2.mount) {
+    root.innerHTML = '<p class="l2-boot">No se pudo abrir el reto. Recargá la página y probá nuevamente.</p>';
+    return;
+  }
+  window.LAB2.mount(root, { preview: true, usuario: { codigo: 'WEEK01_DEMO' } });
+
+  var search = new URLSearchParams(window.location.search);
+  if (search.get('revision') === '1') {
+    var section = document.getElementById('weekly-review');
+    section.hidden = false;
+    document.getElementById('weekly-review-copy').addEventListener('click', function () {
+      var report = 'NORTHBOUND · RETO 001 · REVISIÓN\n' +
+        'Rol: ' + document.getElementById('weekly-review-role').value + '\n' +
+        'Área: ' + document.getElementById('weekly-review-priority').value + '\n' +
+        'Observaciones: ' + document.getElementById('weekly-review-notes').value.trim();
+      var status = document.getElementById('weekly-review-status');
+      if (!document.getElementById('weekly-review-notes').value.trim()) {
+        status.textContent = 'Escribí una observación antes de copiar.';
+        return;
+      }
+      if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        status.textContent = 'Tu navegador no permite copiar automáticamente. Seleccioná el texto y compartilo manualmente.';
+        return;
+      }
+      navigator.clipboard.writeText(report).then(function () {
+        status.textContent = 'Informe copiado. Compartilo por el canal interno del equipo.';
+      }, function () {
+        status.textContent = 'No fue posible copiar. Podés seleccionar tus observaciones manualmente.';
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
