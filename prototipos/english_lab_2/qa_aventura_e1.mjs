@@ -292,7 +292,10 @@ try {
   ({ page, context, problems, backend } = await open(browser, { url: URL + '?revision=1', width:390, height:844 }));
   await start(page, 'Ana');
   assert(await page.locator('#nb-review').isVisible(), 'ficha audiovisual visible con ?revision=1');
-  assert.equal(await page.locator('#nb-review-role option').count(), 3, 'roles de revisión');
+  assert.equal(await page.locator('#nb-review-role option').count(), 4, 'incluye Raquel de Ventas');
+  await page.selectOption('#nb-review-role', { label: 'Raquel · Ventas' });
+  await page.selectOption('#nb-review-topic', { label: 'Interés comercial / matrícula' });
+  assert.equal(await page.inputValue('#nb-review-role'), 'Raquel · Ventas');
   await page.fill('#nb-review-notes', 'El audio ambiente necesita menor volumen en el celular');
   await page.click('#nb-review-copy');
   await page.waitForFunction(() => document.querySelector('#nb-review-status')?.textContent?.trim().length > 0);
