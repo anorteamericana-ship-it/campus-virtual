@@ -49,7 +49,7 @@ window.LAB2_CONTENT = {
     'J>G': 'J se llama "yei" y G se llama "yi". Fijate en el final.',
     'V>B': 'V es "vi", con los dientes sobre el labio. B es "bi", con los dos labios.',
     'B>V': 'B es "bi", con los dos labios. V es "vi", con los dientes sobre el labio.',
-    'Z>S': 'Z se llama "zi" y vibra. S se llama "es".',
+    'Z>S': 'En inglés estadounidense, Z se llama "zi". S se llama "es". Son nombres de letras diferentes.',
     'Z>C': 'Z se llama "zi" y vibra. C se llama "si".',
     'Y>I': 'Y se llama "uai". I se llama "ai".'
   },
@@ -162,7 +162,7 @@ window.LAB2_CONTENT = {
             { kind: 'say', clock: '21:24', who: 'maya', say: 'Nice to meet you!', phrase: 'Nice to meet you, too.', ask_es: 'Decilo en voz alta, como si Maya estuviera enfrente.' },
             { kind: 'line', clock: '21:25', text_es: 'Subiendo las gradas, le sostenés la puerta a otro huésped.' },
             { kind: 'type', clock: '21:25', who: 'leo', say: 'Oh, thank you!', ask_es: 'Te agradece. Escribí lo que se contesta.',
-              accept: ['you\'re welcome', 'you are welcome', 'youre welcome'], explain_es: 'A thank you se contesta You\'re welcome ("con gusto").' }
+              accept: ['you\'re welcome', 'you are welcome'], explain_es: 'A thank you se contesta You\'re welcome ("con gusto").' }
           ]
         },
         {
@@ -186,7 +186,7 @@ window.LAB2_CONTENT = {
             { kind: 'build', clock: '08:02', who: 'park', say: 'Vega... Who is that?', ask_es: 'Es Leo, tu compañero de cuarto (roommate). Presentalo.',
               answer: ['This', 'is', 'my', 'roommate', 'Leo'], extra: ['are', 'name'], explain_es: 'Para presentar a alguien: This is + quién es + nombre.' },
             { kind: 'type', clock: '08:03', who: 'park', say: 'Nice to meet you, Leo. And thank you for your help, {name}.', ask_es: 'Ella te agradece. Escribí tu respuesta.',
-              accept: ['you\'re welcome', 'you are welcome', 'youre welcome', 'you\'re welcome mrs park', 'you are welcome mrs park', 'youre welcome mrs park'], explain_es: 'You\'re welcome. Con Mrs. Park podés agregar su nombre.' },
+              accept: ['you\'re welcome', 'you are welcome', 'you\'re welcome mrs park', 'you are welcome mrs park'], explain_es: 'You\'re welcome. Con Mrs. Park podés agregar su nombre.' },
             { kind: 'type', clock: '08:04', who: 'park', say: 'Have a good day!', ask_es: 'Se despide de mañana. Despedite vos también, con una frase de la unidad.',
               accept: ['goodbye', 'good bye', 'bye', 'bye bye', 'see you', 'see you later', 'see you tomorrow', 'goodbye mrs park', 'bye mrs park', 'see you mrs park', 'see you later mrs park', 'thank you goodbye', 'thank you bye', 'thank you see you', 'thank you see you later', 'thank you you too', 'you too', 'thanks you too', 'you too goodbye', 'you too bye'],
               explain_es: 'Para despedirse de día: Goodbye, Bye o See you later. Good night solo de noche.' }
