@@ -287,24 +287,13 @@ try {
   await context.close();
 
 
-  // 15. La puerta del piloto aparece junto a matrícula SOLO con enlace de revisión.
-  ({ page, context } = await newPage(browser, { width: 390, height: 820 }));
-  await page.goto((process.env.QA_BASE_URL || 'http://127.0.0.1:4173') + '/login.html?reto=piloto', { waitUntil:'load' });
-  await page.waitForSelector('#an-weekly-pilot-btn', { timeout:15000 });
-  assert.equal(await page.locator('.login-card .btns #an-weekly-pilot-btn').count(), 1);
-  assert.equal(await page.locator('#an-weekly-dock').count(), 1);
-  assert((await page.locator('#an-weekly-pilot-btn').getAttribute('href')).includes('reto-semana.html?revision=1'));
-  assert(await page.locator('#an-weekly-dock').isVisible());
-  ok('entrada piloto', 'CTA junto a matrícula y dock accesible a 390 px');
-  await context.close();
-
-  // 16. La puerta piloto no se expone en la pantalla ordinaria de login.
+  // 15. El login de producción permanece sin inyecciones del reto hasta su revisión.
   ({ page, context } = await newPage(browser));
   await page.goto((process.env.QA_BASE_URL || 'http://127.0.0.1:4173') + '/login.html', { waitUntil:'load' });
   await page.waitForSelector('.login-card .btns');
   assert.equal(await page.locator('#an-weekly-pilot-btn').count(), 0);
   assert.equal(await page.locator('#an-weekly-dock').count(), 0);
-  ok('entrada general', 'sin cambios visibles de campaña antes de su aprobación');
+  ok('login preservado', 'sin scripts ni botones del reto en login normal');
   await context.close();
 
   console.log('\nE1 PASS ·', results.length, 'grupos');
