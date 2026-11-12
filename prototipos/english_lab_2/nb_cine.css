@@ -58,3 +58,15 @@ body.nb-page .l2-main { padding-bottom: 6rem; }
 .nb-postcard { width: 15rem; }
 .nb-next a { color: #8e1f2f; font-weight: 700; }
 .nb-next a:focus-visible { outline: 3px solid #f2b441; outline-offset: 2px; }
+
+/* Evaluación de diseño: se habilita por enlace de revisión, sin registrar datos. */
+.nb-review{max-width:50rem;margin:2.5rem auto;padding:1.5rem 1.25rem;border-top:3px solid #e2b66e;background:#17274a;color:#edf3fb;font-family:Barlow,system-ui,sans-serif}
+.nb-review[hidden]{display:none!important}
+.nb-review h2{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:clamp(1.7rem,4vw,2.6rem);margin:.35rem 0}
+.nb-review p{line-height:1.6;color:#d9e2f5}
+.nb-review-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.nb-review label{display:block;margin:1rem 0;font-weight:700}
+.nb-review select,.nb-review textarea{display:block;box-sizing:border-box;width:100%;max-width:100%;background:#f9f5eb;color:#172449;border:2px solid #8598b5;border-radius:.5rem;padding:.75rem;font:inherit;margin:.45rem 0 0}
+.nb-review button:focus-visible,.nb-review :focus-visible{outline:3px solid #e5b960;outline-offset:3px}
+.nb-review-warning{font-size:.8rem}
+@media(max-width:650px){.nb-review-grid{grid-template-columns:1fr}}
