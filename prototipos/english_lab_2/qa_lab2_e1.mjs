@@ -269,6 +269,9 @@ try {
   await page.click('.l2-actions .l2-btn:text-is("Volver al episodio")');
   assert.equal(await page.locator('.l2-scene-card.is-done').count(), 4);
   assert(await noSideScroll(page), 'resultado del reto no desborda en móvil');
+  assert.equal(await page.locator('#weekly-review-role option').count(), 4, 'incluye a Raquel de Ventas');
+  await page.selectOption('#weekly-review-role', { label: 'Raquel · Ventas' });
+  await page.selectOption('#weekly-review-priority', { label: 'Interés comercial / matrícula' });
   await page.fill('#weekly-review-notes', 'Revisar ritmo de la escena 2');
   await page.click('#weekly-review-copy');
   await page.waitForFunction(() => document.querySelector('#weekly-review-status')?.textContent?.trim().length > 0);
