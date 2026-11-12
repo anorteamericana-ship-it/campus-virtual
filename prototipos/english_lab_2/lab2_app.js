@@ -201,7 +201,7 @@
           h('div', { className: 'l2-stamp' + (gold ? ' is-gold' : '') },
             h('span', null, gold ? 'Sello dorado' : 'Sello'), h('strong', { lang: 'en' }, 'Port Hazel')),
           h('p', null, gold ? 'Casi todo a la primera.' : 'Escena completada. El dorado sale con 8 de cada 10 a la primera.'))),
-      r.spoken ? h('p', { className: 'l2-note' }, 'Practicaste decir una frase en voz alta. Eso no se califica aquí: llevala a clase.') : null,
+      r.spoken ? h('p', { className: 'l2-note' }, 'Marcaste que practicaste una frase en voz alta. El sistema no puede verificar tu pronunciación; llevala a clase.') : null,
       r.review.length ? h('section', { className: 'l2-review' },
         h('h2', null, r.review.length === 1 ? 'Una cosa para repasar' : r.review.length + ' cosas para repasar'),
         h('ul', null, r.review.map(function (item, i) {
@@ -220,7 +220,7 @@
   }
 
   /* ---------- App ---------- */
-  function App(props) {
+  function AppInner(props) {
     var content = window.LAB2_CONTENT;
     var userKey = userKeyOf(props.usuario);
     var st = useState(function () { return LAB2.store.load(userKey); }); var state = st[0], setState = st[1];
@@ -282,6 +282,11 @@
       h('main', { className: 'l2-main' }, body));
   }
 
+  // Una nueva identidad fuerza desmontaje y lectura limpia; nunca muestra el estado previo.
+  function App(props) {
+    var userKey = userKeyOf(props && props.usuario);
+    return h(AppInner, Object.assign({}, props, { key: userKey + ':' + (props && props.preview ? 'demo' : 'campus') }));
+  }
   window.EnglishLab2View = App;
   LAB2.mount = function (el, options) {
     var element = h(App, options || {});
