@@ -74,6 +74,37 @@ try{
    for(const [w,t] of xs){window.LAB2_VOICE.files[L.voice.keyFor(w,t)]?hit++:miss++}}return{hit,miss}});
  assert.equal(cov.miss,0,'toda línea de personaje tiene grabación');
  ok('voces grabadas',cov.hit+' líneas con archivo propio; Escuchar y Más lento reproducen el clip; Voz apagada lo silencia; el ambiente cede');
+ // Paso oral: el navegador escucha (reconocedor simulado) y la barra llega a check verde solo si se entendió
+ await p.evaluate(()=>{
+  window.__sr={say:'',deny:false};
+  window.SpeechRecognition=window.webkitSpeechRecognition=class{start(){setTimeout(()=>{
+    if(window.__sr.deny){this.onerror({error:'not-allowed'});this.onend();return}
+    if(window.__sr.say)this.onresult({results:[Object.assign([{transcript:window.__sr.say}],{isFinal:true})]});
+    this.onend();},40)}stop(){}abort(){}};
+  window.__mountSay=()=>{const old=document.getElementById('qa-say');if(old)old.remove();const d=document.createElement('div');d.id='qa-say';d.className='l2-root';document.body.appendChild(d);window.__done=null;
+   window.ReactDOM.createRoot(d).render(window.React.createElement(window.LAB2.steps.say,{step:{kind:'say',who:'rivera',say:'What\'s your name?',phrase:'What\'s your name?',ask_es:'Decilo'},
+    ctx:{player:{name:'Ana'},cast:window.LAB2_CONTENT.episodes[0].cast,content:window.LAB2_CONTENT},onDone:r=>{window.__done=r}}))};
+  window.__mountSay();});
+ const level=()=>p.getAttribute('#qa-say .l2-hear-bar','aria-valuenow').then(Number);
+ await p.click('#qa-say .l2-hear-btn'); await p.waitForFunction(()=>/No escuché nada/.test(document.querySelector('#qa-say').innerText));
+ assert.equal(await level(),0); assert.equal(await p.locator('#qa-say .l2-hear.is-ok').count(),0);
+ await p.evaluate(()=>{window.__sr.say='I like bananas'}); await p.click('#qa-say .l2-hear-btn');
+ await p.waitForFunction(()=>/No se entendió|Casi/.test(document.querySelector('#qa-say').innerText));
+ assert(await level()<60,'una frase distinta no llena la barra'); assert.equal(await p.locator('#qa-say .l2-hear.is-ok').count(),0);
+ await p.evaluate(()=>{window.__sr.say='wats your naem'}); await p.click('#qa-say .l2-hear-btn');
+ await p.waitForSelector('#qa-say .l2-hear.is-ok');
+ assert.equal(await level(),100); assert.equal((await p.textContent('#qa-say .l2-hear-check')).trim(),'✓');
+ assert(!/\d+\s*%|\/10/.test(await p.locator('#qa-say').innerText()),'sin número ni porcentaje a la vista');
+ assert(!(await p.locator('#qa-say').innerText()).includes('wats'),'no muestra lo que entendió');
+ await p.click('#qa-say .l2-btn-go'); assert.equal(await p.evaluate(()=>window.__done&&window.__done.heard),true);
+ await p.evaluate(()=>{window.__sr.deny=true;window.__mountSay()}); await p.waitForSelector('#qa-say .l2-hear-btn'); await p.click('#qa-say .l2-hear-btn');
+ await p.waitForFunction(()=>/No hay permiso/.test(document.querySelector('#qa-say').innerText));
+ await p.click('#qa-say .l2-say-manual'); assert.equal(await p.evaluate(()=>window.__done&&window.__done.spoken&&!window.__done.heard),true);
+ await p.evaluate(()=>{delete window.SpeechRecognition;delete window.webkitSpeechRecognition;window.SpeechRecognition=window.webkitSpeechRecognition=undefined;window.__mountSay()});
+ await p.waitForSelector('#qa-say .l2-say-manual');
+ assert.equal(await p.locator('#qa-say .l2-hear-btn').count(),0); assert.equal(await p.locator('#qa-say .l2-say-manual').count(),1);
+ await p.evaluate(()=>document.getElementById('qa-say').remove());
+ ok('paso oral','silencio y frase distinta no dan check; "wats your naem" sí; sin número ni transcripción; sin permiso o sin reconocedor queda la marca manual');
  await p.click('.l2-scene-bar .l2-back');
  await p.waitForSelector('.l2-episode');
  assert((await p.locator('.l2-episode').innerText()).includes('North Coffee'));

@@ -505,3 +505,13 @@ Misma rama y PR borrador (#770). Motivo: Leonardo escuchó la voz del dispositiv
 - **Sin validar:** nadie ha escuchado los 122 clips. Las letras sueltas son el punto de mayor riesgo (un motor de voz puede leer «A.» como artículo). Requiere oído humano, idealmente de una docente.
 - **Motor de pronunciación:** se revisó el repo y **no existe** ninguno (no hay reconocimiento de voz ni uso de micrófono en `src/`, `modulos/` ni `campus.html`; `pronunciation_lab` en `academia_play.jsx` es una entrada de catálogo). El paso oral sigue siendo autodeclarado. Opción sin costo pendiente de decisión: reconocimiento de voz del navegador para medir si la frase se entendió (no mide pronunciación fonema por fonema, no funciona en Firefox y envía el audio al proveedor del navegador).
 - **Retratos:** Leonardo los considera infantiles. Pendiente de decisión: ilustraciones de Natalia o imágenes generadas.
+
+## 19. Paso oral con escucha del navegador y publicación para Natalia — 12-nov-2026 CR (Claude)
+
+- **Decisión de Leonardo:** el paso oral debe dar un check verde cuando el programa entiende algo parecido a la frase, sin mostrar número ni dato. Los retratos se dejan como están hasta la revisión con Natalia.
+- **Implementado:** `SayStep` usa el reconocimiento de voz del navegador (`SpeechRecognition`). Una barra se llena según lo entendido y pasa a verde con check al llegar al umbral (`LAB2.HEARD_OK = 0.6`, tolerante: «wats your naem» vale por «What's your name?»). No muestra transcripción, número ni porcentaje. Se puede reintentar sin límite.
+- **Respaldo:** sin reconocimiento (Firefox), sin micrófono o sin permiso queda la marca manual. «No puedo hablar ahora» siempre está disponible.
+- **Qué mide y qué no:** confirma que la frase se entendió. **No es una evaluación de pronunciación** y así lo dice la pantalla. El audio lo procesa el servicio de voz del navegador (Google o Apple); el juego no lo guarda.
+- **Pruebas:** `qa_north_city.mjs` 11/11 con reconocedor simulado (silencio, frase distinta, frase parecida, permiso denegado, sin reconocedor); `qa_aventura_e1.mjs` 21/21; `qa_lab2_e1.mjs` 15/15.
+- **Sin probar:** micrófono y reconocimiento reales. Ninguna persona lo ha usado todavía; el umbral 0,6 es una estimación y habrá que ajustarlo con estudiantes.
+- **Publicación:** Leonardo pidió el enlace para enviar el trabajo a Natalia, lo que requiere fusionar el PR #770 a `main` (GitHub Pages). Enlace: `https://anorteamericana-ship-it.github.io/campus-virtual/prototipos/english_lab_2/north-city.html`.

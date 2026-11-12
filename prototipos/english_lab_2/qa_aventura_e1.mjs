@@ -37,7 +37,7 @@ async function playStep(page, step, name, vars, mistakes) {
   const fill = s => s.replaceAll('{name}', name).replaceAll('{drink}', vars.drink).replaceAll('{gift}', vars.gift || '');
   await page.waitForSelector('.l2-step');
   if (step.kind === 'line') return go(page);
-  if (step.kind === 'say') return page.click('.l2-actions .l2-btn-go');
+  if (step.kind === 'say') return page.click('.l2-actions .l2-say-manual');
   if (step.kind === 'pick') { await page.click(`.l2-option:text-is("${vars.pick}")`); await page.waitForSelector('.l2-reply'); return go(page); }
   if (step.kind === 'choice') {
     if (mistakes) {
