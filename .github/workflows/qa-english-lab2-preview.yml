@@ -34,7 +34,7 @@ jobs:
             node --check "$src"
           done
           node --check prototipos/english_lab_2/qa_lab2_e1.mjs
-          for src in prototipos/english_lab_2/{nb_cine,aventura_001_content,aventura_002_content}.js; do
+          for src in prototipos/english_lab_2/{nb_cine,nb_intro_audio,aventura_001_content,aventura_002_content}.js; do
             node --check "$src"
           done
           node --check prototipos/english_lab_2/qa_aventura_e1.mjs

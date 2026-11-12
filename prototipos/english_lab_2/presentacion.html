@@ -51,6 +51,11 @@ h1,h2{margin:0;line-height:1.04;letter-spacing:-.045em;text-wrap:balance}h1{font
 .cine-archive a{color:#f2b441}
 @media(max-width:760px){.cine-feature{grid-template-columns:1fr}.cine-panel{padding:18px}.cine-panel .pill{max-width:100%}}
 
+.cine-sound-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px 2px}
+.cine-sound-controls .pill{border:0;font-size:.86rem;cursor:pointer;min-height:44px;font-family:inherit}
+.cine-sound-controls .pill.ghost{border:1px solid #a5b3d2;background:transparent;color:#f3eadd}
+.cine-sound-controls [hidden]{display:none}
+.cine-sound-state:empty{display:none}
 footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 @media(max-width:730px){.routemap{grid-template-columns:repeat(2,minmax(0,1fr))}.features,.step-grid{grid-template-columns:1fr}.slide{min-height:auto;padding:76px 18px}.brand{max-width:160px;font-size:.76rem}nav .pill{font-size:.8rem;padding:10px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -78,12 +83,18 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 <p class="lead">Recorré Port Hazel, entrá a The Corner Cup y practicá tu primera entrevista en inglés. Compará la experiencia audiovisual nueva con el reto anterior.</p>
 <div class="cine-feature">
   <div class="cine-frame">
-    <video id="nb-promo-video" controls muted playsinline preload="none" poster="media/corner_cup_poster.jpg" aria-label="Tráiler animado de diez segundos de Port Hazel y The Corner Cup">
+    <video id="nb-promo-video" muted playsinline preload="none" poster="media/corner_cup_poster.jpg" aria-label="Tráiler animado de diez segundos de Port Hazel y The Corner Cup">
       <source src="media/corner_cup_intro_480.mp4" type="video/mp4" media="(max-width: 700px)">
       <source src="media/corner_cup_intro.mp4" type="video/mp4">
       Tu navegador no puede reproducir este video. Abrí el juego para utilizar la versión con imagen de respaldo.
     </video>
-    <p class="cine-caption">Animación 2D original (10 segundos). El MP4 no incluye audio; los diálogos y efectos se reproducen desde el navegador durante el juego.</p>
+    <div class="cine-sound-controls">
+      <button type="button" class="pill cine-sound-start" id="nb-promo-play-sound">▶ Ver tráiler con sonido</button>
+      <button type="button" class="pill ghost cine-sound-quiet" id="nb-promo-play-quiet">Ver en silencio</button>
+      <button type="button" class="pill ghost cine-sound-mute" id="nb-promo-mute" hidden>Silenciar tráiler</button>
+    </div>
+    <p class="cine-caption">Animación original de 10 segundos con banda sonora y efectos creados para Northbound. El audio se activa al tocar el botón; las voces de los personajes comienzan dentro del juego.</p>
+    <p class="cine-caption cine-sound-state" id="nb-promo-audio-state" role="status" aria-live="polite"></p>
   </div>
   <div class="cine-panel">
     <p class="eyebrow">Aventura 001 · Básico I</p>
@@ -116,4 +127,75 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 </div></section>
 </main>
 <footer>Academia Norteamericana · English Lab 2.0 — Material promocional de demostración</footer>
+<script src="nb_intro_audio.js"></script>
+<script>
+(function () {
+  'use strict';
+  var v = document.getElementById('nb-promo-video');
+  var sound = document.getElementById('nb-promo-play-sound');
+  var mute = document.getElementById('nb-promo-mute');
+  var quiet = document.getElementById('nb-promo-play-quiet');
+  var status = document.getElementById('nb-promo-audio-state');
+  var score = window.NBIntroAudio || { prime:function(){return false;}, start:function(){return false;}, stop:function(){} };
+  var enabled = false;
+  if (!v || !sound || !mute || !quiet) return;
+  function silence() { score.stop(); mute.hidden = true; }
+  function startSoundIfPlaying() {
+    if (!enabled) return;
+    var ok = score.start({ scene: 'cafe', offset: v.currentTime });
+    if (!ok) {
+      enabled = false;
+      silence();
+      status.textContent = 'El dispositivo no permite reproducir la ambientación; podés ver el video en silencio.';
+    } else {
+      mute.hidden = false;
+      status.textContent = 'Banda sonora activa. Podés silenciarla cuando quieras.';
+    }
+  }
+  sound.addEventListener('click', function () {
+    v.controls = true;
+    enabled = !!score.prime();
+    if (!enabled) {
+      status.textContent = 'Audio no disponible en este navegador. El tráiler puede verse en silencio.';
+      var quietPlay = v.play();
+      if (quietPlay && quietPlay.catch) quietPlay.catch(function () { status.textContent = 'Usá los controles de video para reproducirlo.'; });
+      return;
+    }
+    if (!v.paused && !v.ended) {
+      startSoundIfPlaying();
+    } else {
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {
+        enabled = false;
+        silence();
+        status.textContent = 'La reproducción fue bloqueada. Usá los controles del video.';
+      });
+    }
+  });
+  quiet.addEventListener('click', function () {
+    enabled = false;
+    silence();
+    v.controls = true;
+    var p = v.play();
+    if (p && p.catch) p.catch(function () { status.textContent = 'Usá los controles del video para reproducirlo.'; });
+    else status.textContent = 'Video en silencio. Podés activar la ambientación cuando quieras.';
+  });
+  mute.addEventListener('click', function () {
+    enabled = false;
+    silence();
+    status.textContent = 'Tráiler silenciado; podés continuar mirando el video.';
+  });
+  v.addEventListener('playing', startSoundIfPlaying);
+  v.addEventListener('pause', silence);
+  v.addEventListener('ended', function () {
+    enabled = false;
+    silence();
+    status.textContent = 'Terminó el tráiler. Ya podés jugar la aventura.';
+  });
+  v.addEventListener('seeking', function () { score.stop(); });
+  v.addEventListener('seeked', function () { if (!v.paused) startSoundIfPlaying(); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { v.pause(); silence(); } });
+  window.addEventListener('pagehide', silence);
+})();
+</script>
 </body></html>

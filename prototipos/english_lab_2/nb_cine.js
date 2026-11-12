@@ -195,29 +195,96 @@
   /* ================= introducción ================= */
   NB.intro = function (opts) {
     var root = document.getElementById('nb-intro'), video = document.getElementById('nb-video');
+    var gate = document.getElementById('nb-audio-gate'), enterSound = document.getElementById('nb-enter-sound');
+    var enterQuiet = document.getElementById('nb-enter-quiet'), gateStatus = document.getElementById('nb-gate-status');
     var card = document.getElementById('nb-title'), skip = document.getElementById('nb-skip'), replay = document.getElementById('nb-replay');
     var nameInput = document.getElementById('nb-name'), start = document.getElementById('nb-start'), status = document.getElementById('nb-video-status');
-    var seen = !!load('nb_intro_seen_' + CFG.id, false), shownCard = false;
+    var seenKey = 'nb_intro_sound_v2_seen_' + CFG.id;
+    var seen = !!load(seenKey, false), shownCard = false, playing = false, wantedSound = false;
     var conn = navigator.connection || {};
     var light = !!conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '') || window.innerWidth < 700;
+    var soundtrack = window.NBIntroAudio || { start: function () { return false; }, stop: function () {} };
+
+    function stopIntroSound() { soundtrack.stop(); playing = false; }
     function showCard() {
-      if (shownCard) return; shownCard = true; NB.skipIntro = null;
+      if (shownCard) return;
+      shownCard = true;
+      NB.skipIntro = null;
+      stopIntroSound();
+      wantedSound = false;
       try { video.pause(); } catch (_) {}
-      root.classList.add('is-card'); skip.hidden = true; card.hidden = false; save('nb_intro_seen_' + CFG.id, true);
+      gate.hidden = true;
+      root.classList.remove('is-gate');
+      root.classList.add('is-card');
+      skip.hidden = true;
+      card.hidden = false;
+      save(seenKey, true);
       (nameInput.value ? start : nameInput).focus();
     }
-    function playVideo() {
-      shownCard = false; root.classList.remove('is-card'); card.hidden = true; skip.hidden = false; NB.skipIntro = showCard;
+    function showGate() {
+      stopIntroSound();
+      shownCard = false;
+      root.classList.remove('is-card');
+      root.classList.add('is-gate');
+      card.hidden = true;
+      skip.hidden = true;
+      gate.hidden = false;
+      NB.skipIntro = showCard;
+      gateStatus.textContent = '';
+      enterSound.focus();
+    }
+    function playVideo(withSound) {
+      shownCard = false;
+      gate.hidden = true;
+      root.classList.remove('is-gate', 'is-card');
+      card.hidden = true;
+      skip.hidden = false;
+      NB.skipIntro = showCard;
+      playing = true;
+      /* Desbloquear el AudioContext en este clic y sincronizar sus notas al evento playing.
+         Si la descarga tarda, el sonido nunca se adelanta al primer cuadro del video. */
+      wantedSound = !!withSound && !!(soundtrack.prime && soundtrack.prime());
+      if (withSound && !wantedSound) status.textContent = 'El sonido no está disponible aquí. Podés continuar con el video en silencio.';
       if (!video.getAttribute('src')) video.setAttribute('src', light ? opts.videoSmall : opts.video);
-      video.currentTime = 0;
-      var p; try { p = video.play(); } catch (_) { p = null; }
-      if (p && p.catch) p.catch(function () { status.textContent = 'El video no se pudo reproducir en este dispositivo. Seguís con la imagen.'; showCard(); });
+      try { video.currentTime = 0; } catch (_) {}
+      var playPromise;
+      try { playPromise = video.play(); } catch (_) { playPromise = null; showCard(); }
+      if (playPromise && playPromise.catch) playPromise.catch(function () {
+        if (!playing) return;
+        status.textContent = 'No se pudo reproducir el video; podés continuar con la aventura.';
+        showCard();
+      });
       skip.focus();
     }
+    video.addEventListener('playing', function () {
+      if (!playing || !wantedSound) return;
+      soundtrack.start({ scene: CFG.id === '002' ? 'gifts' : 'cafe', offset: video.currentTime });
+    });
     video.addEventListener('ended', showCard);
-    video.addEventListener('error', function () { status.textContent = 'El video no cargó. Seguís con la imagen.'; showCard(); });
+    /* Algunos navegadores no disparan ended tras buscar cerca del último cuadro.
+       Cerrar también por la línea de tiempo evita una pantalla inmóvil al acabar. */
+    video.addEventListener('timeupdate', function () {
+      if (playing && !shownCard && Number.isFinite(video.duration) &&
+          video.duration > 0 && video.currentTime >= video.duration - 0.22) showCard();
+    });
+    video.addEventListener('error', function () {
+      status.textContent = 'El video no cargó; podés continuar con la imagen y el juego.';
+      showCard();
+    });
     skip.addEventListener('click', showCard);
-    replay.addEventListener('click', playVideo);
+    enterSound.addEventListener('click', function () { playVideo(true); });
+    enterQuiet.addEventListener('click', function () { playVideo(false); });
+    document.getElementById('nb-gate-skip').addEventListener('click', showCard);
+    replay.addEventListener('click', showGate);
+    window.addEventListener('pagehide', stopIntroSound);
+    /* Pausar la pista si la pestaña pierde visibilidad. Nunca continuar sonido sin video. */
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && playing && !shownCard) {
+        try { video.pause(); } catch (_) {}
+        showCard();
+      }
+    });
+
     var prev = opts.loadPlayer();
     nameInput.value = prev ? prev.name : '';
     function sync() { start.disabled = !LAB2.cleanName(nameInput.value); }
@@ -225,14 +292,20 @@
     document.getElementById('nb-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var name = LAB2.cleanName(nameInput.value); if (!name) return;
-      NB.audio.start();                                  /* el sonido empieza con este clic, nunca solo */
-      root.hidden = true; document.body.classList.remove('nb-locked');
-      document.getElementById('nb-sound').hidden = false; renderControls();
+      stopIntroSound();
+      NB.audio.start();                 /* sonido del juego tras el clic, separado de la introducción */
+      root.hidden = true;
+      document.body.classList.remove('nb-locked');
+      document.getElementById('nb-sound').hidden = false;
+      renderControls();
       opts.onStart({ name: name });
     });
-    /* Primera visita: video. Ya vista, movimiento reducido o ahorro de datos: directo a la portada con la imagen. */
-    if (seen || reduced || conn.saveData) { root.classList.add('is-card'); skip.hidden = true; card.hidden = false; shownCard = true; }
-    else playVideo();
+
+    /* Regreso y accesibilidad: no forzar video largo ni cargas a quien ya vio el episodio. */
+    if (seen || reduced || conn.saveData) {
+      shownCard = false;
+      showCard();
+    } else showGate();
   };
   NB.reduced = reduced;
 })();
