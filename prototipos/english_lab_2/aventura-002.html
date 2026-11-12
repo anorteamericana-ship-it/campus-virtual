@@ -18,8 +18,21 @@
   <!-- El video no tiene pista de audio. src se asigna por script solo si se va a reproducir, para no descargarlo en vano. -->
   <video class="nb-video" id="nb-video" muted playsinline preload="none" poster="media/harbor_gifts_poster.jpg"
     aria-label="Introducción animada: una calle de Port Hazel por la tarde, la tienda Harbor Gifts y un cartel que dice Come in, open."></video>
-  <p class="nb-caption">Port Hazel, sábado, 3:30 p. m. En la puerta de Harbor Gifts hay un cartel: <span lang="en">Come in, open</span>.</p>
-  <button type="button" class="nb-btn nb-btn-ghost nb-skip" id="nb-skip">Omitir introducción</button>
+  <section class="nb-audio-gate" id="nb-audio-gate" aria-label="Iniciar introducción">
+  <p class="nb-kicker">NORTHBOUND · AVENTURA 002</p>
+  <p class="nb-gate-eyebrow">UNA HISTORIA QUE VAS A VIVIR EN INGLÉS</p>
+  <h1>Bienvenido a <em>Port Hazel</em></h1>
+  <p class="nb-gate-desc">La aventura comienza con un video animado y una ambientación sonora original. Activá el sonido para escuchar la ciudad y entrar en la historia.</p>
+  <div class="nb-gate-actions">
+    <button type="button" class="nb-btn nb-btn-sound" id="nb-enter-sound">▶ Comenzar con sonido</button>
+    <button type="button" class="nb-btn nb-btn-ghost" id="nb-enter-quiet">Ver video en silencio</button>
+    <button type="button" class="nb-gate-skip" id="nb-gate-skip">Omitir video y jugar</button>
+  </div>
+  <p class="nb-gate-note">El navegador requiere que pulses un botón para activar el audio. Podrás controlar voces, ambiente y efectos durante el juego.</p>
+  <p class="nb-gate-status" id="nb-gate-status" role="status" aria-live="polite"></p>
+</section>
+<p class="nb-caption">Port Hazel, sábado, 3:30 p. m. En la puerta de Harbor Gifts hay un cartel: <span lang="en">Come in, open</span>.</p>
+  <button type="button" class="nb-btn nb-btn-ghost nb-skip" id="nb-skip" hidden>Omitir introducción</button>
   <div class="nb-title" id="nb-title" hidden>
     <p class="nb-kicker">Northbound · Aventura 002 · Básico I, Unidad 2</p>
     <h1>Un recuerdo <em>de Port Hazel</em></h1>
@@ -62,6 +75,7 @@
   window.NB_CONFIG = { id: '002', flags: { gift: 'postcard' }, fixed: { drink: drink }, lastScene: 'ADV002-S3', souvenir: 'postcard', next: 'tu primer día en The Corner Cup' };
 })();
 </script>
+<script src="nb_intro_audio.js"></script>
 <script src="nb_cine.js"></script>
 <script>
 (function () {
