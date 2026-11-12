@@ -1,9 +1,9 @@
 # NORTHBOUND · Anteproyecto para Natalia y docentes
 ## Reto de la Semana 001 — Mi primera entrevista en inglés
 
-**Estado:** Prototipo visual y académico en BORRADOR IA. No aprobado para alumnos ni publicidad.  
-**Ubicación:** Ciudad Port Hazel, cafetería ficticia *The Corner Cup*.  
-**Duración objetivo:** 5–8 minutos, 3 escenas troncales + 1 bonus optativo.  
+**Estado:** Prototipo visual y académico en BORRADOR IA. No aprobado para alumnos ni publicidad.
+**Ubicación:** Ciudad Port Hazel, cafetería ficticia *The Corner Cup*.
+**Duración objetivo:** 5–8 minutos, 3 escenas troncales + 1 bonus optativo.
 **Rol del participante:** Persona recién llegada que se presenta a una entrevista corta en una cafetería. No se promete un empleo real.
 
 ## Concepto para diseño
@@ -55,5 +55,5 @@ La ciudad es un hilo conductor, no un mundo abierto. La cámara se acerca a la c
 
 GitHub Pages ofrece archivos públicos; `noindex`, una ruta no anunciada o un parámetro `?revision=1` **NO** constituyen control de acceso. Si el piloto debe ser accesible exclusivamente a Natalia, Dirección y docentes, usar protección **del servidor** o un servicio de acceso previo (p. ej. Cloudflare Access con identidades autorizadas) antes de exponer la ruta. No incorporar una contraseña en JavaScript ni crear una falsa puerta de seguridad.
 
-**Archivos de trabajo:** `reto-semana.html`, `reto_001_content.js`, `reto_001.css`, `lab2_*.js`.  
+**Archivos de trabajo:** `reto-semana.html`, `reto_001_content.js`, `reto_001.css`, `lab2_*.js`.
 **Fuentes de verdad:** `AGENTS.md`, `00_DOCUMENTACION/ENGLISH_LAB_2_ESTADO.md`, sílabus `src/syllabus.jsx`.
