@@ -1337,7 +1337,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
           </div>}
           {closedAttendanceNotice&&<div role="status"
             style={{padding:'8px 12px',background:'#EAF6EF',borderRadius:9,
-              color:'#166534',fontSize:12,marginBottom:10}}>{closedAttendanceNotice}</div>
+              color:'#166534',fontSize:12,marginBottom:10}}>{closedAttendanceNotice}</div>}
           {loading?<LoadingState variant="small" title="Cargando detalle…"/>:<>
             <div style={{padding:'16px 17px',border:'1px solid var(--line)',borderRadius:'var(--r-lg)',background:'#FBF7EF',marginBottom:15}}>
               <div style={{...vdLabelStyle,marginBottom:5}}>{detalle?.unidad||`Nivel ${nivel}`}</div>
