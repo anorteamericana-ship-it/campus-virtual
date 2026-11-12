@@ -181,7 +181,14 @@ try {
   ok('opciones barajadas', 'la correcta aparece en las tres posiciones');
   await context.close();
 
-  // 7. Teléfono, sin voz y solo teclado
+  // 7. La escritura conserva apostrofes y no acepta una contraccion mal escrita.
+  ({ page, context } = await newPage(browser));
+  const normalized = await page.evaluate(() => [window.LAB2.normEnglish("You're welcome!"), window.LAB2.normEnglish('youre welcome')]);
+  assert.deepEqual(normalized, ["you're welcome", 'youre welcome']);
+  ok('escritura estricta', 'youre no equivale a you\'re');
+  await context.close();
+
+  // 8. Teléfono, sin voz y solo teclado
   ({ page, problems, context } = await newPage(browser, { width: 375, height: 700, noVoice: true }));
   await page.fill('#l2-name', 'Ana');
   await page.keyboard.press('Enter');
