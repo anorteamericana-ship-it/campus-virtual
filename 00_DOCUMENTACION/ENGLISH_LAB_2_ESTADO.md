@@ -428,3 +428,19 @@ Misma rama y mismo PR borrador (#764). Sin fusionar ni publicar. Contenido en `B
 **Limitaciones:** GitHub Pages es público para cualquier persona con la URL; `revision=1` no es autorización ni privacidad. No se anunció a alumnos. El QA automatizado no demuestra la percepción humana de la mezcla, la calidad de voz o el desempeño en Safari/iPhone físico. Deben evaluarlo Natalia y un docente antes de invitar prospectos. E3 de recursos estáticos confirmado; integración con cuenta/sesión de Campus todavía NO.
 
 **Resultado de esta pasada:** 6/6 operaciones técnicas cerradas (módulo sonoro, entrada al juego, presentación, alternativas/fallback, E1 y Pages+readback). **0/2 revisiones humanas** completadas (Natalia y docente). No expresar 100 % del producto completo; la extensión a más unidades sigue en cola.
+
+## 19. Ciudad Guaria — vista institucional exclusiva de Dirección (12-nov-2026)
+
+**Solicitud:** revisión previa del propietario antes de invitar a Natalia, Raquel y docentes. Ciudad definitiva `Ciudad Guaria`, café definitivo `Café La Esquina`; tienda de Aventura 002 `Detalles de la Plaza` como denominación creativa provisional.
+
+**Identidad sustentada en código institucional:** `styles/tokens.css`: navy `#002F6C`, rojo `#DA291C`, crema `#F3EEE6`, familia Poppins; símbolo real `assets/academy_a.svg`, con trazo curvo central. No inventar otra A ni usar dorado/granate obsoletos.
+
+**Candidato de revisión (no sustituye lanzamiento existente):** `prototipos/english_lab_2/presentacion-guaria.html`. Se reduce a tres bloques: hero audiovisual y un único CTA para jugar, `Tu historia empieza con una decisión` con cuatro etapas integradas, y cierre de matrícula institucional. Se eliminan de esta vista la pantalla redundante de Campus, las comparaciones con el formato antiguo, explicaciones técnicas de MP4 y el botón redundante para ver silencioso. Se mantiene opción `Saltar tráiler` durante reproducción y se pasa a nombre y juego sin repetir película.
+
+**Continuidad y aislamiento:** `guaria-001.html`, `guaria-002.html` y motor original del Lab; identificadores curriculares y pasos conservados. Guardado exclusivo `GP001REVIEW`, `GP002REVIEW`; elección en `nb_flags_gpr001`, sin tocar `ADV001DEMO`, `ADV002DEMO`, las URLs `aventura-001.html`/`aventura-002.html` ni archivos de progreso publicados. La adaptación de textos visibles vive en `guaria-content.js` y la capa cinematográfica candidata `guaria_cine.js`. Esta es una vista previa; migración definitiva sin duplicación de motor se decide tras aprobación.
+
+**Medios originales del candidato:** `guaria_cafe_intro.mp4` y `guaria_gifts_intro.mp4`, con versiones 480p y pósteres actualizados. Proveniencia reproducible: `media_src/guaria_scene.html`, `render_guaria.mjs`, `render_guaria_posters.mjs` y script de preparación. Son animaciones 2D Canvas/ffmpeg, no IA generativa. Web Audio original por activación del usuario, respetando políticas del navegador; video de fondo es silencioso. No se publican marcas comerciales ajenas.
+
+**QA local ya observado (Google Chrome real sobre HTTP local):** `qa_guaria_preview.mjs` **7/7 grupos PASS**, incluyendo marca/3 secciones, vídeo con señal de audio no nula, CTA→tráiler→saltar→nombre→episodio real, primera escena, ausencia de llamadas al backend, ancho 390px sin overflow y Aventura 002. Verificación CI GitHub en PR #769 antes del merge. QA histórico separado de 15+21 grupos permanece como puerta de regresión.
+
+**Compuerta:** publicar la ruta de candidato solo tras CI y comprobar GET/HEAD del dominio GitHub Pages. **No distribuir a evaluadores** hasta que Leonardo revise diseño, ritmo y nombres. El enlace del candidato es público para quien lo conozca y `noindex` no lo convierte en privado. No tocar login, Apps Script, datos, matrículas, notas o pagos.
