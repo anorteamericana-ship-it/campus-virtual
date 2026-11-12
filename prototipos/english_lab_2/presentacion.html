@@ -83,13 +83,14 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 <p class="lead">Recorré Port Hazel, entrá a The Corner Cup y practicá tu primera entrevista en inglés. Compará la experiencia audiovisual nueva con el reto anterior.</p>
 <div class="cine-feature">
   <div class="cine-frame">
-    <video id="nb-promo-video" controls muted playsinline preload="none" poster="media/corner_cup_poster.jpg" aria-label="Tráiler animado de diez segundos de Port Hazel y The Corner Cup">
+    <video id="nb-promo-video" muted playsinline preload="none" poster="media/corner_cup_poster.jpg" aria-label="Tráiler animado de diez segundos de Port Hazel y The Corner Cup">
       <source src="media/corner_cup_intro_480.mp4" type="video/mp4" media="(max-width: 700px)">
       <source src="media/corner_cup_intro.mp4" type="video/mp4">
       Tu navegador no puede reproducir este video. Abrí el juego para utilizar la versión con imagen de respaldo.
     </video>
     <div class="cine-sound-controls">
-      <button type="button" class="pill cine-sound-start" id="nb-promo-play-sound">▶ Reproducir tráiler con sonido</button>
+      <button type="button" class="pill cine-sound-start" id="nb-promo-play-sound">▶ Ver tráiler con sonido</button>
+      <button type="button" class="pill ghost cine-sound-quiet" id="nb-promo-play-quiet">Ver en silencio</button>
       <button type="button" class="pill ghost cine-sound-mute" id="nb-promo-mute" hidden>Silenciar tráiler</button>
     </div>
     <p class="cine-caption">Animación original de 10 segundos con banda sonora y efectos creados para Northbound. El audio se activa al tocar el botón; las voces de los personajes comienzan dentro del juego.</p>
@@ -133,10 +134,11 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
   var v = document.getElementById('nb-promo-video');
   var sound = document.getElementById('nb-promo-play-sound');
   var mute = document.getElementById('nb-promo-mute');
+  var quiet = document.getElementById('nb-promo-play-quiet');
   var status = document.getElementById('nb-promo-audio-state');
-  var score = window.NBIntroAudio;
+  var score = window.NBIntroAudio || { prime:function(){return false;}, start:function(){return false;}, stop:function(){} };
   var enabled = false;
-  if (!v || !sound || !mute || !score) return;
+  if (!v || !sound || !mute || !quiet) return;
   function silence() { score.stop(); mute.hidden = true; }
   function startSoundIfPlaying() {
     if (!enabled) return;
@@ -151,6 +153,7 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
     }
   }
   sound.addEventListener('click', function () {
+    v.controls = true;
     enabled = !!score.prime();
     if (!enabled) {
       status.textContent = 'Audio no disponible en este navegador. El tráiler puede verse en silencio.';
@@ -168,6 +171,14 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
         status.textContent = 'La reproducción fue bloqueada. Usá los controles del video.';
       });
     }
+  });
+  quiet.addEventListener('click', function () {
+    enabled = false;
+    silence();
+    v.controls = true;
+    var p = v.play();
+    if (p && p.catch) p.catch(function () { status.textContent = 'Usá los controles del video para reproducirlo.'; });
+    else status.textContent = 'Video en silencio. Podés activar la ambientación cuando quieras.';
   });
   mute.addEventListener('click', function () {
     enabled = false;
