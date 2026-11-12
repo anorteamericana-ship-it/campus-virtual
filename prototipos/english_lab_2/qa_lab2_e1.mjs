@@ -222,11 +222,11 @@ try {
     window.__qaIdentityRoot = ReactDOM.createRoot(host);
     window.__qaIdentityRoot.render(React.createElement(EnglishLab2View, { usuario:{ codigo:'U1' }, preview:true }));
   });
-  await page.locator('#qa-identity-host .l2-pass-name').waitFor();
-  assert.equal((await page.locator('#qa-identity-host .l2-pass-name').textContent()).trim(), 'Ana');
+  await page.locator('#qa-identity-host .l2-pass-name').first().waitFor();
+  assert.equal((await page.locator('#qa-identity-host .l2-pass-name').first().textContent()).trim(), 'Ana');
   await page.evaluate(() => window.__qaIdentityRoot.render(React.createElement(EnglishLab2View, { usuario:{ codigo:'U2' }, preview:true })));
   await page.waitForFunction(() => document.querySelector('#qa-identity-host .l2-pass-name')?.textContent?.trim() === 'Luis');
-  assert.equal((await page.locator('#qa-identity-host .l2-pass-name').textContent()).trim(), 'Luis');
+  assert.equal((await page.locator('#qa-identity-host .l2-pass-name').first().textContent()).trim(), 'Luis');
   ok('cambio de identidad', 'nuevo usuario ve exclusivamente su pasaporte local');
   await context.close();
 
