@@ -212,6 +212,35 @@ try {
   assert.deepEqual(problems, []);
   await context.close();
 
+
+  // 9. Una identidad nueva remonta el estado; nunca arrastra el pasaporte anterior.
+  ({ page, context } = await newPage(browser));
+  await page.evaluate(() => {
+    localStorage.setItem('an_english_lab_2_v1_U1', JSON.stringify({ player:{ name:'Ana' }, scenes:{} }));
+    localStorage.setItem('an_english_lab_2_v1_U2', JSON.stringify({ player:{ name:'Luis' }, scenes:{} }));
+    const host = document.createElement('div'); host.id = 'qa-identity-host'; document.body.appendChild(host);
+    window.__qaIdentityRoot = ReactDOM.createRoot(host);
+    window.__qaIdentityRoot.render(React.createElement(EnglishLab2View, { usuario:{ codigo:'U1' }, preview:true }));
+  });
+  await page.locator('#qa-identity-host .l2-pass-name').waitFor();
+  assert.equal((await page.locator('#qa-identity-host .l2-pass-name').textContent()).trim(), 'Ana');
+  await page.evaluate(() => window.__qaIdentityRoot.render(React.createElement(EnglishLab2View, { usuario:{ codigo:'U2' }, preview:true })));
+  await page.waitForFunction(() => document.querySelector('#qa-identity-host .l2-pass-name')?.textContent?.trim() === 'Luis');
+  assert.equal((await page.locator('#qa-identity-host .l2-pass-name').textContent()).trim(), 'Luis');
+  ok('cambio de identidad', 'nuevo usuario ve exclusivamente su pasaporte local');
+  await context.close();
+
+  // 10. La presentación comercial está aislada, tiene seis pantallas y un CTA real.
+  ({ page, problems, context } = await newPage(browser, { width:375, height:700 }));
+  await page.goto(URL.replace(/index\\.html$/, 'presentacion.html'), { waitUntil:'load' });
+  assert.equal(await page.locator('main section.slide').count(), 6, 'seis pantallas');
+  assert.equal(await page.locator('a[href^="https://wa.me/50686860097"]').count(), 2, 'CTA institucional visible');
+  assert(await page.locator('a[href="./index.html"]').count() > 0, 'enlace real a demo');
+  assert(await noSideScroll(page), 'presentacion móvil sin scroll horizontal');
+  assert.deepEqual(problems, [], 'presentacion sin errores de consola');
+  ok('presentación comercial', 'seis pantallas, CTA WhatsApp, demo, 375 px');
+  await context.close();
+
   console.log('\nE1 PASS ·', results.length, 'grupos');
 } finally {
   await browser.close();
