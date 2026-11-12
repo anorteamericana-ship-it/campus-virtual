@@ -37,6 +37,6 @@ body.l2-weekly-page .l2-root .l2-hero h1{font-size:clamp(2.3rem,6vw,3.8rem)}
 .weekly-review{border-top:3px solid #e5b960;background:#1a2c4d}
 .weekly-review[hidden]{display:none!important}
 .weekly-review label{display:block;margin:1rem 0;font-weight:700}
-.weekly-review textarea,.weekly-review select{display:block;width:100%;max-width:100%;background:#f9f7f1;color:#132344;border:2px solid #9eaac6;border-radius:7px;padding:.7rem;font:inherit;margin-top:.4rem}
+.weekly-review textarea,.weekly-review select{display:block;box-sizing:border-box;width:100%;max-width:100%;background:#f9f7f1;color:#132344;border:2px solid #9eaac6;border-radius:7px;padding:.7rem;font:inherit;margin-top:.4rem}
 .weekly-review button{border:0;border-radius:8px;background:#e5b960;color:#19274b;font-weight:800;padding:.8rem 1.2rem;cursor:pointer}
 @media(max-width:730px){.weekly-hero{grid-template-columns:1fr;padding:1.5rem 1rem}.weekly-art{height:225px}.weekly-meta span{font-size:.74rem}.weekly-nav{flex-wrap:wrap}}
