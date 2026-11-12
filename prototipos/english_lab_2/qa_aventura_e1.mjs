@@ -16,13 +16,18 @@ async function open(browser, opts = {}) {
   page.on('pageerror', e => problems.push(String(e)));
   page.on('request', r => { const u = r.url(); if (/script\.google|googleusercontent/.test(u)) backend.push(u); if (/\.mp4/.test(u)) media.push(u.split('/').pop()); });
   if (opts.route) await opts.route(page);
+  if (opts.noAudio) await page.addInitScript(() => {
+    Object.defineProperty(window, 'AudioContext', { value: undefined, configurable: true });
+    Object.defineProperty(window, 'webkitAudioContext', { value: undefined, configurable: true });
+  });
   if (opts.seed) await page.addInitScript(seed => { for (const k in seed) if (!localStorage.getItem(k)) localStorage.setItem(k, seed[k]); }, opts.seed);
   await page.goto(opts.url || URL, { waitUntil: 'load' });
   return { context, page, problems, backend, media };
 }
 const noSideScroll = page => page.evaluate(() => document.scrollingElement.scrollWidth <= window.innerWidth + 1);
 async function start(page, name) {
-  if (await page.isVisible('#nb-skip')) await page.click('#nb-skip');
+  if (await page.isVisible('#nb-audio-gate')) await page.click('#nb-gate-skip');
+  else if (await page.isVisible('#nb-skip')) await page.click('#nb-skip');
   await page.fill('#nb-name', name);
   await page.click('#nb-start');
   await page.waitForSelector('.l2-episode');
@@ -58,21 +63,34 @@ async function playStep(page, step, name, vars, mistakes) {
 
 const browser = await chromium.launch({ channel: process.env.QA_CHANNEL || 'chrome', args: ['--autoplay-policy=document-user-activation-required'] });
 try {
-  // 1. Primera visita en computadora: el video se reproduce de verdad, en silencio, y el sonido no arranca solo
+  // 1. Primera visita: no hay audio ni descarga hasta que Natalia elige iniciar.
   let { page, context, problems, backend, media } = await open(browser);
-  await page.waitForFunction(() => { const v = document.getElementById('nb-video'); return v.currentTime > 0.6 && v.videoWidth > 0; }, null, { timeout: 15000 });
-  const v = await page.evaluate(() => { const x = document.getElementById('nb-video'); return { w: x.videoWidth, h: x.videoHeight, d: x.duration, muted: x.muted, paused: x.paused, src: x.currentSrc.split('/').pop(), audio: window.NB.audio.state().context }; });
-  assert.deepEqual([v.w, v.h, v.muted, v.paused, v.src, v.audio], [1280, 720, true, false, 'corner_cup_intro.mp4', 'none']);
-  assert(Math.abs(v.d - 10) < 0.2, 'dura 10 s');
+  await page.waitForSelector('#nb-audio-gate:not([hidden])');
+  assert.equal(await page.locator('#nb-enter-sound').isVisible(), true);
+  assert.deepEqual(media, [], 'no descargar MP4 antes del consentimiento');
+  assert.deepEqual(await page.evaluate(() => window.NBIntroAudio.state()), { available:true, context:'none', active:false, starts:0, error:'' });
+  await page.click('#nb-enter-sound');
+  await page.waitForFunction(() => {
+    const v = document.getElementById('nb-video'), a = window.NBIntroAudio.state();
+    return v.currentTime > 0.6 && v.videoWidth > 0 && a.context === 'running' && a.active && a.starts >= 1;
+  }, null, { timeout: 15000 });
+  const v = await page.evaluate(() => {
+    const x = document.getElementById('nb-video');
+    return { w:x.videoWidth, h:x.videoHeight, d:x.duration, muted:x.muted, paused:x.paused,
+      src:x.currentSrc.split('/').pop(), gameAudio:window.NB.audio.state().context, intro:window.NBIntroAudio.state() };
+  });
+  assert.deepEqual([v.w,v.h,v.muted,v.paused,v.src,v.gameAudio], [1280,720,true,false,'corner_cup_intro.mp4','none']);
+  assert(Math.abs(v.d - 10) < 0.2, '10 s');
   assert.equal(await page.isVisible('#nb-title'), false);
   if (shots) { await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 5.4); await page.screenshot({ path: shots + '/a1_video.png' }); }
-  ok('video reproducido', `${v.w}x${v.h}, ${v.d.toFixed(1)} s, en silencio, avanzando; sin contexto de audio antes del clic`);
+  ok('entrada con sonido real', 'audio Web Audio activo y sincronizado al MP4 720p solo después del clic');
 
   // 2. Omitir con teclado, portada y comienzo
   await page.keyboard.press('Escape');
   await page.waitForSelector('#nb-title:not([hidden])');
   assert.equal(await page.isDisabled('#nb-start'), true, 'sin nombre no empieza');
   assert.equal(await page.evaluate(() => document.getElementById('nb-video').paused), true, 'el video se detiene al omitir');
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false, 'la música se detiene al omitir');
   await page.keyboard.type('José');
   if (shots) await page.screenshot({ path: shots + '/a2_portada.png' });
   await page.keyboard.press('Enter');
@@ -162,7 +180,10 @@ try {
 
   // 8. Celular: versión liviana del video, sin desplazamiento lateral
   ({ page, context, media, problems } = await open(browser, { width: 390, height: 780 }));
-  await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 0.3, null, { timeout: 15000 });
+  assert(await page.locator('#nb-audio-gate').isVisible());
+  assert(await noSideScroll(page), 'portada de sonido no desborda en móvil');
+  await page.click('#nb-enter-sound');
+  await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 0.3 && window.NBIntroAudio.state().active, null, { timeout: 15000 });
   assert.deepEqual([...new Set(media)], ['corner_cup_intro_480.mp4']);
   assert(await noSideScroll(page));
   await start(page, 'Ana'); assert(await noSideScroll(page));
@@ -185,8 +206,10 @@ try {
 
   // 10. El video falla: se sigue con la imagen y un aviso
   ({ page, context } = await open(browser, { route: p => p.route('**/*.mp4', r => r.abort()) }));
-  await page.waitForSelector('#nb-title:not([hidden])');
-  assert((await page.textContent('#nb-video-status')).includes('Seguís con la imagen'));
+  await page.click('#nb-enter-sound');
+  await page.waitForSelector('#nb-title:not([hidden])', { timeout: 15000 });
+  assert(/video|reproducir/i.test(await page.textContent('#nb-video-status')), 'aviso de video fallido');
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false, 'la música se detiene si el video falla');
   await start(page, 'Ana');
   ok('video no disponible', 'aviso claro y la aventura sigue con la imagen de respaldo');
 
@@ -200,7 +223,8 @@ try {
   // 12. Aventura 002: mismos motores, solo datos nuevos. Hereda nombre y bebida de la 001.
   const seed = { nb_flags_001: JSON.stringify({ drink: 'tea' }), an_english_lab_2_v1_ADV001DEMO: JSON.stringify({ player: { name: 'Jose' }, scenes: {} }) };
   ({ page, context, problems, backend, media } = await open(browser, { url: BASE + 'aventura-002.html', seed }));
-  await page.waitForFunction(() => { const x = document.getElementById('nb-video'); return x.currentTime > 0.5 && x.videoWidth === 1280; }, null, { timeout: 15000 });
+  await page.click('#nb-enter-sound');
+  await page.waitForFunction(() => { const x = document.getElementById('nb-video'); return x.currentTime > 0.5 && x.videoWidth === 1280 && window.NBIntroAudio.state().active; }, null, { timeout: 15000 });
   assert.deepEqual([...new Set(media)], ['harbor_gifts_intro.mp4']);
   if (shots) { await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 5.6); await page.screenshot({ path: shots + '/b1_video.png' }); }
   await page.click('#nb-skip');
@@ -246,13 +270,18 @@ try {
   assert.equal(await page.locator('a[href="./reto-semana.html?revision=1"]').count(), 1, 'acceso a comparativa anterior');
   assert.equal((await page.request.get(BASE + 'media/corner_cup_intro_480.mp4')).status(), 200, 'archivo video para móvil');
   assert(await noSideScroll(page), 'presentación integrada sin desplazamiento horizontal móvil');
-  await page.locator('#nb-promo-video').evaluate(v => v.play());
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().context), 'none', 'el tráiler no inicia el sonido sin clic');
+  await page.click('#nb-promo-play-sound');
   await page.waitForFunction(() => {
-    const v=document.querySelector('#nb-promo-video');return v && v.currentTime > 0.2 && v.videoWidth >= 854;
+    const v=document.querySelector('#nb-promo-video'), a=window.NBIntroAudio.state();
+    return v && v.currentTime > 0.2 && v.videoWidth >= 854 && a.context === 'running' && a.active;
   }, null, {timeout:12000});
+  assert(await page.locator('#nb-promo-mute').isVisible(), 'control para silenciar');
+  await page.click('#nb-promo-mute');
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false, 'tráiler silenciado inmediatamente');
   assert.deepEqual(problems, [], 'presentación sin errores de consola');
   assert.deepEqual(backend, [], 'presentación sin Apps Script');
-  ok('presentación + video', '6 pantallas preservadas, MP4 decodificado en móvil, enlaces a versiones y cero backend');
+  ok('presentación + video con sonido', '6 pantallas, MP4 móvil, Web Audio desde el clic, silenciar y cero backend');
   await context.close();
 
   // 14. Natalia puede revisar el formato audiovisual sin registros remotos.
@@ -273,6 +302,35 @@ try {
   ({ page, context } = await open(browser, { url: URL, width:390, height:844 }));
   assert.equal(await page.locator('#nb-review').isVisible(), false);
   ok('revisión opcional', 'formulario no visible sin parámetro; no es un control de privacidad');
+  await context.close();
+
+  // 16. Audio deshabilitado por el sistema: salida en silencio, sin pantalla rota.
+  ({ page, context, problems, backend } = await open(browser, { noAudio:true, width:390, height:800 }));
+  assert(await page.locator('#nb-audio-gate').isVisible());
+  await page.click('#nb-enter-sound');
+  await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 0.2, null, { timeout: 12000 });
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().available), false);
+  await page.click('#nb-skip');
+  assert(await page.locator('#nb-title').isVisible());
+  await start(page, 'Ana');
+  assert(await page.locator('.l2-episode').isVisible(), 'el juego sigue sin AudioContext');
+  assert.deepEqual(problems, []); assert.deepEqual(backend, []);
+  ok('audio no disponible', 'el video y el juego continúan sin errores, con alternativa visible');
+  await context.close();
+
+  // 17. Omitir, repetir y volver a ver con sonido sin mezclar clips anteriores.
+  ({ page, context, media } = await open(browser));
+  await page.click('#nb-gate-skip');
+  assert(await page.locator('#nb-title').isVisible());
+  assert.deepEqual(media, [], 'se omitió sin descargar video');
+  await page.click('#nb-replay');
+  assert(await page.locator('#nb-audio-gate').isVisible());
+  await page.click('#nb-enter-sound');
+  await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 0.3 && window.NBIntroAudio.state().active);
+  await page.click('#nb-skip');
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false);
+  assert(await page.locator('#nb-title').isVisible());
+  ok('omitir y repetir', 'sin descargas al omitir; replay con banda sonora; ambos se detienen al salir');
   await context.close();
 
   console.log('\nE1 AVENTURA PASS ·', passed, 'grupos');
