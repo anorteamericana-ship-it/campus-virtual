@@ -109,7 +109,7 @@ try {
   await go(page);
   assert(await page.locator('.l2-say-hidden').count(), 'primero se escucha: el texto queda detrás de los subtítulos');
   await page.click('.l2-say-hidden .l2-link');
-  assert((await page.textContent('.l2-say')).includes('Good morning! Welcome to The Corner Cup.'), 'los subtítulos siempre están disponibles');
+  assert((await page.textContent('.l2-say')).includes('Good morning! Welcome to North Coffee.'), 'los subtítulos siempre están disponibles');
   assert.equal(await page.locator('.l2-listen-slow').count(), 1, 'botón Más lento');
   assert(await page.locator('.nb-portrait').count(), 'retrato de Ms. Rivera');
   if (shots) await page.screenshot({ path: shots + '/a3_escena.png', fullPage: true });
@@ -142,7 +142,7 @@ try {
   // 5. Recuerdo final
   await page.waitForSelector('#nb-souvenir:not([hidden])');
   const sv = await page.textContent('#nb-souvenir');
-  assert(sv.includes('Jose') && sv.includes('tea') && sv.includes('Harbor Gifts'));
+  assert(sv.includes('Jose') && sv.includes('tea') && sv.includes('City Gifts'));
   assert.equal(await page.getAttribute('#nb-souvenir .nb-next a', 'href'), 'aventura-002.html', 'el recuerdo lleva a la siguiente historia');
   if (shots) await page.screenshot({ path: shots + '/a4_recuerdo.png' });
   await page.keyboard.press('Escape');
@@ -250,7 +250,7 @@ try {
   }
   await page.waitForSelector('#nb-souvenir:not([hidden])');
   const sv2 = await page.textContent('#nb-souvenir');
-  assert(sv2.includes('Jose') && sv2.includes('bought a mug') && sv2.includes('tu primer día en The Corner Cup') && sv2.includes('En preparación'));
+  assert(sv2.includes('Jose') && sv2.includes('bought a mug') && sv2.includes('tu primer día en North Coffee') && sv2.includes('En preparación'));
   assert(await page.locator('#nb-souvenir .nb-postcard').count());
   if (shots) await page.screenshot({ path: shots + '/b3_postal.png' });
   await page.click('#nb-sv-close');

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Northbound · Un recuerdo de Port Hazel</title>
+<title>Northbound · Un recuerdo de North City</title>
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,11 +17,11 @@
 <div class="nb-intro" id="nb-intro">
   <!-- El video no tiene pista de audio. src se asigna por script solo si se va a reproducir, para no descargarlo en vano. -->
   <video class="nb-video" id="nb-video" muted playsinline preload="none" poster="media/harbor_gifts_poster.jpg"
-    aria-label="Introducción animada: una calle de Port Hazel por la tarde, la tienda Harbor Gifts y un cartel que dice Come in, open."></video>
+    aria-label="Introducción animada: una calle de North City por la tarde, la tienda City Gifts y un cartel que dice Come in, open."></video>
   <section class="nb-audio-gate" id="nb-audio-gate" aria-label="Iniciar introducción">
   <p class="nb-kicker">NORTHBOUND · AVENTURA 002</p>
   <p class="nb-gate-eyebrow">UNA HISTORIA QUE VAS A VIVIR EN INGLÉS</p>
-  <h1>Bienvenido a <em>Port Hazel</em></h1>
+  <h1>Bienvenido a <em>North City</em></h1>
   <p class="nb-gate-desc">La aventura comienza con un video animado y una ambientación sonora original. Activá el sonido para escuchar la ciudad y entrar en la historia.</p>
   <div class="nb-gate-actions">
     <button type="button" class="nb-btn nb-btn-sound" id="nb-enter-sound">▶ Comenzar con sonido</button>
@@ -31,11 +31,11 @@
   <p class="nb-gate-note">El navegador requiere que pulses un botón para activar el audio. Podrás controlar voces, ambiente y efectos durante el juego.</p>
   <p class="nb-gate-status" id="nb-gate-status" role="status" aria-live="polite"></p>
 </section>
-<p class="nb-caption">Port Hazel, sábado, 3:30 p. m. En la puerta de Harbor Gifts hay un cartel: <span lang="en">Come in, open</span>.</p>
+<p class="nb-caption">North City, sábado, 3:30 p. m. En la puerta de City Gifts hay un cartel: <span lang="en">Come in, open</span>.</p>
   <button type="button" class="nb-btn nb-btn-ghost nb-skip" id="nb-skip" hidden>Omitir introducción</button>
   <div class="nb-title" id="nb-title" hidden>
     <p class="nb-kicker">Northbound · Aventura 002 · Básico I, Unidad 2</p>
-    <h1>Un recuerdo <em>de Port Hazel</em></h1>
+    <h1>Un recuerdo <em>de North City</em></h1>
     <p>Vas a entrar a una tienda, nombrar lo que ves, averiguar de quién son unas cosas perdidas y comprar tu recuerdo. Son unos 6 minutos.</p>
     <form class="nb-form" id="nb-form">
       <label for="nb-name">¿Cómo te llamás? Te van a llamar así en la historia.</label>
@@ -72,7 +72,7 @@
 (function () {
   var drink = 'coffee';
   try { drink = (JSON.parse(window.localStorage.getItem('nb_flags_001')) || {}).drink || 'coffee'; } catch (_) {}
-  window.NB_CONFIG = { id: '002', flags: { gift: 'postcard' }, fixed: { drink: drink }, lastScene: 'ADV002-S3', souvenir: 'postcard', next: 'tu primer día en The Corner Cup' };
+  window.NB_CONFIG = { id: '002', flags: { gift: 'postcard' }, fixed: { drink: drink }, lastScene: 'ADV002-S3', souvenir: 'postcard', next: 'tu primer día en North Coffee' };
 })();
 </script>
 <script src="nb_intro_audio.js"></script>

@@ -13,9 +13,9 @@
     level: 'B1',
     unit: 1,
     number: 1,
-    title: 'The Corner Cup Interview',
+    title: 'North Coffee Interview',
     title_es: 'Mi primera entrevista en inglés',
-    place: 'The Corner Cup · Port Hazel',
+    place: 'North Coffee · North City',
     status: 'BORRADOR IA',
     syllabus: {
       source: 'src/syllabus.jsx · Básico I · Unit 1, L1–L2; BONUS Unit 3 y Unit 8',
@@ -26,9 +26,9 @@
         'BONUS de exploración: reconocer preguntas sobre país de origen (U3) y ocupación (U8).'
       ]
     },
-    story_es: 'En Port Hazel encontrás un aviso: The Corner Cup busca una persona para apoyar en la cafetería. Entrás, saludás a la encargada y tenés tu primera conversación de entrevista. El reto termina con una invitación para conocer el local: no es una oferta de empleo real.',
+    story_es: 'En North City encontrás un aviso: North Coffee busca una persona para apoyar en la cafetería. Entrás, saludás a la encargada y tenés tu primera conversación de entrevista. El reto termina con una invitación para conocer el local: no es una oferta de empleo real.',
     cast: [
-      { id: 'rivera', name: 'Ms. Rivera', role: 'encargada de The Corner Cup', tone: 'rose' },
+      { id: 'rivera', name: 'Ms. Rivera', role: 'encargada de North Coffee', tone: 'rose' },
       { id: 'sam', name: 'Sam', role: 'colaborador de la cafetería', tone: 'teal' }
     ],
     scenes: [
@@ -41,8 +41,8 @@
         goal_es: 'Saludá en inglés a la encargada y respondé una pregunta cotidiana (B1/U1).',
         why_es: 'Llegás al local, observás la hora y elegís las palabras para empezar.',
         steps: [
-          { kind: 'line', clock: '10:15', text_es: 'Es viernes a las 10:15 a. m. Frente a la cafetería The Corner Cup, un cartel dice “We are hiring”. Entrás para preguntar por la entrevista.' },
-          { kind: 'choice', clock: '10:15', who: 'rivera', say: 'Good morning! Welcome to The Corner Cup.', ask_es: '¿Cómo la saludás a esta hora?',
+          { kind: 'line', clock: '10:15', text_es: 'Es viernes a las 10:15 a. m. Frente a la cafetería North Coffee, un cartel dice “We are hiring”. Entrás para preguntar por la entrevista.' },
+          { kind: 'choice', clock: '10:15', who: 'rivera', say: 'Good morning! Welcome to North Coffee.', ask_es: '¿Cómo la saludás a esta hora?',
             options: [
               { t: 'Good morning!', ok: true },
               { t: 'Good evening!', why_es: 'Good evening es un saludo de la noche. Son las diez de la mañana.' },
@@ -140,7 +140,7 @@
       if (l.id === 'B1') return Object.assign({}, l, { arc:'First conversations', arc_es:'Un reto breve para practicar conversaciones iniciales.', ready:true });
       return Object.assign({}, l, { ready:false });
     }),
-    stops: { B1:[{ unit:1, topic:'Reto semanal · Entrevista en The Corner Cup', episode:episode.id }], B2:[], I1:[], I2:[] },
+    stops: { B1:[{ unit:1, topic:'Reto semanal · Entrevista en North Coffee', episode:episode.id }], B2:[], I1:[], I2:[] },
     episodes:[episode]
   });
 })();

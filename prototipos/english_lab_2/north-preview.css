@@ -1,4 +1,4 @@
-/* Ciudad Guaria: identidad oficial Academia Norteamericana, aislada del Campus. */
+/* North City: identidad oficial Academia Norteamericana, aislada del Campus. */
 :root{--navy:#002F6C;--navy-ink:#001E47;--red:#DA291C;--cream:#F3EEE6;--paper:#fff;--line:#E5DECF;--muted:#62686d;font-family:Poppins,system-ui,sans-serif;color:var(--navy-ink);background:var(--cream)}
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -73,3 +73,10 @@ html,body{max-width:100%;overflow-x:clip}
 
 /* En móvil prevalece el sello A y el nombre institucional, sin cortar el wordmark secundario. */
 @media(max-width:540px){.gp-header-side{display:none}}
+
+/* Tarjetas de nivel: legibles sin acercarse, y la primera dice qué se puede jugar hoy */
+.gp-journey-card strong{font-size:1.3rem}
+.gp-journey-card>span:last-of-type{font-size:1rem;color:#404954}
+.gp-chapter{font-size:.8rem}
+.gp-places{margin-top:auto;padding-top:14px;font-style:normal;font-weight:700;font-size:.88rem;color:var(--red)}
+.gp-hero-context{font-size:.9rem}

@@ -11,10 +11,10 @@
   if (!base || !base.weekly) throw new Error('Northbound: falta el contenido del reto 001');
   var ep = JSON.parse(JSON.stringify(base.episodes[0]));
   ep.id = 'ADV001-INTERVIEW-B1';
-  ep.story_es = 'Viernes, 10:15 de la mañana. En la puerta de The Corner Cup hay un cartel: WE ARE HIRING. Entrás. Lo que pase adentro depende de lo que digás.';
+  ep.story_es = 'Viernes, 10:15 de la mañana. En la puerta de North Coffee hay un cartel: WE ARE HIRING. Entrás. Lo que pase adentro depende de lo que digás.';
 
   var extra = {
-    'Good morning! Welcome to The Corner Cup.': { listen: true, then: 'Come in, come in! You\'re here about the job, right?',
+    'Good morning! Welcome to North Coffee.': { listen: true, then: 'Come in, come in! You\'re here about the job, right?',
       react: { 'Good evening!': 'Evening? The sun is up! Let\'s try that again.', 'Good night!': 'Good night? Oh no, please don\'t leave yet!' } },
     'How are you today?': { then: 'Glad to hear it. I\'m Ms. Rivera.',
       react: { 'My name is Ms. Rivera.': 'Ha! No, I\'m Ms. Rivera. How are you?', 'Good night.': 'Night? It\'s ten in the morning!' } },
@@ -23,7 +23,7 @@
     'Would you like a seat?': { then: 'Here you go.',
       react: { 'Give me a chair!': 'Whoa, okay... A "please" would be nice.', 'Good evening.': 'Uh... hi again? So, a seat?' } },
     'I\'m from Costa Rica.': { react: { 'What\'s your name?': 'My name? It\'s Ms. Rivera.', 'How are you?': 'I\'m fine, thanks!' } },
-    'I\'m a barista.': { then: 'Best job in Port Hazel.', react: { 'Where are you from?': 'Me? I\'m from Port Hazel.', 'How do you spell it?': 'B-A-R-I-S-T-A!' } }
+    'I\'m a barista.': { then: 'Best job in North City.', react: { 'Where are you from?': 'Me? I\'m from North City.', 'How do you spell it?': 'B-A-R-I-S-T-A!' } }
   };
   ep.scenes.forEach(function (scene, n) {
     scene.id = 'ADV001-S' + (n + 1);
@@ -65,7 +65,7 @@
 
   window.LAB2_CONTENT = Object.assign({}, base, {
     version: 'adventure-001.0.1', weeklyId: ep.id,
-    stops: { B1: [{ unit: 1, topic: 'Aventura · Entrevista en The Corner Cup', episode: ep.id }], B2: [], I1: [], I2: [] },
+    stops: { B1: [{ unit: 1, topic: 'Aventura · Entrevista en North Coffee', episode: ep.id }], B2: [], I1: [], I2: [] },
     episodes: [ep]
   });
 })();

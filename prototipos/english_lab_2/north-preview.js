@@ -13,7 +13,7 @@ function finish(){
  if(finished)return;finished=true;
  if(soundtrack)soundtrack.stop();
  try{film.pause()}catch(_){}
- window.location.assign('guaria-001.html?intro=skip');
+ window.location.assign('north-001.html?intro=skip');
 }
 function begin(){
  if(started)return;started=true;
@@ -21,7 +21,7 @@ function begin(){
  modal.hidden=false;
  document.body.style.overflow='hidden';
  try{hero.pause()}catch(_){}
- film.src=window.innerWidth<700?'media/guaria_cafe_intro_480.mp4':'media/guaria_cafe_intro.mp4';
+ film.src=window.innerWidth<700?'media/corner_cup_intro_480.mp4':'media/corner_cup_intro.mp4';
  film.currentTime=0;
  var p;try{p=film.play()}catch(_){finish();return}
  if(p&&p.catch)p.catch(function(){

@@ -6,7 +6,7 @@
  */
 window.LAB2_CONTENT = {
   version: '0.1.0',
-  city: 'Port Hazel',
+  city: 'North City',
   levels: [
     { id: 'B1', name: 'Básico I', arc: 'Arrival', arc_es: 'Llegás. Primeras palabras para moverte.', ready: true },
     { id: 'B2', name: 'Básico II', arc: 'Settling In', arc_es: 'Te instalás: barrio, compras, rutinas.', ready: false },
@@ -61,7 +61,7 @@ window.LAB2_CONTENT = {
       number: 1,
       title: 'Arrival Night',
       title_es: 'La noche que llegás',
-      place: 'Hazel Street Hostel',
+      place: 'North City Hostel',
       status: 'BORRADOR IA',
       syllabus: {
         source: 'src/syllabus.jsx · Básico I · Unit 1 · lecciones 1 y 2',
@@ -71,7 +71,7 @@ window.LAB2_CONTENT = {
           'Presentarse y usar please, thank you y you\'re welcome.'
         ]
       },
-      story_es: 'Acabás de llegar a Port Hazel con una maleta y una reserva en un hostal. Nadie habla español. Para que te den la llave vas a tener que saludar, deletrear tu nombre y presentarte.',
+      story_es: 'Acabás de llegar a North City con una maleta y una reserva en un hostal. Nadie habla español. Para que te den la llave vas a tener que saludar, deletrear tu nombre y presentarte.',
       cast: [
         { id: 'maya', name: 'Maya', role: 'recepcionista', tone: 'amber' },
         { id: 'leo', name: 'Leo', role: 'tu compañero de cuarto', tone: 'teal' },
@@ -88,7 +88,7 @@ window.LAB2_CONTENT = {
           why_es: 'Primero reconocés. Tenés reloj y contexto para apoyarte.',
           steps: [
             { kind: 'line', clock: '21:10', text_es: 'Son las 9:10 de la noche. Entrás al hostal con tu maleta. Detrás del mostrador hay una muchacha.' },
-            { kind: 'choice', clock: '21:10', who: 'maya', say: 'Good evening! Welcome to Hazel Street Hostel.', ask_es: '¿Cómo la saludás?',
+            { kind: 'choice', clock: '21:10', who: 'maya', say: 'Good evening! Welcome to North City Hostel.', ask_es: '¿Cómo la saludás?',
               options: [
                 { t: 'Good evening!', ok: true },
                 { t: 'Good morning!', why_es: 'Good morning es antes del mediodía. Son las 9 de la noche.' },
