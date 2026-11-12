@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Northbound · Tu primera entrevista en inglés</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link href="lab2.css" rel="stylesheet">
+<link href="nb_cine.css" rel="stylesheet">
+</head>
+<body class="l2-standalone nb-page nb-locked">
+<!-- Versión audiovisual aislada. No usa sesión real, no llama a ningún backend y no reemplaza reto-semana.html. -->
+<div class="nb-intro" id="nb-intro">
+  <!-- El video no tiene pista de audio. src se asigna por script solo si se va a reproducir, para no descargarlo en vano. -->
+  <video class="nb-video" id="nb-video" muted playsinline preload="none" poster="media/corner_cup_poster.jpg"
+    aria-label="Introducción animada: una calle de Port Hazel por la mañana, la cafetería The Corner Cup y un cartel que dice We are hiring."></video>
+  <p class="nb-caption">Port Hazel, viernes, 10:15 a. m. En la puerta de The Corner Cup hay un cartel: <span lang="en">We are hiring</span>.</p>
+  <button type="button" class="nb-btn nb-btn-ghost nb-skip" id="nb-skip">Omitir introducción</button>
+  <div class="nb-title" id="nb-title" hidden>
+    <p class="nb-kicker">Northbound · Aventura 001 · Básico I, Unidad 1</p>
+    <h1>Tu primera entrevista <em>en inglés</em></h1>
+    <p>Vas a entrar a la cafetería, saludar a la encargada y presentarte. Lo que digás cambia cómo te contestan. Son unos 6 minutos.</p>
+    <form class="nb-form" id="nb-form">
+      <label for="nb-name">¿Cómo te llamás? Te van a llamar así en la historia.</label>
+      <div class="nb-row">
+        <input class="nb-input" id="nb-name" type="text" maxlength="14" autocomplete="given-name" placeholder="Tu primer nombre">
+        <button type="submit" class="nb-btn" id="nb-start">Comenzar aventura</button>
+      </div>
+    </form>
+    <button type="button" class="nb-link" id="nb-replay">Ver la introducción</button>
+    <p class="nb-status" id="nb-video-status" role="status" aria-live="polite"></p>
+  </div>
+</div>
+<header class="nb-top">
+  <a href="../../login.html">ACADEMIA <strong>NORTEAMERICANA</strong></a>
+  <a href="presentacion.html#northbound">Presentación</a>
+  <a href="reto-semana.html?revision=1">Comparar versión anterior</a>
+</header>
+<div id="lab2-root"></div>
+<noscript><p class="l2-boot">Para jugar necesitás activar JavaScript.</p></noscript>
+<div class="nb-sound" id="nb-sound" role="group" aria-label="Controles de sonido" hidden></div>
+<div class="nb-souvenir" id="nb-souvenir" hidden></div>
+<section class="nb-review" id="nb-review" hidden aria-label="Evaluación del formato audiovisual">
+  <p class="nb-kicker">REVISIÓN NATALIA + DOCENTES</p>
+  <h2>¿Qué mejorarías de esta aventura con video?</h2>
+  <p>Este formulario no envía nada automáticamente. Copiá tus observaciones y compartilas con Dirección.</p>
+  <div class="nb-review-grid">
+    <label>Tu función
+      <select id="nb-review-role">
+        <option>Natalia · Diseño</option><option>Docente · Inglés</option><option>Dirección · Producto</option>
+      </select>
+    </label>
+    <label>Aspecto prioritario
+      <select id="nb-review-topic">
+        <option>Video inicial y ambiente</option><option>Voces y comprensión auditiva</option><option>Personajes y expresiones</option><option>Decisiones y ritmo</option><option>Versión móvil / navegación</option>
+      </select>
+    </label>
+  </div>
+  <label>Observaciones
+    <textarea id="nb-review-notes" rows="5" maxlength="2200" placeholder="¿Qué te gustó? ¿Qué se siente artificial o lento? ¿Qué cambiarías antes de invitar estudiantes?"></textarea>
+  </label>
+  <button type="button" class="nb-btn" id="nb-review-copy">Copiar evaluación</button>
+  <p id="nb-review-status" role="status" aria-live="polite"></p>
+  <p class="nb-review-warning">Este enlace es público aunque no esté anunciado. No incluyás información personal o confidencial en las observaciones.</p>
+</section>
+<footer class="nb-foot">
+  <p>Prototipo de práctica con contenido en borrador IA, sin revisión docente. La introducción es una animación original, no un video filmado ni generado por IA. Las voces son la síntesis de tu dispositivo y pueden sonar distintas en cada equipo. El avance se guarda solo en este navegador; no hay notas ni se evalúa tu pronunciación.</p>
+  <p><a href="https://wa.me/50686860097?text=Hola%2C%20jugue%20Northbound%20y%20quiero%20informacion%20para%20matricularme." target="_blank" rel="noopener noreferrer">Gestionar matrícula por WhatsApp · 8686-0097</a></p>
+</footer>
+<script src="../../vendor/react.js"></script>
+<script src="../../vendor/react-dom.js"></script>
+<script src="lab2_content.js"></script>
+<script src="reto_001_content.js"></script>
+<script src="aventura_001_content.js"></script>
+<script src="lab2_core.js"></script>
+<script src="lab2_steps.js"></script>
+<script src="lab2_app.js"></script>
+<script>window.NB_CONFIG = { id: '001', flags: { drink: 'coffee' }, lastScene: 'ADV001-S3', souvenir: 'cup', next: 'comprar un recuerdo en Harbor Gifts', nextHref: 'aventura-002.html' };</script>
+<script src="nb_cine.js"></script>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('lab2-root');
+  if (!window.React || !window.ReactDOM || !window.LAB2 || !window.LAB2.mount || !window.NB) {
+    document.getElementById('nb-intro').hidden = true; document.body.classList.remove('nb-locked');
+    root.innerHTML = '<p class="l2-boot">No se pudo abrir la aventura. Recargá la página y probá de nuevo.</p>';
+    return;
+  }
+  var usuario = { codigo: 'ADV001_DEMO' }, KEY = 'ADV001DEMO';
+  window.NB.intro({
+    video: 'media/corner_cup_intro.mp4', videoSmall: 'media/corner_cup_intro_480.mp4',
+    loadPlayer: function () { return window.LAB2.store.load(KEY).player; },
+    onStart: function (player) {
+      var state = window.LAB2.store.load(KEY);
+      window.LAB2.store.save(KEY, Object.assign({}, state, { player: player }));
+      window.LAB2.mount(root, { preview: true, usuario: usuario, startEpisode: window.LAB2_CONTENT.weeklyId });
+      window.scrollTo(0, 0);
+    }
+  });
+})();
+</script>
+<script>
+(function(){
+  'use strict';
+  if(new URLSearchParams(window.location.search).get('revision')!=='1') return;
+  var section=document.getElementById('nb-review');
+  section.hidden=false;
+  document.getElementById('nb-review-copy').addEventListener('click',function(){
+    var notes=document.getElementById('nb-review-notes').value.trim();
+    var status=document.getElementById('nb-review-status');
+    if(!notes){status.textContent='Escribí al menos una observación.';return;}
+    var report='NORTHBOUND AVENTURA 001 — FORMATO AUDIOVISUAL\n'+
+      'Rol: '+document.getElementById('nb-review-role').value+'\n'+
+      'Aspecto: '+document.getElementById('nb-review-topic').value+'\n'+
+      'Observaciones: '+notes;
+    if(!navigator.clipboard || !navigator.clipboard.writeText){
+      status.textContent='La copia automática no está disponible. Seleccioná tus observaciones y compartilas manualmente.';
+      return;
+    }
+    navigator.clipboard.writeText(report).then(function(){
+      status.textContent='Informe copiado: compartilo con Dirección.';
+    },function(){status.textContent='El navegador no permitió copiar. Seleccioná tus observaciones manualmente.';});
+  });
+})();
+</script>
+</body>
+</html>

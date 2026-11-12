@@ -34,6 +34,23 @@ h1,h2{margin:0;line-height:1.04;letter-spacing:-.045em;text-wrap:balance}h1{font
 .ticket p{line-height:1.6;margin:0}.ticket .pill{justify-self:start}
 .step-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:24px}
 .step{border-top:3px solid #f2b441;padding:20px 8px 0}.step b{font-size:1.35rem}.step p{color:#cbd5ea;line-height:1.55}
+
+/* Comparación audiovisual para Natalia y docentes: no altera el juego ni el login. */
+.cine-feature{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(270px,.85fr);gap:24px;align-items:stretch;margin-top:16px}
+.cine-frame{border-radius:20px;overflow:hidden;background:#050d20;border:1px solid #69799e;display:flex;flex-direction:column;justify-content:center}
+.cine-frame video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#080e20}
+.cine-caption{padding:11px 16px;margin:0;color:#c9d4e9;font-size:.86rem;line-height:1.5}
+.cine-panel{border-radius:20px;background:#f4efdf;color:#142046;padding:24px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px}
+.cine-panel h3{font-size:clamp(1.7rem,3vw,2.7rem);line-height:1.05;margin:0;letter-spacing:-.02em}
+.cine-panel p{line-height:1.55;margin:0}
+.cine-panel .eyebrow{color:#8d1730}
+.cine-panel .pill.ghost{color:#15214b;border-color:#55688e}
+.cine-archive{margin-top:4px;border:1px solid #6477a5;padding:16px 20px;border-radius:12px}
+.cine-archive summary{cursor:pointer;font-weight:700}
+.cine-archive p{color:#d8deef}
+.cine-archive a{color:#f2b441}
+@media(max-width:760px){.cine-feature{grid-template-columns:1fr}.cine-panel{padding:18px}.cine-panel .pill{max-width:100%}}
+
 footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 @media(max-width:730px){.routemap{grid-template-columns:repeat(2,minmax(0,1fr))}.features,.step-grid{grid-template-columns:1fr}.slide{min-height:auto;padding:76px 18px}.brand{max-width:160px;font-size:.76rem}nav .pill{font-size:.8rem;padding:10px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -46,7 +63,7 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 <p class="eyebrow">Inglés Conversacional · Modalidad virtual</p>
 <h1>Tu próxima aventura comienza en inglés.</h1>
 <p class="lead">Clases en vivo, recursos académicos y nuevas experiencias para practicar. Empezá tu camino con Academia Norteamericana.</p>
-<div class="actions"><a class="pill" href="#campus">Conocer la experiencia</a><a class="pill ghost" href="./index.html">Probar Northbound (demo)</a></div>
+<div class="actions"><a class="pill" href="#campus">Conocer la experiencia</a><a class="pill ghost" href="./aventura-001.html?revision=1">Probar aventura con video</a></div>
 <p class="note">Northbound es una demostración en desarrollo. No registra calificaciones ni progreso académico.</p>
 </div></section>
 <section class="slide" id="campus"><div class="inside">
@@ -56,10 +73,31 @@ footer{padding:26px;text-align:center;color:#bbc6df;font-size:.84rem}
 <div class="features"><div class="feature"><span>01</span><h3>Clases en vivo</h3><p>Aprendé inglés conversacional acompañado por tus docentes.</p></div><div class="feature"><span>02</span><h3>Recursos</h3><p>Consultá las herramientas habilitadas para tu nivel.</p></div><div class="feature"><span>03</span><h3>Práctica</h3><p>Reforzá el idioma con actividades y desafíos.</p></div></div>
 </div></section>
 <section class="slide" id="northbound"><div class="inside">
-<p class="eyebrow">Próximamente · English Lab 2.0</p>
-<h2>Bienvenido a Northbound.</h2>
-<p class="lead">Imaginá llegar a una ciudad nueva donde cada conversación te ayuda a avanzar. En Port Hazel, cada episodio convierte el inglés en una misión.</p>
-<div class="ticket"><p class="eyebrow">Port Hazel · Primera parada</p><h3>Arrival Night</h3><p>Saludá en inglés, deletreá tu nombre y completá tu primera conversación en el hostal.</p><a class="pill" href="./index.html">Explorar la demo</a></div>
+<p class="eyebrow">Vista de revisión · Northbound English Lab 2.0</p>
+<h2>Una historia que empieza en video.</h2>
+<p class="lead">Recorré Port Hazel, entrá a The Corner Cup y practicá tu primera entrevista en inglés. Compará la experiencia audiovisual nueva con el reto anterior.</p>
+<div class="cine-feature">
+  <div class="cine-frame">
+    <video id="nb-promo-video" controls muted playsinline preload="none" poster="media/corner_cup_poster.jpg" aria-label="Tráiler animado de diez segundos de Port Hazel y The Corner Cup">
+      <source src="media/corner_cup_intro_480.mp4" type="video/mp4" media="(max-width: 700px)">
+      <source src="media/corner_cup_intro.mp4" type="video/mp4">
+      Tu navegador no puede reproducir este video. Abrí el juego para utilizar la versión con imagen de respaldo.
+    </video>
+    <p class="cine-caption">Animación 2D original (10 segundos). El MP4 no incluye audio; los diálogos y efectos se reproducen desde el navegador durante el juego.</p>
+  </div>
+  <div class="cine-panel">
+    <p class="eyebrow">Aventura 001 · Básico I</p>
+    <h3>Mi primera entrevista en inglés</h3>
+    <p>Video de bienvenida, personajes con expresiones, sonidos opcionales y decisiones que vuelven a aparecer en la historia.</p>
+    <a class="pill" href="./aventura-001.html?revision=1">Jugar versión con video</a>
+    <a class="pill ghost" href="./reto-semana.html?revision=1">Comparar formato anterior</a>
+  </div>
+</div>
+<details class="cine-archive">
+  <summary>Más historias de Port Hazel</summary>
+  <p><a href="./aventura-002.html">Aventura 002 — Un recuerdo de Port Hazel</a> (prototipo con video en una tienda). El episodio original <a href="./index.html">Arrival Night</a> también se conserva.</p>
+</details>
+<p class="note">Estas historias son prototipos con contenido en borrador IA. No registran notas oficiales, no verifican pronunciación y todavía no están habilitadas como actividades académicas del Campus.</p>
 </div></section>
 <section class="slide" id="niveles"><div class="inside">
 <p class="eyebrow">Un programa completo</p><h2>Cuatro niveles. Nuevos horizontes.</h2>

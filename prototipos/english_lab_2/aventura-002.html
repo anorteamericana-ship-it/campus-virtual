@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Northbound · Un recuerdo de Port Hazel</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link href="lab2.css" rel="stylesheet">
+<link href="nb_cine.css" rel="stylesheet">
+</head>
+<body class="l2-standalone nb-page nb-locked">
+<!-- Versión audiovisual aislada. No usa sesión real, no llama a ningún backend y no reemplaza reto-semana.html. -->
+<div class="nb-intro" id="nb-intro">
+  <!-- El video no tiene pista de audio. src se asigna por script solo si se va a reproducir, para no descargarlo en vano. -->
+  <video class="nb-video" id="nb-video" muted playsinline preload="none" poster="media/harbor_gifts_poster.jpg"
+    aria-label="Introducción animada: una calle de Port Hazel por la tarde, la tienda Harbor Gifts y un cartel que dice Come in, open."></video>
+  <p class="nb-caption">Port Hazel, sábado, 3:30 p. m. En la puerta de Harbor Gifts hay un cartel: <span lang="en">Come in, open</span>.</p>
+  <button type="button" class="nb-btn nb-btn-ghost nb-skip" id="nb-skip">Omitir introducción</button>
+  <div class="nb-title" id="nb-title" hidden>
+    <p class="nb-kicker">Northbound · Aventura 002 · Básico I, Unidad 2</p>
+    <h1>Un recuerdo <em>de Port Hazel</em></h1>
+    <p>Vas a entrar a una tienda, nombrar lo que ves, averiguar de quién son unas cosas perdidas y comprar tu recuerdo. Son unos 6 minutos.</p>
+    <form class="nb-form" id="nb-form">
+      <label for="nb-name">¿Cómo te llamás? Te van a llamar así en la historia.</label>
+      <div class="nb-row">
+        <input class="nb-input" id="nb-name" type="text" maxlength="14" autocomplete="given-name" placeholder="Tu primer nombre">
+        <button type="submit" class="nb-btn" id="nb-start">Comenzar aventura</button>
+      </div>
+    </form>
+    <button type="button" class="nb-link" id="nb-replay">Ver la introducción</button>
+    <p class="nb-status" id="nb-video-status" role="status" aria-live="polite"></p>
+  </div>
+</div>
+<header class="nb-top">
+  <a href="../../login.html">ACADEMIA <strong>NORTEAMERICANA</strong></a>
+  <a href="aventura-001.html">Historia anterior</a>
+</header>
+<div id="lab2-root"></div>
+<noscript><p class="l2-boot">Para jugar necesitás activar JavaScript.</p></noscript>
+<div class="nb-sound" id="nb-sound" role="group" aria-label="Controles de sonido" hidden></div>
+<div class="nb-souvenir" id="nb-souvenir" hidden></div>
+<footer class="nb-foot">
+  <p>Prototipo de práctica con contenido en borrador IA, sin revisión docente. La introducción es una animación original, no un video filmado ni generado por IA. Las voces son la síntesis de tu dispositivo y pueden sonar distintas en cada equipo. El avance se guarda solo en este navegador; no hay notas ni se evalúa tu pronunciación.</p>
+  <p><a href="https://wa.me/50686860097?text=Hola%2C%20jugue%20Northbound%20y%20quiero%20informacion%20para%20matricularme." target="_blank" rel="noopener noreferrer">Gestionar matrícula por WhatsApp · 8686-0097</a></p>
+</footer>
+<script src="../../vendor/react.js"></script>
+<script src="../../vendor/react-dom.js"></script>
+<script src="lab2_content.js"></script>
+<script src="aventura_002_content.js"></script>
+<script src="lab2_core.js"></script>
+<script src="lab2_steps.js"></script>
+<script src="lab2_app.js"></script>
+<script>
+/* Continuidad entre historias: Sam recuerda lo que pediste en la cafetería, si jugaste la aventura 001 en este navegador. */
+(function () {
+  var drink = 'coffee';
+  try { drink = (JSON.parse(window.localStorage.getItem('nb_flags_001')) || {}).drink || 'coffee'; } catch (_) {}
+  window.NB_CONFIG = { id: '002', flags: { gift: 'postcard' }, fixed: { drink: drink }, lastScene: 'ADV002-S3', souvenir: 'postcard', next: 'tu primer día en The Corner Cup' };
+})();
+</script>
+<script src="nb_cine.js"></script>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('lab2-root');
+  if (!window.React || !window.ReactDOM || !window.LAB2 || !window.LAB2.mount || !window.NB) {
+    document.getElementById('nb-intro').hidden = true; document.body.classList.remove('nb-locked');
+    root.innerHTML = '<p class="l2-boot">No se pudo abrir la aventura. Recargá la página y probá de nuevo.</p>';
+    return;
+  }
+  var usuario = { codigo: 'ADV002_DEMO' }, KEY = 'ADV002DEMO';
+  window.NB.intro({
+    video: 'media/harbor_gifts_intro.mp4', videoSmall: 'media/harbor_gifts_intro_480.mp4',
+    /* Si ya jugaste la historia anterior, te reconoce por el mismo nombre. */
+    loadPlayer: function () { return window.LAB2.store.load(KEY).player || window.LAB2.store.load('ADV001DEMO').player; },
+    onStart: function (player) {
+      var state = window.LAB2.store.load(KEY);
+      window.LAB2.store.save(KEY, Object.assign({}, state, { player: player }));
+      window.LAB2.mount(root, { preview: true, usuario: usuario, startEpisode: window.LAB2_CONTENT.weeklyId });
+      window.scrollTo(0, 0);
+    }
+  });
+})();
+</script>
+</body>
+</html>

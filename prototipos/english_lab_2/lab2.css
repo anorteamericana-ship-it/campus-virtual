@@ -204,3 +204,12 @@ body.l2-standalone { margin: 0; background: #0d1531; color: #eef0fa; font-family
   .l2-scene { scroll-behavior: auto; }
 }
 .l2-input-letters::placeholder { letter-spacing: normal; text-transform: none; font-family: var(--l2-body); font-size: 1rem; }
+
+/* respuestas del personaje, escucha lenta y decisiones (motores) */
+.l2-listen-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.l2-listen-slow { color: var(--l2-muted); }
+.l2-say-hidden { font-size: 1rem; color: var(--l2-muted); }
+.l2-reply { border-radius: .25rem 1rem 1rem 1rem; padding: .55rem .9rem; background: var(--l2-panel); border: 1px solid var(--l2-line); font-size: 1.1rem; display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: center; }
+.l2-reply-who { color: var(--l2-muted); font-size: .85rem; font-weight: 600; }
+.l2-options-pick { flex-direction: row; flex-wrap: wrap; }
+.l2-options-pick .l2-option { flex: 1 1 9rem; text-align: center; }

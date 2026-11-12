@@ -34,16 +34,22 @@ jobs:
             node --check "$src"
           done
           node --check prototipos/english_lab_2/qa_lab2_e1.mjs
+          for src in prototipos/english_lab_2/{nb_cine,aventura_001_content,aventura_002_content}.js; do
+            node --check "$src"
+          done
+          node --check prototipos/english_lab_2/qa_aventura_e1.mjs
           ! grep -Eq '^(:root|html|body)[[:space:]]*\\{' prototipos/english_lab_2/lab2.css
           ! grep -Eq 'src/(app|academia_play)|script\\.google\\.com|APPS_SCRIPT_URL' prototipos/english_lab_2/index.html
       - name: Install isolated Playwright browser
         run: |
           npm install --no-save --ignore-scripts playwright@1.55.0
-          # Chromium y librerías ya están incluidos en la imagen Playwright Noble.
+          # Chrome estable incluye codecs de video MP4/H.264; no basta probar solo Chromium de test.
+          npx playwright install chrome
       - name: Serve actual files and run browser QA
         run: |
           set -euo pipefail
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/northbound-preview-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
-          QA_CHANNEL=chromium node prototipos/english_lab_2/qa_lab2_e1.mjs
+          QA_CHANNEL=chrome node prototipos/english_lab_2/qa_lab2_e1.mjs
+          QA_CHANNEL=chrome node prototipos/english_lab_2/qa_aventura_e1.mjs
