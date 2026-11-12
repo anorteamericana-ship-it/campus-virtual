@@ -365,3 +365,36 @@ Misma rama y mismo PR borrador (#764). Sin fusionar ni publicar. Contenido en `B
 2. En las opciones erradas se muestran frases incorrectas a propósito (*It's a umbrella*, *This is postcards*). ¿Es aceptable en Básico I o conviene que los distractores sean siempre frases correctas en contexto equivocado?
 3. La continuidad entre historias depende del almacenamiento del navegador con claves por aventura (`nb_flags_001`, `ADV001DEMO`). Al integrar con sesión real debe pasar al contrato de progreso; ¿se agrega un campo de decisiones (`flags`) a ese contrato?
 4. `window.NB_CONFIG` como configuración por página: ¿se mantiene o pasa a vivir dentro del contenido del episodio?
+
+## 17. Revisión del ZIP de Claude + integración promocional con video (12-nov-2026)
+
+**Solicitud:** integrar la versión audiovisual ya creada por Claude con la presentación anterior para revisión de Natalia, sin alterar login ni backend.
+
+### Evidencia de origen
+
+- Se recibió `Northbound Aventura 001.zip` (18 entradas, aprox. 3,51 MB descomprimidos). Los blobs Git del material nuevo y medios MP4 en la rama coinciden con los archivos del ZIP. El `index.html` del ZIP se corresponde con la ruta de despliegue `aventura-001.html`, con carga local de React en GitHub en lugar del CDN.
+- `corner_cup_intro.mp4`: 10,00 s, H.264 Main, 1280×720, 30 fps, 1,14 MB, sin pista de audio; variante 854×480 de 0,52 MB.
+- `harbor_gifts_intro.mp4`: 10,00 s, H.264 Main, 1280×720, 30 fps, 1,10 MB, sin pista de audio; variante 854×480 de 0,50 MB.
+- Los videos son animaciones 2D originales generadas con Canvas y codificadas a MP4, NO video de IA generativa ni filmaciones. Ambiente y voces son sintetizados por el navegador; validación humana del sonido pendiente.
+
+### Cambios realizados sobre el PR #764
+
+- `prototipos/english_lab_2/presentacion.html`: preserva las 6 pantallas y la ruta anterior; reemplaza la sección Northbound con tráiler MP4 real, póster, 480p móvil, controles nativos, CTA audiovisual, enlace de comparación con reto original y enlace opcional a la segunda historia.
+- `prototipos/english_lab_2/aventura-001.html`: añade navegación de vuelta a la presentación y ficha de revisión audiovisual bajo `?revision=1`, cuyo texto solo se copia a portapapeles.
+- `prototipos/english_lab_2/nb_cine.css`: formulario responsive de revisión, aislado del Campus.
+- `prototipos/english_lab_2/qa_aventura_e1.mjs`: tres grupos nuevos para video en presentación, ficha de Natalia y modo normal. `.github/workflows/qa-english-lab2-preview.yml`: ejecuta ambas suites en Google Chrome estable con soporte H.264.
+
+### Verificación
+
+- E1 Chrome real sobre archivos HTTP servidos del repositorio: `qa_lab2_e1.mjs` 15/15 y `qa_aventura_e1.mjs` 17/17; total **32/32 PASS**. Workflow `43259993354` en commit `206f3b641a35453a31db97728a2032aeaba3328a`.
+- Se comprobó video de 720p reproduciéndose y avanzando, video MP4 decodificado en presentación móvil, historia 002, formulario de observaciones, modo anterior y ausencia de llamadas al backend. `English LAB Source Truth Guard` PASS (`43259993390`).
+- NO constituye E3 verificación pública ni prueba de audio percibido; faltan Safari, Firefox, celulares físicos y criterios de Natalia/docente.
+
+### Salida controlada
+
+- Integración de páginas estáticas nuevas, no se altera `login.html`, Apps Script, matrículas, notas, ni progreso oficial. No requiere escribir datos académicos.
+- Enlaces objetivo tras merge Pages: `/prototipos/english_lab_2/presentacion.html#northbound` y `/prototipos/english_lab_2/aventura-001.html?revision=1`.
+- **No es acceso privado**: el repositorio Pages es público, y los parámetros `revision=1` o noindex no son autenticación. Pilotaje solo con información ficticia.
+- Revisión pendiente: Natalia puntúa audiovisual, claridad y escenas; docentes revisan voces/contenido. No anunciar a prospectos sin esos resultados.
+
+**Estado al redactar:** cambios listos en PR #764; CI E1 aprobada, pendiente merge y verificación del despliegue público.
