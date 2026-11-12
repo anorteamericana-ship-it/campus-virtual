@@ -266,6 +266,8 @@ try {
   ({ page, context, problems, backend, media } = await open(browser, { url: BASE + 'presentacion.html', width:390, height:844 }));
   assert.equal(await page.locator('main section.slide').count(), 6, 'conservar las seis pantallas originales');
   assert.equal(await page.locator('#nb-promo-video').count(), 1, 'un reproductor accesible en la pantalla Northbound');
+  assert.equal(await page.locator('#nb-promo-video').evaluate(v => v.controls), false, 'no se abre el reproductor sin elegir audio o silencio');
+  assert(await page.locator('#nb-promo-play-quiet').isVisible(), 'alternativa silenciosa explícita');
   assert.equal(await page.locator('#nb-promo-video source[type="video/mp4"]').count(), 2, 'fuentes móvil y escritorio');
   assert.equal(await page.locator('a[href="./aventura-001.html?revision=1"]').count(), 2, 'CTA hero + sección');
   assert.equal(await page.locator('a[href="./reto-semana.html?revision=1"]').count(), 1, 'acceso a comparativa anterior');
@@ -333,6 +335,30 @@ try {
   assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false);
   assert(await page.locator('#nb-title').isVisible());
   ok('omitir y repetir', 'sin descargas al omitir; replay con banda sonora; ambos se detienen al salir');
+  await context.close();
+
+  // 18. Tráiler silencioso opcional: sin inicio incidental de AudioContext.
+  ({ page, context, problems, backend } = await open(browser, { url:BASE + 'presentacion.html', width:375, height:750 }));
+  assert.equal(await page.locator('#nb-promo-video').evaluate(v => v.controls), false);
+  await page.click('#nb-promo-play-quiet');
+  await page.waitForFunction(() => document.getElementById('nb-promo-video').currentTime > 0.25, null, {timeout:12000});
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().context), 'none', 'no se crea audio al elegir silencio');
+  assert.equal(await page.locator('#nb-promo-video').evaluate(v => v.controls), true);
+  assert(await noSideScroll(page));
+  assert.deepEqual(problems, []); assert.deepEqual(backend, []);
+  ok('tráiler en silencio', 'opción silenciosa explícita, sin AudioContext ni desbordamiento móvil');
+  await context.close();
+
+  // 19. Final natural del MP4: se apaga la banda sonora y se muestra la portada.
+  ({ page, context, problems } = await open(browser));
+  await page.click('#nb-enter-sound');
+  await page.waitForFunction(() => document.getElementById('nb-video').currentTime > 0.3 && window.NBIntroAudio.state().active, null, {timeout:12000});
+  await page.locator('#nb-video').evaluate(v => { v.currentTime = Math.max(0, v.duration - 0.5); });
+  await page.waitForSelector('#nb-title:not([hidden])', {timeout:9000});
+  assert.equal(await page.evaluate(() => window.NBIntroAudio.state().active), false, 'la música termina con el video');
+  assert.equal(await page.locator('#nb-audio-gate').isVisible(), false);
+  assert.deepEqual(problems, []);
+  ok('final natural del video', 'se cierra la pista, aparece portada y se conserva botón de rejugar');
   await context.close();
 
   console.log('\nE1 AVENTURA PASS ·', passed, 'grupos');
