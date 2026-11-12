@@ -199,7 +199,8 @@
     var enterQuiet = document.getElementById('nb-enter-quiet'), gateStatus = document.getElementById('nb-gate-status');
     var card = document.getElementById('nb-title'), skip = document.getElementById('nb-skip'), replay = document.getElementById('nb-replay');
     var nameInput = document.getElementById('nb-name'), start = document.getElementById('nb-start'), status = document.getElementById('nb-video-status');
-    var seen = !!load('nb_intro_seen_' + CFG.id, false), shownCard = false, playing = false, wantedSound = false;
+    var seenKey = 'nb_intro_sound_v2_seen_' + CFG.id;
+    var seen = !!load(seenKey, false), shownCard = false, playing = false, wantedSound = false;
     var conn = navigator.connection || {};
     var light = !!conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '') || window.innerWidth < 700;
     var soundtrack = window.NBIntroAudio || { start: function () { return false; }, stop: function () {} };
@@ -217,7 +218,7 @@
       root.classList.add('is-card');
       skip.hidden = true;
       card.hidden = false;
-      save('nb_intro_seen_' + CFG.id, true);
+      save(seenKey, true);
       (nameInput.value ? start : nameInput).focus();
     }
     function showGate() {
