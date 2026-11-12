@@ -237,5 +237,43 @@ try {
   assert(await noSideScroll(page)); assert(await page.locator('.nb-portrait[aria-label^="Mr. Okafor"]').count());
   ok('aventura 002 en celular', '390 px sin desplazamiento lateral; retrato de Mr. Okafor');
   await context.close();
+  // 13. Presentación original integrada con MP4 de Claude y enlaces correctos.
+  ({ page, context, problems, backend, media } = await open(browser, { url: BASE + 'presentacion.html', width:390, height:844 }));
+  assert.equal(await page.locator('main section.slide').count(), 6, 'conservar las seis pantallas originales');
+  assert.equal(await page.locator('#nb-promo-video').count(), 1, 'un reproductor accesible en la pantalla Northbound');
+  assert.equal(await page.locator('#nb-promo-video source[type="video/mp4"]').count(), 2, 'fuentes móvil y escritorio');
+  assert.equal(await page.locator('a[href="./aventura-001.html?revision=1"]').count(), 2, 'CTA hero + sección');
+  assert.equal(await page.locator('a[href="./reto-semana.html?revision=1"]').count(), 1, 'acceso a comparativa anterior');
+  assert.equal((await page.request.get(BASE + 'media/corner_cup_intro_480.mp4')).status(), 200, 'archivo video para móvil');
+  assert(await noSideScroll(page), 'presentación integrada sin desplazamiento horizontal móvil');
+  await page.locator('#nb-promo-video').evaluate(v => v.play());
+  await page.waitForFunction(() => {
+    const v=document.querySelector('#nb-promo-video');return v && v.currentTime > 0.2 && v.videoWidth >= 854;
+  }, null, {timeout:12000});
+  assert.deepEqual(problems, [], 'presentación sin errores de consola');
+  assert.deepEqual(backend, [], 'presentación sin Apps Script');
+  ok('presentación + video', '6 pantallas preservadas, MP4 decodificado en móvil, enlaces a versiones y cero backend');
+  await context.close();
+
+  // 14. Natalia puede revisar el formato audiovisual sin registros remotos.
+  ({ page, context, problems, backend } = await open(browser, { url: URL + '?revision=1', width:390, height:844 }));
+  await start(page, 'Ana');
+  assert(await page.locator('#nb-review').isVisible(), 'ficha audiovisual visible con ?revision=1');
+  assert.equal(await page.locator('#nb-review-role option').count(), 3, 'roles de revisión');
+  await page.fill('#nb-review-notes', 'El audio ambiente necesita menor volumen en el celular');
+  await page.click('#nb-review-copy');
+  await page.waitForFunction(() => document.querySelector('#nb-review-status')?.textContent?.trim().length > 0);
+  assert(await noSideScroll(page), 'ficha revisora sin scroll lateral');
+  assert.deepEqual(problems, [], 'ficha sin errores de consola');
+  assert.deepEqual(backend, [], 'ficha sin datos enviados a backend');
+  ok('evaluación audiovisual', 'ficha de Natalia visible y funcional en móvil, sin persistencia remota');
+  await context.close();
+
+  // 15. La ficha de revisión no aparece en la versión ordinaria.
+  ({ page, context } = await open(browser, { url: URL, width:390, height:844 }));
+  assert.equal(await page.locator('#nb-review').isVisible(), false);
+  ok('revisión opcional', 'formulario no visible sin parámetro; no es un control de privacidad');
+  await context.close();
+
   console.log('\nE1 AVENTURA PASS ·', passed, 'grupos');
 } finally { await browser.close(); }
