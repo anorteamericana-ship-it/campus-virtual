@@ -928,10 +928,186 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
     </div>
   </section>;
 }
+
+// F111 ATT-EDIT · Editor acotado para una clase cerrada. La identidad,
+// permisos, marcas y persistencia se verifican en CORE; no se reutiliza
+// registrarAsistencia ni el flujo de cierre para corregir historia.
+function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
+  const group=tvGroupCode(meta),level=tvNivelId(meta),number=Number(lesson?.leccion||0);
+  const [loading,setLoading]=React.useState(true);
+  const [saving,setSaving]=React.useState(false);
+  const [rows,setRows]=React.useState([]);
+  const [form,setForm]=React.useState({});
+  const [reason,setReason]=React.useState('');
+  const [error,setError]=React.useState('');
+  const [notice,setNotice]=React.useState('');
+  const [busyVerify,setBusyVerify]=React.useState(false);
+  const [serverReady,setServerReady]=React.useState(false);
+  const request={cod_grupo:group,nivel:level,leccion:number,riel};
+  const loadedRef=React.useRef(false);
+  const load=React.useCallback(async()=>{
+    setLoading(true);setError('');setNotice('');setServerReady(false);
+    try{
+      const r=await postTeacher('docenteGetAsistenciaCerradaF111',request,30000);
+      if(!r?.ok||r.clase_cerrada!==true||r.cod_grupo!==group||
+         r.nivel!==level||r.riel!==riel||Number(r.leccion)!==number||
+         !Array.isArray(r.rows))throw Error(r?.error||'El servidor no confirmó la asistencia cerrada.');
+      const vals={};
+      r.rows.forEach(x=>{if(x.editable===true&&typeof x.presente==='boolean')vals[x.code]=x.presente;});
+      setRows(r.rows);setForm(vals);setServerReady(true);loadedRef.current=true;
+    }catch(e){setRows([]);setForm({});setError(teacherSessionSafeUserError(
+      e?.message||String(e),'No se pudo verificar la asistencia de esta lección.','f111_att_edit_load'));}
+    finally{setLoading(false);}
+  },[group,level,number,riel]);
+  React.useEffect(()=>{void load();},[load]);
+  const changes=rows.filter(x=>x.editable===true&&typeof x.presente==='boolean'&&
+    typeof form[x.code]==='boolean'&&form[x.code]!==x.presente).map(x=>({
+      cod_estudiante:x.code,antes:x.presente,presente:form[x.code]}));
+  const dirty=changes.length>0;
+  const stop=()=>{if(saving||busyVerify)return;
+    if(dirty&&!window.confirm('Hay cambios sin guardar. ¿Salir sin aplicarlos?'))return;
+    onClose&&onClose();
+  };
+  const save=async()=>{
+    if(!serverReady||!dirty||saving||busyVerify)return;
+    if(!window.confirm('¿Guardar '+changes.length+' corrección(es) de asistencia de la lección '+number+
+      '? La clase seguirá CERRADA.'))return;
+    setSaving(true);setError('');setNotice('');
+    let acknowledged=false;
+    try{
+      const result=await postTeacher('docenteEditarAsistenciaCerradaF111',{
+        ...request,cambios:changes,motivo:reason.trim()
+      },45000);
+      if(!result?.ok)throw Error(result?.error||'No se pudo confirmar el guardado.');
+      if(Number(result.asistencias_editadas)!==changes.length||result.sesion_sigue_cerrada!==true)
+        throw Error('La respuesta no confirmó todos los cambios. No reintentés a ciegas.');
+      acknowledged=true;
+      setBusyVerify(true);
+      const after=await postTeacher('docenteGetAsistenciaCerradaF111',request,30000);
+      if(!after?.ok||!Array.isArray(after.rows)||after.clase_cerrada!==true||
+         after.cod_grupo!==group||after.nivel!==level||after.riel!==riel||
+         Number(after.leccion)!==number)
+        throw Error('El servidor guardó, pero no se pudo consultar la verificación.');
+      const mismatches=changes.filter(change=>{
+        const x=after.rows.find(r=>r.code===change.cod_estudiante);
+        return !x||x.presente!==change.presente||x.editable!==true;
+      });
+      if(mismatches.length)throw Error('La asistencia guardada no coincide con la lectura posterior. No reintentar.');
+      const fresh={};after.rows.forEach(x=>{if(typeof x.presente==='boolean')fresh[x.code]={presente:x.presente};});
+      setRows(after.rows);
+      const newForm={};after.rows.forEach(x=>{
+        if(x.editable===true&&typeof x.presente==='boolean')newForm[x.code]=x.presente;
+      });
+      setForm(newForm);setReason('');
+      setNotice('✓ '+changes.length+' cambio(s) guardado(s) y verificado(s). La clase sigue cerrada.');
+      onSaved&&onSaved(fresh,changes.length);
+    }catch(e){
+      setError((acknowledged?
+        'El guardado pudo realizarse, pero falta comprobarlo. No repitas Guardar: actualizá la lista. ':
+        'No se confirmó el guardado. Consultá nuevamente antes de reintentar. ')+
+        teacherSessionSafeUserError(e?.message||String(e),
+          'La operación no pudo completarse.','f111_att_edit_save'));
+    }finally{setSaving(false);setBusyVerify(false);}
+  };
+  return <div role="presentation" style={{position:'fixed',inset:0,zIndex:2500,
+    background:'rgba(4,19,41,.62)',display:'grid',placeItems:'center',padding:12}}>
+    <section role="dialog" aria-modal="true" aria-label="Editar asistencia de clase cerrada"
+      data-f111-closed-attendance-editor="true"
+      style={{width:'min(760px,100%)',maxHeight:'min(92vh,900px)',background:'#FFF',
+        borderRadius:16,boxShadow:'0 24px 80px rgba(0,0,0,.25)',display:'flex',
+        flexDirection:'column',overflow:'hidden'}}>
+      <header style={{padding:'18px 20px',borderBottom:'1px solid #DFE5EE',
+        display:'flex',justifyContent:'space-between',alignItems:'start',gap:12}}>
+        <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.12em',color:'#7A1E2C'}}>
+          MY GROUPS · ASISTENCIA OFICIAL
+        </div><h2 style={{fontSize:20,margin:'5px 0',color:'#001E47'}}>Editar asistencia</h2>
+          <div style={{fontSize:12,color:'#55667C'}}>{group} · {level} ·
+            {riel==='ican'?' I CAN · ':' Lección '}{number} · ✓ Clase cerrada</div>
+        </div>
+        <button type="button" disabled={saving||busyVerify} onClick={stop}
+          aria-label="Cerrar editor de asistencia" className="btn btn-ghost"
+          style={{fontSize:18}}>×</button>
+      </header>
+      <div style={{padding:'14px 20px',overflowY:'auto',flex:1,minHeight:100}}>
+        <p style={{fontSize:12,lineHeight:1.5,color:'#55667C',margin:'0 0 15px'}}>
+          Corregí únicamente Presente o Ausente. No se modifican notas, comentarios, exámenes
+          ni el estado de la clase. Solo se pueden cambiar registros existentes verificados.
+        </p>
+        {loading&&<div role="status" style={{padding:13,fontSize:12}}>Consultando la asistencia oficial…</div>}
+        {error&&<div role="alert" style={{padding:12,borderRadius:9,background:'#FFF0ED',
+          color:'#942C25',fontSize:12,marginBottom:12}}>{error}</div>}
+        {notice&&<div role="status" style={{padding:12,borderRadius:9,background:'#E9F6EE',
+          color:'#17613A',fontSize:12,marginBottom:12}}>{notice}</div>}
+        {!loading&&rows.map(s=><div key={s.code} style={{display:'flex',gap:12,
+          justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',
+          padding:'12px 3px',borderBottom:'1px solid #E9ECF2'}}>
+          <div style={{flex:'1 1 150px',minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:13,color:'#173252'}}>{s.name||s.code}</div>
+            <div style={{fontSize:10,color:'#61748B',marginTop:3}}>
+              {s.code}{s.estatus?' · '+s.estatus:''}
+            </div>
+            {s.editable!==true&&<div style={{fontSize:10,color:'#9B6111',marginTop:4}}>
+              {s.reason==='sin_registro'?'Sin registro oficial. Consultá Administración.':
+               'Registro duplicado o histórico ambiguo. Administración debe conciliarlo.'}
+            </div>}
+          </div>
+          <div role="group" aria-label={'Asistencia de '+(s.name||s.code)}
+            style={{display:'flex',gap:6}}>
+            {[[true,'Presente','#17613A'],[false,'Ausente','#A62B26']].map(([value,label,color])=>
+              <button type="button" key={label}
+                aria-label={label+' · '+(s.name||s.code)}
+                aria-pressed={form[s.code]===value}
+                disabled={saving||busyVerify||s.editable!==true||!serverReady}
+                onClick={()=>{setForm(prev=>({...prev,[s.code]:value}));setNotice('');setError('');}}
+                style={{padding:'9px 13px',minHeight:40,borderRadius:9,fontSize:12,fontWeight:800,
+                  border:'1.5px solid '+(form[s.code]===value?color:'#CBD5E1'),
+                  background:form[s.code]===value?(value?'#E8F5EE':'#FDEBE9'):'#FFF',
+                  color:form[s.code]===value?color:'#52657B',
+                  cursor:s.editable?'pointer':'not-allowed'}}>
+                {label}
+              </button>)}
+          </div>
+        </div>)}
+        {!loading&&!rows.length&&!error&&<p>La lección no tiene filas oficiales verificables.</p>}
+        {serverReady&&<label style={{display:'grid',gap:5,marginTop:15,
+          fontSize:12,fontWeight:700,color:'#334A64'}}>Motivo de corrección (opcional)
+          <textarea rows={2} maxLength={300} value={reason}
+            placeholder="Ej.: Se corrigió la ausencia por revisión de la lista."
+            onChange={e=>setReason(e.target.value)}
+            style={{border:'1px solid #C9D3E0',borderRadius:8,padding:10,fontSize:12}}/>
+        </label>}
+      </div>
+      <footer style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+        gap:10,flexWrap:'wrap',borderTop:'1px solid #DFE5EE',padding:'14px 20px',
+        background:'#F8FAFE'}}>
+        <span style={{fontSize:12,fontWeight:850,color:dirty?'#8D590F':'#405975'}}>
+          {changes.length} cambio(s) pendientes
+        </span>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button type="button" className="btn btn-ghost"
+            disabled={saving||busyVerify} onClick={stop}>Cerrar</button>
+          <button type="button" className="btn btn-ghost" disabled={saving||busyVerify}
+            onClick={()=>{if(!dirty||window.confirm('¿Descartar los cambios sin guardar?'))void load();}}>
+            Volver a consultar
+          </button>
+          <button type="button" className="btn btn-primary"
+            disabled={saving||busyVerify||loading||!serverReady||!dirty}
+            onClick={save}>
+            {saving||busyVerify?'Verificando…':'Guardar correcciones'}
+          </button>
+        </div>
+      </footer>
+    </section>
+  </div>;
+}
+
 function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosDetalle, onClose, onChanged, onNavigate, activeSession, activeSessionReady=true, activeSessionError=false }) {
   const [detalle,setDetalle]=React.useState(null), [loading,setLoading]=React.useState(true), [sesion,setSesion]=React.useState(null);
   const [sessionCheck,setSessionCheck]=React.useState('loading');
   const [oralSummary,setOralSummary]=React.useState(null), [busy,setBusy]=React.useState(''), [attendanceOpen,setAttendanceOpen]=React.useState(false), [suspOpen,setSuspOpen]=React.useState(false);
+  const [closedAttendanceEditing,setClosedAttendanceEditing]=React.useState(false);
+  const [closedAttendanceOverride,setClosedAttendanceOverride]=React.useState(null);
+  const [closedAttendanceNotice,setClosedAttendanceNotice]=React.useState('');
   const [draftAttendance,setDraftAttendance]=React.useState({});
   const [draftSaved,setDraftSaved]=React.useState('{}');
   const [draftComments,setDraftComments]=React.useState({});
@@ -1115,7 +1291,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     setAttendanceOpen(true);
   };
   const lessonKey=tvLessonKeyF97(lesson);
-  const detByStudent=asistenciaDetalle?.[lessonKey]||asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[lessonKey]||comentariosDetalle?.[String(lesson?.leccion)]||{};
+  const detByStudent=closedAttendanceOverride||asistenciaDetalle?.[lessonKey]||asistenciaDetalle?.[String(lesson?.leccion)]||{}, comByStudent=comentariosDetalle?.[lessonKey]||comentariosDetalle?.[String(lesson?.leccion)]||{};
   const workflow=()=>{
     if(!canOperateRail) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #D9C7EA',borderRadius:10,background:'#FBF7FE',color:'#6A3D91',fontWeight:800,textAlign:'center'}}>Esta actividad pertenece al docente asignado a {rielLeccion==='ican'?'Club I CAN':'Inglés Conversacional'}. Podés consultar el registro, pero no iniciarla ni cerrarla.</div>;
     if(!activeSessionReady) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE',color:'var(--ink-3)',fontWeight:800,textAlign:'center'}}>VERIFICANDO SI EXISTE OTRA SESIÓN ACTIVA…</div>;
@@ -1148,7 +1324,20 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
             </>}
           </div>
           {esOral&&abierta&&<div style={{padding:'10px 12px',borderRadius:10,background:oralListoParaCerrar?'#E8F5E9':'#EAF8EF',color:'#166534',fontSize:12,fontWeight:750,marginBottom:14}}>Examen oral: {oralSummary?.cerradas||0} de {oralSummary?.total??(roster||[]).length} evaluaciones cerradas.{!oralListoParaCerrar?' Aplicá el examen antes de cerrar la clase.':''}</div>}
-          {sesionCerrada&&<div style={{padding:'10px 12px',borderRadius:10,background:'#E8F5E9',color:'#166534',fontWeight:800,marginBottom:14}}>✓ Clase cerrada</div>}
+          {(closed||sesionCerrada)&&<div style={{display:'flex',alignItems:'center',gap:10,
+            justifyContent:'space-between',flexWrap:'wrap',padding:'10px 12px',borderRadius:10,
+            background:'#E8F5E9',marginBottom:14}}>
+            <span style={{color:'#166534',fontWeight:800}}>✓ Clase cerrada</span>
+            {canOperateRail&&sessionCheck==='ok'&&<button type="button"
+              data-f111-edit-closed-attendance="true" className="btn btn-ghost"
+              style={{fontSize:12,fontWeight:850,borderColor:'#A7C9B4',background:'#FFF'}}
+              onClick={()=>{setClosedAttendanceNotice('');setClosedAttendanceEditing(true);}}>
+              Editar asistencia
+            </button>}
+          </div>}
+          {closedAttendanceNotice&&<div role="status"
+            style={{padding:'8px 12px',background:'#EAF6EF',borderRadius:9,
+              color:'#166534',fontSize:12,marginBottom:10}}>{closedAttendanceNotice}</div>}
           {loading?<LoadingState variant="small" title="Cargando detalle…"/>:<>
             <div style={{padding:'16px 17px',border:'1px solid var(--line)',borderRadius:'var(--r-lg)',background:'#FBF7EF',marginBottom:15}}>
               <div style={{...vdLabelStyle,marginBottom:5}}>{detalle?.unidad||`Nivel ${nivel}`}</div>
@@ -1170,6 +1359,11 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
         </div>
       </aside>
     </div>
+    {closedAttendanceEditing&&<ClosedAttendanceEditorF111 meta={meta} lesson={lesson}
+      riel={rielLeccion} onClose={()=>setClosedAttendanceEditing(false)}
+      onSaved={(fresh,count)=>{setClosedAttendanceOverride(fresh);
+        setClosedAttendanceNotice('✓ '+count+' asistencia(s) corregida(s) y verificada(s).');
+        setClosedAttendanceEditing(false);onChanged&&onChanged();}}/>}
     {attendanceOpen&&typeof ModalCierreLeccion==='function'&&<ModalCierreLeccion initialAttendance={draftAttendance} initialComments={draftComments} requireExplicitAttendance={true} lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:tvLessonHoraLabel(lesson,meta),hora_inicio:rielLeccion==='ican'?(meta?.hora_i_ican||meta?.hora_inicio_ican||lesson.hora_inicio||''):(lesson.hora_inicio||''),hora_fin:rielLeccion==='ican'?(meta?.hora_f_ican||meta?.hora_fin_ican||lesson.hora_fin||''):(lesson.hora_fin||''),tipo:lesson.tipo,riel:rielLeccion,programa:meta?.programa||'',progress_check:lesson?.progress_check===true,horario_label:tvGrupoLabel(meta).full,estado:lesson.estado}} docenteNombre={meta?.docente||''} registradoPor={meta?.docente||''} submitLabel="Guardar asistencia y cerrar clase" submitFn={(body)=>postTeacher('docenteCerrarClaseConAsistenciaF87',body,45000)} onClose={()=>setAttendanceOpen(false)} onSuccess={(res)=>{setAttendanceOpen(false);setSesion(res?.sesion||{ESTADO:'CERRADA'});setSessionCheck('ok');window.dispatchEvent(new CustomEvent('an:teacher-session-changed'));onChanged&&onChanged();}} onSolicitudEnviada={()=>{setAttendanceOpen(false);onChanged&&onChanged();}}/>}
     {suspOpen&&typeof ModalSolicitarSuspension==='function'&&<ModalSolicitarSuspension lec={{cod_grupo:code,nivel,leccion:lesson.leccion,fecha:lesson.fecha,turno:lesson.turno,tipo:lesson.tipo,estado:lesson.estado,hora_inicio:lesson.hora_inicio,hora_fin:lesson.hora_fin,riel:rielLeccion}} solicitante={meta?.docente||''} onCerrar={()=>setSuspOpen(false)} onEnviada={()=>{setSuspOpen(false);onChanged&&onChanged();}}/>}
   </>;

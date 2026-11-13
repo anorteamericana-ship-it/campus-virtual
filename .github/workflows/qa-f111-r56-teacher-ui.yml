@@ -6,6 +6,7 @@ on:
       - 'src/app.jsx'
       - 'src/att77_bridge.js'
       - 'tests/qa_f111_r56_teacher_roster_ui.cjs'
+      - 'scripts/qa_f111_closed_attendance_ui.mjs'
       - '.github/workflows/qa-f111-r56-teacher-ui.yml'
 permissions:
   contents: read
@@ -18,3 +19,5 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - run: node tests/qa_f111_r56_teacher_roster_ui.cjs
+      - name: Closed attendance editor — new contract only
+        run: node scripts/qa_f111_closed_attendance_ui.mjs
