@@ -36,9 +36,9 @@ for(const target of ['src/admin_students.jsx','src/aplicar_pago.jsx','src/solici
 // EXUI-05C: exact source pins renewed for contextual read-only inbox and
 // oral rubric navigation; R57, PDF, grade, financial and lazy-route checks stay strict.
 const uiPins={
-  'campus.html':'63aa01258c0eadfa9a86b48aeda64f3af2a8347577fb8de062afc92f030bf9b4',
-  'src/app.jsx':'95078d51f1c61319857fc25ec803de943f8318b1df0087943df8aa71339ab43a',
-  'src/teacher_views.jsx':'8d027f4be25a01bdca784e76bffb4998cbeed40697be1d6d0257d77473866fd4',
+  'campus.html':'bf00a0d222bebdd50f26fdcb818025f4b7e37c58ceddae35cadc3fdfa9967501',
+  'src/app.jsx':'35f0af673d78f0695b455dd6f0d6e730dc52e8ff680236374bcffae974be2c11',
+  'src/teacher_views.jsx':'28647c33d7bf0118d5d383910c2f508c9160d1b196ebb6b031126d18d9107bed',
   'src/teacher_agenda_slots_cs19f.jsx':'7522a52a5abb31d4692c8933190709a2ed35ac75fdfb6ec138c01e9f39649cf0',
   'src/teacher_quiz_review_f111.js':'053794b19ebae1b17f9d2cd6a63bce9ad25f3bc56203df4da6a5cf3175626305'
 };

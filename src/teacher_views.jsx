@@ -943,9 +943,10 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
   const [notice,setNotice]=React.useState('');
   const [busyVerify,setBusyVerify]=React.useState(false);
   const [serverReady,setServerReady]=React.useState(false);
+  const [validationAttempted,setValidationAttempted]=React.useState(false);
   const request={cod_grupo:group,nivel:level,leccion:number,riel};
   const load=React.useCallback(async()=>{
-    setLoading(true);setError('');setNotice('');setServerReady(false);
+    setLoading(true);setError('');setNotice('');setServerReady(false);setValidationAttempted(false);
     try{
       const r=await postTeacher('docenteGetAsistenciaCerradaF111',request,45000);
       if(!r?.ok||r.clase_cerrada!==true||r.cod_grupo!==group||
@@ -977,6 +978,8 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
   const attendanceChanges=changes.filter(x=>x.presente!==x.antes).length;
   const commentChanges=changes.filter(x=>x.comentario!==x.comentario_antes).length;
   const pending=rows.filter(x=>x.presente===null).length;
+  const missingComments=rows.filter(x=>x.editable===true&&
+    !String(form[x.code]?.comentario||'').trim());
   const dirty=changes.length>0;
   const stop=()=>{if(saving||busyVerify)return;
     if(dirty&&!window.confirm('Tenés cambios sin guardar. ¿Cerrar?'))return;
@@ -988,6 +991,12 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
   };
   const save=async()=>{
     if(!serverReady||!dirty||saving||busyVerify)return;
+    if(missingComments.length){
+      setValidationAttempted(true);
+      setError('Faltan comentarios de '+missingComments.length+
+        ' estudiante(s). Completalos antes de guardar.');
+      return;
+    }
     if(!window.confirm('¿Guardar los cambios en esta lista?'))return;
     setSaving(true);setError('');setNotice('');
     let acknowledged=false;
@@ -1053,14 +1062,27 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
           const v=form[s.code]||{presente:null,comentario:''};
           const recovered=s.presente===null&&typeof s.sugerencia_presente==='boolean';
           const canEdit=s.editable===true&&serverReady&&!saving&&!busyVerify;
-          return <div key={s.code} style={{padding:'12px 0',borderBottom:'1px solid #E9ECF2'}}>
+          const changed=!!form[s.code]&&
+            (v.presente!==s.presente||v.comentario!==(s.comentario||''));
+          const pendingSave=s.presente===null||changed;
+          const commentEmpty=!String(v.comentario||'').trim();
+          return <div key={s.code}
+            data-f111-pending-save={pendingSave?'true':'false'}
+            style={{padding:'13px 14px',marginBottom:10,
+              border:'1px solid '+(pendingSave?'#E4BA5F':'#E9ECF2'),
+              borderRadius:12,background:pendingSave?'#FFF4D5':'#FFFFFF',
+              boxShadow:pendingSave?'inset 4px 0 0 #DCA83A':'none'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
               flexWrap:'wrap',gap:10,marginBottom:8}}>
               <div style={{minWidth:140}}>
                 <div style={{fontWeight:800,fontSize:13,color:'#173252'}}>{s.name||s.code}</div>
-                <div style={{fontSize:11,color:'#64748B'}}>{s.code}
-                  {s.presente===null&&<span style={{marginLeft:8,color:'#9B6111'}}>
-                    {recovered?'Por guardar':'Pendiente'}</span>}
+                <div style={{fontSize:11,color:'#64748B',display:'flex',
+                  alignItems:'center',flexWrap:'wrap',gap:7,marginTop:5}}>{s.code}
+                  {pendingSave&&<span style={{padding:'4px 9px',borderRadius:999,
+                    background:'#FFE3A0',color:'#784400',border:'1px solid #DFB554',
+                    fontSize:11,fontWeight:900,letterSpacing:'.015em'}}>
+                    {s.presente===null?(recovered?'POR GUARDAR':'PENDIENTE'):'SIN GUARDAR'}
+                  </span>}
                 </div>
               </div>
               <div role="group" aria-label={'Asistencia de '+(s.name||s.code)}
@@ -1079,16 +1101,22 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
               </div>
             </div>
             <label style={{display:'grid',gap:5,fontSize:12,color:'#405975'}}>
-              Comentario
-              <textarea rows={2} maxLength={800}
+              Comentario <span style={{color:'#B3261E',fontWeight:700}}> *</span>
+              <textarea rows={2} maxLength={800} required
                 aria-label={'Comentario de '+(s.name||s.code)}
+                aria-invalid={validationAttempted&&commentEmpty}
                 placeholder="Escribí el comentario de esta clase"
                 value={v.comentario}
                 disabled={!canEdit}
                 onChange={e=>update(s.code,{comentario:e.target.value})}
                 style={{width:'100%',resize:'vertical',borderRadius:8,
-                  border:'1px solid #D2DBE6',padding:9,fontSize:12,
-                  background:canEdit?'#FFF':'#F8FAFC'}}/>
+                  border:'1.5px solid '+(validationAttempted&&commentEmpty?'#C74439':'#D2DBE6'),
+                  padding:9,fontSize:12,
+                  background:validationAttempted&&commentEmpty?'#FFF0EB':canEdit?'#FFF':'#F8FAFC'}}/>
+              {validationAttempted&&commentEmpty&&canEdit&&
+                <span style={{fontSize:11,fontWeight:700,color:'#B3261E'}}>
+                  Falta el comentario.
+                </span>}
             </label>
             {s.editable!==true&&<div style={{fontSize:12,color:'#9B6111',marginTop:5}}>
               Este registro necesita revisión de Administración.
@@ -1101,7 +1129,10 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
         flexWrap:'wrap',gap:10,padding:'12px 20px',
         borderTop:'1px solid #DFE5EE',background:'#F8FAFE'}}>
         <span style={{fontSize:12,color:'#55667C'}}>
-          {dirty?changes.length+' cambio(s) por guardar':pending?pending+' pendiente(s)':'Sin cambios'}
+          {missingComments.length
+            ?missingComments.length+' comentario(s) pendiente(s) · '+changes.length+' cambio(s) sin guardar'
+            :dirty?changes.length+' cambio(s) por guardar'
+            :pending?pending+' pendiente(s)':'Sin cambios'}
         </span>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button type="button" className="btn btn-ghost"
