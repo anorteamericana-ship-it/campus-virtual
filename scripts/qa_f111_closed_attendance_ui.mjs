@@ -42,8 +42,21 @@ check(drawer.includes("canOperateRail&&sessionCheck==='ok'")&&
 check(drawer.includes('closedAttendanceOverride||asistenciaDetalle?')&&
  drawer.includes("setClosedAttendanceNotice('Cambios guardados.');"),
  'refreshes teacher view and uses short success text');
-check(app.split('&attedit=F111ATTEDITV220261113').length===3,
+check(app.split('&attedit=F111ATTEDITV320261113').length===3,
  'both lazy routes invalidate frontend cache');
-check(html.split('&attendance=F111ATTEDITV220261113').length===2,
+check(html.split('&attendance=F111ATTEDITV320261113').length===2,
  'campus document invalidates app cache');
-console.log('F111_ATT_EDIT_V2_UI '+n+'/'+n+' PASS');
+check(edit.includes('data-f111-pending-save=')&&
+ edit.includes("pendingSave?'#FFF4D5'")&&edit.includes('POR GUARDAR')&&
+ edit.includes('SIN GUARDAR'),
+ 'pending and modified student rows use visible light yellow cards');
+check(edit.includes('const missingComments=rows.filter(')&&
+ edit.includes("!String(form[x.code]?.comentario||'').trim()")&&
+ edit.includes('if(missingComments.length){')&&
+ edit.includes('setValidationAttempted(true)'),
+ 'missing comments stop save before network request');
+check(edit.includes('aria-invalid={validationAttempted&&commentEmpty}')&&
+ edit.includes('required')&&edit.includes('Falta el comentario.')&&
+ edit.includes("validationAttempted&&commentEmpty?'#C74439'"),
+ 'blank comments are visibly marked and cannot be overlooked');
+console.log('F111_ATT_EDIT_V3_UI '+n+'/'+n+' PASS');
