@@ -1,0 +1,605 @@
+{
+  "IC5_B1_WQ01": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b",
+        "3a",
+        "3b"
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ02": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        "4a",
+        "4b"
+      ],
+      "etiquetas_items": {
+        "4a": "Ejercicio 4 · primera respuesta",
+        "4b": "Ejercicio 4 · segunda respuesta"
+      }
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ03": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ04": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b"
+      ],
+      "etiquetas_items": {
+        "1a": "Ejercicio 1 · pregunta",
+        "1b": "Ejercicio 1 · respuesta",
+        "2a": "Ejercicio 2 · pregunta",
+        "2b": "Ejercicio 2 · respuesta"
+      }
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b",
+        "3a",
+        "3b"
+      ],
+      "etiquetas_items": {
+        "1a": "Ejercicio 1 · primer espacio",
+        "1b": "Ejercicio 1 · segundo espacio",
+        "2a": "Ejercicio 2 · primer espacio",
+        "2b": "Ejercicio 2 · segundo espacio",
+        "3a": "Ejercicio 3 · primer espacio",
+        "3b": "Ejercicio 3 · segundo espacio"
+      }
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "TEXTO_GUIADO",
+      "items": [],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ05": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "etiquetas_items": {
+        "1": "Espacio 1 del diálogo",
+        "2": "Espacio 2 del diálogo",
+        "3": "Espacio 3 del diálogo",
+        "4": "Espacio 4 del diálogo",
+        "5": "Espacio 5 del diálogo",
+        "6": "Espacio 6 del diálogo"
+      }
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b",
+        "3a",
+        "3b"
+      ],
+      "etiquetas_items": {
+        "1a": "Ejercicio 1 · pregunta",
+        "1b": "Ejercicio 1 · respuesta corta",
+        "2a": "Ejercicio 2 · pregunta",
+        "2b": "Ejercicio 2 · respuesta corta",
+        "3a": "Ejercicio 3 · pregunta",
+        "3b": "Ejercicio 3 · respuesta corta"
+      }
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ06": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {
+        "1": "Pregunta 1",
+        "2": "Pregunta 2",
+        "3": "Pregunta 3",
+        "4": "Pregunta 4"
+      }
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {
+        "1": "Imagen a",
+        "2": "Imagen b",
+        "3": "Imagen c",
+        "4": "Imagen d"
+      }
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ07": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b",
+        "3a",
+        "3b"
+      ],
+      "etiquetas_items": {
+        "1a": "Ejercicio 1 · primer espacio",
+        "1b": "Ejercicio 1 · segundo espacio",
+        "2a": "Ejercicio 2 · primer espacio",
+        "2b": "Ejercicio 2 · segundo espacio",
+        "3a": "Ejercicio 3 · primer espacio",
+        "3b": "Ejercicio 3 · segundo espacio"
+      }
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    }
+  ],
+  "IC5_B1_WQ08": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {}
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        "2a",
+        "2b",
+        "3a",
+        "3b"
+      ],
+      "etiquetas_items": {
+        "2a": "Ejercicio 2 · primera respuesta",
+        "2b": "Ejercicio 2 · segunda respuesta",
+        "3a": "Ejercicio 3 · primera respuesta",
+        "3b": "Ejercicio 3 · segunda respuesta"
+      }
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        "4a",
+        "4b"
+      ],
+      "etiquetas_items": {
+        "4a": "Ejercicio 4 · primera respuesta",
+        "4b": "Ejercicio 4 · segunda respuesta"
+      }
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {}
+    }
+  ]
+}

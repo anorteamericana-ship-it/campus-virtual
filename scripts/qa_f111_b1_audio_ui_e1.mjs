@@ -12,7 +12,7 @@ assert.doesNotMatch(source,/[a-zA-Z0-9_-]{30,}\.mp3/,'no Drive binary or direct 
 const base='https://b1-audio-synthetic.invalid';
 const pdf=Buffer.from('%PDF-1.4\n%QZ-B1-SYNTHETIC\n'+('fake '.repeat(25))+'\n%%EOF').toString('base64');
 const audio=Buffer.concat([Buffer.from('ID3','ascii'),Buffer.alloc(1600)]).toString('base64');
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.F111_QZ_CHROME_PATH?{executablePath:process.env.F111_QZ_CHROME_PATH}:{})});
 let badAudio=false, calls=[],apiUrl=base+'/api';
 try{
  const page=await browser.newPage({viewport:{width:390,height:844}});
