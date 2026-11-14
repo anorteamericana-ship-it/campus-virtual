@@ -1,19 +1,28 @@
-// F111 D5-R3 · browser QA: B1 PC02–08 148 canonical fields, zero real writes.
+// F111 D5-R12 · browser QA: B1 PC02–PC08 all 174 fields, zero real writes.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {chromium} from 'playwright';
 const html=readFileSync(new URL('../modulos/quiz_progress.html',import.meta.url),'utf8');
 assert.ok(html.includes('B1_CONTROL_MODES'),'one B1 response-mode map');
 assert.ok(!html.includes('_Key.pdf'),'private answer keys never published');
-const fixtures={
- 8:[4,5,5,4,6],13:[4,3,3,3,7,6],16:[3,2,3,3,3,3,1],
- 21:[3,1,4,3,3,3],24:[3,6,1,4,1,4],
- 28:[4,4,3,5,3,3],30:[4,4,4,3,4,3]
-};
-const typed={8:10,13:16,16:11,21:14,24:10,28:10,30:15};
-const letters='ABCDEFG';
+// La fuente del fixture es el mismo esquema de 8 quizzes utilizado por el servidor.
+// Fixture derivado del esquema del backend, sin claves ni respuestas correctas.
+const schemas=Object.fromEntries(Object.entries(JSON.parse(readFileSync(
+ new URL('./fixtures/qz_b1_sections_e1.json',import.meta.url),'utf8'
+))).map(([quiz,secciones])=>[quiz,{secciones}]));
+const LESSONS=[4,8,13,16,21,24,28,30];
+const expected={8:[4,5,5,5,6],13:[4,3,3,3,7,6],16:[3,4,3,3,3,6,1],
+ 21:[3,6,4,3,6,3],24:[3,6,4,4,4,4],28:[4,4,3,5,6,3],30:[4,4,4,5,5,3]};
+const typed={8:11,13:16,16:16,21:22,24:16,28:13,30:16};
+const fixtures=Object.fromEntries(Object.keys(expected).map(l=>{
+ const number=LESSONS.indexOf(Number(l))+1;
+ const meta=schemas['IC5_B1_WQ'+String(number).padStart(2,'0')];
+ return [Number(l),meta.secciones.map(s=>s.tipo_respuesta==='ITEMS_NUMERADOS'&&s.items?.length>=2?s.items.length:1)];
+}));
+for(const [lesson,counts] of Object.entries(expected))
+ assert.deepEqual(fixtures[lesson],counts,'source-grounded item count for L'+lesson);
 const base='https://f111-b1-qa.invalid',api=base+'/api';
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.F111_QZ_CHROME_PATH?{executablePath:process.env.F111_QZ_CHROME_PATH}:{})});
 let calls=[],attempt={},returnDelivered=false;
 try{
  const page=await browser.newPage({viewport:{width:390,height:844}});
@@ -28,8 +37,10 @@ try{
   calls.push({fn,body});
   const lesson=Number(body.leccion),n=[4,8,13,16,21,24,28,30].indexOf(lesson)+1;
   const quiz_id='IC5_B1_WQ'+String(n).padStart(2,'0');
-  const counts=fixtures[lesson]||[4,3,4,4,6,4];
-  const secciones=counts.map((len,i)=>({id:letters[i],tipo_respuesta:len===1?'TEXTO_GUIADO':'ITEMS_NUMERADOS',items:len===1?[]:Array.from({length:len},(_,j)=>j+1)}));
+  const quizSchema=schemas[quiz_id];
+  assert.ok(quizSchema,'QA schema for '+quiz_id);
+  const secciones=quizSchema.secciones.map(({id,tipo_respuesta,items,etiquetas_items})=>({
+   id,tipo_respuesta,items,etiquetas_items:etiquetas_items||{}}));
   let data;
   if(fn==='qzProgressGet')data={ok:true,quiz_id,nivel:'B1',leccion:lesson,peso_oficial:0,disponible_hoy:true,fecha:'2026-10-24',secciones};
   else if(fn==='qzProgressMyAttempt')data={ok:true,estado:returnDelivered?'ENTREGADO':'BORRADOR',respuestas:attempt};
@@ -51,7 +62,19 @@ try{
   assert.ok(calls.every(c=>!['qzProgressSubmit','qzProgressSaveDraft'].includes(c.fn)),'no synthetic writes on open');
   sum+=fields;console.log('D5_B1_FIELDS_PASS L'+lesson+' fields='+fields+' choices='+choice);
  }
- assert.equal(sum,148,'exactly 148 response fields across seven quizzes');
+ assert.equal(sum,174,'exactly 174 fields across seven Cambridge B1 quizzes');
+ await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B1&nivel=B1&leccion=4');
+ await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+ assert.equal(await page.locator('#answers [data-section],#answers fieldset.f111-control').count(),25,
+  'PC01 original 25 answer slots including suffixes');
+ assert.equal(await page.locator('textarea[data-section="E1a"]').count(),1,'PC01 E1a is displayed');
+ assert.equal(await page.locator('textarea[data-section="E3b"]').count(),1,'PC01 E3b is displayed');
+ await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B1&nivel=B1&leccion=8');
+ await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+ assert.equal(await page.locator('textarea[data-section="D4a"]').count(),1,'PC02 first fourth gap');
+ assert.equal(await page.locator('textarea[data-section="D4b"]').count(),1,'PC02 second fourth gap');
+ assert.match(await page.locator('textarea[data-section="D4b"]').getAttribute('aria-label'),
+  /segunda respuesta/,'item-specific source label');
  // Multiple-answer ceiling and serialized draft, with one field = one canonical backend key.
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B1&nivel=B1&leccion=13');
  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
@@ -78,5 +101,5 @@ try{
  assert.equal(await page.locator('#answers fieldset.f111-control input:not(:disabled)').count(),0);
  assert.equal(await page.locator('#saveBtn').isDisabled(),true);
  assert.equal(calls.some(c=>/MyAttempt|SaveDraft|Submit/.test(c.fn)),false);
- console.log('D5_B1_INTERACTIVE_QA_PASS 148 fields; 2-choice ceiling; save/restore; lock; teacher preview');
+ console.log('D5_B1_INTERACTIVE_QA_PASS 174 fields; 2-choice ceiling; save/restore; lock; teacher preview');
 }finally{await browser.close();}

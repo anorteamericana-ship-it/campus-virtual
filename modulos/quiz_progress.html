@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Quiz Progress Check · Academia Norteamericana · F111 QA</title>
+<title>Quiz Progress Check · Academia Norteamericana</title>
 <style>
 :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#17253C;background:#F5F7FC;--accent:#EFC44A;--accent-soft:#FFF8DD;--navy:#073B7A;--line:#DAE1EC}
 *{box-sizing:border-box}body{margin:0}button,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
@@ -28,7 +28,7 @@
 <section class="card"><div class="cardhead"><div><h2>Cuestionario original</h2><small>Leé los ejercicios del documento y escuchá las indicaciones del docente en clase.</small></div><span class="chip">PDF</span></div>
 <div class="pdfBox" id="pdfBox"><div class="pdfPlaceholder"><div><div class="symbol">📄</div><b>Documento de la evaluación</b><p id="pdfInfo">Se cargará únicamente cuando el Quiz corresponda a tu Progress Check.</p></div></div></div>
 </section>
-<section class="card"><div class="cardhead"><div><h2>Mis respuestas</h2><small>Escribí el número de cada ejercicio y tu respuesta dentro de su apartado (A, B, C…).</small></div><span class="chip" id="counter">0 respuestas</span></div>
+<section class="card"><div class="cardhead"><div><h2>Mis respuestas</h2><small>Completá cada respuesta siguiendo el ejercicio indicado en el PDF original.</small></div><span class="chip" id="counter">0 respuestas</span></div>
 <div class="answers" id="answers"></div>
 <div class="footer"><div class="status"><span id="saveState" role="status" aria-live="polite">Todavía no hay respuestas.</span><div class="bar"><div id="progressFill" style="width:0%"></div></div></div><div class="actions"><button class="btn" type="button" id="saveBtn">Guardar avance</button><button class="btn primary" type="button" id="submitBtn">Entregar quiz</button><button class="btn" type="button" id="verifyBtn" hidden>Verificar entrega</button></div></div>
 </section>
@@ -87,7 +87,7 @@ function decorateB1(root){
   if(!size||size>8||!max||max>size)continue;
   const fieldset=document.createElement('fieldset');
   fieldset.className='f111-control';fieldset.dataset.key=key;
-  const legend=document.createElement('legend');legend.textContent=ta.getAttribute('aria-label')||key;
+  const legend=document.createElement('legend');legend.textContent=(ta.getAttribute('aria-label')||key)+(multi?' · seleccioná '+max+' opciones':'');
   fieldset.appendChild(legend);
   for(let i=0;i<size;i++){
    const val=mode[0]==='l'?String.fromCharCode(97+i):String(i+1);
@@ -127,15 +127,15 @@ function build(secciones){
   const nums=section.tipo_respuesta==='ITEMS_NUMERADOS'&&Array.isArray(section.items)&&section.items.length>=2?section.items:[null];
   for(const num of nums){
    const key=section.id+(num==null?'':num);
-   if(!/^[A-Z][0-9]{0,2}$/.test(key))continue;
+   if(!/^[A-Z](?:[0-9]{0,2}|[0-9]{1,2}[ab])$/.test(key))continue;
    fields.push({key,section:section.id,number:num});
    const wrapper=document.createElement('div');wrapper.style.cssText='padding:9px 12px;border-top:1px solid #E5EAF2';
    const label=document.createElement('label');label.style.cssText='display:block;font-size:12px;font-weight:800;color:#3B5778;margin-bottom:5px';
-   label.textContent=num==null?'Respuestas del apartado '+section.id:'Ejercicio '+num;
+   label.textContent=section.etiquetas_items&&section.etiquetas_items[String(num)]?String(section.etiquetas_items[String(num)]):num==null?'Respuestas del apartado '+section.id:'Ejercicio '+num;
    const field=document.createElement('textarea');
    field.style.cssText='border:1px solid #D5DFED;border-radius:9px;padding:10px;width:100%;min-height:55px;resize:vertical;font-size:13px';
    field.setAttribute('aria-label',label.textContent+' · '+section.id);
-   field.placeholder=num==null?'Escribí las respuestas de este apartado, usando la numeración del documento.':'Escribí aquí las respuestas del ejercicio '+num+'.';
+   field.placeholder=num==null?'Escribí las respuestas de este apartado, usando la numeración del documento.':'Completá esta respuesta siguiendo el documento original.';
    field.dataset.section=key;
    field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus('Cambios por guardar…');update();clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);});
    field.addEventListener('blur',()=>{if(dirty)save(false)});
@@ -250,7 +250,7 @@ async function start(){
  // QA URL explícita, o la API ya configurada en el Campus que hospeda el iframe.
  let parentApi='';try{if(window.parent&&window.parent!==window)parentApi=String(window.parent.F111_QZ_API_URL||'')}catch(_){}
  apiUrl=String(window.F111_QZ_QA_API_URL||parentApi||'').trim();token=sessionToken();
- if(!apiUrl||!token||!group){setError('Vista QA todavía no habilitada: falta sesión, grupo o configuración del backend aislado.');return;}
+ if(!apiUrl||!token||!group){setError('Iniciá sesión en el Campus y volvé a abrir tu evaluación.');return;}
  try{
   const meta=await api('qzProgressGet',context());
   const quizNo=Object.keys(STEPS).indexOf(String(lesson))+1;

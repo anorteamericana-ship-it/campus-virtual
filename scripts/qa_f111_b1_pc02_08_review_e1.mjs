@@ -18,7 +18,7 @@ const calls=[],errors=[],students=[
  {QUIZ_ID:'IC5_B1_WQ02',COD_GRUPO:'QA-F111-B1',NIVEL:'B1',LECCION:8,
  COD_ESTUDIANTE:'QA02',ESTADO:'REVISADO',RESPUESTAS_JSON:JSON.stringify({A1:'Other'}),
  RESULTADO:'88',COMENTARIO_DOCENTE:'Sugerencia de práctica adicional.'}];
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.F111_QZ_CHROME_PATH?{executablePath:process.env.F111_QZ_CHROME_PATH}:{})});
 try{
  const page=await browser.newPage();
  page.on('pageerror',e=>errors.push(e.message));

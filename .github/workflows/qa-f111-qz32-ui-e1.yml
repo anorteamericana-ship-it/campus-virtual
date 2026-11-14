@@ -9,6 +9,8 @@ on:
       - 'modulos/qz_b1_pc02_preview.html'
       - 'scripts/qa_f111_b1_audio_ui_e1.mjs'
       - 'scripts/qa_f111_b1_interactive_r3_e1.mjs'
+      - 'scripts/qa_f111_b1_schema_ui_contract_e1.mjs'
+      - 'scripts/fixtures/qz_b1_sections_e1.json'
       - 'scripts/qa_f111_b1_pc02_preview_e1.mjs'
       - 'modulos/qz_b1_pc01_digital.html'
       - 'src/student_pc01_f111.js'
@@ -45,6 +47,8 @@ jobs:
           node-version: '20'
       - name: QA E1 quiz student/teacher source and safety
         run: node scripts/qa_f111_qz32_ui_e1.mjs
+      - name: R12 B1 complete response fields and privacy contracts (8 quizzes)
+        run: node scripts/qa_f111_b1_schema_ui_contract_e1.mjs
       - name: QA E1 teacher review from class and Examenes
         run: node scripts/qa_f111_teacher_quiz_access_e1.mjs
       - name: QA E1 Mis grupos resilient session fallback
@@ -69,7 +73,7 @@ jobs:
         run: node scripts/qa_f111_b1_pc02_08_review_e1.mjs
       - name: B1 original audio 8 tracks in Chromium with synthetic protected API
         run: node scripts/qa_f111_b1_audio_ui_e1.mjs
-      - name: B1 interactive 148 response fields and draft lifecycle in Chromium
+      - name: B1 interactive 174 response fields and draft lifecycle in Chromium
         run: node scripts/qa_f111_b1_interactive_r3_e1.mjs
       - name: PC02 editorial source and private-preview safety
         run: node scripts/qa_f111_b1_pc02_preview_e1.mjs
