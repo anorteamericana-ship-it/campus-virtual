@@ -707,20 +707,32 @@ function createQz24RehearsalCard(groupSelector){
    make('p','Elegí un grupo docente autorizado y uno de sus 8 quizzes. Podés rellenar las respuestas y consultar el PDF/audio desde tu sesión, pero el ensayo NO guarda, entrega ni abre evaluaciones.'));
  const state=make('p','Consultando grupos autorizados…','f111-tqr-feedback');
  state.setAttribute('role','status');
+ const filter=make('div',null,'f111-teacher-exam-controls');
+ const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
+ levelPicker.setAttribute('aria-label','Nivel que desea ensayar el docente');
+ for(const [key,name] of LEVELS){const option=make('option',name);option.value=key;levelPicker.append(option);}
+ filter.append(make('span','Nivel del quiz:'),levelPicker);
  const grid=make('div',null,'f111-teacher-exam-controls');
  grid.dataset.f111Qz24Lessons='true';
- card.append(state,grid);
- let requestId=0;
+ card.append(state,filter,grid);
+ let requestId=0,previousGroup='';
  function render(){
   requestId++;
   const group=String(groupSelector.value||'').trim().toUpperCase();
-  const match=group.match(/^(B1|B2|I1|I2)-/);
+  // El prefijo del grupo ofrece solo el valor inicial: los grupos pueden
+  // ascender de nivel sin cambiar de código. El backend decide los permisos.
+  if(group!==previousGroup){
+    previousGroup=group;
+    const preferred=group.match(/^(B1|B2|I1|I2)-/);
+    if(preferred)levelPicker.value=preferred[1];
+  }
+  const level=String(levelPicker.value||'').toUpperCase();
   grid.replaceChildren();
-  if(!group||!match){
-   state.textContent='Seleccioná un grupo autorizado con código B1, B2, I1 o I2.';
+  if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)||!LEVELS.some(x=>x[0]===level)){
+   state.textContent='Seleccioná un grupo autorizado y un nivel válido.';
    return;
   }
-  const level=match[1],levelInfo=LEVELS.find(x=>x[0]===level);
+  const levelInfo=LEVELS.find(x=>x[0]===level);
   state.textContent=(levelInfo?levelInfo[1]:level)+' · '+group+' · ensayo de docente solamente. El servidor comprobará el permiso antes de abrir.';
   for(let i=0;i<LESSONS.length;i++){
    const lesson=LESSONS[i][0],number=i+1;
@@ -752,8 +764,9 @@ function createQz24RehearsalCard(groupSelector){
    grid.append(btn);
   }
  }
+ levelPicker.addEventListener('change',render);
  render();
- return {card,render};
+ return {card,render,levelPicker};
 }
 function buildTeacherExamsF111(){
  const section=make('section',null,'f111-teacher-exam-center');
