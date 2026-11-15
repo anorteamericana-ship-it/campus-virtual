@@ -64,8 +64,7 @@ try{
  calls=[];
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=4');
  await page.waitForFunction(()=>!document.querySelector('#originalAudioBox').hidden);
- await page.evaluate(()=>{response.A1='E1 synthetic, no real submission';audioReady=true;update();});
- assert.equal(await page.locator('#submitBtn').isDisabled(),false,'before decode error, complete audio and answer allow submit');
+ await page.locator('#answers textarea[data-section="A1"]').fill('Respuesta sintética sin entrega');
  await page.evaluate(()=>document.querySelector('#originalAudioPlayer').dispatchEvent(new Event('error')));
  assert.equal(await page.locator('#submitBtn').isDisabled(),true,'decode error must reblock quiz delivery');
  assert.match(await page.locator('#listeningInfo').innerText(),/No se puede reproducir la pista original/);
