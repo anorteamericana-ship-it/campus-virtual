@@ -11,6 +11,7 @@ on:
       - 'scripts/qa_f111_b1_interactive_r3_e1.mjs'
       - 'scripts/qa_f111_qz24_b2_teacher_rehearsal_e1.mjs'
       - 'scripts/qa_f111_qz24_i1_teacher_rehearsal_e1.mjs'
+      - 'scripts/qa_f111_qz24_teacher_level_selector_e1.mjs'
       - 'scripts/fixtures/qz24_i1_sections_e1.json'
       - 'scripts/fixtures/qz24_b2_sections_e1.json'
       - 'scripts/qa_f111_b1_schema_ui_contract_e1.mjs'
@@ -55,6 +56,8 @@ jobs:
         run: node scripts/qa_f111_b1_schema_ui_contract_e1.mjs
       - name: QA E1 teacher review from class and Examenes
         run: node scripts/qa_f111_teacher_quiz_access_e1.mjs
+      - name: QZ24 selector docente por nivel y grupo sin abrir ni entregar
+        run: node scripts/qa_f111_qz24_teacher_level_selector_e1.mjs
       - name: QA E1 Mis grupos resilient session fallback
         run: node scripts/qa_f111_teacher_session_fallback_e1.mjs
       - name: QA E1 B1 PC01 activation and two separate comments
