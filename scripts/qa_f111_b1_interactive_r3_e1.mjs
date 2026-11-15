@@ -98,7 +98,7 @@ try{
  calls=[];returnDelivered=false;
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B1&nivel=B1&leccion=13&teacher_preview=1');
  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
- assert.equal(await page.locator('#answers fieldset.f111-control input:not(:disabled)').count(),0);
+ assert.ok((await page.locator('#answers fieldset.f111-control input:not(:disabled)').count())>0,'ensayo docente puede responder sin guardar');
  assert.equal(await page.locator('#saveBtn').isDisabled(),true);
  assert.equal(calls.some(c=>/MyAttempt|SaveDraft|Submit/.test(c.fn)),false);
  console.log('D5_B1_INTERACTIVE_QA_PASS 174 fields; 2-choice ceiling; save/restore; lock; teacher preview');
