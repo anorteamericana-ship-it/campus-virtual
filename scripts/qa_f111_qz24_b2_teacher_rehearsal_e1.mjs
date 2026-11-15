@@ -27,7 +27,7 @@ try{
   const i=lessons.indexOf(Number(body.leccion)),id='IC5_B2_WQ'+String(i+1).padStart(2,'0');
   let result={ok:false,error:'unhandled_synthetic'};
   if(fn==='qzProgressGet')result={ok:true,quiz_id:id,nivel:'B2',leccion:lessons[i],peso_oficial:0,
-   disponible_hoy:true,fecha:'2026-11-14',secciones:fixtures[id],
+   disponible_hoy:false,fecha:'',ensayo_sin_calendario:true,secciones:fixtures[id],
    listening:{pista:i+2,grabacion_disponible:audioVerified}};
   if(fn==='qzProgressPaper')result={ok:true,quiz_id:id,mime:'application/pdf',peso_oficial:0,
    pdf_base64:Buffer.from('%PDF-1.4\n%%EOF').toString('base64')};
