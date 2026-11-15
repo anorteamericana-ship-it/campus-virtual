@@ -59,10 +59,21 @@ try{
  assert.equal(calls.includes('qzProgressMyAttempt'),false,'teacher preview cannot read student attempts');
  assert.equal(calls.includes('qzProgressSubmit'),false);
  assert.equal(calls.includes('qzProgressSaveDraft'),false);
+ // Un MP3 puede tener cabecera ID3 correcta pero fallar al reproducirse.
+ // La interfaz debe bloquear una entrega incluso si antes estaba habilitada.
+ calls=[];
+ await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=4');
+ await page.waitForFunction(()=>!document.querySelector('#originalAudioBox').hidden);
+ await page.evaluate(()=>{response.A1='E1 synthetic, no real submission';audioReady=true;update();});
+ assert.equal(await page.locator('#submitBtn').isDisabled(),false,'before decode error, complete audio and answer allow submit');
+ await page.evaluate(()=>document.querySelector('#originalAudioPlayer').dispatchEvent(new Event('error')));
+ assert.equal(await page.locator('#submitBtn').isDisabled(),true,'decode error must reblock quiz delivery');
+ assert.match(await page.locator('#listeningInfo').innerText(),/No se puede reproducir la pista original/);
+ assert.ok(!calls.includes('qzProgressSubmit'),'decode failure never submits student attempt');
  badAudio=true;calls=[];
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=8');
  await page.waitForFunction(()=>document.querySelector('#listeningInfo').textContent.includes('No se pudo cargar'));
  assert.equal(await page.locator('#submitBtn').isDisabled(),true,'fail closed missing/corrupted listening');
  assert.equal(await page.locator('#pdfBox iframe').count(),1,'PDF remains available even when audio fails');
- console.log('F111_B1_AUDIO_UI_PASS 8 tracks + teacher-only preview + audio error fail-closed, synthetic only');
+ console.log('F111_B1_AUDIO_UI_PASS 8 tracks + teacher-only preview + browser decode error fail-closed, synthetic only');
 }finally{await browser.close();}
