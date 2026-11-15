@@ -10,6 +10,8 @@ on:
       - 'scripts/qa_f111_b1_audio_ui_e1.mjs'
       - 'scripts/qa_f111_b1_interactive_r3_e1.mjs'
       - 'scripts/qa_f111_qz24_b2_teacher_rehearsal_e1.mjs'
+      - 'scripts/qa_f111_qz24_i1_teacher_rehearsal_e1.mjs'
+      - 'scripts/fixtures/qz24_i1_sections_e1.json'
       - 'scripts/fixtures/qz24_b2_sections_e1.json'
       - 'scripts/qa_f111_b1_schema_ui_contract_e1.mjs'
       - 'scripts/fixtures/qz_b1_sections_e1.json'
@@ -79,6 +81,8 @@ jobs:
         run: node scripts/qa_f111_b1_interactive_r3_e1.mjs
       - name: QZ24 B2 PC01-04 interactive teacher rehearsal and audio fail closed
         run: node scripts/qa_f111_qz24_b2_teacher_rehearsal_e1.mjs
+      - name: QZ24 I1 PC01-08 interactive teacher rehearsal and multi-select protection
+        run: node scripts/qa_f111_qz24_i1_teacher_rehearsal_e1.mjs
       - name: PC02 editorial source and private-preview safety
         run: node scripts/qa_f111_b1_pc02_preview_e1.mjs
       - name: Render 32 student + 32 teacher quiz previews offline
