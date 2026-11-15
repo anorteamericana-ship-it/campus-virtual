@@ -102,7 +102,8 @@ try{
  // Without authorized assessment audio, a student may draft but never submit.
  audioVerified=false; // student route must not submit without verified audio
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-I1&nivel=I1&leccion=4');
- await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+ await page.waitForFunction(()=>document.querySelector('#answers textarea, #answers fieldset.f111-control')!==null);
+ assert.equal(await page.locator('#pdfBox iframe').count(),0,'future student cannot access protected PDF');
  await page.locator('textarea[data-section="B1"]').fill('respuesta sintética');
  assert.equal(await page.locator('#submitBtn').isDisabled(),true,'audio absent: fail closed');
  console.log('F111_QZ24_I1_BROWSER_E1_PASS 8/8; 209 response fields; 111 choice widgets; teacher rehearsal zero writes');
