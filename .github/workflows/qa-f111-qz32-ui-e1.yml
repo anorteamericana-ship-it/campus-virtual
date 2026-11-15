@@ -10,7 +10,7 @@ on:
       - 'scripts/qa_f111_b1_audio_ui_e1.mjs'
       - 'scripts/qa_f111_b1_interactive_r3_e1.mjs'
       - 'scripts/qa_f111_qz24_b2_teacher_rehearsal_e1.mjs'
-      - 'scripts/fixtures/qz24_b2_first4_sections_e1.json'
+      - 'scripts/fixtures/qz24_b2_sections_e1.json'
       - 'scripts/qa_f111_b1_schema_ui_contract_e1.mjs'
       - 'scripts/fixtures/qz_b1_sections_e1.json'
       - 'scripts/qa_f111_b1_pc02_preview_e1.mjs'
