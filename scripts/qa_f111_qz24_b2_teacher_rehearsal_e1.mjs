@@ -110,7 +110,8 @@ try{
 
  audioVerified=false; // student negative test retains missing-assessment fail-closed
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B2&nivel=B2&leccion=4');
- await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+ await page.waitForFunction(()=>document.querySelector('#answers textarea, #answers fieldset.f111-control')!==null);
+ assert.equal(await page.locator('#pdfBox iframe').count(),0,'future student cannot access protected PDF');
  await page.locator('textarea[data-section="C1a"]').fill('texto ficticio');
  assert.equal(await page.locator('#submitBtn').isDisabled(),true,'missing required quiz audio FAIL CLOSED');
  console.log('F111_QZ24_B2_BROWSER_E1_PASS 8/8; 192 fields; multi-choice caps; teacher rehearsal NO writes; absent audio blocks student submit');
