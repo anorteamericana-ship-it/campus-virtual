@@ -11,7 +11,7 @@ const lessons=[4,8,13,16,21,24,28,30];
 const fields=[25,25,25,26,25,29,25,29];
 const choices=[11,9,14,17,25,12,15,8];
 const browser=await chromium.launch({headless:true});
-let calls=[];
+let calls=[],audioVerified=true;
 try{
  const page=await browser.newPage({viewport:{width:425,height:870}});
  page.on('dialog',d=>d.accept());
@@ -30,9 +30,11 @@ try{
   let result={ok:false,error:'unhandled_synthetic'};
   if(fn==='qzProgressGet')result={ok:true,quiz_id:id,nivel:'I1',leccion:lessons[i],peso_oficial:0,
     disponible_hoy:false,fecha:'',ensayo_sin_calendario:true,secciones:fixtures[id],
-    listening:{pista:i+2,grabacion_disponible:false}};
+    listening:{pista:i+2,grabacion_disponible:audioVerified}};
   if(fn==='qzProgressPaper')result={ok:true,quiz_id:id,mime:'application/pdf',peso_oficial:0,
     pdf_base64:Buffer.from('%PDF-1.4\n%%EOF').toString('base64')};
+  if(fn==='qzProgressAudio')result={ok:true,quiz_id:id,mime:'audio/mpeg',peso_oficial:0,
+   pista:i+2,audio_base64:Buffer.concat([Buffer.from('ID3'),Buffer.alloc(1536)]).toString('base64')};
   if(fn==='qzProgressMyAttempt')result={ok:true,estado:'BORRADOR',respuestas:{}};
   if(fn==='qzProgressSaveDraft')result={ok:true,estado:'BORRADOR'};
   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(result)});
@@ -40,7 +42,7 @@ try{
  for(let i=0;i<8;i++){
   calls=[];
   await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-I1&nivel=I1&leccion='+lessons[i]+'&teacher_preview=1');
-  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null && !document.querySelector('#originalAudioBox').hidden);
   const inputs=page.locator('#answers textarea[data-section],#answers fieldset.f111-control');
   const choice=page.locator('#answers fieldset.f111-control');
   assert.equal(await inputs.count(),fields[i],'I1 PC'+(i+1)+' exact fields');
@@ -51,7 +53,9 @@ try{
   assert.equal(await page.locator('#submitBtn').isDisabled(),true,'rehearsal must never submit');
   assert.ok((await page.locator('fieldset.f111-control input:not(:disabled)').count())>0,
     'teacher must be able to answer');
-  assert.ok(calls.every(fn=>['qzProgressGet','qzProgressPaper'].includes(fn)),
+  assert.match(await page.locator('#originalAudioPlayer').getAttribute('src'),/^blob:/,'protected MP3 bound');
+  assert.equal(calls.filter(fn=>fn==='qzProgressAudio').length,1,'one authenticated MP3 read per preview');
+  assert.ok(calls.every(fn=>['qzProgressGet','qzProgressPaper','qzProgressAudio'].includes(fn)),
     'teacher preview is read-only on the server');
   console.log('F111_QZ24_I1_BROWSER_PC'+String(i+1).padStart(2,'0')+'_PASS fields='+fields[i]);
  }
@@ -96,6 +100,7 @@ try{
  assert.ok(calls.every(fn=>!['qzProgressSaveDraft','qzProgressSubmit','qzProgressMyAttempt'].includes(fn)),
    'no real quiz attempts or student writes in teacher rehearsal');
  // Without authorized assessment audio, a student may draft but never submit.
+ audioVerified=false; // student route must not submit without verified audio
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-I1&nivel=I1&leccion=4');
  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
  await page.locator('textarea[data-section="B1"]').fill('respuesta sintética');
