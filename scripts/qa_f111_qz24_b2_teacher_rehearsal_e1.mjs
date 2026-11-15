@@ -9,7 +9,7 @@ const base='https://f111-qz24-synthetic.invalid',api=base+'/api';
 const lessons=[4,8,13,16,21,24,28,30];
 const counts=[25,25,22,23,25,22,25,25],choiceCounts=[8,13,8,10,14,9,14,7];
 const browser=await chromium.launch({headless:true});
-let calls=[],preview=true,audioVerified=false;
+let calls=[],preview=true,audioVerified=true;
 try{
  const page=await browser.newPage({viewport:{width:440,height:880}});
  page.on('dialog',d=>d.accept());
@@ -31,14 +31,16 @@ try{
    listening:{pista:i+2,grabacion_disponible:audioVerified}};
   if(fn==='qzProgressPaper')result={ok:true,quiz_id:id,mime:'application/pdf',peso_oficial:0,
    pdf_base64:Buffer.from('%PDF-1.4\n%%EOF').toString('base64')};
+  if(fn==='qzProgressAudio')result={ok:true,quiz_id:id,mime:'audio/mpeg',peso_oficial:0,
+   pista:i+2,audio_base64:Buffer.concat([Buffer.from('ID3'),Buffer.alloc(1536)]).toString('base64')};
   if(fn==='qzProgressMyAttempt')result={ok:true,estado:'BORRADOR',respuestas:{}};
   if(fn==='qzProgressSaveDraft')result={ok:true,estado:'BORRADOR'};
   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(result)});
  });
  for(let i=0;i<8;i++){
-  calls=[];preview=true;audioVerified=false;
+  calls=[];preview=true;audioVerified=true;
   await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B2&nivel=B2&leccion='+lessons[i]+'&teacher_preview=1');
-  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null && !document.querySelector('#originalAudioBox').hidden);
   const fields=page.locator('#answers textarea[data-section],#answers fieldset.f111-control');
   assert.equal(await fields.count(),counts[i],'B2 '+(i+1)+' field count');
   const choices=page.locator('#answers fieldset.f111-control');
@@ -49,7 +51,9 @@ try{
   assert.equal(await page.locator('#submitBtn').isDisabled(),true,'teacher rehearsal must not submit');
   assert.equal(await page.locator('fieldset.f111-control input:not(:disabled)').count()>0,true,
     'teacher rehearsal must be interactive');
-  assert.ok(calls.every(x=>['qzProgressGet','qzProgressPaper'].includes(x.fn)),
+  assert.match(await page.locator('#originalAudioPlayer').getAttribute('src'),/^blob:/,'protected MP3 bound');
+  assert.equal(calls.filter(x=>x.fn==='qzProgressAudio').length,1,'one authenticated MP3 read per preview');
+  assert.ok(calls.every(x=>['qzProgressGet','qzProgressPaper','qzProgressAudio'].includes(x.fn)),
     'private rehearsal makes no attempt or write calls');
   console.log('QZ24_B2_BROWSER_PC'+String(i+1).padStart(2,'0')+'_PASS fields='+counts[i]);
  }
@@ -104,6 +108,7 @@ try{
  assert.ok(calls.every(x=>!['qzProgressSubmit','qzProgressSaveDraft','qzProgressMyAttempt'].includes(x.fn)),
    'teacher rehearsal never writes student records even on PC08');
 
+ audioVerified=false; // student negative test retains missing-assessment fail-closed
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-B2&nivel=B2&leccion=4');
  await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
  await page.locator('textarea[data-section="C1a"]').fill('texto ficticio');
