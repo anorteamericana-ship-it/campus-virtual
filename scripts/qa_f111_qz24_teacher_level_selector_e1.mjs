@@ -55,12 +55,21 @@ for(const lev of ['I1','I2']){
  await buttons()[7].events.click();
  check(opened.at(-1).url.args.nivel===lev&&opened.at(-1).url.args.leccion===30,'correct level/PC08 '+lev);
 }
+// A group may advance to the next academic level while keeping its original
+// code. The level picker must not silently lock I1 to an I1-prefixed group.
+sel.value='B1-KJ18-C3-0826';r.render();
+check(r.levelPicker.value==='B1','group prefix selects a default level only');
+r.levelPicker.value='I1';r.render();
+check(buttons().length===8,'advanced group can request an I1 rehearsal');
+await buttons()[1].events.click();
+check(opened.at(-1).url.args.nivel==='I1'&&opened.at(-1).url.args.grupo==='B1-KJ18-C3-0826',
+ 'server validates explicit group and level; UI does not grant authorization');
 const valid=opened.length;sel.value='I1-KJ18-C3-0826';r.render();
 permission=false;await buttons()[0].events.click();check(opened.length===valid,'server permission rejection denies preview');
 permission=true;altered=true;await buttons()[0].events.click();check(opened.length===valid,'mismatched quiz metadata blocked');
 altered=false;session=false;await buttons()[0].events.click();
 check(opened.length===valid,'missing session token blocks preview');
-session=true;sel.value='FOREIGN-KJ18';r.render();check(buttons().length===0,'unknown level blocked');
+session=true;sel.value='BAD';r.render();check(buttons().length===0,'invalid group code blocked');
 sel.value='I1-KJ18-C3-0826';r.render();slow=true;
 const delayed=buttons()[0].events.click();
 sel.value='I2-KJ18-C3-0826';r.render();
