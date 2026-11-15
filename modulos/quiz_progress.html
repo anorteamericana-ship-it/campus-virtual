@@ -278,6 +278,14 @@ async function audioOriginal(meta){
  if(lastAudioBlob)URL.revokeObjectURL(lastAudioBlob);
  lastAudioBlob=URL.createObjectURL(new Blob([array],{type:'audio/mpeg'}));
  const player=$('originalAudioPlayer');
+ // Un archivo con encabezado ID3 no implica que el navegador pueda
+ // decodificarlo. Si falla la reproducción, volver a bloquear la entrega.
+ player.onerror=()=>{
+  audioReady=false;
+  $('listeningInfo').textContent='No se puede reproducir la pista original en este navegador. Contactá al docente antes de entregar.';
+  setError('La grabación no se pudo reproducir. No entregués el quiz sin resolver el listening.');
+  update();
+ };
  player.src=lastAudioBlob;
  $('originalAudioTitle').textContent='Listening · pista original '+meta.listening.pista;
  $('originalAudioBox').hidden=false;
