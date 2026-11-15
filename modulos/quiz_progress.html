@@ -67,7 +67,7 @@ function update(){
  $('verifyBtn').hidden=!uncertainSubmit;
  $('verifyBtn').disabled=busy;
  document.querySelectorAll('#answers textarea').forEach(el=>{el.readOnly=submitted||uncertainSubmit||expired;});
- document.querySelectorAll('#answers fieldset.f111-control input').forEach(el=>{el.disabled=submitted||uncertainSubmit||expired||preview||teacherPreview;});
+ document.querySelectorAll('#answers fieldset.f111-control input').forEach(el=>{el.disabled=submitted||uncertainSubmit||expired||preview;});
 }
 // D5-R3: controles por apartado B1, sin claves ni preguntas Cambridge en Pages.
 const B1_CONTROL_MODES={
@@ -114,6 +114,46 @@ function restoreB1(){
   set.querySelectorAll('input').forEach(input=>{input.checked=chosen.includes(input.value);});
  });
 }
+// F111 QZ24: controles de elección definidos por la fuente privada y verificados
+// por su identidad de quiz. Las opciones son ordinales, nunca claves correctas.
+function decorateStructuredControls(root,sections){
+ for(const section of sections){
+  const plan=Object.assign({},section.controles_items||{});
+  if(section.control)plan[''] = section.control;
+  for(const [num,choice] of Object.entries(plan)){
+   if(!choice||!['OPCION_UNICA','OPCION_MULTIPLE'].includes(choice.tipo))continue;
+   const key=section.id+num,ta=Array.from(root.querySelectorAll('textarea[data-section]')).find(x=>x.dataset.section===key);
+   if(!ta)continue;
+   const n=Number(choice.opciones),multi=choice.tipo==='OPCION_MULTIPLE';
+   const cap=multi?Number(choice.selecciones):1;
+   if(!Number.isInteger(n)||n<2||n>12||!Number.isInteger(cap)||cap<1||cap>n)continue;
+   const fieldset=document.createElement('fieldset');
+   fieldset.className='f111-control';fieldset.dataset.key=key;
+   const legend=document.createElement('legend');
+   legend.textContent=ta.getAttribute('aria-label')+' · '+(multi?'elegí '+cap+' opciones':'elegí una opción');
+   fieldset.appendChild(legend);
+   for(let i=1;i<=n;i++){
+    const label=document.createElement('label'),input=document.createElement('input');
+    input.type=multi?'checkbox':'radio';
+    input.name='f111-'+key;input.value=String(i);
+    const caption=document.createElement('span');
+    caption.textContent='Opción '+i+' del PDF';
+    label.append(input,caption);fieldset.appendChild(label);
+    input.addEventListener('change',()=>{
+     const selected=Array.from(fieldset.querySelectorAll('input:checked')).map(x=>x.value);
+     if(multi&&selected.length>cap){input.checked=false;return;}
+     response[key]=multi?selected.join(','):(selected[0]||'');
+     dirty=true;
+     setStatus(teacherPreview?'Ensayo privado: no se guardan las respuestas.':'Cambios por guardar…');
+     update();clearTimeout(saveTimer);
+     if(!teacherPreview)saveTimer=setTimeout(()=>save(false),1100);
+    });
+   }
+   ta.replaceWith(fieldset);
+  }
+ }
+ restoreB1();
+}
 function build(secciones){
  const root=$('answers'),frag=document.createDocumentFragment();root.replaceChildren();fields=[];
  const list=Array.isArray(secciones)?secciones:[];
@@ -137,13 +177,14 @@ function build(secciones){
    field.setAttribute('aria-label',label.textContent+' · '+section.id);
    field.placeholder=num==null?'Escribí las respuestas de este apartado, usando la numeración del documento.':'Completá esta respuesta siguiendo el documento original.';
    field.dataset.section=key;
-   field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus('Cambios por guardar…');update();clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);});
-   field.addEventListener('blur',()=>{if(dirty)save(false)});
+   field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus(teacherPreview?'Ensayo privado: no se guardan las respuestas.':'Cambios por guardar…');update();clearTimeout(saveTimer);if(!teacherPreview)saveTimer=setTimeout(()=>save(false),1100);});
+   field.addEventListener('blur',()=>{if(dirty&&!teacherPreview)save(false)});
    wrapper.append(label,field);box.appendChild(wrapper);
   }
   frag.appendChild(box);
  }
  root.appendChild(frag);
+ decorateStructuredControls(root,list);
  decorateB1(root);
  if(!fields.length)throw Error('El quiz no tiene esquema de respuestas verificado.');
  update();
@@ -264,7 +305,8 @@ async function start(){
     $('listeningInfo').textContent=a.grabacion_disponible
       ?'Listening · pista original '+a.pista+' · se cargará desde Drive privado con tu sesión.'
       :'Listening · pista '+a.pista+' aún no integrada. Consultá con tu docente.';
-    audioRequired=!!a.grabacion_disponible;
+    // La pista requerida no debe saltarse por falta de MP3 verificado.
+    audioRequired=true;
   }
   $('badge').textContent=meta.disponible_hoy?'Disponible · '+meta.fecha:'Fuera de fecha · '+meta.fecha;
   if(teacherPreview){
