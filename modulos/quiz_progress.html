@@ -47,6 +47,11 @@ const qs=new URLSearchParams(location.search);
 const level=String(qs.get('nivel')||'B1').toUpperCase(), lesson=Number(qs.get('leccion')||4), group=String(qs.get('grupo')||'').trim();
 const preview=qs.get('preview')==='1'; // QA sintético, cero servidor
 const teacherPreview=qs.get('teacher_preview')==='1'; // backend autentica rol y grupo
+const qz24TeacherPreview=teacherPreview&&qs.get('qz24_preview')==='1';
+// R29: Only this teacher-only mode uses the new deployment. B1 learners,
+// and historical B1 teacher views, keep using the unchanged QUIZ @504 URL.
+const QZ24_TEACHER_PREVIEW_API='https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec';
+const QZ24_LOCAL_QA=/^(localhost|127\.0\.0\.1)$/.test(String(location.hostname||''));
 document.documentElement.dataset.level=LEVELS[level]?level:'B1';
 const $=id=>document.getElementById(id);
 const units=STEPS[lesson]||null;
@@ -307,7 +312,10 @@ async function start(){
  if(preview){build([{id:'A',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3,4]},{id:'B',tipo_respuesta:'TEXTO_GUIADO',items:[]},{id:'C',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3]}]);$('badge').textContent='Vista previa QA';setStatus('Diseño de muestra: sin datos ni guardado.');$('pdfInfo').textContent='Vista previa: el PDF original se entrega desde el servidor protegido en la fecha autorizada.';return;}
  // QA URL explícita, o la API ya configurada en el Campus que hospeda el iframe.
  let parentApi='';try{if(window.parent&&window.parent!==window)parentApi=String(window.parent.F111_QZ_API_URL||'')}catch(_){}
- apiUrl=String(window.F111_QZ_QA_API_URL||parentApi||'').trim();token=sessionToken();
+ apiUrl=qz24TeacherPreview&&!QZ24_LOCAL_QA
+   ?QZ24_TEACHER_PREVIEW_API
+   :String(window.F111_QZ_QA_API_URL||parentApi||'').trim();
+ token=sessionToken();
  if(!apiUrl||!token||!group){setError('Iniciá sesión en el Campus y volvé a abrir tu evaluación.');return;}
  try{
   const meta=await api('qzProgressGet',context());

@@ -5,6 +5,10 @@
 const LEVELS=[['B1','Básico I','#D5A525'],['B2','Básico II','#B42E3C'],['I1','Intermedio I','#2C75B0'],['I2','Intermedio II','#347D50']];
 const LESSONS=[[4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],[21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']];
 const STYLE='F111-TEACHER-QUIZ-REVIEW';
+// R29: a NEW dedicated, versioned Apps Script deployment for teacher-only
+// QZ24 rehearsals. Existing B1 QUIZ @504 and CORE @502 URLs stay untouched.
+const QZ24_TEACHER_PREVIEW_API='https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec';
+const QZ24_LOCAL_QA=/^(localhost|127\.0\.0\.1)$/.test(String(location.hostname||''));
 function make(tag,text,className){
  const e=document.createElement(tag);
  if(text!==null&&text!==undefined)e.textContent=text;
@@ -364,11 +368,16 @@ function preview(group){
  if(group)url.searchParams.set('grupo',String(group));
  window.open(url.href,'_blank','noopener,noreferrer');
 }
-async function postQuiz(fn,data){
+async function postQuiz(fn,data,options={}){
  const token=window.getSessionToken?window.getSessionToken():'';
- // Las operaciones Progress Check usan @467; padrón docente y login siguen en @462.
- const isQuiz=/^qzProgress[A-Za-z0-9]+$/.test(String(fn||'')); // R10: B1 endpoints must use Quiz @477
- const base=String((isQuiz&&window.F111_QZ_API_URL)||window.APPS_SCRIPT_URL||'');
+ // Only this guarded teacher rehearsal path may target the NEW deployment.
+ // Its URL is pinned here, never supplied by untrusted query parameters.
+ const qz24Teacher=options.qz24TeacherPreview===true;
+ if(qz24Teacher&&fn!=='qzProgressGet')
+  throw Error('Endpoint no autorizado para el ensayo docente.');
+ const isQuiz=/^qzProgress[A-Za-z0-9]+$/.test(String(fn||''));
+ const original=String((isQuiz&&window.F111_QZ_API_URL)||window.APPS_SCRIPT_URL||'');
+ const base=qz24Teacher&&!QZ24_LOCAL_QA?QZ24_TEACHER_PREVIEW_API:original;
  if(!token||!base)throw Error('Sesión docente no disponible');
  const res=await fetch(base+'?fn='+encodeURIComponent(fn),{
   method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -746,7 +755,7 @@ function createQz24RehearsalCard(groupSelector){
     try{
      // No confiar solo en el selector: el servidor autentica docente/grupo/nivel
      // y valida calendario. Un error 403/PROD bloqueado NO abre el iframe.
-     const q=await postQuiz('qzProgressGet',{cod_grupo:group,nivel:level,leccion:lesson});
+     const q=await postQuiz('qzProgressGet',{cod_grupo:group,nivel:level,leccion:lesson},{qz24TeacherPreview:true});
      if(serial!==requestId||String(groupSelector.value||'').trim().toUpperCase()!==group)return;
      if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
         q.nivel!==level||Number(q.leccion)!==lesson||
@@ -755,7 +764,7 @@ function createQz24RehearsalCard(groupSelector){
      state.textContent='Ensayo privado autorizado para '+level+' · PC'+String(number).padStart(2,'0')+'.';
      f111TeacherExamModal('Ensayo docente · '+level+' · PC'+String(number).padStart(2,'0'),
        f111ExamPageUrl('modulos/quiz_progress.html',{
-         teacher_preview:1,grupo:group,nivel:level,leccion:lesson
+         teacher_preview:1,qz24_preview:1,grupo:group,nivel:level,leccion:lesson
        }));
     }catch(e){
      if(serial===requestId){
