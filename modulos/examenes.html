@@ -119,7 +119,7 @@ function mount(){
   selected.appendChild(button);
  }
  button.href=new URL(config.file+'?preview=1&v=F111R32',location.href).href;
- button.textContent='Ver Progress Check';
+ if(button.textContent!=='Ver Progress Check')button.textContent='Ver Progress Check';
  button.setAttribute('aria-label','Ver Progress Check '+number+' digital · Básico I · '+config.lesson);
 }
 const root=document.getElementById('root');
