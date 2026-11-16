@@ -278,19 +278,28 @@ async function audioOriginal(meta){
  if(lastAudioBlob)URL.revokeObjectURL(lastAudioBlob);
  lastAudioBlob=URL.createObjectURL(new Blob([array],{type:'audio/mpeg'}));
  const player=$('originalAudioPlayer');
- // Un archivo con encabezado ID3 no implica que el navegador pueda
- // decodificarlo. Si falla la reproducción, volver a bloquear la entrega.
+ // R23: descargar un archivo con cabecera ID3 no prueba reproducción.
+ // La entrega requiere un evento playing con datos ya decodificados.
+ // Sigue siendo UX; autorización y entrega deben validarse en backend.
+ player.onemptied=()=>{audioReady=false;update();};
  player.onerror=()=>{
   audioReady=false;
   $('listeningInfo').textContent='No se puede reproducir la pista original en este navegador. Contactá al docente antes de entregar.';
   setError('La grabación no se pudo reproducir. No entregués el quiz sin resolver el listening.');
   update();
  };
+ player.onplaying=()=>{
+  if(player.error||player.readyState<HTMLMediaElement.HAVE_CURRENT_DATA)return;
+  audioReady=true;setError('');
+  $('listeningInfo').textContent='Pista original en reproducción. Continuá el listening y completá tus respuestas.';
+  update();
+ };
  player.src=lastAudioBlob;
  $('originalAudioTitle').textContent='Listening · pista original '+meta.listening.pista;
  $('originalAudioBox').hidden=false;
- $('listeningInfo').textContent='Escuchá el audio Cambridge original y respondé el apartado correspondiente.';
- audioReady=true;update();
+ $('listeningInfo').textContent='Para entregar, presioná reproducir y escuchá la pista original.';
+ // Nunca habilitar entrega solamente por descargar el MP3.
+ update();
 }
 async function start(){
  update();

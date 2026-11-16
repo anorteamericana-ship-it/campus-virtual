@@ -65,6 +65,18 @@ try{
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=4');
  await page.waitForFunction(()=>!document.querySelector('#originalAudioBox').hidden);
  await page.locator('#answers textarea[data-section="A1"]').fill('Respuesta sintética sin entrega');
+ assert.equal(await page.locator('#submitBtn').isDisabled(),true,
+  'MP3 ID3 and blob URL alone must not authorize delivery');
+ assert.match(await page.locator('#listeningInfo').innerText(),/reproducir|No se puede reproducir/);
+ // These dispatched events test the UI gate only, not Cambridge E2 playback.
+ await page.evaluate(()=>{
+  const player=document.querySelector('#originalAudioPlayer');
+  Object.defineProperty(player,'readyState',{configurable:true,value:HTMLMediaElement.HAVE_CURRENT_DATA});
+  Object.defineProperty(player,'error',{configurable:true,value:null});
+  player.dispatchEvent(new Event('playing'));
+ });
+ assert.equal(await page.locator('#submitBtn').isDisabled(),false,
+  'playing with media data can unlock submission');
  await page.evaluate(()=>document.querySelector('#originalAudioPlayer').dispatchEvent(new Event('error')));
  assert.equal(await page.locator('#submitBtn').isDisabled(),true,'decode error must reblock quiz delivery');
  assert.match(await page.locator('#listeningInfo').innerText(),/No se puede reproducir la pista original/);
