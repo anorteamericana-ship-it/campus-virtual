@@ -7,7 +7,9 @@ const preview=fs.readFileSync(new URL('../modulos/qz_b1_pc02_preview.html',impor
 assert.match(source,/qzProgressAudio/,'backend protected audio endpoint');
 assert.match(source,/audioRequired&&!audioReady/,'cannot submit without required listening');
 assert.match(source,/teacherPreview/,'authenticated teacher read-only preview');
-assert.match(preview,/Pista original 02 localizada/,'correct source track 02 (not 03)');
+assert.match(preview,/b1_pc02_listening_track02\.mp3/,'B1 PC02 now plays original track 02');
+assert.match(preview,/player\.controls=true/,'B1 PC02 includes HTML audio control');
+assert.doesNotMatch(preview,/locked:true/,'B1 PC02 listening choices no longer disabled');
 assert.doesNotMatch(source,/[a-zA-Z0-9_-]{30,}\.mp3/,'no Drive binary or direct MP3 links in frontend');
 const base='https://b1-audio-synthetic.invalid';
 const pdf=Buffer.from('%PDF-1.4\n%QZ-B1-SYNTHETIC\n'+('fake '.repeat(25))+'\n%%EOF').toString('base64');
