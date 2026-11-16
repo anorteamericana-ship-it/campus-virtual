@@ -14,10 +14,12 @@ assert.equal(sections.reduce((n,s)=>n+s.items.length,0),25,'exactly 25 individua
 const ids=sections.flatMap(s=>s.items.map(q=>q[0]));
 assert.equal(new Set(ids).size,25,'all question IDs unique');
 assert(ids.includes('D4a')&&ids.includes('D4b'),'Cambridge printed question 4 has two distinct gaps');
-assert(sections[0].locked===true,'public editorial preview cannot play private MP3');
-assert(sections[0].help.includes('pista original 02'),'original Track 02 identified');
-assert(preview.includes('NO PUBLICADO')&&preview.includes('No permite entregar ni calificar'));
-assert(preview.includes('No se registra información de estudiantes.'));
+assert(!sections[0].locked,'B1 PC02 listening should be selectable like B1 PC01');
+assert(preview.includes('b1_pc02_listening_track02.mp3'),'original Track 02 available in digital quiz');
+assert(preview.includes('player.controls=true'),'playable listening in section A');
+assert(preview.includes('VISTA PREVIA · SIN ENVÍO OFICIAL')&&preview.includes('No se guarda, no se envía'),'teacher preview cannot submit');
+assert(preview.includes('0% oficial'),'no official grading');
+assert(preview.includes("button")&&preview.includes("Finalizar vista previa"),'same preview finish as B1 PC01');
 assert(!/fetch\s*\(|XMLHttpRequest|qzProgressSubmit|qzProgressSaveDraft|window\.parent\.postMessage|localStorage|sessionStorage/.test(preview),'preview cannot call backend or persist student progress');
 assert(!/claves\s*[:=]\s*[{\[]/.test(preview),'no answer key published in preview');
 assert(teacher.includes('function buildB1TeacherOpenControls(lesson,preferredGroup)'),
@@ -27,8 +29,10 @@ assert(teacher.includes('previewB1Protected(lesson,select.value)'),
 assert(!teacher.includes('function renderGrid('),'duplicate quiz grid removed');
 assert(teacher.includes('function previewPC02()'),'PC02 editorial helper remains non-live');
 assert(!teacher.includes('VISTA EDITORIAL PC02 ↗'),'old editorial button no longer duplicates the main card');
-assert(teacher.includes('previewPC02'),'teacher preview opens correct non-live page');
+assert(teacher.includes('previewPC02'),'teacher direct button opens new digital PC02 page');
+assert(teacher.includes("make('button','Ver Progress Check'"),'single click without group');
+assert(!preview.includes('Opción 1 del PDF'),'no PDF-generated placeholder options');
 assert(!teacher.includes("qzProgressTeacherSetAvailability',Object.assign({},qzContext,{leccion:8"),'never activate L8 via current PC01 context');
 assert(campus.includes('teacher_quiz_review_f111.js?v=F111R49PDFDRIVELINK20261029'),'teacher asset cache updated');
 assert(teacher.includes('previewB1Protected'),'all 8 quiz material accessible only through authenticated teacher route');
-console.log('PASS F111 PC02 E1: authentic units 3-4 B1 L8, sections 4+5+5+5+6=25, original track 02, protected preview, no student writes');
+console.log('PASS F111 PC02 E1: authentic units 3-4 B1 L8, 25 original digital answers, original MP3 playable, one-click, no student writes');
