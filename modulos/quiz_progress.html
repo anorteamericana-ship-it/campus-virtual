@@ -317,6 +317,13 @@ async function start(){
      meta.leccion!==lesson||meta.quiz_id!==expectedId)
     throw Error('El quiz no coincide exactamente con el grupo, nivel y lección activa.');
   build(meta.secciones);
+  // R24: every Progress Check requires listening, even if backend metadata
+  // is missing. A missing object cannot silently turn the audio optional.
+  audioRequired=true;audioReady=false;
+  if(!meta.listening){
+   $('listeningInfo').textContent='Faltan los datos de la pista original. Consultá con el docente.';
+   setError('No se puede entregar este quiz hasta verificar el listening original.');
+  }
   if(meta.listening){
     const a=meta.listening;
     $('listeningInfo').textContent=a.grabacion_disponible
