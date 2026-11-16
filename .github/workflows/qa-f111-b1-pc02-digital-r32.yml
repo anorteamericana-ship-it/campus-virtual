@@ -1,0 +1,42 @@
+name: F111 R32 · B1 PC02 digital one click
+on:
+  pull_request:
+    paths:
+      - 'modulos/qz_b1_pc02_preview.html'
+      - 'modulos/examenes.html'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'media/qz32/b1_pc02_listening_track02.mp3'
+      - 'scripts/qa_f111_b1_pc02_digital_r32.mjs'
+      - '.github/workflows/qa-f111-b1-pc02-digital-r32.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'modulos/qz_b1_pc02_preview.html'
+      - 'modulos/examenes.html'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'media/qz32/b1_pc02_listening_track02.mp3'
+      - 'scripts/qa_f111_b1_pc02_digital_r32.mjs'
+      - '.github/workflows/qa-f111-b1-pc02-digital-r32.yml'
+permissions:
+  contents: read
+jobs:
+  b1-pc02:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read source and verify digital exam structure + real MP3
+        run: |
+          node scripts/qa_f111_b1_pc02_digital_r32.mjs
+          git diff --check HEAD~1 HEAD
+      - name: Install synthetic Chromium test runner
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Real browser, no Google Apps Script calls
+        run: F111_BROWSER=1 node scripts/qa_f111_b1_pc02_digital_r32.mjs
