@@ -758,7 +758,17 @@ function createQz24RehearsalCard(groupSelector){
          teacher_preview:1,grupo:group,nivel:level,leccion:lesson
        }));
     }catch(e){
-     if(serial===requestId)state.textContent='Ensayo no habilitado: '+String(e&&e.message||e);
+     if(serial===requestId){
+      const reason=String(e&&e.message||e);
+      if(reason.includes('qz_prod_fuera_de_alcance'))
+       state.textContent='Ensayo privado todavía sin autorizar para este nivel. Dirección debe habilitar el acceso docente en QUIZ; los estudiantes continúan bloqueados.';
+      else if(reason.includes('no_autorizado_grupo_nivel'))
+       state.textContent='Este grupo y nivel no están autorizados para tu sesión docente. Verificá la asignación antes de intentar otro examen.';
+      else if(reason.includes('progress_check_no_programado')||reason.includes('calendario_no_disponible'))
+       state.textContent='No se pudo validar el calendario de este examen. El ensayo permanece bloqueado sin realizar cambios.';
+      else
+       state.textContent='Ensayo no habilitado: '+reason;
+     }
     }finally{btn.disabled=false;}
    });
    grid.append(btn);

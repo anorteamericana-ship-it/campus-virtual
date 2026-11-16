@@ -19,12 +19,12 @@ function make(tag,text,className){
   setAttribute(){}};
  return e;
 }
-let permission=true,session=true,altered=false,calls=[],opened=[],pending=null,slow=false;
+let permission=true,session=true,altered=false,calls=[],opened=[],pending=null,slow=false,denyReason='denied';
 const scope={LEVELS,LESSONS,make,window:{getSessionToken:()=>session?'SYNTHETIC_TEACHER':''},
  postQuiz:async(fn,body)=>{
   calls.push({fn,body});
   if(slow)await new Promise(resolve=>{pending=resolve});
-  if(!permission)throw Error('denied');
+  if(!permission)throw Error(denyReason);
   const i=LESSONS.findIndex(x=>x[0]===body.leccion)+1;
   return {quiz_id:altered?'IC5_B1_WQ99':'IC5_'+body.nivel+'_WQ'+String(i).padStart(2,'0'),
    nivel:body.nivel,leccion:body.leccion,peso_oficial:0,vista_previa:true};
@@ -66,6 +66,13 @@ check(opened.at(-1).url.args.nivel==='I1'&&opened.at(-1).url.args.grupo==='B1-KJ
  'server validates explicit group and level; UI does not grant authorization');
 const valid=opened.length;sel.value='I1-KJ18-C3-0826';r.render();
 permission=false;await buttons()[0].events.click();check(opened.length===valid,'server permission rejection denies preview');
+denyReason='qz_prod_fuera_de_alcance';await buttons()[0].events.click();
+check(r.card.children[2].textContent.includes('todavía sin autorizar'),'runtime OFF shows clear teacher-only gate');
+check(opened.length===valid,'no modal on runtime OFF');
+denyReason='no_autorizado_grupo_nivel';await buttons()[0].events.click();
+check(r.card.children[2].textContent.includes('no están autorizados'),'foreign group shows assignment denial');
+denyReason='calendario_no_disponible';await buttons()[0].events.click();
+check(r.card.children[2].textContent.includes('calendario'),'calendar failure stays closed');
 permission=true;altered=true;await buttons()[0].events.click();check(opened.length===valid,'mismatched quiz metadata blocked');
 altered=false;session=false;await buttons()[0].events.click();
 check(opened.length===valid,'missing session token blocks preview');
