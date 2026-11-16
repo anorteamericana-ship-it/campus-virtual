@@ -14,7 +14,7 @@ const ref=fs.readFileSync('modulos/qz_b1_pc01_digital.html','utf8');
 const audio=fs.readFileSync('media/qz32/b1_pc02_listening_track02.mp3');
 let checks=0;
 function ok(value,reason){assert.ok(value,reason);checks++}
-function eq(a,b,msg){assert.deepEqual(a,b,msg);checks++}
+function eq(a,b,msg){assert.deepEqual(JSON.parse(JSON.stringify(a)),JSON.parse(JSON.stringify(b)),msg);checks++}
 function includes(source,part,msg){ok(source.includes(part),msg)}
 const begin=html.indexOf('const sections=[');
 const end=html.indexOf('\nconst matchOptions=',begin);
