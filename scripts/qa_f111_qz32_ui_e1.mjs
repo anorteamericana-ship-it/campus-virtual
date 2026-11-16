@@ -144,7 +144,9 @@ if(process.env.F111_QZ_BROWSER==='1'){
   const liveErrors=[];live.on('pageerror',e=>liveErrors.push(e.message));
   const base='https://qz32-r12.test',apiBase=base+'/api';
   const pdfFixture=Buffer.from('%PDF-1.4\n%F111-QA-SYNTHETIC-ONLY\n'+('synthetic x '.repeat(12))+'\n%%EOF').toString('base64');
-  const stats={metadata:0,pdf:0,draft:0,submit:0,teacherList:0,teacherReview:0,teacherKey:0};
+  // Only a synthetic ID3 header and UI event, never Cambridge audio or E2.
+  const audioFixture=Buffer.concat([Buffer.from('ID3'),Buffer.alloc(1536)]).toString('base64');
+  const stats={metadata:0,pdf:0,audio:0,draft:0,submit:0,teacherList:0,teacherReview:0,teacherKey:0};
   let responseMode='ok';
   await live.route(base+'/modulos/quiz_progress.html*',
     route=>route.fulfill({status:200,contentType:'text/html',body:student}));
@@ -164,8 +166,13 @@ if(process.env.F111_QZ_BROWSER==='1'){
         data={ok:true,quiz_id:responseMode==='wrong-metadata'?'IC5_I2_WQ08':quizId,
           nivel:req.nivel,leccion:req.leccion,peso_oficial:0,
           fecha:'2026-10-18',disponible_hoy:true,
+          listening:{pista:req.nivel==='B1'?idx:idx+1,grabacion_disponible:true},
           secciones:['A','B','C','D','E'].map(id=>({id,tipo_respuesta:'TEXTO_GUIADO',items:[]}))};
         break;
+      case 'qzProgressAudio':
+        stats.audio++;
+        data={ok:true,quiz_id:quizId,mime:'audio/mpeg',peso_oficial:0,
+          pista:req.nivel==='B1'?idx:idx+1,audio_base64:audioFixture};break;
       case 'qzProgressMyAttempt':
         data={ok:true,estado:'SIN_INICIAR',respuestas:{}};break;
       case 'qzProgressPaper':
@@ -214,10 +221,19 @@ if(process.env.F111_QZ_BROWSER==='1'){
       const expected='IC5_'+nivel+'_WQ'+String(quizNo).padStart(2,'0');
       const uri=base+'/modulos/quiz_progress.html?grupo=QA-F111-E3&nivel='+nivel+'&leccion='+leccion;
       await live.goto(uri);
-      await live.waitForFunction(()=>document.querySelector('#pdfBox iframe')?.title==='Cuestionario original');
+      await live.waitForFunction(()=>document.querySelector('#pdfBox iframe')?.title==='Cuestionario original'&&
+        document.querySelector('#originalAudioBox')?.hidden===false);
       assert.equal(await live.locator('#answers textarea, #answers fieldset.f111-control').count(),5,
         'five editable sections rendered for '+expected);
       await live.locator('#answers textarea').first().fill('Respuesta ficticia '+expected);
+      assert.equal(await live.locator('#submitBtn').isDisabled(),true,
+        'ID3 header and blob must not unlock student submission');
+      await live.evaluate(()=>{
+        const player=document.querySelector('#originalAudioPlayer');
+        Object.defineProperty(player,'readyState',{configurable:true,value:HTMLMediaElement.HAVE_CURRENT_DATA});
+        Object.defineProperty(player,'error',{configurable:true,value:null});
+        player.dispatchEvent(new Event('playing'));
+      }); // E1: synthetic event only, NOT real audible playback
       await live.locator('#saveBtn').click();
       await live.waitForFunction(()=>document.querySelector('#saveState')?.textContent.includes('Avance guardado'));
       await live.locator('#submitBtn').click();
@@ -227,9 +243,9 @@ if(process.env.F111_QZ_BROWSER==='1'){
         'submitted quiz immutable');
     }
   }
-  assert.deepEqual({metadata:stats.metadata,pdf:stats.pdf,draft:stats.draft,submit:stats.submit},
-    {metadata:32,pdf:32,draft:32,submit:32},
-    '32 complete browser workflows with synthetic QA API');
+  assert.deepEqual({metadata:stats.metadata,pdf:stats.pdf,audio:stats.audio,draft:stats.draft,submit:stats.submit},
+    {metadata:32,pdf:32,audio:32,draft:32,submit:32},
+    '32 browser workflows with synthetic listening and QA API');
   // R12: even syntactically valid IDs must match the requested level and PC.
   const negative=base+'/modulos/quiz_progress.html?grupo=QA-F111-E3&nivel=B1&leccion=4';
   responseMode='wrong-metadata';

@@ -13,7 +13,7 @@ const base='https://b1-audio-synthetic.invalid';
 const pdf=Buffer.from('%PDF-1.4\n%QZ-B1-SYNTHETIC\n'+('fake '.repeat(25))+'\n%%EOF').toString('base64');
 const audio=Buffer.concat([Buffer.from('ID3','ascii'),Buffer.alloc(1600)]).toString('base64');
 const browser=await chromium.launch({headless:true,...(process.env.F111_QZ_CHROME_PATH?{executablePath:process.env.F111_QZ_CHROME_PATH}:{})});
-let badAudio=false, calls=[],apiUrl=base+'/api';
+let badAudio=false, missingListening=false, calls=[],apiUrl=base+'/api';
 try{
  const page=await browser.newPage({viewport:{width:390,height:844}});
  page.on('dialog',dlg=>dlg.dismiss());
@@ -28,7 +28,7 @@ try{
   let data;
   if(fn==='qzProgressGet')data={ok:true,quiz_id:id,nivel:'B1',leccion:body.leccion,peso_oficial:0,
    fecha:'2026-10-24',disponible_hoy:true,secciones:[{id:'A',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3,4]},{id:'B',tipo_respuesta:'TEXTO_GUIADO',items:[]}],
-   listening:{pista:n,grabacion_disponible:true}};
+   listening:missingListening?null:{pista:n,grabacion_disponible:true}};
   else if(fn==='qzProgressMyAttempt')data={ok:true,estado:'SIN_INICIAR',respuestas:{}};
   else if(fn==='qzProgressPaper')data={ok:true,quiz_id:id,mime:'application/pdf',peso_oficial:0,pdf_base64:pdf};
   else if(fn==='qzProgressAudio')data={ok:true,quiz_id:id,mime:badAudio?'text/html':'audio/mpeg',peso_oficial:0,pista:n,audio_base64:audio};
@@ -59,10 +59,42 @@ try{
  assert.equal(calls.includes('qzProgressMyAttempt'),false,'teacher preview cannot read student attempts');
  assert.equal(calls.includes('qzProgressSubmit'),false);
  assert.equal(calls.includes('qzProgressSaveDraft'),false);
+ // Un MP3 puede tener cabecera ID3 correcta pero fallar al reproducirse.
+ // La interfaz debe bloquear una entrega incluso si antes estaba habilitada.
+ calls=[];
+ await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=4');
+ await page.waitForFunction(()=>!document.querySelector('#originalAudioBox').hidden);
+ await page.locator('#answers textarea[data-section="A1"]').fill('Respuesta sintética sin entrega');
+ assert.equal(await page.locator('#submitBtn').isDisabled(),true,
+  'MP3 ID3 and blob URL alone must not authorize delivery');
+ assert.match(await page.locator('#listeningInfo').innerText(),/reproducir|No se puede reproducir/);
+ // These dispatched events test the UI gate only, not Cambridge E2 playback.
+ await page.evaluate(()=>{
+  const player=document.querySelector('#originalAudioPlayer');
+  Object.defineProperty(player,'readyState',{configurable:true,value:HTMLMediaElement.HAVE_CURRENT_DATA});
+  Object.defineProperty(player,'error',{configurable:true,value:null});
+  player.dispatchEvent(new Event('playing'));
+ });
+ assert.equal(await page.locator('#submitBtn').isDisabled(),false,
+  'playing with media data can unlock submission');
+ await page.evaluate(()=>document.querySelector('#originalAudioPlayer').dispatchEvent(new Event('error')));
+ assert.equal(await page.locator('#submitBtn').isDisabled(),true,'decode error must reblock quiz delivery');
+ assert.match(await page.locator('#listeningInfo').innerText(),/No se puede reproducir la pista original/);
+ assert.ok(!calls.includes('qzProgressSubmit'),'decode failure never submits student attempt');
  badAudio=true;calls=[];
  await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=8');
  await page.waitForFunction(()=>document.querySelector('#listeningInfo').textContent.includes('No se pudo cargar'));
  assert.equal(await page.locator('#submitBtn').isDisabled(),true,'fail closed missing/corrupted listening');
  assert.equal(await page.locator('#pdfBox iframe').count(),1,'PDF remains available even when audio fails');
- console.log('F111_B1_AUDIO_UI_PASS 8 tracks + teacher-only preview + audio error fail-closed, synthetic only');
+ // Missing entire Listening metadata previously made audio optional.
+ badAudio=false;missingListening=true;calls=[];
+ await page.goto(base+'/modulos/quiz_progress.html?grupo=QA-SYNTH-GROUP&nivel=B1&leccion=4');
+ await page.waitForFunction(()=>document.querySelector('#pdfBox iframe')!==null);
+ await page.locator('#answers textarea[data-section="A1"]').fill('Respuesta sintética');
+ assert.equal(await page.locator('#submitBtn').isDisabled(),true,
+   'missing listening object must never authorize student submission');
+ assert.match(await page.locator('#listeningInfo').innerText(),/Faltan los datos de la pista original/);
+ assert.equal(calls.includes('qzProgressAudio'),false,'no request without audio metadata');
+ assert.equal(calls.includes('qzProgressSubmit'),false,'no submission without listening');
+ console.log('F111_B1_AUDIO_UI_PASS 8 tracks + teacher preview + decode error + missing metadata fail-closed; synthetic only');
 }finally{await browser.close();}

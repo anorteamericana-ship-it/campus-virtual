@@ -5,6 +5,10 @@
 const LEVELS=[['B1','Básico I','#D5A525'],['B2','Básico II','#B42E3C'],['I1','Intermedio I','#2C75B0'],['I2','Intermedio II','#347D50']];
 const LESSONS=[[4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],[21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']];
 const STYLE='F111-TEACHER-QUIZ-REVIEW';
+// R29: a NEW dedicated, versioned Apps Script deployment for teacher-only
+// QZ24 rehearsals. Existing B1 QUIZ @504 and CORE @502 URLs stay untouched.
+const QZ24_TEACHER_PREVIEW_API='https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec';
+const QZ24_LOCAL_QA=/^(localhost|127\.0\.0\.1)$/.test(String(location.hostname||''));
 function make(tag,text,className){
  const e=document.createElement(tag);
  if(text!==null&&text!==undefined)e.textContent=text;
@@ -364,11 +368,16 @@ function preview(group){
  if(group)url.searchParams.set('grupo',String(group));
  window.open(url.href,'_blank','noopener,noreferrer');
 }
-async function postQuiz(fn,data){
+async function postQuiz(fn,data,options={}){
  const token=window.getSessionToken?window.getSessionToken():'';
- // Las operaciones Progress Check usan @467; padrón docente y login siguen en @462.
- const isQuiz=/^qzProgress[A-Za-z0-9]+$/.test(String(fn||'')); // R10: B1 endpoints must use Quiz @477
- const base=String((isQuiz&&window.F111_QZ_API_URL)||window.APPS_SCRIPT_URL||'');
+ // Only this guarded teacher rehearsal path may target the NEW deployment.
+ // Its URL is pinned here, never supplied by untrusted query parameters.
+ const qz24Teacher=options.qz24TeacherPreview===true;
+ if(qz24Teacher&&fn!=='qzProgressGet')
+  throw Error('Endpoint no autorizado para el ensayo docente.');
+ const isQuiz=/^qzProgress[A-Za-z0-9]+$/.test(String(fn||''));
+ const original=String((isQuiz&&window.F111_QZ_API_URL)||window.APPS_SCRIPT_URL||'');
+ const base=qz24Teacher&&!QZ24_LOCAL_QA?QZ24_TEACHER_PREVIEW_API:original;
  if(!token||!base)throw Error('Sesión docente no disponible');
  const res=await fetch(base+'?fn='+encodeURIComponent(fn),{
   method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -696,6 +705,88 @@ async function openSavedOralForStudent(context){
  }catch(_){return {ok:false,reason:'consulta_no_disponible'};}
 }
 window.F111_QZ_openSavedOral=openSavedOralForStudent;
+// F111 QZ24 · selector docente de ensayo SIN activar alumnos ni crear intentos.
+// Los grupos vienen exclusivamente de getDocenteGruposActuales; cada clic
+// repite validación de contexto en qzProgressGet, read-only, antes del iframe.
+// El backend en PROD sigue B1-only hasta cierre global 24/24.
+function createQz24RehearsalCard(groupSelector){
+ const card=make('article',null,'f111-teacher-exam-card');
+ card.dataset.f111Qz24Rehearsal='true';
+ card.append(make('h4','Ensayo interactivo · Progress Checks'),
+   make('p','Elegí un grupo docente autorizado y uno de sus 8 quizzes. Podés rellenar las respuestas y consultar el PDF/audio desde tu sesión, pero el ensayo NO guarda, entrega ni abre evaluaciones.'));
+ const state=make('p','Consultando grupos autorizados…','f111-tqr-feedback');
+ state.setAttribute('role','status');
+ const filter=make('div',null,'f111-teacher-exam-controls');
+ const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
+ levelPicker.setAttribute('aria-label','Nivel que desea ensayar el docente');
+ for(const [key,name] of LEVELS){const option=make('option',name);option.value=key;levelPicker.append(option);}
+ filter.append(make('span','Nivel del quiz:'),levelPicker);
+ const grid=make('div',null,'f111-teacher-exam-controls');
+ grid.dataset.f111Qz24Lessons='true';
+ card.append(state,filter,grid);
+ let requestId=0,previousGroup='';
+ function render(){
+  requestId++;
+  const group=String(groupSelector.value||'').trim().toUpperCase();
+  // El prefijo del grupo ofrece solo el valor inicial: los grupos pueden
+  // ascender de nivel sin cambiar de código. El backend decide los permisos.
+  if(group!==previousGroup){
+    previousGroup=group;
+    const preferred=group.match(/^(B1|B2|I1|I2)-/);
+    if(preferred)levelPicker.value=preferred[1];
+  }
+  const level=String(levelPicker.value||'').toUpperCase();
+  grid.replaceChildren();
+  if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)||!LEVELS.some(x=>x[0]===level)){
+   state.textContent='Seleccioná un grupo autorizado y un nivel válido.';
+   return;
+  }
+  const levelInfo=LEVELS.find(x=>x[0]===level);
+  state.textContent=(levelInfo?levelInfo[1]:level)+' · '+group+' · ensayo de docente solamente. El servidor comprobará el permiso antes de abrir.';
+  for(let i=0;i<LESSONS.length;i++){
+   const lesson=LESSONS[i][0],number=i+1;
+   const btn=make('button','PC'+String(number).padStart(2,'0')+' · U'+LESSONS[i][1],'f111-tqr-open');
+   btn.type='button';btn.dataset.f111Qz24Lesson=String(lesson);
+   btn.addEventListener('click',async()=>{
+    const wanted=String(groupSelector.value||'').trim().toUpperCase();
+    if(wanted!==group||!window.getSessionToken||!window.getSessionToken())return;
+    const serial=++requestId;
+    btn.disabled=true;state.textContent='Verificando acceso docente a '+level+' PC'+number+'…';
+    try{
+     // No confiar solo en el selector: el servidor autentica docente/grupo/nivel
+     // y valida calendario. Un error 403/PROD bloqueado NO abre el iframe.
+     const q=await postQuiz('qzProgressGet',{cod_grupo:group,nivel:level,leccion:lesson},{qz24TeacherPreview:true});
+     if(serial!==requestId||String(groupSelector.value||'').trim().toUpperCase()!==group)return;
+     if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
+        q.nivel!==level||Number(q.leccion)!==lesson||
+        q.peso_oficial!==0||q.vista_previa!==true)
+       throw Error('El servidor no confirmó un ensayo de este grupo y nivel.');
+     state.textContent='Ensayo privado autorizado para '+level+' · PC'+String(number).padStart(2,'0')+'.';
+     f111TeacherExamModal('Ensayo docente · '+level+' · PC'+String(number).padStart(2,'0'),
+       f111ExamPageUrl('modulos/quiz_progress.html',{
+         teacher_preview:1,qz24_preview:1,grupo:group,nivel:level,leccion:lesson
+       }));
+    }catch(e){
+     if(serial===requestId){
+      const reason=String(e&&e.message||e);
+      if(reason.includes('qz_prod_fuera_de_alcance'))
+       state.textContent='Ensayo privado todavía sin autorizar para este nivel. Dirección debe habilitar el acceso docente en QUIZ; los estudiantes continúan bloqueados.';
+      else if(reason.includes('no_autorizado_grupo_nivel'))
+       state.textContent='Este grupo y nivel no están autorizados para tu sesión docente. Verificá la asignación antes de intentar otro examen.';
+      else if(reason.includes('progress_check_no_programado')||reason.includes('calendario_no_disponible'))
+       state.textContent='No se pudo validar el calendario de este examen. El ensayo permanece bloqueado sin realizar cambios.';
+      else
+       state.textContent='Ensayo no habilitado: '+reason;
+     }
+    }finally{btn.disabled=false;}
+   });
+   grid.append(btn);
+  }
+ }
+ levelPicker.addEventListener('change',render);
+ render();
+ return {card,render,levelPicker};
+}
 function buildTeacherExamsF111(){
  const section=make('section',null,'f111-teacher-exam-center');
  section.dataset.f111TeacherExamCenter='true';
@@ -719,6 +810,7 @@ function buildTeacherExamsF111(){
  control.append(select,refresh,lookup,lookupBtn);
  const result=make('div',null,'f111-teacher-exam-results');result.setAttribute('role','status');
  history.append(control,result);
+ const rehearsal=createQz24RehearsalCard(select);
  let busy=false;
  async function loadHistory(){
   if(busy)return;
@@ -789,6 +881,7 @@ function buildTeacherExamsF111(){
     return;
    }
    select.value=allowed.includes(oldGroup)?oldGroup:allowed[0];
+   rehearsal.render();
   }catch(e){
    if(section.isConnected){
     select.replaceChildren();result.replaceChildren();
@@ -810,14 +903,14 @@ function buildTeacherExamsF111(){
    if(!Array.from(select.options).some(x=>x.value===group)){
     const option=make('option',group);option.value=group;select.append(option);
    }
-   select.value=group;await loadHistory();
+   select.value=group;rehearsal.render();await loadHistory();
   }catch(e){result.replaceChildren(make('p','Grupo no autorizado o no disponible: '+String(e&&e.message||e)));}
   finally{lookupBtn.disabled=false;}
  });
  lookup.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupBtn.click();}});
- select.addEventListener('change',loadHistory);
+ select.addEventListener('change',()=>{rehearsal.render();void loadHistory();});
  refresh.addEventListener('click',loadAuthorizedGroups);
- summary.append(history);section.append(summary);
+ summary.append(history,rehearsal.card);section.append(summary);
  // Cargar solo cuando se conecta esta tarjeta, y luego por cambio o botón.
  queueMicrotask(()=>{if(section.isConnected)void loadAuthorizedGroups();});
  return section;

@@ -1,0 +1,1246 @@
+{
+  "IC5_I1_WQ01": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 2
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 2
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 2
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {
+        "1": "Diálogo · espacio 1",
+        "2": "Diálogo · espacio 2",
+        "3": "Diálogo · espacio 3",
+        "4": "Diálogo · espacio 4"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    }
+  ],
+  "IC5_I1_WQ02": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "etiquetas_items": {
+        "1": "Diálogo · espacio 1",
+        "2": "Diálogo · espacio 2",
+        "3": "Diálogo · espacio 3",
+        "4": "Diálogo · espacio 4",
+        "5": "Diálogo · espacio 5",
+        "6": "Diálogo · espacio 6",
+        "7": "Diálogo · espacio 7"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "TEXTO_GUIADO",
+      "items": [],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": {
+        "tipo": "OPCION_MULTIPLE",
+        "opciones": 8,
+        "selecciones": 4
+      }
+    }
+  ],
+  "IC5_I1_WQ03": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b"
+      ],
+      "etiquetas_items": {
+        "1a": "Conversación 1 · primera parte",
+        "1b": "Conversación 1 · segunda parte",
+        "2a": "Conversación 2 · primera parte",
+        "2b": "Conversación 2 · segunda parte"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {
+        "1": "Conversación · espacio 1",
+        "2": "Conversación · espacio 2",
+        "3": "Conversación · espacio 3",
+        "4": "Conversación · espacio 4"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    }
+  ],
+  "IC5_I1_WQ04": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b",
+        "3a",
+        "3b",
+        "4a",
+        "4b"
+      ],
+      "etiquetas_items": {
+        "1a": "Ejercicio 1 · relación con letra",
+        "1b": "Ejercicio 1 · oración reescrita",
+        "2a": "Ejercicio 2 · relación con letra",
+        "2b": "Ejercicio 2 · oración reescrita",
+        "3a": "Ejercicio 3 · relación con letra",
+        "3b": "Ejercicio 3 · oración reescrita",
+        "4a": "Ejercicio 4 · relación con letra",
+        "4b": "Ejercicio 4 · oración reescrita"
+      },
+      "controles_items": {
+        "1a": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "2a": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "3a": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "4a": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "TEXTO_GUIADO",
+      "items": [],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": {
+        "tipo": "OPCION_MULTIPLE",
+        "opciones": 8,
+        "selecciones": 4
+      }
+    }
+  ],
+  "IC5_I1_WQ05": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 4
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    }
+  ],
+  "IC5_I1_WQ06": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        "1a",
+        "1b",
+        "2a",
+        "2b",
+        "3a",
+        "3b"
+      ],
+      "etiquetas_items": {
+        "1a": "Oración 1 · primera parte",
+        "1b": "Oración 1 · segunda parte",
+        "2a": "Oración 2 · primera parte",
+        "2b": "Oración 2 · segunda parte",
+        "3a": "Oración 3 · primera parte",
+        "3b": "Oración 3 · segunda parte"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {
+        "1": "Conversación · espacio 1",
+        "2": "Conversación · espacio 2",
+        "3": "Conversación · espacio 3",
+        "4": "Conversación · espacio 4"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    }
+  ],
+  "IC5_I1_WQ07": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "G",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    }
+  ],
+  "IC5_I1_WQ08": [
+    {
+      "id": "A",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    },
+    {
+      "id": "B",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "etiquetas_items": {
+        "1": "Condicional · espacio 1",
+        "2": "Condicional · espacio 2",
+        "3": "Condicional · espacio 3",
+        "4": "Condicional · espacio 4",
+        "5": "Condicional · espacio 5",
+        "6": "Condicional · espacio 6"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "C",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {
+        "1": "Pasado modal · espacio 1",
+        "2": "Pasado modal · espacio 2",
+        "3": "Pasado modal · espacio 3",
+        "4": "Pasado modal · espacio 4"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "D",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "E",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "etiquetas_items": {
+        "1": "Discurso indirecto · intervención 1",
+        "2": "Discurso indirecto · intervención 2",
+        "3": "Discurso indirecto · intervención 3",
+        "4": "Discurso indirecto · intervención 4",
+        "5": "Discurso indirecto · intervención 5",
+        "6": "Discurso indirecto · intervención 6",
+        "7": "Discurso indirecto · intervención 7"
+      },
+      "controles_items": {},
+      "control": null
+    },
+    {
+      "id": "F",
+      "tipo_respuesta": "ITEMS_NUMERADOS",
+      "items": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "etiquetas_items": {},
+      "controles_items": {
+        "1": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "2": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "3": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        },
+        "4": {
+          "tipo": "OPCION_UNICA",
+          "opciones": 3
+        }
+      },
+      "control": null
+    }
+  ]
+}

@@ -47,6 +47,11 @@ const qs=new URLSearchParams(location.search);
 const level=String(qs.get('nivel')||'B1').toUpperCase(), lesson=Number(qs.get('leccion')||4), group=String(qs.get('grupo')||'').trim();
 const preview=qs.get('preview')==='1'; // QA sintético, cero servidor
 const teacherPreview=qs.get('teacher_preview')==='1'; // backend autentica rol y grupo
+const qz24TeacherPreview=teacherPreview&&qs.get('qz24_preview')==='1';
+// R29: Only this teacher-only mode uses the new deployment. B1 learners,
+// and historical B1 teacher views, keep using the unchanged QUIZ @504 URL.
+const QZ24_TEACHER_PREVIEW_API='https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec';
+const QZ24_LOCAL_QA=/^(localhost|127\.0\.0\.1)$/.test(String(location.hostname||''));
 document.documentElement.dataset.level=LEVELS[level]?level:'B1';
 const $=id=>document.getElementById(id);
 const units=STEPS[lesson]||null;
@@ -67,7 +72,7 @@ function update(){
  $('verifyBtn').hidden=!uncertainSubmit;
  $('verifyBtn').disabled=busy;
  document.querySelectorAll('#answers textarea').forEach(el=>{el.readOnly=submitted||uncertainSubmit||expired;});
- document.querySelectorAll('#answers fieldset.f111-control input').forEach(el=>{el.disabled=submitted||uncertainSubmit||expired||preview||teacherPreview;});
+ document.querySelectorAll('#answers fieldset.f111-control input').forEach(el=>{el.disabled=submitted||uncertainSubmit||expired||preview;});
 }
 // D5-R3: controles por apartado B1, sin claves ni preguntas Cambridge en Pages.
 const B1_CONTROL_MODES={
@@ -114,6 +119,46 @@ function restoreB1(){
   set.querySelectorAll('input').forEach(input=>{input.checked=chosen.includes(input.value);});
  });
 }
+// F111 QZ24: controles de elección definidos por la fuente privada y verificados
+// por su identidad de quiz. Las opciones son ordinales, nunca claves correctas.
+function decorateStructuredControls(root,sections){
+ for(const section of sections){
+  const plan=Object.assign({},section.controles_items||{});
+  if(section.control)plan[''] = section.control;
+  for(const [num,choice] of Object.entries(plan)){
+   if(!choice||!['OPCION_UNICA','OPCION_MULTIPLE'].includes(choice.tipo))continue;
+   const key=section.id+num,ta=Array.from(root.querySelectorAll('textarea[data-section]')).find(x=>x.dataset.section===key);
+   if(!ta)continue;
+   const n=Number(choice.opciones),multi=choice.tipo==='OPCION_MULTIPLE';
+   const cap=multi?Number(choice.selecciones):1;
+   if(!Number.isInteger(n)||n<2||n>12||!Number.isInteger(cap)||cap<1||cap>n)continue;
+   const fieldset=document.createElement('fieldset');
+   fieldset.className='f111-control';fieldset.dataset.key=key;
+   const legend=document.createElement('legend');
+   legend.textContent=ta.getAttribute('aria-label')+' · '+(multi?'elegí '+cap+' opciones':'elegí una opción');
+   fieldset.appendChild(legend);
+   for(let i=1;i<=n;i++){
+    const label=document.createElement('label'),input=document.createElement('input');
+    input.type=multi?'checkbox':'radio';
+    input.name='f111-'+key;input.value=String(i);
+    const caption=document.createElement('span');
+    caption.textContent='Opción '+i+' del PDF';
+    label.append(input,caption);fieldset.appendChild(label);
+    input.addEventListener('change',()=>{
+     const selected=Array.from(fieldset.querySelectorAll('input:checked')).map(x=>x.value);
+     if(multi&&selected.length>cap){input.checked=false;return;}
+     response[key]=multi?selected.join(','):(selected[0]||'');
+     dirty=true;
+     setStatus(teacherPreview?'Ensayo privado: no se guardan las respuestas.':'Cambios por guardar…');
+     update();clearTimeout(saveTimer);
+     if(!teacherPreview)saveTimer=setTimeout(()=>save(false),1100);
+    });
+   }
+   ta.replaceWith(fieldset);
+  }
+ }
+ restoreB1();
+}
 function build(secciones){
  const root=$('answers'),frag=document.createDocumentFragment();root.replaceChildren();fields=[];
  const list=Array.isArray(secciones)?secciones:[];
@@ -137,13 +182,14 @@ function build(secciones){
    field.setAttribute('aria-label',label.textContent+' · '+section.id);
    field.placeholder=num==null?'Escribí las respuestas de este apartado, usando la numeración del documento.':'Completá esta respuesta siguiendo el documento original.';
    field.dataset.section=key;
-   field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus('Cambios por guardar…');update();clearTimeout(saveTimer);saveTimer=setTimeout(()=>save(false),1100);});
-   field.addEventListener('blur',()=>{if(dirty)save(false)});
+   field.addEventListener('input',()=>{response[key]=field.value;dirty=true;setStatus(teacherPreview?'Ensayo privado: no se guardan las respuestas.':'Cambios por guardar…');update();clearTimeout(saveTimer);if(!teacherPreview)saveTimer=setTimeout(()=>save(false),1100);});
+   field.addEventListener('blur',()=>{if(dirty&&!teacherPreview)save(false)});
    wrapper.append(label,field);box.appendChild(wrapper);
   }
   frag.appendChild(box);
  }
  root.appendChild(frag);
+ decorateStructuredControls(root,list);
  decorateB1(root);
  if(!fields.length)throw Error('El quiz no tiene esquema de respuestas verificado.');
  update();
@@ -237,11 +283,28 @@ async function audioOriginal(meta){
  if(lastAudioBlob)URL.revokeObjectURL(lastAudioBlob);
  lastAudioBlob=URL.createObjectURL(new Blob([array],{type:'audio/mpeg'}));
  const player=$('originalAudioPlayer');
+ // R23: descargar un archivo con cabecera ID3 no prueba reproducción.
+ // La entrega requiere un evento playing con datos ya decodificados.
+ // Sigue siendo UX; autorización y entrega deben validarse en backend.
+ player.onemptied=()=>{audioReady=false;update();};
+ player.onerror=()=>{
+  audioReady=false;
+  $('listeningInfo').textContent='No se puede reproducir la pista original en este navegador. Contactá al docente antes de entregar.';
+  setError('La grabación no se pudo reproducir. No entregués el quiz sin resolver el listening.');
+  update();
+ };
+ player.onplaying=()=>{
+  if(player.error||player.readyState<HTMLMediaElement.HAVE_CURRENT_DATA)return;
+  audioReady=true;setError('');
+  $('listeningInfo').textContent='Pista original en reproducción. Continuá el listening y completá tus respuestas.';
+  update();
+ };
  player.src=lastAudioBlob;
  $('originalAudioTitle').textContent='Listening · pista original '+meta.listening.pista;
  $('originalAudioBox').hidden=false;
- $('listeningInfo').textContent='Escuchá el audio Cambridge original y respondé el apartado correspondiente.';
- audioReady=true;update();
+ $('listeningInfo').textContent='Para entregar, presioná reproducir y escuchá la pista original.';
+ // Nunca habilitar entrega solamente por descargar el MP3.
+ update();
 }
 async function start(){
  update();
@@ -249,7 +312,10 @@ async function start(){
  if(preview){build([{id:'A',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3,4]},{id:'B',tipo_respuesta:'TEXTO_GUIADO',items:[]},{id:'C',tipo_respuesta:'ITEMS_NUMERADOS',items:[1,2,3]}]);$('badge').textContent='Vista previa QA';setStatus('Diseño de muestra: sin datos ni guardado.');$('pdfInfo').textContent='Vista previa: el PDF original se entrega desde el servidor protegido en la fecha autorizada.';return;}
  // QA URL explícita, o la API ya configurada en el Campus que hospeda el iframe.
  let parentApi='';try{if(window.parent&&window.parent!==window)parentApi=String(window.parent.F111_QZ_API_URL||'')}catch(_){}
- apiUrl=String(window.F111_QZ_QA_API_URL||parentApi||'').trim();token=sessionToken();
+ apiUrl=qz24TeacherPreview&&!QZ24_LOCAL_QA
+   ?QZ24_TEACHER_PREVIEW_API
+   :String(window.F111_QZ_QA_API_URL||parentApi||'').trim();
+ token=sessionToken();
  if(!apiUrl||!token||!group){setError('Iniciá sesión en el Campus y volvé a abrir tu evaluación.');return;}
  try{
   const meta=await api('qzProgressGet',context());
@@ -259,12 +325,20 @@ async function start(){
      meta.leccion!==lesson||meta.quiz_id!==expectedId)
     throw Error('El quiz no coincide exactamente con el grupo, nivel y lección activa.');
   build(meta.secciones);
+  // R24: every Progress Check requires listening, even if backend metadata
+  // is missing. A missing object cannot silently turn the audio optional.
+  audioRequired=true;audioReady=false;
+  if(!meta.listening){
+   $('listeningInfo').textContent='Faltan los datos de la pista original. Consultá con el docente.';
+   setError('No se puede entregar este quiz hasta verificar el listening original.');
+  }
   if(meta.listening){
     const a=meta.listening;
     $('listeningInfo').textContent=a.grabacion_disponible
       ?'Listening · pista original '+a.pista+' · se cargará desde Drive privado con tu sesión.'
       :'Listening · pista '+a.pista+' aún no integrada. Consultá con tu docente.';
-    audioRequired=!!a.grabacion_disponible;
+    // La pista requerida no debe saltarse por falta de MP3 verificado.
+    audioRequired=true;
   }
   $('badge').textContent=meta.disponible_hoy?'Disponible · '+meta.fecha:'Fuera de fecha · '+meta.fecha;
   if(teacherPreview){

@@ -9,6 +9,13 @@ on:
       - 'modulos/qz_b1_pc02_preview.html'
       - 'scripts/qa_f111_b1_audio_ui_e1.mjs'
       - 'scripts/qa_f111_b1_interactive_r3_e1.mjs'
+      - 'scripts/qa_f111_qz24_b2_teacher_rehearsal_e1.mjs'
+      - 'scripts/qa_f111_qz24_i1_teacher_rehearsal_e1.mjs'
+      - 'scripts/qa_f111_qz24_i2_teacher_rehearsal_e1.mjs'
+      - 'scripts/fixtures/qz24_i2_sections_e1.json'
+      - 'scripts/qa_f111_qz24_teacher_level_selector_e1.mjs'
+      - 'scripts/fixtures/qz24_i1_sections_e1.json'
+      - 'scripts/fixtures/qz24_b2_sections_e1.json'
       - 'scripts/qa_f111_b1_schema_ui_contract_e1.mjs'
       - 'scripts/fixtures/qz_b1_sections_e1.json'
       - 'scripts/qa_f111_b1_pc02_preview_e1.mjs'
@@ -51,6 +58,8 @@ jobs:
         run: node scripts/qa_f111_b1_schema_ui_contract_e1.mjs
       - name: QA E1 teacher review from class and Examenes
         run: node scripts/qa_f111_teacher_quiz_access_e1.mjs
+      - name: QZ24 selector docente por nivel y grupo sin abrir ni entregar
+        run: node scripts/qa_f111_qz24_teacher_level_selector_e1.mjs
       - name: QA E1 Mis grupos resilient session fallback
         run: node scripts/qa_f111_teacher_session_fallback_e1.mjs
       - name: QA E1 B1 PC01 activation and two separate comments
@@ -75,6 +84,12 @@ jobs:
         run: node scripts/qa_f111_b1_audio_ui_e1.mjs
       - name: B1 interactive 174 response fields and draft lifecycle in Chromium
         run: node scripts/qa_f111_b1_interactive_r3_e1.mjs
+      - name: QZ24 B2 PC01-04 interactive teacher rehearsal and audio fail closed
+        run: node scripts/qa_f111_qz24_b2_teacher_rehearsal_e1.mjs
+      - name: QZ24 I1 PC01-08 interactive teacher rehearsal and multi-select protection
+        run: node scripts/qa_f111_qz24_i1_teacher_rehearsal_e1.mjs
+      - name: QZ24 I2 PC01-08 interactive teacher rehearsal and source exceptions
+        run: node scripts/qa_f111_qz24_i2_teacher_rehearsal_e1.mjs
       - name: PC02 editorial source and private-preview safety
         run: node scripts/qa_f111_b1_pc02_preview_e1.mjs
       - name: Render 32 student + 32 teacher quiz previews offline
