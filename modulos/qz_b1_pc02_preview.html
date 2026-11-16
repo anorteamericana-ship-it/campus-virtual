@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Progress Check 02 · Básico I · Vista previa docente</title>
+<title>Progress Check 02 · Básico I · Examen digital</title>
 <style>
 :root{font-family:Inter,Segoe UI,Arial,sans-serif;background:#f3f7fc;color:#193a5b}
 *{box-sizing:border-box}body{margin:0}.wrap{width:min(1080px,100%);margin:auto;padding:20px}
@@ -15,7 +15,11 @@ header p{margin:0;color:#d9e9f8;font-size:14px}.pill{background:#ffdfa1;color:#6
 nav{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0 11px}nav button{padding:11px 14px;border-radius:9px;border:1px solid #ccdae9;background:white;color:#22486c;font-weight:800;cursor:pointer}nav button[aria-selected=true]{background:#f7c940;border-color:#daa81a;color:#5a4207}
 .progress{height:8px;background:#d6e3ef;border-radius:99px;overflow:hidden;margin:11px 0 17px}.progress>div{height:100%;background:#f0bf32;width:0;transition:width .2s}
 .panel{background:white;border:1px solid #dbe4f0;border-radius:15px;padding:20px;box-shadow:0 7px 25px #143d5a0b}
-.panel h2{margin:0;color:#143f6b;font-size:21px}.help{font-size:13px;color:#65788d;line-height:1.6;margin:8px 0 16px}
+.panel h2{margin:0;color:#143f6b;font-size:21px}
+.listening-box{background:#eff7ff;border:1px solid #b5d3ef;border-radius:11px;padding:14px;margin:13px 0 20px}
+.listening-box strong{display:block;font-size:14px;color:#174a7e;margin-bottom:10px}
+.listening-box audio{display:block;width:100%;max-width:530px}
+.done{background:#e8f5ec;border:1px solid #b5d7c1;color:#195b3d;border-radius:8px;padding:11px;font-weight:700;font-size:13px;margin-top:14px}.help{font-size:13px;color:#65788d;line-height:1.6;margin:8px 0 16px}
 .item{background:#f9fbfe;border:1px solid #dbe5f1;border-radius:11px;padding:15px;margin:10px 0}
 .item legend{padding:0 5px;font-size:13px;font-weight:850;line-height:1.5;color:#143e6b}
 .item label{display:block;background:white;border:1px solid #d8e3ee;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;cursor:pointer}
@@ -36,14 +40,14 @@ footer{font-size:12px;color:#627a93;text-align:center;padding:18px;line-height:1
 <body><main class="wrap">
 <header><div><small>ACADEMIA NORTEAMERICANA · INTERCHANGE 5ª EDICIÓN</small>
 <h1>Progress Check 02 · Básico I</h1><p>Lección 08 · Unidades 3–4 · 25 puntos · ponderación oficial 0%</p></div>
-<div class="pill">VISTA PREVIA DOCENTE · NO PUBLICADO</div></header>
-<section class="notice" role="alert"><b>Pista original 02 localizada en Drive institucional.</b> El audio de Unidades 3–4 está archivado junto al cuestionario, el guion y la clave. Esta página pública sigue siendo únicamente una vista previa local: para reproducir el MP3 protegido se requiere la sesión docente y el motor privado de Progress Check. No permite entregar ni calificar.</section>
-<section class="notice noticesub">Digitalización del material Cambridge original para control editorial. Podés inspeccionar las 25 respuestas previstas, pero <b>no existe guardado, envío ni calificación</b>, y no se consulta el servidor ni se abre el quiz para estudiantes. La clave original permanece fuera de esta página.</section>
+<div class="pill">VISTA PREVIA · SIN ENVÍO OFICIAL</div></header>
+<section class="notice noticesub" role="status"><b>Vista previa docente.</b> Este es el cuestionario digital que utilizará el estudiante: preguntas y opciones originales, cinco apartados y audio de Listening integrado. Podés responderlo completo para revisarlo. <b>No se guarda, no se envía ni genera nota oficial.</b></section>
 <nav id="nav" aria-label="Secciones de la prueba"></nav><div class="progress"><div id="progress" aria-hidden="true"></div></div>
 <section id="panel" class="panel" aria-live="polite"></section>
 <div class="actions"><button type="button" id="prev">← Anterior</button><span id="state">0 de 25 campos completados en esta vista local</span>
-<button type="button" id="next" class="primary">Siguiente →</button></div>
-<footer>PROGRESS CHECK 02 · Solo vista previa de material docente. No incorpora respuestas correctas, credenciales, notas ni sesiones. No se registra información de estudiantes.</footer>
+<button type="button" id="next" class="primary">Siguiente →</button>
+<button type="button" id="finish" class="primary" hidden>Finalizar vista previa</button></div>
+<footer>PROGRESS CHECK 02 · Unidades 3–4 · Lección 8 · 25 respuestas · 0% oficial. Vista de práctica: sin guardado ni entrega a estudiantes.</footer>
 </main>
 <script>
 'use strict';
@@ -52,8 +56,8 @@ footer{font-size:12px;color:#627a93;text-align:center;padding:18px;line-height:1
 // E = 6. TOTAL = 25. No se incluye ningún mapa de claves en el frontend.
 const sections=[
 {id:'A',title:'Listen to the conversations',points:4,
- help:'Listen to the conversations. Check the correct answers. (4 POINTS). La pista original 02 está almacenada en Drive privado; esta vista pública no la reproduce.',
- type:'radio',locked:true,items:[
+ help:'Listen to the conversations. Check the correct answers. (4 POINTS).',
+ type:'radio',items:[
  ['A1','Where is Justine from?',["She's from Canada.","She's from France.","She's from Italy."]],
  ['A2','What is Mike like?',["He's serious, but not very quiet.","He's a little quiet, but very funny.","He's a little quiet and very serious."]],
  ['A3',"What's the weather like?",["It's very warm and sunny.","It's raining, but it's warm.","It's very sunny, but it's cool."]],
@@ -93,7 +97,15 @@ const sections=[
  ['E6',"B: He's shy and very quiet."]
 ]}
 ];
+const matchOptions=[
+  ["a","Maybe they're Annie's."],
+  ["b","No, they aren't theirs. They're ours!"],
+  ["c","I think it's yours."],
+  ["d","No, it's not hers. It's mine."],
+  ["e","Yes, they're hers."]
+];
 const answers=Object.create(null);
+let finished=false;
 let active=0;
 const nav=document.getElementById('nav'),panel=document.getElementById('panel'),state=document.getElementById('state');
 function el(tag,text,cls){const x=document.createElement(tag);if(text!==undefined&&text!==null)x.textContent=text;if(cls)x.className=cls;return x;}
@@ -102,33 +114,53 @@ function show(){
  nav.replaceChildren();
  sections.forEach((s,i)=>{const b=el('button',s.id+' · '+s.points+' puntos');b.type='button';b.setAttribute('aria-selected',String(active===i));b.onclick=()=>{active=i;show()};nav.append(b)});
  const s=sections[active];panel.replaceChildren(el('h2',s.id+' · '+s.title),el('p',s.help,'help'));
- if(s.locked)panel.append(el('span','Pista original 02 · reproducción solo en Campus autenticado','badge'));
+ if(s.id==='A'){
+  const audioBox=el('section',null,'listening-box');
+  audioBox.append(el('strong','♪ Listening · pista original 02'));
+  const player=el('audio');
+  player.controls=true;player.preload='metadata';
+  player.src='../media/qz32/b1_pc02_listening_track02.mp3?v=F111R32PC0220261116';
+  player.setAttribute('aria-label','Listening original de Progress Check 02 · unidades 3 y 4');
+  const audioError=el('p','','help');
+  player.addEventListener('error',()=>{audioError.textContent='No se pudo reproducir el audio original. Informá al equipo académico.'});
+  audioBox.append(player,audioError);
+  panel.append(audioBox);
+ }
+ if(finished)panel.append(el('p','Vista previa finalizada. Esta simulación no envía respuestas ni notas.','done'));
  s.items.forEach(q=>{
  const box=el('fieldset',null,'item'),legend=el('legend',q[0]+' · '+q[1]);box.append(legend);
  if(s.type==='radio'){q[2].forEach((opt,k)=>{
   const label=el('label'),input=el('input');
-  input.type='radio';input.name=q[0];input.value=String(k);input.checked=answers[q[0]]===String(k);input.disabled=!!s.locked;
+  input.type='radio';input.name=q[0];input.value=String(k);input.checked=answers[q[0]]===String(k);input.disabled=finished;
   input.onchange=()=>{answers[q[0]]=input.value;refresh()};label.append(input,document.createTextNode(opt));box.append(label);
  });}
  else if(s.type==='select'){
   const sel=el('select');sel.setAttribute('aria-label',q[0]);const blank=el('option','Elegir la letra…');blank.value='';sel.append(blank);
-  ['a','b','c','d','e'].forEach(x=>{const o=el('option',x);o.value=x;sel.append(o)});
-  sel.value=answers[q[0]]||'';sel.onchange=()=>{answers[q[0]]=sel.value;refresh()};box.append(sel);
+  matchOptions.forEach(([letter,answer])=>{const option=el('option',letter+' · '+answer);option.value=letter;sel.append(option)});
+  sel.value=answers[q[0]]||'';sel.disabled=finished;sel.onchange=()=>{answers[q[0]]=sel.value;refresh()};box.append(sel);
  } else {
   const input=el('input');input.type='text';input.autocomplete='off';input.maxLength=240;input.placeholder='Respuesta para revisar el diseño';
-  input.setAttribute('aria-label',q[0]);input.value=answers[q[0]]||'';
+  input.setAttribute('aria-label',q[0]);input.value=answers[q[0]]||'';input.disabled=finished;
   input.oninput=()=>{answers[q[0]]=input.value;refresh()};box.append(input);
  }
  panel.append(box);
  });
  document.getElementById('prev').disabled=active===0;
- document.getElementById('next').disabled=active===sections.length-1;
+ document.getElementById('next').hidden=active===sections.length-1;
+ document.getElementById('finish').hidden=active!==sections.length-1||finished;
  refresh();
 }
-function refresh(){const completed=counts();state.textContent=completed+' de 25 campos completados en esta vista local (sin guardar ni enviar)';
+function refresh(){const completed=counts();state.textContent=completed+' de 25 respuestas · '+Math.round(completed/25*100)+' % (sin envío ni nota)';
  document.getElementById('progress').style.width=(completed/25*100)+'%';
 }
 document.getElementById('prev').onclick=()=>{if(active>0){active--;show()}};
 document.getElementById('next').onclick=()=>{if(active<sections.length-1){active++;show()}};
+document.getElementById('finish').onclick=()=>{
+ const missing=25-counts();
+ if(!window.confirm('Finalizar vista previa'+(missing?' con '+missing+' respuestas pendientes':'')+'?'))return;
+ finished=true;
+ show();
+ document.querySelector('.notice[role=status]').textContent='Vista previa finalizada. Sin guardado, envío ni calificación oficial.';
+};
 show();
 </script></body></html>

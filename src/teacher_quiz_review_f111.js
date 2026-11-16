@@ -911,6 +911,17 @@ function buildTeacherExamsF111(){
  select.addEventListener('change',()=>{rehearsal.render();void loadHistory();});
  refresh.addEventListener('click',loadAuthorizedGroups);
  summary.append(history,rehearsal.card);section.append(summary);
+ // R32: el profesor inspecciona el examen SIN códigos, permisos de grupo,
+ // activación, entrega, PDF paralelo ni llamadas al backend.
+ const quick=make('article',null,'f111-teacher-exam-card');
+ quick.dataset.f111B1Pc02Oneclick='true';
+ quick.append(make('h4','B1 · Progress Check 02 · Lección 8 · Unidades 3–4'),
+  make('p','25 preguntas digitalizadas y listening original. Vista igual al estudiante, sin guardar ni enviar respuestas.'));
+ const view=make('button','Ver Progress Check','f111-tqr-open');
+ view.type='button';
+ view.addEventListener('click',previewPC02);
+ quick.append(view);
+ section.append(quick);
  // Cargar solo cuando se conecta esta tarjeta, y luego por cambio o botón.
  queueMicrotask(()=>{if(section.isConnected)void loadAuthorizedGroups();});
  return section;
