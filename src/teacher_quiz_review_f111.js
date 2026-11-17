@@ -709,75 +709,57 @@ window.F111_QZ_openSavedOral=openSavedOralForStudent;
 // Los grupos vienen exclusivamente de getDocenteGruposActuales; cada clic
 // repite validación de contexto en qzProgressGet, read-only, antes del iframe.
 // El backend en PROD sigue B1-only hasta cierre global 24/24.
+// QZ24 · Ensayo docente digital. No usa grupo ni calendario.
+// La autorización de lectura es siempre del backend; alumnos no tienen acceso.
 function createQz24RehearsalCard(groupSelector){
  const card=make('article',null,'f111-teacher-exam-card');
  card.dataset.f111Qz24Rehearsal='true';
- card.append(make('h4','Ensayo interactivo · Progress Checks'),
-   make('p','Elegí un grupo docente autorizado y uno de sus 8 quizzes. Podés rellenar las respuestas y consultar el PDF/audio desde tu sesión, pero el ensayo NO guarda, entrega ni abre evaluaciones.'));
- const state=make('p','Consultando grupos autorizados…','f111-tqr-feedback');
+ card.append(make('h4','Vista previa digital · Progress Checks'),
+   make('p','Elegí el nivel y el quiz. Abre las preguntas completas, sus opciones y el audio original. No necesitás seleccionar un grupo, ni se guarda ninguna respuesta.'));
+ const state=make('p','Seleccione un Progress Check para el ensayo privado.','f111-tqr-feedback');
  state.setAttribute('role','status');
  const filter=make('div',null,'f111-teacher-exam-controls');
  const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
- levelPicker.setAttribute('aria-label','Nivel que desea ensayar el docente');
- for(const [key,name] of LEVELS){const option=make('option',name);option.value=key;levelPicker.append(option);}
- filter.append(make('span','Nivel del quiz:'),levelPicker);
+ levelPicker.setAttribute('aria-label','Nivel del Progress Check digital');
+ for(const [key,name] of LEVELS){
+  const option=make('option',name);option.value=key;levelPicker.append(option);
+ }
+ filter.append(make('span','Nivel:'),levelPicker);
  const grid=make('div',null,'f111-teacher-exam-controls');
  grid.dataset.f111Qz24Lessons='true';
  card.append(state,filter,grid);
- let requestId=0,previousGroup='';
+ let requestId=0;
  function render(){
-  requestId++;
-  const group=String(groupSelector.value||'').trim().toUpperCase();
-  // El prefijo del grupo ofrece solo el valor inicial: los grupos pueden
-  // ascender de nivel sin cambiar de código. El backend decide los permisos.
-  if(group!==previousGroup){
-    previousGroup=group;
-    const preferred=group.match(/^(B1|B2|I1|I2)-/);
-    if(preferred)levelPicker.value=preferred[1];
-  }
+  const serial=++requestId;
   const level=String(levelPicker.value||'').toUpperCase();
   grid.replaceChildren();
-  if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)||!LEVELS.some(x=>x[0]===level)){
-   state.textContent='Seleccioná un grupo autorizado y un nivel válido.';
-   return;
-  }
   const levelInfo=LEVELS.find(x=>x[0]===level);
-  state.textContent=(levelInfo?levelInfo[1]:level)+' · '+group+' · ensayo de docente solamente. El servidor comprobará el permiso antes de abrir.';
+  state.textContent=(levelInfo?levelInfo[1]:level)+' · vista previa sin grupo · sin guardado.';
   for(let i=0;i<LESSONS.length;i++){
-   const lesson=LESSONS[i][0],number=i+1;
-   const btn=make('button','PC'+String(number).padStart(2,'0')+' · U'+LESSONS[i][1],'f111-tqr-open');
+   const number=i+1,lesson=LESSONS[i][0];
+   const btn=make('button','Ver Progress Check '+String(number).padStart(2,'0'),'f111-tqr-open');
    btn.type='button';btn.dataset.f111Qz24Lesson=String(lesson);
    btn.addEventListener('click',async()=>{
-    const wanted=String(groupSelector.value||'').trim().toUpperCase();
-    if(wanted!==group||!window.getSessionToken||!window.getSessionToken())return;
-    const serial=++requestId;
-    btn.disabled=true;state.textContent='Verificando acceso docente a '+level+' PC'+number+'…';
+    if(!window.getSessionToken||!window.getSessionToken())return;
+    const req=++requestId;btn.disabled=true;
+    state.textContent='Verificando sesión y banco privado '+level+' PC'+number+'…';
     try{
-     // No confiar solo en el selector: el servidor autentica docente/grupo/nivel
-     // y valida calendario. Un error 403/PROD bloqueado NO abre el iframe.
-     const q=await postQuiz('qzProgressGet',{cod_grupo:group,nivel:level,leccion:lesson},{qz24TeacherPreview:true});
-     if(serial!==requestId||String(groupSelector.value||'').trim().toUpperCase()!==group)return;
+     const q=await postQuiz('qzProgressGet',
+       {solo_preview_sin_grupo:true,nivel:level,pc:number},
+       {qz24TeacherPreview:true});
+     if(req!==requestId||String(levelPicker.value).toUpperCase()!==level)return;
      if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
         q.nivel!==level||Number(q.leccion)!==lesson||
-        q.peso_oficial!==0||q.vista_previa!==true)
-       throw Error('El servidor no confirmó un ensayo de este grupo y nivel.');
-     state.textContent='Ensayo privado autorizado para '+level+' · PC'+String(number).padStart(2,'0')+'.';
-     f111TeacherExamModal('Ensayo docente · '+level+' · PC'+String(number).padStart(2,'0'),
-       f111ExamPageUrl('modulos/quiz_progress.html',{
-         teacher_preview:1,qz24_preview:1,grupo:group,nivel:level,leccion:lesson
-       }));
+        q.peso_oficial!==0||q.vista_previa!==true||
+        q.requiere_grupo!==false||q.admite_envio!==false||
+        !Array.isArray(q.secciones)||!q.secciones.length)
+       throw Error('El backend no confirmó un examen digital privado y completo.');
+     state.textContent='Banco verificado. Abrí el ensayo digital sin grupo y sin entregas.';
+     f111TeacherExamModal('Progress Check digital · '+level+' · PC'+String(number).padStart(2,'0'),
+       f111ExamPageUrl('modulos/qz24_preview_digital.html',
+         {nivel:level,pc:number,staff_preview:1}));
     }catch(e){
-     if(serial===requestId){
-      const reason=String(e&&e.message||e);
-      if(reason.includes('qz_prod_fuera_de_alcance'))
-       state.textContent='Ensayo privado todavía sin autorizar para este nivel. Dirección debe habilitar el acceso docente en QUIZ; los estudiantes continúan bloqueados.';
-      else if(reason.includes('no_autorizado_grupo_nivel'))
-       state.textContent='Este grupo y nivel no están autorizados para tu sesión docente. Verificá la asignación antes de intentar otro examen.';
-      else if(reason.includes('progress_check_no_programado')||reason.includes('calendario_no_disponible'))
-       state.textContent='No se pudo validar el calendario de este examen. El ensayo permanece bloqueado sin realizar cambios.';
-      else
-       state.textContent='Ensayo no habilitado: '+reason;
-     }
+     if(req===requestId)state.textContent='No disponible: '+String(e&&e.message||e).slice(0,150);
     }finally{btn.disabled=false;}
    });
    grid.append(btn);
