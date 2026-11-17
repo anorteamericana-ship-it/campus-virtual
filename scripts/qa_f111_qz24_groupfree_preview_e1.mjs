@@ -7,6 +7,8 @@ const get=path=>fs.readFileSync(new URL(path,root),'utf8');
 const page=get('modulos/qz24_preview_digital.html');
 const teacher=get('src/teacher_quiz_review_f111.js');
 const superadmin=get('src/f111_qz24_superadmin_preview.js');
+const b1=get('modulos/qz_b1_pc01_digital.html');
+assert.doesNotMatch(b1,/Grupo Diego 0826/,'B1 PC01 must not hardcode an old classroom/teacher');
 const p1=page.indexOf('<script>'),p2=page.indexOf('</script>',p1);
 assert.ok(p1>0&&p2>p1);
 new vm.Script(page.slice(p1+8,p2),{filename:'qz24_preview_digital.html'});
