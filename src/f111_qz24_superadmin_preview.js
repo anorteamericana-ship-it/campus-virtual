@@ -8,7 +8,7 @@
  const UNITS=['1–2','3–4','5–6','7–8','9–10','11–12','13–14','15–16'];
  const root=document.getElementById('root');
  if(!root)return;
- let scheduled=false,requestSeq=0;
+ let scheduled=false,requestSeq=0,lastSelectionKey='';
  function superadmin(){
   try{
    const p=window.parent;
@@ -156,7 +156,9 @@
   const current=selectedCheck();if(!current)return;
   const key=current.nivel+'|'+current.numero;
   if(card.dataset.lastSelection!==key){
-   requestSeq++;card.dataset.lastSelection=key;
+   // React puede reconstruir la ficha sin cambiar el examen. No cancelar un GET válido.
+   if(lastSelectionKey!==key)requestSeq++;
+   lastSelectionKey=key;card.dataset.lastSelection=key;
    picker.value=String(current.numero);
    description.textContent='Lección '+current.leccion+' · Unidades '+UNITS[current.numero-1];
    status.textContent=current.nivel==='B1'
