@@ -91,6 +91,14 @@ try{
   'picker selects PC03 through the existing React selection');
  await picker.selectOption('1');
  await frame.locator('.d1-pc-selected .f111-qz24-oneaction').click();
+ await page.waitForTimeout(300);
+ console.log('F111_QZ24_UX_DIAGNOSTIC',JSON.stringify({
+  selection:await frame.locator('.d1-pc-selected b').innerText(),
+  picker:await picker.inputValue(),
+  status:await frame.locator('[data-f111-qz24-superadmin-preview] [role=status]').innerText(),
+  calls,modal:await page.locator('[data-f111-qz24-superadmin-modal]').count(),
+  errors
+ }));
  await page.locator('[data-f111-qz24-superadmin-modal]').waitFor({timeout:10000});
  assert.equal(calls[0].fn,'qzProgressGet','only read-only endpoint before opening');
  assert.equal(calls[0].nivel,'B2');
