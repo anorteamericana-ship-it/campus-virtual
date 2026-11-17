@@ -164,10 +164,16 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     try {
       const r = await backend.onSave(answersRef.current || {}, { source });
       if (r && r.ok && r.saved !== false && !r.deferred) {
+        // La respuesta confirma exclusivamente el snapshot enviado. Si el
+        // estudiante respondió durante la solicitud, esas respuestas nuevas
+        // siguen pendientes y el próximo autoguardado debe conservarlas.
         lastSavedJsonRef.current = snapshot;
-        dirtyRef.current = false;
-        setDirty(false);
-        setSaveMsg(source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.');
+        const hasNewAnswers = JSON.stringify(answersRef.current || {}) !== snapshot;
+        dirtyRef.current = hasNewAnswers;
+        setDirty(hasNewAnswers);
+        setSaveMsg(hasNewAnswers
+          ? 'Se guardó la versión anterior; hay respuestas nuevas pendientes de guardar.'
+          : (source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.'));
       } else if (r && r.ok && (r.deferred || r.saved === false)) {
         // El servidor estaba atendiendo otros estudiantes. Conservamos el
         // indicador de cambios pendientes y el próximo ciclo volverá a intentar.
