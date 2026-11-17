@@ -145,3 +145,40 @@ FIN DEL DOCUMENTO CANÓNICO F111 EXAMS DOCENTE.
 **Casos E1 previstos:** grupo no asignado, identidad de expediente ambigua, estudiante sin historial, mensaje de origen ajeno, grupo/estudiante/lección no coincidentes, resultados tardíos, cero notas oficiales escrito en consulta, sin auto-activación. Se incluye versión explícita del paquete de escritos y cachés de navegación. **La matriz no aumenta sin E2:** F111 16/35=45,7%, R57 27/48=56,3%, B6 3/4=75%, R57 Fase1 4/4=100%, EXUI aceptación 1/5=20%. 0526/0626 siguen SIN INA; escrito INA 5% / sin INA 15%, PC 0%.
 
 **Límites pendientes deliberados:** ficha F91 es una consulta read-only del estado, no autoriza anular/reescribir ni descargar PDF F91 si no existe endpoint de permiso; escritos muestran solamente la cola de entregas que requieren acción, no la totalidad del historial de intentos. Los controles especiales R57/F91 de backend se conservan en Herramientas. Una prueba real Diego/Keylor y estudiante, escritorio y móvil, todavía hace falta para E2; no declarar cerrada EXUI-05C ni 05D/05E antes de esa prueba.
+
+
+---
+
+## ADENDA DE INVENTARIO VISUAL Y SALIDAS PDF · 16-nov-2026
+
+**Alcance:** revisión de referencia de diseño aportada por usuario: `1 · Teacher · Exams-html(2).zip` (archivos `Main.dc.html`, `README.md` y runtime). El README declara que el prototipo es un **mockup visual** con datos de muestra; no es un sistema operativo ni evidencia de API, cifras académicas o PDF. No guardar ni copiar estudiantes/estados ficticios como si fueran reales.
+
+### Decisión de interfaz (no crear un tercer centro)
+La pantalla principal ya es `TeacherExamsWorkspaceF111` en `src/teacher_views.jsx`: agenda de grupos, nivel vigente, tarjetas de 4 orales, 2 escritos y 8 quizzes, roster y autorizaciones. Esa es la ruta a simplificar, **NO** la sección secundaria `buildTeacherExamsF111` ni un nuevo catálogo global.
+
+Se mantiene el diseño académico de Claude y sus indicadores de progreso, con esta jerarquía:
+1. **Grupo y nivel** (una sola selección desde Mis grupos).
+2. **Tres secciones legibles:** Orales (4), Escritos (2) y Progress Check (8); estado proveniente del backend y conteo comprobado (no cifras simuladas).
+3. **Una acción principal según estado**: Ver examen (modo consulta, sin grupo extra); Revisar entregas; Continuar borrador; Descargar informe, únicamente cuando el backend confirma que existe y pertenece a ese estudiante.
+4. **Opciones secundarias contextuales (···)**: Ver modelo/banco; Opción B o reposición autorizada; Historial; Clave privada (personal autorizado); Ver PDF final (si existe). Nunca mostrar activar, guardar notas ni descargar PDF de otro estudiante como una alternativa ordinaria.
+5. **Ficha del estudiante** contextual, sin pedir nuevamente grupo/curso/examen. Los controles R57/F91 históricos permanecen en su motor, sin duplicarse en listas visuales.
+
+El PR #778 simplifica **la vista secundaria docente y el Centro superadmin**; no debe declararse como solución final de la pantalla docente principal hasta integrar allí el recorrido anterior. No fusionar/publicar a ciegas.
+
+### Catálogo y avance comprobados por fuente
+
+| Familia | Cobertura de fuente/estructura | Estado funcional y brecha |
+|---|---|---|
+| Escritos | **16/16 variantes con contenido (100%)**: 4 niveles × Escrito 1 L18/Unidades 1–8 y Escrito 2 L32/Unidades 9–16 × opciones A/B. `src/examenes_data.jsx`. | StudentMode incluye inicio, autoguardado, envío y confirmación; TeacherWrittenBackendReviewF940 incluye revisión, comentarios, cierre y paso a Mis Notas; no se certificó aquí el recorrido E2 real completo por las 16 variantes. PDF docente R57 solo para reposición escrita autorizada, no PDF universal del estudiante. |
+| Orales | **16/16 hitos**: L9, L17, L25, L31 × 4 niveles. **64/64 unidades con banco transcrito/local**: B1 80 preguntas (QB), B2 146, I1 127, I2 82 (`oral_bancos_ic5.js`); **435** formulaciones en total. | B1 emplea QB histórico; B2 exige banco aprobado desde el backend; I1/I2 presentan fuentes transcritas para selección docente pero no cuentan con certificación del banco aprobado en la ruta oficial. `oralSaveDraft`, `oralCloseEvaluacion`, `oralGeneratePdf` y readback/backup existen en el módulo docente; no equivale a PDF entregado al estudiante. |
+| Quizzes | **32/32 entradas** en backend: B1 PC01–08 + B2/I1/I2 PC01–08. **24/24 bancos de los niveles nuevos transcritos, 592 controles**, 24 audios por metadatos, PR backend #145. | 312/360 controles del gate (86,7 %), 22/24 sin anomalía editorial, 2 bloqueados (I1 PC02/PC04); **0/24 certificados extremo a extremo**, claves reales/audio navegador/entrega y revisión sin certificar; PR #778 frontend no LIVE. B1 PC01 tiene 13 expedientes REVISADO (1 de ellos sin campo E1b); PC02 tiene vista digital en frontend. No asumir 8/8 B1 E2 certificado. |
+| PDF final para estudiante | **0 de 3 familias con entrega estudiantil de PDF integral demostrada en esta auditoría** (no equivale a decir que ningún PDF existe). | PDF oral actual se genera y descarga en módulo docente; escrito R57 genera/descarga PDF de reposición en contexto docente; Progress Check `qzProgressPaper` entrega **el PDF del cuestionario**, no un comprobante o informe final. El estudiante recibe confirmación o ve Mis Notas, pero no se verificó endpoint+botón+autorización+prueba E2 de PDF final por evaluación. |
+
+**Porcentaje metodológico:** 100 % contenido escrito y 100 % unidades/preguntas orales *disponibles como fuente*; no convertir esto en 100 % académico publicado. QZ24 estructural 24/24, cierre íntegro 0/24. La disponibilidad del **informe PDF estudiantil** se reporta como **sin certificación**, no como porcentaje inventado de éxito.
+
+### Diseño del expediente PDF que falta validar/implantar
+- **Después de Entregar**: comprobante de recepción: estudiante, nivel, lección, intento y fecha; sin respuestas correctas ni nota pendiente.
+- **Después de Revisar y cerrar**: **Informe de evaluación PDF** con nombre/código del estudiante, grupo y curso, fecha, examen y opción A/B, resultado obtenido, ponderación CON INA/SIN INA (o 0 % diagnóstico del quiz), retroalimentación individual y código verificable; entrega únicamente al mismo estudiante autenticado.
+- **Cadena de aceptación** por familia: banco/clave → preview docente → apertura autorizada → intento/guardado → entrega/readback → corrección/revisión → resultado visible en Mis Notas → PDF generado/archivado → recuperación del propio estudiante. Probar reposición, nota modificada, reingreso, duplicados y falta de conexión. No exponer soluciones Cambridge en el PDF estudiantil por defecto.
+
+**Fuentes canónicas de corroboración:** `src/examenes_data.jsx`, `src/examenes_modes.jsx`, `src/teacher_views.jsx`, `modulos/examen_oral.html`, `modulos/oral_bancos_ic5.js`, `modulos/quiz_progress.html`, backend `auditorias/F111_QZ24_ESTADO_CANONICO_20261116.md`. Esta adenda no modifica producción, calificaciones, disponibilidad ni alumnos.
