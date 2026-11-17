@@ -5221,6 +5221,11 @@ function StudentLiveExamApp() {
   const heartbeatAttempt = async () => {
     return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
   };
+  const getWrittenReceipt = async (id) => {
+    // Identidad y titularidad se verifican nuevamente en Apps Script.
+    if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
+    return await examPostLive('examGetStudentWrittenReceiptPdf', { attempt_id:id });
+  };
 
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
@@ -5248,6 +5253,7 @@ function StudentLiveExamApp() {
       onStart:startAttempt,
       onSave:saveAttempt,
       onSubmit:submitAttempt,
+      onGetReceipt:getWrittenReceipt,
       onHeartbeat:heartbeatAttempt,
       student:live.student || null,
       activation,
