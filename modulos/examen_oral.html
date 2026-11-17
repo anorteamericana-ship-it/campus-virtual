@@ -376,7 +376,17 @@ function setOriginalQuestionF111(unit,idx,checked){
   return true;
 }
 
-function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&state.bank?.aprobado===true&&state.bank?.version&&state.bank?.unidades?state.bank.unidades:{};}
+function questionBankForLevelF111(){
+  const nivel=String(state.panel?.nivel||'').toUpperCase();
+  // El banco transcrito en oral_bancos_ic5.js es material fuente, nunca aprobación.
+  // Solo el backend autenticado puede autorizar índices para B2/I1/I2.
+  if(nivel==='B1')return QB; // QB histórico: contrato anterior, sin promoción automática.
+  const banco=state.bank;
+  if(!['B2','I1','I2'].includes(nivel)||banco?.aprobado!==true||
+     !banco.version||!banco.unidades||typeof banco.unidades!=='object'||
+     Array.isArray(banco.unidades))return {};
+  return banco.unidades;
+}
 function renderQBank(){
   const p=state.panel||{},lec=Number(p.leccion||0),meta=LECCIONES[lec]||{units:[]};
   document.getElementById('qb-label').textContent=meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
@@ -402,7 +412,7 @@ function renderQBank(){
   const source=originalBankF111();
   if(source){
     const saved=String(document.getElementById('otras-global')?.value||'').split(/\r?\n/);
-    qbody.innerHTML='<div style="font-size:11px;padding:8px 10px;margin-bottom:8px;border-radius:9px;background:#EFF6FF;color:#073B7A">Banco de preguntas · Interchange 5ª edición. Marcá las preguntas realmente aplicadas y guardá el borrador del estudiante.</div>'+
+    qbody.innerHTML='<div style="font-size:11px;padding:8px 10px;margin-bottom:8px;border-radius:9px;background:#EFF6FF;color:#073B7A">Material fuente transcrito · NO es banco aprobado por backend. Las preguntas marcadas se registran como texto en OTRAS PREGUNTAS; no generan índices oficiales. Guardá el borrador del estudiante.</div>'+
       meta.units.map(u=>{
         const data=source[u]||{title:'Unit '+u,qs:[],notes:[]};
         return '<div class="unit"><h3>'+escF90(data.title)+'</h3>'+
@@ -417,7 +427,7 @@ function renderQBank(){
     });
     return;
   }
-  qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado.</div>';
+  qbody.innerHTML='<div class="warnline">No hay banco aprobado por backend ni material fuente disponible para este nivel. No se pueden seleccionar índices oficiales.</div>';
 }
 
 
