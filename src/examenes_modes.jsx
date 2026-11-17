@@ -92,6 +92,17 @@ function examStudentSafeUserError(raw, fallback, context) {
   return fallback;
 }
 
+// WRITTEN-FINALIZE-02: ninguna escritura de borrador puede quedar detrás del
+// envío final. El envío siempre transporta una copia de TODAS las respuestas.
+async function examWrittenFinalizeAfterPendingSave(pendingSave, readAnswers, submit) {
+  if (pendingSave) {
+    try { await pendingSave; }
+    catch (_) { /* Un borrador fallido no invalida el envío de respuestas completas. */ }
+  }
+  const finalAnswers = JSON.parse(JSON.stringify(readAnswers() || {}));
+  return submit(finalAnswers);
+}
+
 // CALGRUPO_F27_20260617_STUDENTMODE_INTENTO_REAL_BACKEND
 function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, examOverride, assignment, backend }) {
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
@@ -126,6 +137,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const answersRef = React.useRef(answers);
   const dirtyRef = React.useRef(false);
   const savingRef = React.useRef(false);
+  const saveInFlightRef = React.useRef(null);
   const sendingRef = React.useRef(false);
   const lastSavedJsonRef = React.useRef(JSON.stringify(answers || {}));
   const autoSubmitRef = React.useRef(false);
@@ -135,6 +147,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   useEffect(() => { sendingRef.current = sending; }, [sending]);
 
   const onAnswer = useCallback((id, v) => {
+    // Al enviar (manual o por tiempo), congelar las respuestas visibles.
+    if (sendingRef.current) return;
     setAnswers(a => {
       const next = Object.assign({}, a, { [id]: v });
       answersRef.current = next;
@@ -161,8 +175,12 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     savingRef.current = true;
     setSaving(true);
     setSaveMsg(source === 'auto' ? 'Guardando automáticamente…' : 'Guardando…');
+    let saveRequest = null;
     try {
-      const r = await backend.onSave(answersRef.current || {}, { source });
+      // El cuerpo del POST es la misma versión que luego confirma su ACK.
+      saveRequest = Promise.resolve().then(() => backend.onSave(JSON.parse(snapshot), { source }));
+      saveInFlightRef.current = saveRequest;
+      const r = await saveRequest;
       if (r && r.ok && r.saved !== false && !r.deferred) {
         // La respuesta confirma exclusivamente el snapshot enviado. Si el
         // estudiante respondió durante la solicitud, esas respuestas nuevas
@@ -188,6 +206,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg('No se pudo guardar. Revise la conexión.');
       return { ok:false, error:'save_exception' };
     } finally {
+      if (saveInFlightRef.current === saveRequest) saveInFlightRef.current = null;
       savingRef.current = false;
       setSaving(false);
     }
@@ -201,7 +220,10 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg(auto ? 'Tiempo agotado. Enviando automáticamente…' : 'Enviando…');
       try {
         const elapsed = limitSec ? Math.min(limitSec, elapsedNow()) : elapsedNow();
-        const r = await backend.onSubmit(answersRef.current || {}, { autoSubmit:auto, timeSpentSec:elapsed });
+        // Evita carrera: autoguardado anterior NO puede escribir después del submit.
+        const r = await examWrittenFinalizeAfterPendingSave(saveInFlightRef.current,
+          () => answersRef.current,
+          finalAnswers => backend.onSubmit(finalAnswers, { autoSubmit:auto, timeSpentSec:elapsed }));
         if (!r || r.ok === false) {
           setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar el examen. Intentá nuevamente.', 'submit'));
           autoSubmitRef.current = false;
