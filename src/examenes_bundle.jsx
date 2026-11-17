@@ -2466,7 +2466,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
       grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
     };
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending} /></div>;
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending}
+      onGetReceipt={backend && backend.onGetReceipt} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -2551,7 +2552,35 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false, onGetReceipt }) {
+  const [receiptBusy,setReceiptBusy] = useState(false);
+  const [receiptError,setReceiptError] = useState('');
+  const downloadReceipt = async () => {
+    if (receiptBusy || !attemptId || typeof onGetReceipt !== 'function') return;
+    setReceiptBusy(true);setReceiptError('');
+    try {
+      const r=await onGetReceipt(attemptId);
+      if (!r || r.ok !== true || r.mime !== 'application/pdf' ||
+          String(r.attempt_id||'') !== String(attemptId) ||
+          typeof r.pdf_base64 !== 'string' || r.pdf_base64.length > 6000000)
+        throw Error('receipt_contract');
+      const binary=atob(r.pdf_base64);
+      if (binary.slice(0,4) !== '%PDF') throw Error('receipt_pdf_invalid');
+      const bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));
+      const file=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(file);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'')
+        ?r.filename:'Recibo_Examen_Escrito.pdf';
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    } catch (_) {
+      setReceiptError('No pudimos descargar el recibo. Tu entrega permanece registrada; reintentá desde tu sesión.');
+    } finally {
+      setReceiptBusy(false);
+    }
+  };
   return (
     <>
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
@@ -2570,6 +2599,16 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
           {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
         </div>
         <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
+        {attemptId && typeof onGetReceipt === 'function' && <div style={{marginTop:14}}>
+          <button type="button" className="btn-primary" onClick={downloadReceipt}
+            disabled={receiptBusy} data-f111-written-receipt-download="true">
+            {receiptBusy?'Preparando recibo…':'Descargar recibo PDF de entrega'}
+          </button>
+          <small style={{display:'block',marginTop:8}}>
+            Comprobante de recepción sin calificación. El informe de nota final se publica después de la revisión.
+          </small>
+          {receiptError && <p role="alert" style={{color:'#8B1F1F',fontSize:12}}>{receiptError}</p>}
+        </div>}
       </div>
       <div className="sent-summary">
         <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>
