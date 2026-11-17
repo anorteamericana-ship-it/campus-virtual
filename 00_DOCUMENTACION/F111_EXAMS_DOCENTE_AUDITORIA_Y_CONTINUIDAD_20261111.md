@@ -51,6 +51,16 @@
 - **Continuidad obligatoria para todo nuevo chat:** abrir #499, leer primer bloque de ESTE documento y auditoría HISTORY-01 backend; leer HEAD PR #778/#145 y últimos jobs CI; operar desde primer pendiente, no abrir una «nueva estrategia» ni comenzar desde cero.
 <!-- /F111_ORDEN_CONTINUIDAD_PERMANENTE_20261117 -->
 
+<!-- F111_0826_ESCRITO_PREFLIGHT_E2_20261117 -->
+### PRE-FLIGHT 0826 · Corte efectivo 17-nov-2026 — continuidad obligatoria
+- **NUEVA PRIMERA FUENTE PARA EL ESCRITO:** [Preflight completo y matriz E2 0/20](https://github.com/anorteamericana-ship-it/campus_backend/blob/feat/f111-qz24-implementation/auditorias/F111_0826_ESCRITO_PREFLIGHT_E2_CONTROLADA_20261117.md), **backend PR #145**. Releer primero ese documento antes de repetir consultas de hojas o tests.
+- **Readback operativo real SOLO LECTURA:** grupo B1-KJ18-C3-0826, programa **INA** (APOLLO GRUPOS filas 46–49), horario KJ 18–21; escrito B1 **L18 14/12/2026 LUN** reprogramado según CALENDARIO_LECCIONES fila 2819; B1 L32 **04/02/2027** coincide con B2 L01 mismo día — alerta P1 planificación. EXAM_ACTIVATIONS grupo 0826 **0**; EXAM_CONFIG global STUDENT_EXAMS_ENABLED=YES, EXAM_PUSH_TO_NOTAS_ENABLED=YES, EXAM_DUAL_ACTIVE_MODE_TEMP=YES (no mutar). Dos vías del runtime exigen sesión docente; flag global activo NO implica activación 0826.
+- **Banco B1 L18 A y B confirmado en backend (E0 estructural):** 11 apartados/50 puntos por opción, variantes distintas, 2 apartados Listening y 5 para revisión humana, fuente ponderaciones con INA 5 / sin INA 15. **No cotejado con PDF original ni audio de navegador.**
+- **Preflight ejecutable E1:** tests/qa_f111_0826_written_preflight_e1.mjs, **9/9 PASS**, CI backend [44201375503](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/44201375503) SUCCESS. Backend E1 recibo, final e historial CI SUCCESS; frontend save-race/receipt/history E1 local PASS. **0/20 E2 auténticas** y sin entorno de staging completamente aislado demostrado. No registrar certificación integral ni dar GO.
+- **Próxima ejecución exacta:** (1) auditar original A/B + Listening; (2) demostrar aislamiento GAS+Sheets+Drive sin conectar a PROD; (3) preparar identidades QA y ejecutar matriz E2-01→20 **solo tras permiso para escrituras aisladas**; (4) presentar aceptación/rollback y pedir publicación explícita. **Acción requerida de Dirección AHORA: NINGUNA**; se señalará decisión de fecha L32/B2 L1 antes de febrero. **0 cambios de estudiantes/notas/Drive/fechas, 0 deploy y 0 merges**.
+<!-- /F111_0826_ESCRITO_PREFLIGHT_E2_20261117 -->
+
+
 Corte 11 de noviembre de 2026, hora Costa Rica. Dueño del seguimiento: GitHub issue anorteamericana-ship-it/campus-virtual#499. ESTE ARCHIVO ES EL ÚNICO INVENTARIO OPERATIVO DEL REDISEÑO; no duplicar planes.
 Evidencia: captura real del docente Diego, Campus /campus-virtual/campus.html (grupo B1-KJ18-C3-0826, martes/jueves 9 pm, padrón visual 15, programa INA); código frontend main SHA 9e0242d8ffb5b313bdc11df78cf2d887fdfa66b3; CORE Apps Script estable @499 confirmado por captura de la consola; QUIZ @477 según último readback técnico previo (número NO visible en la captura CORE). No hay prueba funcional autenticada con clics mutantes en esta auditoría.
 
