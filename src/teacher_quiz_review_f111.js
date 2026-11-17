@@ -722,6 +722,7 @@ function createQz24RehearsalCard(groupSelector){
  const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
  levelPicker.setAttribute('aria-label','Nivel del Progress Check digital');
  for(const [key,name] of LEVELS){
+  if(key==='B1')continue; // B1 conserva su preview digital histórico
   const option=make('option',name);option.value=key;levelPicker.append(option);
  }
  filter.append(make('span','Nivel:'),levelPicker);
