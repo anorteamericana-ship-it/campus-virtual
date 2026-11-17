@@ -712,63 +712,79 @@ window.F111_QZ_openSavedOral=openSavedOralForStudent;
 // QZ24 · Ensayo docente digital. No usa grupo ni calendario.
 // La autorización de lectura es siempre del backend; alumnos no tienen acceso.
 function createQz24RehearsalCard(groupSelector){
- const card=make('article',null,'f111-teacher-exam-card');
+ const card=make('article',null,'f111-teacher-exam-card f111-qz24-simple-card');
  card.dataset.f111Qz24Rehearsal='true';
- card.append(make('h4','Vista previa digital · Progress Checks'),
-   make('p','Elegí el nivel y el quiz. Abre las preguntas completas, sus opciones y el audio original. No necesitás seleccionar un grupo, ni se guarda ninguna respuesta.'));
- const state=make('p','Seleccione un Progress Check para el ensayo privado.','f111-tqr-feedback');
- state.setAttribute('role','status');
- const filter=make('div',null,'f111-teacher-exam-controls');
+ card.append(make('h4','Progress Check · Ver examen'),
+   make('p','Seleccioná un nivel y un Progress Check. Podés ver las preguntas y escuchar el audio sin elegir grupo; esta consulta no abre evaluaciones a estudiantes.'));
+ const controls=make('div',null,'f111-qz24-quick-controls');
+ const levelLabel=make('label','Nivel');
  const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
  levelPicker.setAttribute('aria-label','Nivel del Progress Check digital');
  for(const [key,name] of LEVELS){
-  if(key==='B1')continue; // B1 conserva su preview digital histórico
+  if(key==='B1')continue; // El flujo B1 histórico permanece en su propio módulo
   const option=make('option',name);option.value=key;levelPicker.append(option);
  }
- filter.append(make('span','Nivel:'),levelPicker);
- const grid=make('div',null,'f111-teacher-exam-controls');
- grid.dataset.f111Qz24Lessons='true';
- card.append(state,filter,grid);
+ levelLabel.append(levelPicker);
+ const pcLabel=make('label','Progress Check');
+ const pcPicker=make('select');pcPicker.dataset.f111Qz24Pc='true';
+ pcPicker.setAttribute('aria-label','Elegí el Progress Check');
+ for(let i=0;i<LESSONS.length;i++){
+  const option=make('option','PC'+String(i+1).padStart(2,'0')+' · Lección '+LESSONS[i][0]+
+   ' · Unidades '+LESSONS[i][1]);option.value=String(i+1);pcPicker.append(option);
+ }
+ pcLabel.append(pcPicker);
+ const button=make('button','Ver Progress Check','f111-tqr-open f111-qz24-main-action');
+ button.type='button';button.dataset.f111Qz24Lesson='4';
+ controls.append(levelLabel,pcLabel,button);
+ const summary=make('p',null,'f111-qz24-current');
+ const state=make('p',null,'f111-tqr-feedback');state.setAttribute('role','status');
+ const footer=make('small','Vista previa privada · 0 % de nota oficial · sin entregas ni cambios de estado.');
+ footer.className='f111-qz24-footnote';
+ card.append(controls,summary,state,footer);
  let requestId=0;
  function render(){
-  const serial=++requestId;
+  ++requestId;
   const level=String(levelPicker.value||'').toUpperCase();
-  grid.replaceChildren();
-  const levelInfo=LEVELS.find(x=>x[0]===level);
-  state.textContent=(levelInfo?levelInfo[1]:level)+' · vista previa sin grupo · sin guardado.';
-  for(let i=0;i<LESSONS.length;i++){
-   const number=i+1,lesson=LESSONS[i][0];
-   const btn=make('button','Ver Progress Check '+String(number).padStart(2,'0'),'f111-tqr-open');
-   btn.type='button';btn.dataset.f111Qz24Lesson=String(lesson);
-   btn.addEventListener('click',async()=>{
-    if(!window.getSessionToken||!window.getSessionToken())return;
-    const req=++requestId;btn.disabled=true;
-    state.textContent='Verificando sesión y banco privado '+level+' PC'+number+'…';
-    try{
-     const q=await postQuiz('qzProgressGet',
-       {solo_preview_sin_grupo:true,nivel:level,pc:number},
-       {qz24TeacherPreview:true});
-     if(req!==requestId||String(levelPicker.value).toUpperCase()!==level)return;
-     if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
-        q.nivel!==level||Number(q.leccion)!==lesson||
-        q.peso_oficial!==0||q.vista_previa!==true||
-        q.requiere_grupo!==false||q.admite_envio!==false||
-        !Array.isArray(q.secciones)||!q.secciones.length)
-       throw Error('El backend no confirmó un examen digital privado y completo.');
-     state.textContent='Banco verificado. Abrí el ensayo digital sin grupo y sin entregas.';
-     f111TeacherExamModal('Progress Check digital · '+level+' · PC'+String(number).padStart(2,'0'),
-       f111ExamPageUrl('modulos/qz24_preview_digital.html',
-         {nivel:level,pc:number,staff_preview:1}));
-    }catch(e){
-     if(req===requestId)state.textContent='No disponible: '+String(e&&e.message||e).slice(0,150);
-    }finally{btn.disabled=false;}
-   });
-   grid.append(btn);
-  }
+  const number=Number(pcPicker.value)||1;
+  const info=LESSONS[number-1];
+  button.dataset.f111Qz24Lesson=String(info[0]);
+  summary.textContent=(LEVELS.find(x=>x[0]===level)?.[1]||level)+
+   ' · PC'+String(number).padStart(2,'0')+' · Lección '+info[0]+' · Unidades '+info[1];
+  state.textContent='Examen listo para consulta; el servidor comprueba el permiso al abrir.';
  }
+ button.addEventListener('click',async()=>{
+  const level=String(levelPicker.value||'').toUpperCase(),number=Number(pcPicker.value);
+  const info=LESSONS[number-1];
+  if(!['B2','I1','I2'].includes(level)||!info)return;
+  if(!window.getSessionToken||!window.getSessionToken()){
+   state.textContent='Iniciá sesión como docente para consultar el contenido.';return;
+  }
+  const req=++requestId;
+  button.disabled=true;state.textContent='Verificando acceso al examen privado…';
+  try{
+   const q=await postQuiz('qzProgressGet',
+    {solo_preview_sin_grupo:true,nivel:level,pc:number},
+    {qz24TeacherPreview:true});
+   if(req!==requestId||String(levelPicker.value).toUpperCase()!==level||
+      Number(pcPicker.value)!==number)return;
+   if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
+      q.nivel!==level||Number(q.leccion)!==info[0]||
+      q.peso_oficial!==0||q.vista_previa!==true||
+      q.requiere_grupo!==false||q.admite_envio!==false||
+      !Array.isArray(q.secciones)||!q.secciones.length)
+    throw Error('El servidor no confirmó un examen digital privado.');
+   state.textContent='Examen verificado. Consulta sin grupo ni entregas.';
+   f111TeacherExamModal('Progress Check digital · '+level+' · PC'+String(number).padStart(2,'0'),
+    f111ExamPageUrl('modulos/qz24_preview_digital.html',
+     {nivel:level,pc:number,staff_preview:1}));
+  }catch(e){
+   if(req===requestId)state.textContent='No disponible: '+String(e&&e.message||e).slice(0,150);
+  }finally{button.disabled=false;}
+ });
  levelPicker.addEventListener('change',render);
+ pcPicker.addEventListener('change',render);
  render();
- return {card,render,levelPicker};
+ return {card,render,levelPicker,pcPicker,openButton:button};
 }
 function buildTeacherExamsF111(){
  const section=make('section',null,'f111-teacher-exam-center');
@@ -893,7 +909,7 @@ function buildTeacherExamsF111(){
  lookup.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupBtn.click();}});
  select.addEventListener('change',()=>{rehearsal.render();void loadHistory();});
  refresh.addEventListener('click',loadAuthorizedGroups);
- summary.append(history,rehearsal.card);section.append(summary);
+ summary.append(rehearsal.card,history);section.append(summary);
  // R32: el profesor inspecciona el examen SIN códigos, permisos de grupo,
  // activación, entrega, PDF paralelo ni llamadas al backend.
  const quick=make('article',null,'f111-teacher-exam-card');
@@ -936,6 +952,15 @@ function installStyle(){
  '.f111-teacher-exam-card h4{font-size:15px;margin:0;color:#073B7A}',
  '.f111-teacher-exam-controls{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;align-items:center}',
  '.f111-teacher-exam-controls select{border:1px solid #D5E0EC;border-radius:8px;background:#fff;color:#143F64;padding:9px;font:12px Poppins,system-ui,sans-serif}',
+  '.f111-qz24-simple-card{background:linear-gradient(125deg,#f7fbff,#ffffff);border-color:#bdd2e5}',
+ '.f111-qz24-quick-controls{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.4fr) auto;gap:10px;align-items:end;margin-top:14px}',
+ '.f111-qz24-quick-controls label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#173d64}',
+ '.f111-qz24-quick-controls select{width:100%;min-width:0;border:1px solid #b7cde2;border-radius:9px;background:#fff;color:#173d64;padding:12px;font:600 12px Poppins,system-ui,sans-serif}',
+ '.f111-qz24-main-action{white-space:nowrap;background:#073b7a;color:#fff;border-color:#073b7a;font-size:12px;padding:12px 16px;margin:0}',
+ '.f111-qz24-main-action:disabled{opacity:.55;cursor:not-allowed}',
+ '.f111-qz24-current{font-size:12px!important;color:#1e4a71!important;margin:12px 0 7px!important;font-weight:800}',
+ '.f111-qz24-footnote{font-size:10px;color:#6d8297;line-height:1.5}',
+ '@media(max-width:650px){.f111-qz24-quick-controls{grid-template-columns:1fr}.f111-qz24-main-action{width:100%}}',
  '.f111-teacher-exam-entry{border-top:1px solid #DBE5F0;padding:12px 0}',
  '.f111-teacher-exam-entry strong{font-size:13px;color:#123E67}',
  '.f111-tqr{background:#fff;border:1px solid #D6E0EB;border-radius:14px;padding:16px;margin:2px 0;box-shadow:0 3px 12px rgba(10,55,92,.04)}',
