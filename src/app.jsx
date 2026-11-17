@@ -587,16 +587,13 @@ function WrittenSessionCardF929({ session }) {
 
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSessionReady=true, activeSessionError=false }) {
   const [extraOpen,setExtraOpen]=React.useState(false);
-  const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
-  const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
-  const lec=Number(s?.LECCION||s?.leccion||pending?.leccion||0), open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
-  const esOral=open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec));
+  const s=activeState?.sesion;
+  const lec=Number(s?.LECCION||s?.leccion||0);
+  const open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
   const esEscrito=open&&[18,32].includes(lec);
-  const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
-  const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
-  const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
-  :esEscrito?<WrittenSessionCardF929 session={s}/>
-  :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
+  // EXUI-07: la tarjeta oral activa ya existe en Mis exámenes (acción de hoy).
+  // Solo se conserva el componente escrito histórico, que consulta la
+  // asignación y su modelo. No ejecutar esa consulta al renderizar el menú.
   const top=onWrittenFocus=><>
     <LazyRoute title="Mis exámenes" component="TeacherExamsWorkspaceF111"
       files={F96_LAZY.teacher_views} onNavigate={onNavigate} onWrittenFocus={onWrittenFocus}
@@ -608,7 +605,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSess
       </summary>
       <div style={{display:'grid',gap:14,marginTop:14}}>
         {extraOpen&&<>
-          {activeExamCard}
+          {esEscrito&&<WrittenSessionCardF929 session={s}/>}
           <LazyRoute title="Reposiciones R57 del docente" component="ReposicionesR57Docente"
             files={['src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C']}
             onNavigate={onNavigate}/>
