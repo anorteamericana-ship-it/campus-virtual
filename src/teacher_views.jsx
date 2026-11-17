@@ -1784,6 +1784,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const teacher=useTeacherSession(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   const {grupos,codGrupo,cambiarGrupo,meta,nivel,roster,notasGrupo,lecciones,programa,loading,error,recargarPanel}=teacher;
   const [examKey,setExamKey]=React.useState('');
+  const [quizLesson,setQuizLesson]=React.useState(4);
   const [recordKey,setRecordKey]=React.useState('');
   const [historyBusy,setHistoryBusy]=React.useState('');
   const [historyFeedback,setHistoryFeedback]=React.useState('');
@@ -1952,6 +1953,18 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     }
     setPreview({title:renderLabel(d),url:url.href});
   };
+  // QZ24 · La misma pantalla principal ofrece consulta privada de los bancos nuevos.
+  // No reabre una lección ni crea intentos; el iframe autentica y consulta qzProgressGet.
+  const openQuizPreviewF111=(number)=>{
+    if(!['B2','I1','I2'].includes(String(nivel||'').toUpperCase())||
+      !Number.isInteger(number)||number<1||number>8)return false;
+    const url=new URL('modulos/qz24_preview_digital.html',new URL('./',window.location.href));
+    url.searchParams.set('nivel',String(nivel).toUpperCase());
+    url.searchParams.set('pc',String(number));
+    url.searchParams.set('staff_preview','1');
+    setPreview({title:'Progress Check '+String(number).padStart(2,'0'),url:url.href});
+    return true;
+  };
   // Única acción destacada. Un cronograma o una consulta fallida jamás producen permiso.
   const todayStatus=(()=>{
     if(!groupCode)return {title:tr('Seleccioná un grupo','Select a group'),
@@ -2010,7 +2023,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
         {tr('1 · MIS GRUPOS','1 · MY GROUPS')}
       </h2>
       {grupos?.length>0?<MisGruposSwitcher grupos={grupos} activo={codGrupo}
-        onSelect={code=>{setExamKey('');cambiarGrupo(code);}} activeSession={activeSession}
+        onSelect={code=>{setExamKey('');setQuizLesson(4);cambiarGrupo(code);}} activeSession={activeSession}
         modeOverride="all" lecciones={lecciones}/>
        :<div className="card" role="status" style={{padding:15}}>
          {loading?tr('Verificando grupos autorizados…','Checking authorized groups…'):
@@ -2289,42 +2302,78 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
               'R57, F91 and draft statuses come from independent read-only calls; only the exam engine authorizes an attempt. Historical controls remain available in Special tools.')}
           </div>
         </section>}
-        <section style={{display:'grid',gap:10}}>
-          <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
-            <h3 style={{margin:0,fontSize:16,color:'#001E47'}}>Progress Check · {tr('Quizzes','Quizzes')}</h3>
-            <span style={{fontSize:11,color:'#6B6259'}}>{tr('8 por nivel · no alteran nota oficial','8 per level · no official-grade changes')}</span>
+        <section data-f111-quiz-single-entry="true" style={{display:'grid',gap:12}}
+          aria-label={tr('Progress Checks del grupo','Group Progress Checks')}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
+            <div>
+              <h3 style={{margin:0,fontSize:16,color:'#001E47'}}>Progress Check · {tr('Quizzes','Quizzes')}</h3>
+              <p style={{margin:'4px 0 0',fontSize:11,color:'#6B6259'}}>
+                {tr('Elegí uno de los 8 controles y usá la acción que aparece debajo. Ninguno suma nota oficial.',
+                  'Select one of 8 checks and use the action below. None counts toward the official grade.')}
+              </p>
+            </div>
+            <span style={{fontSize:11,fontWeight:800,color:pal.dark,background:pal.light,
+              padding:'6px 10px',borderRadius:8}}>8 / 8 · 0 % {tr('oficial','official')}</span>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:8}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:8}}
+            role="group" aria-label={tr('Seleccionar Progress Check','Select Progress Check')}>
             {TV_EXAM_QUIZ_F111.map(([lesson,units],i)=>{
-              const event=findLesson(lesson),isNext=next?.lesson===lesson&&next.title==='Progress Check '+(i+1);
-              return <div key={lesson} style={{border:'1px solid '+(isNext?pal.dark:'#E8DFD2'),
-                borderLeft:'4px solid '+pal.dark,borderRadius:11,padding:12,background:isNext?pal.light:'#FFF'}}>
-                <strong style={{fontSize:13}}>Quiz {i+1}</strong>
-                <div style={{fontSize:11,color:'#6B6259',margin:'4px 0'}}>{tr('Lección','Lesson')} {lesson} · U{units}</div>
-                <div style={{fontSize:10,color:'#6B6259',marginBottom:9}}>
-                  {event?.fecha?String(event.fecha).slice(0,10):tr('Disponibilidad por verificar','Availability to verify')}
-                </div>
-                {nivel==='B1'&&!(todayStatus.kind==='quiz'&&todayStatus.lesson===lesson)
-                   ?<button className="btn btn-ghost" type="button"
-                     onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
-                       if(typeof launch==='function'){
-                         if(launch(lesson,groupCode)!==false)return;
-                         window.alert(tr('No se pudo abrir el control: grupo o Quiz no reconocido.',
-                           'Could not open controls: group or quiz not recognized.'));
-                       }else window.alert(tr('El control protegido de Quiz no está cargado. Volvé a intentar.',
-                         'Protected quiz controls are not loaded. Please retry.'));}}
-                     style={{fontSize:11,borderColor:pal.dark,color:pal.dark,fontWeight:850}}>
-                     {tr('Gestionar Quiz '+(i+1),'Manage Quiz '+(i+1))}
-                   </button>
-                   :<span role="status" style={{fontSize:11,color:'#6B6259'}}>
-                     {tr('Banco digital no habilitado para este nivel','Digital quiz bank not enabled for this level')}
-                   </span>}
-              </div>;
+              const event=findLesson(lesson),chosen=quizLesson===lesson;
+              return <button key={lesson} type="button" aria-pressed={chosen}
+                data-f111-quiz-select={String(i+1).padStart(2,'0')}
+                onClick={()=>setQuizLesson(lesson)}
+                style={{textAlign:'left',border:'1px solid '+(chosen?pal.dark:'#E8DFD2'),
+                  borderLeft:'4px solid '+pal.dark,borderRadius:11,padding:'12px',
+                  background:chosen?pal.light:'#FFF',cursor:'pointer',minWidth:0}}>
+                <strong style={{fontSize:13,color:'#001E47'}}>PC{String(i+1).padStart(2,'0')}</strong>
+                <span style={{display:'block',fontSize:11,color:'#615850',marginTop:5}}>
+                  {tr('Lección','Lesson')} {lesson} · U{units}</span>
+                <small style={{display:'block',fontSize:10,color:chosen?pal.dark:'#6B6259',marginTop:6}}>
+                  {chosen?tr('Seleccionado','Selected'):(event?.fecha?String(event.fecha).slice(0,10):tr('Consultar','Select'))}
+                </small>
+              </button>;
             })}
           </div>
+          {TV_EXAM_QUIZ_F111.map(([lesson,units],i)=>quizLesson===lesson?
+            <div key={lesson} data-f111-quiz-action="true"
+              style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,
+                padding:'14px 16px',borderRadius:13,background:pal.light,
+                border:'1px solid '+pal.dark,flexWrap:'wrap'}}>
+              <div style={{display:'grid',gap:4}}>
+                <strong style={{color:'#001E47',fontSize:14}}>PC{String(i+1).padStart(2,'0')} ·
+                  {tr('Lección','Lesson')} {lesson} · U{units}</strong>
+                <small style={{color:'#51483D',maxWidth:550,lineHeight:1.5}}>
+                  {nivel==='B1'
+                    ?tr('Control del grupo y entregas. Los permisos se verifican en el servidor.',
+                        'Group controls and submissions. Permissions are checked by the server.')
+                    :tr('Vista previa de preguntas y audio para personal autorizado. No abre ni califica estudiantes.',
+                        'Staff-only questions and audio preview. Does not open or grade student attempts.')}
+                  {nivel==='I1'&&(i===1||i===3)
+                    ?' · '+tr('Material con discrepancia editorial: sujeto a bloqueo de contenido.',
+                        'Material contains an editorial discrepancy: content may be blocked.')
+                    :''}
+                </small>
+              </div>
+              {nivel==='B1'?
+                <button type="button" className="btn btn-primary"
+                  data-f111-quiz-primary="b1"
+                  onClick={()=>{
+                    const launch=window.F111_QZ_openTeacherControls;
+                    if(typeof launch!=='function'||launch(lesson,groupCode)===false)
+                      window.alert(tr('El control protegido del PC no está disponible o no hay autorización.',
+                        'Protected PC controls unavailable or permission denied.'));
+                  }}>
+                  {tr('Gestionar PC','Manage PC')} {String(i+1).padStart(2,'0')}
+                </button>
+                :<button type="button" className="btn btn-primary"
+                  data-f111-quiz-primary="preview"
+                  onClick={()=>openQuizPreviewF111(i+1)}>
+                  {tr('Ver Progress Check','Preview Progress Check')}
+                </button>}
+            </div>:null)}
           <p style={{margin:0,fontSize:11,color:'#6B6259'}}>
-            {tr('Quiz 2 (L08): el botón abre el control docente oficial del grupo. La activación y la revisión dependen de permisos y disponibilidad verificados por el servidor.',
-              'Quiz 2 (L08): the button opens the assigned group’s official teacher controls. Availability and review still depend on server authorization.')}
+            {tr('La vista previa no habilita estudiantes. Apertura, revisión, resultados y reposiciones conservan sus permisos oficiales.',
+              'Preview never enables students. Opening, grading, results, and make-up flows retain their official permissions.')}
           </p>
         </section>
       </>}
