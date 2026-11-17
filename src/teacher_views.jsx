@@ -2153,7 +2153,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                 </div>
                 <div data-f111-exam-action={d.key}
                   style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
-                  {d.kind==='written'&&!(active&&todayStatus.kind==='written_read')?
+                  {d.kind==='written'?
                     <button type="button" data-f111-exam-primary="written-inbox"
                       onClick={()=>{
                         if(!openWrittenInbox(d.lesson))
@@ -2181,20 +2181,11 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     <div style={{display:'grid',gap:7,padding:'11px',marginTop:5,
                       background:'#FFF',border:'1px solid #D4DCE7',
                       borderRadius:10,minWidth:200,boxShadow:'0 8px 18px #001E4714'}}>
-                      {d.kind==='written'&&!(active&&todayStatus.kind==='written_read')&&
+                      {d.kind==='written'&&
                         <button className="btn btn-ghost" type="button"
                           onClick={()=>setExamKey(chosen?'':d.key)}
                           style={{fontSize:12,textAlign:'left'}}>
                           {chosen?tr('Ocultar estudiantes','Hide students'):tr('Ver estudiantes','See students')}
-                        </button>}
-                      {d.kind==='written'&&active&&todayStatus.kind==='written_read'&&
-                        <button className="btn btn-ghost" type="button"
-                          onClick={()=>{
-                            if(!openWrittenInbox(d.lesson))
-                              window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
-                          }}
-                          style={{fontSize:12,textAlign:'left'}}>
-                          {tr('Consultar entregas','Review submissions')}
                         </button>}
                       {d.kind==='written'?<>
                         <button className="btn btn-ghost" type="button"
