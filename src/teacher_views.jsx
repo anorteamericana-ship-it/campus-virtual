@@ -1936,7 +1936,8 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     }catch(_){setHistoryFeedback(tr('No se pudo consultar el historial oral.','Oral history could not be checked.'));}
     finally{setHistoryBusy('');}
   };
-  const openModel=d=>{
+  const openModel=(d,requestedOption='A')=>{
+    const writtenOption=['A','B'].includes(requestedOption)?requestedOption:'A';
     const url=new URL(d.kind==='oral'?'modulos/examen_oral.html':'modulos/examenes.html',
       new URL('./',window.location.href));
     if(d.kind==='oral'){
@@ -1948,10 +1949,10 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
       url.searchParams.set('view','teacher_preview');
       url.searchParams.set('nivel',nivel);
       url.searchParams.set('test',d.n===1?'TEST1':'TEST2');
-      url.searchParams.set('opcion','A');
+      url.searchParams.set('opcion',writtenOption);
       url.searchParams.set('plan',plan.toLowerCase());
     }
-    setPreview({title:renderLabel(d),url:url.href});
+    setPreview({title:renderLabel(d)+(d.kind==='written'?' · Opción '+writtenOption:''),url:url.href});
   };
   // QZ24 · La misma pantalla principal ofrece consulta privada de los bancos nuevos.
   // No reabre una lección ni crea intentos; el iframe autentica y consulta qzProgressGet.
@@ -2195,10 +2196,19 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                           style={{fontSize:12,textAlign:'left'}}>
                           {tr('Consultar entregas','Review submissions')}
                         </button>}
-                      <button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
+                      {d.kind==='written'?<>
+                        <button className="btn btn-ghost" type="button"
+                          onClick={()=>openModel(d,'A')} style={{fontSize:12,textAlign:'left'}}>
+                          {tr('Ver examen · Opción A','Preview exam · Option A')}
+                        </button>
+                        <button className="btn btn-ghost" type="button"
+                          onClick={()=>openModel(d,'B')} style={{fontSize:12,textAlign:'left'}}>
+                          {tr('Ver examen · Opción B','Preview exam · Option B')}
+                        </button>
+                      </>:<button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
                         style={{fontSize:12,textAlign:'left'}}>
                         {tr('Ver modelo','View model')}
-                      </button>
+                      </button>}
                       {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&
                         <button className="btn btn-ghost" type="button"
                           onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
