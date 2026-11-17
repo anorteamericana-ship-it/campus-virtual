@@ -2150,25 +2150,65 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       {makeupPending>0&&tr(makeupPending+' solicitud(es)/invitación(es)',makeupPending+' request(s)/invitation(s)')}
                     </div>}
                 </div>
-                <div style={{display:'flex',flexWrap:'wrap',gap:7,alignItems:'center'}}>
-                  <button type="button" onClick={()=>setExamKey(chosen?'':d.key)}
-                    style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,padding:'10px 12px',
-                      fontWeight:800,fontSize:12,cursor:'pointer'}}>
-                    {tr('Ver estudiantes','See students')}
-                  </button>
-                  <button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
-                    style={{fontSize:11}}>{tr('Ver modelo','View model')}</button>
-                  {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&<button className="btn btn-primary" type="button"
-                    onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
-                      grupo:groupCode,nivel,leccion:d.lesson,fecha:String(lesson?.fecha||'').slice(0,10)}})}>
-                    {tr('Abrir oral activo','Open active oral')}
-                  </button>}
-                  {d.kind==='written'&&!(active&&todayStatus.kind==='written_read')&&
-                    <button className="btn btn-ghost" type="button"
-                    onClick={()=>{
-                      if(!openWrittenInbox(d.lesson))
-                        window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
-                    }}>{tr('Consultar entregas escritas','Check written submissions')}</button>}
+                <div data-f111-exam-action={d.key}
+                  style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+                  {d.kind==='written'&&!(active&&todayStatus.kind==='written_read')?
+                    <button type="button" data-f111-exam-primary="written-inbox"
+                      onClick={()=>{
+                        if(!openWrittenInbox(d.lesson))
+                          window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
+                      }}
+                      style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,
+                        padding:'10px 13px',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                      {tr('Consultar entregas','Review submissions')}
+                    </button>:
+                    <button type="button" data-f111-exam-primary="students"
+                      aria-expanded={chosen}
+                      onClick={()=>setExamKey(chosen?'':d.key)}
+                      style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,
+                        padding:'10px 13px',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                      {chosen?tr('Ocultar estudiantes','Hide students'):tr('Ver estudiantes','See students')}
+                    </button>}
+                  <details data-f111-exam-options={d.key}
+                    style={{position:'relative',minWidth:130}}>
+                    <summary aria-label={tr('Opciones de '+renderLabel(d),'Options for '+renderLabel(d))}
+                      style={{listStyle:'none',cursor:'pointer',padding:'9px 12px',
+                        borderRadius:9,border:'1px solid #D4DCE7',
+                        background:'#FFF',color:pal.dark,fontSize:12,fontWeight:800}}>
+                      {tr('Más opciones','More options')} ···
+                    </summary>
+                    <div style={{display:'grid',gap:7,padding:'11px',marginTop:5,
+                      background:'#FFF',border:'1px solid #D4DCE7',
+                      borderRadius:10,minWidth:200,boxShadow:'0 8px 18px #001E4714'}}>
+                      {d.kind==='written'&&!(active&&todayStatus.kind==='written_read')&&
+                        <button className="btn btn-ghost" type="button"
+                          onClick={()=>setExamKey(chosen?'':d.key)}
+                          style={{fontSize:12,textAlign:'left'}}>
+                          {chosen?tr('Ocultar estudiantes','Hide students'):tr('Ver estudiantes','See students')}
+                        </button>}
+                      {d.kind==='written'&&active&&todayStatus.kind==='written_read'&&
+                        <button className="btn btn-ghost" type="button"
+                          onClick={()=>{
+                            if(!openWrittenInbox(d.lesson))
+                              window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
+                          }}
+                          style={{fontSize:12,textAlign:'left'}}>
+                          {tr('Consultar entregas','Review submissions')}
+                        </button>}
+                      <button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
+                        style={{fontSize:12,textAlign:'left'}}>
+                        {tr('Ver modelo','View model')}
+                      </button>
+                      {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&
+                        <button className="btn btn-ghost" type="button"
+                          onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
+                            grupo:groupCode,nivel,leccion:d.lesson,
+                            fecha:String(lesson?.fecha||'').slice(0,10)}})}
+                          style={{fontSize:12,textAlign:'left'}}>
+                          {tr('Abrir oral activo','Open active oral')}
+                        </button>}
+                    </div>
+                  </details>
                 </div>
               </article>;
             })}
