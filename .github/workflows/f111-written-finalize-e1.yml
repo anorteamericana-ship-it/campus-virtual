@@ -1,0 +1,23 @@
+name: F111 Written Submit/Autosave Race E1
+on:
+  pull_request:
+    paths:
+      - 'src/examenes_modes.jsx'
+      - 'src/examenes_bundle.jsx'
+      - 'scripts/qa_f111_written_save_race_e1.mjs'
+      - '.github/workflows/f111-written-finalize-e1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  written-finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Guardado concurrente y envio final de escritos (sin alumnos reales)
+        run: node scripts/qa_f111_written_save_race_e1.mjs
+# E1 focal: no escribe notas ni llama Apps Script, no habilita LIVE.
