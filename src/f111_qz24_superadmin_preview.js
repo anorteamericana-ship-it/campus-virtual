@@ -8,7 +8,7 @@
  const UNITS=['1–2','3–4','5–6','7–8','9–10','11–12','13–14','15–16'];
  const root=document.getElementById('root');
  if(!root)return;
- let scheduled=false,requestSeq=0,lastSelectionKey='';
+ let scheduled=false;
  function superadmin(){
   try{
    const p=window.parent;
@@ -112,7 +112,7 @@
    picker.addEventListener('change',()=>{
     const number=Number(picker.value);
     const target=legacyGrid.querySelectorAll('.d1-eval-card')[number-1];
-    if(target){requestSeq++;target.click();}
+    if(target)target.click();
    });
    button.addEventListener('click',async()=>{
     const selection=selectedCheck(),p=superadmin();
@@ -125,7 +125,7 @@
     }
     const token=typeof p.getSessionToken==='function'?String(p.getSessionToken()||''):'';
     if(!token){status.textContent='La sesión venció. Ingresá nuevamente.';return;}
-    const key=selection.nivel+'|'+selection.numero,req=++requestSeq;
+    const key=selection.nivel+'|'+selection.numero;
     button.disabled=true;status.textContent='Verificando el examen privado…';
     try{
      const response=await fetch(PREVIEW_API+'?fn=qzProgressGet',{method:'POST',
@@ -141,11 +141,12 @@
         !Array.isArray(data.secciones)||!data.secciones.length)
       throw Error('El servidor no confirmó el banco digital.');
      const current=selectedCheck();
-     if(req!==requestSeq||!current||current.nivel+'|'+current.numero!==key)return;
+     if(!current||current.nivel+'|'+current.numero!==key)return;
      status.textContent='Examen verificado. Vista previa sin alumnos ni entregas.';
      openDigital(p,selection);
     }catch(e){
-     if(req===requestSeq)status.textContent='No disponible: '+String(e&&e.message||e).slice(0,140);
+     const live=selectedCheck();
+     if(live&&live.nivel+'|'+live.numero===key)status.textContent='No disponible: '+String(e&&e.message||e).slice(0,140);
     }finally{button.disabled=false;}
    });
   }
@@ -156,9 +157,8 @@
   const current=selectedCheck();if(!current)return;
   const key=current.nivel+'|'+current.numero;
   if(card.dataset.lastSelection!==key){
-   // React puede reconstruir la ficha sin cambiar el examen. No cancelar un GET válido.
-   if(lastSelectionKey!==key)requestSeq++;
-   lastSelectionKey=key;card.dataset.lastSelection=key;
+   // React puede reconstruir esta ficha; el filtro debe depender de la selección actual.
+   card.dataset.lastSelection=key;
    picker.value=String(current.numero);
    description.textContent='Lección '+current.leccion+' · Unidades '+UNITS[current.numero-1];
    status.textContent=current.nivel==='B1'
