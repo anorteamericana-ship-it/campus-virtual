@@ -37,3 +37,34 @@ assert.ok(modes.includes("onGetReceipt={backend && backend.onGetReceipt}"),
 assert.ok(app.includes("onGetReceipt:getWrittenReceipt,")&&bundle.includes("onGetReceipt:getWrittenReceipt,"),
  'callback llega realmente a StudentMode');
 console.log('F111 RECEIPT-01 FRONT PASS: entrega, ID, PDF, blob privado, bundle');
+
+
+// F111 FINAL-01: el informe de nota firme SOLO se descarga mediante endpoint
+// student autenticado. Paridad de motor y bundle, sin clave ni cálculo browser.
+const finalMode=[
+  'data-f111-written-final-report="true"',
+  'onGetFinalReport={backend && backend.onGetFinalReport}',
+  'const downloadFinalReport = async () =>',
+  "String(r.attempt_id||'') !== String(attemptId)",
+  "r.mime !== 'application/pdf'",
+  "binary.slice(0,4)!=='%PDF'",
+  "onGetFinalReport(attemptId)"
+];
+for(const marker of finalMode){
+  assert.ok(modes.includes(marker),'FINAL-01: falta en motor: '+marker);
+  assert.ok(bundle.includes(marker),'FINAL-01: falta en bundle: '+marker);
+}
+const finalApp=app.indexOf('  const getWrittenFinalReport = async (id) => {');
+const endFinalApp=app.indexOf('  if (loading) return <StudentLiveLoading />;',finalApp);
+assert.ok(finalApp>0&&endFinalApp>finalApp,'callback en app');
+const finalCb=app.slice(finalApp,endFinalApp);
+assert.ok(finalCb.includes("String(id) !== String(attemptId)"),'ID no intercambiable');
+assert.ok(finalCb.includes("examPostLive('examGetStudentWrittenFinalReportPdf', { attempt_id:id })"),
+  'backend oficial autenticado');
+assert.ok(bundle.includes(finalCb),'callback final sincronizado en bundle');
+assert.ok(app.includes('onGetFinalReport:getWrittenFinalReport,') &&
+  bundle.includes('onGetFinalReport:getWrittenFinalReport,'),
+  'conexión hasta StudentMode');
+assert.ok(!modes.slice(start,end).includes("setStage('taking')"),
+  'consultar el PDF no reabre un intento');
+console.log('F111 FINAL-01 FRONT PASS: circuito documento sin nota del navegador, solo intento del alumno');
