@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Progress Check digital · Vista previa docente · Academia Norteamericana</title>
+<style>
+:root{font:14px Inter,Segoe UI,Arial,sans-serif;color:#173857;background:#f3f7fc;--navy:#073b7a;--gold:#efd04d;--border:#d5e3f2}
+*{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1100px;padding:20px;margin:auto}.hero{background:var(--navy);border-radius:16px;padding:22px;color:white;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.hero h1{font-size:clamp(24px,4vw,34px);margin:5px 0}.hero p{opacity:.86;margin:5px 0}.chip{background:var(--gold);color:#5d460c;font-weight:850;border-radius:9px;padding:10px 14px;font-size:12px}
+.notice{border:1px solid #cbddef;background:#edf6ff;padding:14px 16px;border-radius:11px;line-height:1.5;margin:14px 0}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 12px}.tabs button{background:#fff;color:#163f68;border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-weight:800}
+.tabs button[aria-selected=true]{background:var(--gold);color:#4c3c19;border-color:#d8b547}
+.track{height:8px;background:#dbe5f1;border-radius:20px;overflow:hidden;margin-bottom:15px}.track div{height:100%;width:0;background:#edc23c}
+.sheet{background:white;border:1px solid var(--border);box-shadow:0 8px 20px #17334b0a;border-radius:15px;padding:20px}
+.sheet h2{font-size:21px;margin:0 0 8px}.help{color:#506b88;line-height:1.55;white-space:pre-line;margin:0 0 12px}
+.question{padding:15px;border:1px solid #d5e1ef;background:#fafdff;border-radius:11px;margin:11px 0}
+.question h3{font-size:14px;line-height:1.5;margin:0 0 12px;white-space:pre-line}
+.choice{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;background:#fff;margin:8px 0;padding:11px;cursor:pointer}
+.choice:has(input:checked){border-color:#b98f20;background:#fff8df}.choice input{accent-color:#0b5396}
+.question input[type=text]{padding:13px;max-width:680px;width:100%;border-radius:8px;border:1px solid #aebfd3;font:inherit}
+.context{background:#f1f7fe;white-space:pre-line;padding:15px;border:1px solid #c9d9ed;border-radius:11px;line-height:1.7;margin:13px 0}
+.audio-box{padding:14px;background:#eaf3ff;border:1px solid #b8d2f0;border-radius:11px;margin:12px 0}.audio-box audio{display:block;width:min(600px,100%);margin-top:10px}
+.actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;flex-wrap:wrap}
+.actions .buttons{display:flex;gap:8px;flex-wrap:wrap}.btn{background:var(--navy);border:1px solid var(--navy);color:white;padding:11px 15px;border-radius:9px;font-weight:800}.btn.secondary{background:white;color:var(--navy);border-color:#c4d5e7}
+.error{padding:15px;background:#ffefed;border:1px solid #dfada5;color:#9b3226;border-radius:10px;margin-top:13px}
+.done{padding:15px;background:#eef8f0;border:1px solid #b7dac2;color:#21643b;border-radius:10px;margin:13px 0}
+[hidden]{display:none!important}
+@media(max-width:600px){main{padding:10px}.sheet{padding:13px}.hero{padding:17px}.choice{padding:13px}}
+</style></head><body>
+<main>
+<header class="hero"><div><small>ACADEMIA NORTEAMERICANA · PROGRESS CHECK</small><h1 id="title">Vista previa digital</h1><p id="subtitle">Cargando preguntas originales…</p></div><span class="chip" id="countTag">Solo docentes</span></header>
+<div class="notice"><strong>ENSAYO DOCENTE / SUPERADMIN</strong> · Vista independiente del grupo y la lección. Podés responder todas las preguntas y escuchar el audio. No guarda, no entrega y no afecta notas oficiales.</div>
+<div class="error" id="error" role="alert" hidden></div>
+<div class="tabs" id="tabs" aria-label="Apartados del examen" role="tablist"></div>
+<div class="track" aria-hidden="true"><div id="bar"></div></div>
+<div class="sheet" id="sheet"><p>Validando sesión del Campus y contenido académico.</p></div>
+<footer class="actions"><strong id="progress">Sin respuestas</strong><div class="buttons">
+<button type="button" id="back" class="btn secondary" hidden>Anterior</button>
+<button type="button" id="next" class="btn">Siguiente</button>
+<button type="button" id="finish" class="btn" hidden>Finalizar simulación</button>
+<button type="button" id="reset" class="btn secondary">Reiniciar</button>
+</div></footer>
+</main>
+<script>
+(function(){
+'use strict';
+const LEVELS={B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
+const p=new URLSearchParams(location.search);
+const nivel=String(p.get('nivel')||'').trim().toUpperCase(),pc=Number(p.get('pc')||0);
+const apiDefault='https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec';
+const $=id=>document.getElementById(id);
+const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined&&text!==null)n.textContent=String(text);if(cls)n.className=cls;return n};
+let data=null,sectionIndex=0,answers=Object.create(null),finished=false,blobUrl='',token='',apiBase='';
+function error(message){$('error').textContent=message;$('error').hidden=false;}
+function clean(){if(blobUrl){URL.revokeObjectURL(blobUrl);blobUrl='';}}
+window.addEventListener('pagehide',clean);
+function context(){
+ try{
+  if(window.parent&&window.parent!==window&&typeof window.parent.getSesion==='function'){
+   const s=window.parent.getSesion()||{};
+   if(!['teacher','admin','superadmin'].includes(String(s.rol||'').toLowerCase()))return null;
+   if(typeof window.parent.getSessionToken!=='function')return null;
+   const t=String(window.parent.getSessionToken()||'');if(!t)return null;
+   return {token:t,url:String(window.parent.F111_QZ24_PREVIEW_API_URL||apiDefault)};
+  }
+ }catch(_){}return null;
+}
+async function call(fn){
+ const r=await fetch(apiBase+'?fn='+encodeURIComponent(fn),{
+  method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+  body:JSON.stringify({fn,token,solo_preview_sin_grupo:true,nivel,pc})
+ });
+ const j=await r.json();if(!r.ok||!j||j.ok!==true)throw Error(j&&j.error||'respuesta_no_valida');
+ return j;
+}
+function fields(){return data.secciones.flatMap(s=>s.preguntas)}
+function counter(){
+ const items=fields(),n=items.filter(q=>String(answers[q.id]||'').trim()).length;
+ $('progress').textContent=n+' / '+items.length+' respuestas · '+Math.round(n*100/items.length)+' % completado';
+ $('bar').style.width=Math.round(n*100/items.length)+'%';
+ $('back').hidden=sectionIndex===0;
+ $('next').hidden=sectionIndex===data.secciones.length-1||finished;
+ $('finish').hidden=sectionIndex!==data.secciones.length-1||finished;
+ $('countTag').textContent=items.length+' respuestas · 0 % oficial';
+}
+function draw(){
+ if(!data)return;
+ $('tabs').replaceChildren();
+ data.secciones.forEach((s,i)=>{
+  const b=el('button',s.id+' · '+(s.preguntas||[]).length+' ítems');
+  b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',String(i===sectionIndex));
+  b.onclick=()=>{sectionIndex=i;draw()};$('tabs').append(b);
+ });
+ const s=data.secciones[sectionIndex],root=$('sheet');
+ root.replaceChildren(el('h2','Bloque '+s.id+' · '+String(s.tipo||'').replaceAll('_',' ')),el('p',s.instruccion,'help'));
+ if(finished)root.append(el('p','Simulación terminada. Tus respuestas solo existieron en esta pantalla.','done'));
+ if(s.contexto)root.append(el('div',s.contexto,'context'));
+ if(sectionIndex===0&&data.audio_disponible){
+  const box=el('div',null,'audio-box'),label=el('strong','Listening · Audio Cambridge autenticado');
+  const audio=el('audio');audio.controls=true;audio.preload='metadata';audio.id='originalAudio';
+  const info=el('p','Preparando pista original…','help');info.id='audioInfo';
+  box.append(label,audio,info);root.append(box);
+  void loadAudio(audio,info);
+ }
+ for(const q of s.preguntas){
+  const box=el('article',null,'question');
+  box.append(el('h3',q.id+' · '+q.enunciado));
+  if(['OPCION_UNICA','OPCION_MULTIPLE'].includes(q.tipo)&&Array.isArray(q.opciones)){
+   const multiple=q.tipo==='OPCION_MULTIPLE';
+   const max=Number(q.selecciones||q.max_selecciones||q.max||q.opciones.length);
+   q.opciones.forEach((option,i)=>{
+    const line=el('label',null,'choice'),input=el('input');
+    input.type=multiple?'checkbox':'radio';input.name=q.id;input.value=String(i);
+    const selected=String(answers[q.id]||'').split(',').filter(Boolean);
+    input.checked=selected.includes(String(i));input.disabled=finished;
+    input.onchange=()=>{
+     const picked=Array.from(box.querySelectorAll('input:checked')).map(x=>x.value);
+     if(multiple&&picked.length>max){input.checked=false;return;}
+     answers[q.id]=picked.join(',');counter();
+    };
+    line.append(input,el('span',option));box.append(line);
+   });
+  }else{
+   const input=el('input');input.type='text';input.value=answers[q.id]||'';
+   input.setAttribute('aria-label','Respuesta '+q.id);input.maxLength=500;input.disabled=finished;
+   input.oninput=()=>{answers[q.id]=input.value;counter()};box.append(input);
+  }
+  root.append(box);
+ }
+ counter();
+}
+async function loadAudio(player,info){
+ if(!data||finished)return;
+ if(blobUrl){player.src=blobUrl;info.textContent='Audio original listo.';return;}
+ try{
+  const a=await call('qzProgressAudio');
+  if(a.quiz_id!==data.quiz_id||a.mime!=='audio/mpeg'||a.peso_oficial!==0||
+     typeof a.audio_base64!=='string')throw Error('pista_no_corresponde');
+  const binary=atob(a.audio_base64);
+  if(binary.length<1024||binary.length>4*1024*1024||
+     !(binary.slice(0,3)==='ID3'||(binary.charCodeAt(0)===255&&(binary.charCodeAt(1)&224)===224)))
+     throw Error('mp3_no_valido');
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  blobUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));
+  if(!player.isConnected)return;player.src=blobUrl;
+  player.onerror=()=>{info.textContent='La pista no se pudo reproducir.'};
+  info.textContent='Audio original listo. Presioná reproducir para verificar.';
+ }catch(e){info.textContent='Audio aún no verificable: '+String(e.message||e).slice(0,110);}
+}
+$('back').onclick=()=>{if(sectionIndex>0){sectionIndex--;draw();window.scrollTo(0,0)}};
+$('next').onclick=()=>{if(sectionIndex<data.secciones.length-1){sectionIndex++;draw();window.scrollTo(0,0)}};
+$('finish').onclick=()=>{if(!window.confirm('¿Finalizar simulación? No se enviará ni guardará ninguna respuesta.'))return;finished=true;draw()};
+$('reset').onclick=()=>{answers=Object.create(null);sectionIndex=0;finished=false;draw()};
+(async function start(){
+ if(!LEVELS[nivel]||!Number.isInteger(pc)||pc<1||pc>8){error('Nivel o número de Progress Check incorrecto.');return;}
+ const identity=context();
+ if(!identity){error('Abrí esta vista desde Exámenes en una sesión autenticada de docente o superadministrador.');return;}
+ token=identity.token;apiBase=identity.url;
+ try{
+  const bank=await call('qzProgressGet');
+  if(bank.quiz_id!=='IC5_'+nivel+'_WQ'+String(pc).padStart(2,'0')||
+    bank.vista_previa!==true||bank.requiere_grupo!==false||bank.admite_envio!==false||
+    bank.peso_oficial!==0||!Array.isArray(bank.secciones)||!bank.secciones.length)
+    throw Error('El servidor no confirmó contenido digital protegido.');
+  const parts=bank.secciones;
+  if(parts.some(s=>!/^[A-Z]$/.test(s.id)||!Array.isArray(s.preguntas)||!s.preguntas.length||
+    s.preguntas.some(q=>!q.id||!q.enunciado)))throw Error('El banco tiene preguntas incompletas.');
+  data=bank;$('title').textContent=LEVELS[nivel]+' · PC'+String(pc).padStart(2,'0');
+  $('subtitle').textContent='Unidades '+bank.unidades.join('–')+' · Lección '+bank.leccion+' · Vista previa sin grupo';
+  draw();
+ }catch(e){error('No se pudo abrir el quiz digital: '+String(e.message||e).slice(0,130));}
+})();
+})();
+</script>
+</body></html>
