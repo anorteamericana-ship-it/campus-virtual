@@ -24,7 +24,7 @@ assert.ok(sent.includes("No pudimos descargar el recibo. Tu entrega permanece re
 assert.ok(!sent.includes("setStage('taking')"),
  'no reabre intento por error de documento');
 const a=app.indexOf('  const getWrittenReceipt = async (id) => {');
-const b=app.indexOf('  const heartbeatAttempt = async () => {',a);
+const b=app.indexOf('  if (loading) return <StudentLiveLoading />;',a);
 assert.ok(a>0&&b>a);
 const getReceipt=app.slice(a,b);
 assert.ok(bundle.includes(getReceipt),'aplicación y bundle sincronizados');
