@@ -110,9 +110,9 @@ function draw(){
    const max=Number(q.selecciones||q.max_selecciones||q.max||q.opciones.length);
    q.opciones.forEach((option,i)=>{
     const line=el('label',null,'choice'),input=el('input');
-    input.type=multiple?'checkbox':'radio';input.name=q.id;input.value=String(i);
+    input.type=multiple?'checkbox':'radio';input.name=q.id;input.value=String(i+1);
     const selected=String(answers[q.id]||'').split(',').filter(Boolean);
-    input.checked=selected.includes(String(i));input.disabled=finished;
+    input.checked=selected.includes(String(i+1));input.disabled=finished;
     input.onchange=()=>{
      const picked=Array.from(box.querySelectorAll('input:checked')).map(x=>x.value);
      if(multiple&&picked.length>max){input.checked=false;return;}
