@@ -72,14 +72,25 @@ try{
  assert.equal(await frame.locator('[data-f111-qz24-superadmin-preview]').count(),0,'not in Escritos tab');
  await frame.getByRole('tab',{name:/Progress Check/}).click();
  await frame.locator('[data-f111-qz24-superadmin-preview]').waitFor({timeout:10000});
- assert.equal(await frame.getByRole('heading',{name:'Progress Check · Vista previa digital'}).count(),1,
-  'superadmin sees the rehearsal INSIDE their own center');
- await frame.getByRole('button',{name:'Ver Progress Check'}).click();
- assert.match(await frame.locator('[data-f111-qz24-superadmin-preview] [role=status]').innerText(),
-  /Básico I|B1|vista digital histórica/,'B1 remains separate');
- assert.equal(calls.length,0,'B1 preview does not call new API');
+ assert.equal(await frame.getByRole('heading',{name:'Abrir Progress Check'}).count(),1,
+  'superadmin has one focused selection instead of second grid');
+ assert.equal(await frame.locator('.d1-pc-grid').evaluate(node=>getComputedStyle(node).display),'none',
+  'legacy wall of 8 buttons is hidden from normal workflow');
+ const picker=frame.getByRole('combobox',{name:'Elegí el Progress Check'});
+ assert.equal(await picker.locator('option').count(),8,'8 PCs are accessible in one selector');
+ assert.equal(await frame.locator('.d1-pc-selected .f111-qz24-oneaction').count(),1,
+  'one primary Ver action');
+ assert.equal(await frame.locator('.d1-pc-selected [data-f111-digital-oneclick]').count(),1,
+  'B1 original digital path still exists');
+ assert.equal(await frame.locator('.d1-pc-selected [data-f111-digital-oneclick]').isVisible(),false,
+  'original B1 link does not duplicate the one primary action');
+ assert.equal(calls.length,0,'B1 does not call QZ24 API');
  await frame.locator('.d1-pc .d1-level-select').nth(1).click();
- await frame.getByRole('button',{name:'Ver Progress Check'}).click();
+ await picker.selectOption('3');
+ assert.match(await frame.locator('.d1-pc-selected b').innerText(),/Progress Check 03/,
+  'picker selects PC03 through the existing React selection');
+ await picker.selectOption('1');
+ await frame.locator('.d1-pc-selected .f111-qz24-oneaction').click();
  await page.locator('[data-f111-qz24-superadmin-modal]').waitFor({timeout:10000});
  assert.equal(calls[0].fn,'qzProgressGet','only read-only endpoint before opening');
  assert.equal(calls[0].nivel,'B2');
