@@ -5,6 +5,8 @@ on:
       - 'src/examenes_modes.jsx'
       - 'src/examenes_bundle.jsx'
       - 'scripts/qa_f111_written_save_race_e1.mjs'
+      - 'scripts/qa_f111_written_receipt_e1.mjs'
+      - 'src/examenes_app.jsx'
       - '.github/workflows/f111-written-finalize-e1.yml'
   workflow_dispatch:
 permissions:
@@ -20,4 +22,6 @@ jobs:
           node-version: '20'
       - name: Guardado concurrente y envio final de escritos (sin alumnos reales)
         run: node scripts/qa_f111_written_save_race_e1.mjs
+      - name: Recibo escrito descargable, autorizacion e ID de intento
+        run: node scripts/qa_f111_written_receipt_e1.mjs
 # E1 focal: no escribe notas ni llama Apps Script, no habilita LIVE.
