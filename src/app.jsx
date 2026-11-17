@@ -337,23 +337,47 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
       </div>}
 
       {typeof topContent==='function'?topContent(openWrittenFocus):(topContent || null)}
-      {view==='teacher'?<details data-f111-written-bank="true" ref={writtenBankRef}
-        open={teacherBankOpen} onToggle={e=>setTeacherBankOpen(e.currentTarget.open)}
-        style={{border:'1px solid #E8DFD2',borderRadius:14,background:'#FFF',padding:'12px 15px'}}>
-        <summary style={{fontSize:13,fontWeight:900,cursor:'pointer',color:'#001E47'}}>
-          Banco de escritos y controles institucionales · Opciones A/B
-        </summary>
-        <p style={{fontSize:11,color:'#6B6259'}}>
-          Modelos y controles históricos. Esta sección no habilita estudiantes ni reabre lecciones.
-        </p>
-        {teacherBankOpen&&writtenFocus&&<div role="status" style={{padding:'9px 11px',marginBottom:10,
-          background:'#F4F7FB',border:'1px solid #C9D7E6',borderRadius:9,fontSize:12,color:'#001E47'}}>
-          {writtenFocus.grupo} · {writtenFocus.nivel} · L{writtenFocus.leccion}
-          {writtenFocus.cod_estudiante?' · estudiante '+writtenFocus.cod_estudiante:''}
-          {' · consulta de entregas, sin activación automática'}
-        </div>}
-        {teacherBankOpen&&bank}
-      </details>:bank}
+      {view==='teacher'?
+        (writtenFocus&&teacherBankOpen?
+          <section ref={writtenBankRef} data-f111-written-focus-panel="true"
+            role="region" aria-label="Revisión escrita del grupo seleccionado"
+            style={{border:'1px solid #C9D7E6',borderRadius:14,background:'#FFF',
+              padding:'12px 15px',display:'grid',gap:12}}>
+            <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+              flexWrap:'wrap',gap:12,padding:'8px 4px'}}>
+              <div>
+                <div style={{fontSize:10,letterSpacing:'.12em',fontWeight:900,color:'#7A1E2C'}}>
+                  REVISIÓN DE EXÁMENES ESCRITOS · SOLO GRUPO AUTORIZADO
+                </div>
+                <h2 style={{fontSize:19,margin:'5px 0',color:'#001E47'}}>
+                  Entregas · {writtenFocus.nivel} · Lección {writtenFocus.leccion}
+                </h2>
+                <p style={{fontSize:12,color:'#514D47',margin:0}}>
+                  {writtenFocus.grupo}
+                  {writtenFocus.cod_estudiante?' · estudiante '+writtenFocus.cod_estudiante:''}
+                  {' · el servidor verifica cada entrega y sus permisos'}
+                </p>
+              </div>
+              <button type="button" className="btn btn-ghost"
+                data-f111-written-close="true"
+                onClick={()=>{setWrittenFocus(null);setTeacherBankOpen(false);}}>
+                Volver a Mis exámenes
+              </button>
+            </header>
+            {bank}
+          </section>:
+          <details data-f111-written-bank="true" ref={writtenBankRef}
+            open={teacherBankOpen} onToggle={e=>setTeacherBankOpen(e.currentTarget.open)}
+            style={{border:'1px solid #E8DFD2',borderRadius:14,background:'#FFF',padding:'12px 15px'}}>
+            <summary style={{fontSize:13,fontWeight:900,cursor:'pointer',color:'#001E47'}}>
+              Opciones avanzadas de escritos · revisión histórica
+            </summary>
+            <p style={{fontSize:11,color:'#6B6259'}}>
+              Acceso al motor institucional de escritos, sin abrir ni reprogramar exámenes de estudiantes.
+            </p>
+            {teacherBankOpen&&bank}
+          </details>):
+        bank}
     </section>
   );
 }
