@@ -2467,7 +2467,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
     };
     return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending}
-      onGetReceipt={backend && backend.onGetReceipt} /></div>;
+      onGetReceipt={backend && backend.onGetReceipt}
+      onGetFinalReport={backend && backend.onGetFinalReport} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -2552,9 +2553,11 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false, onGetReceipt }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false, onGetReceipt, onGetFinalReport }) {
   const [receiptBusy,setReceiptBusy] = useState(false);
   const [receiptError,setReceiptError] = useState('');
+  const [finalBusy,setFinalBusy] = useState(false);
+  const [finalError,setFinalError] = useState('');
   const downloadReceipt = async () => {
     if (receiptBusy || !attemptId || typeof onGetReceipt !== 'function') return;
     setReceiptBusy(true);setReceiptError('');
@@ -2581,6 +2584,38 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
       setReceiptBusy(false);
     }
   };
+  const downloadFinalReport = async () => {
+    if (finalBusy || !attemptId || typeof onGetFinalReport !== 'function') return;
+    setFinalBusy(true);setFinalError('');
+    try {
+      const r=await onGetFinalReport(attemptId);
+      if (!r || r.ok !== true) {
+        const pending=['informe_revision_pendiente','informe_nota_no_firme'].includes(String(r&&r.error||''));
+        setFinalError(pending
+          ? 'La nota todavía no está firme en Mis Notas. El informe aparecerá después de la revisión docente.'
+          : 'No se pudo conciliar el informe con el expediente académico. Contactá a la Academia.');
+        return;
+      }
+      if (r.mime !== 'application/pdf' ||
+          String(r.attempt_id||'') !== String(attemptId) ||
+          !/^F111-RES-[A-F0-9]{20}$/.test(String(r.report_id||'')) ||
+          typeof r.pdf_base64 !== 'string' || r.pdf_base64.length > 6000000)
+        throw Error('final_report_contract');
+      const binary=atob(r.pdf_base64);
+      if(binary.slice(0,4)!=='%PDF') throw Error('final_report_pdf_invalid');
+      const file=new Blob([Uint8Array.from(binary,ch=>ch.charCodeAt(0))],
+        {type:'application/pdf'});
+      const url=URL.createObjectURL(file);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'')
+        ?r.filename:'Informe_Examen_Escrito.pdf';
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(_){
+      setFinalError('No se pudo descargar el informe. Tu nota registrada no se modifica; reintentá desde el Campus.');
+    }finally{setFinalBusy(false);}
+  };
   return (
     <>
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
@@ -2590,7 +2625,7 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
         {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
           <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
         </div>}
-        <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
+        <div className="sent-state"><span className="sent-dot" />Entrega registrada · resultado según revisión oficial</div>
         <div className="sent-grid">
           <div><span>Examen</span><b>{exam.titulo}</b></div>
           <div><span>Opción</span><b>{opcion}</b></div>
@@ -2608,6 +2643,16 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
             Comprobante de recepción sin calificación. El informe de nota final se publica después de la revisión.
           </small>
           {receiptError && <p role="alert" style={{color:'#8B1F1F',fontSize:12}}>{receiptError}</p>}
+        </div>}
+        {attemptId && typeof onGetFinalReport === 'function' && <div style={{marginTop:10}}>
+          <button type="button" className="btn-ghost" onClick={downloadFinalReport}
+            disabled={finalBusy} data-f111-written-final-report="true">
+            {finalBusy?'Consultando nota firme…':'Descargar informe académico PDF'}
+          </button>
+          <small style={{display:'block',marginTop:8}}>
+            Disponible solamente cuando el docente cerró la revisión y la nota coincide con Mis Notas.
+          </small>
+          {finalError && <p role="status" style={{color:'#7A4A00',fontSize:12}}>{finalError}</p>}
         </div>}
       </div>
       <div className="sent-summary">
