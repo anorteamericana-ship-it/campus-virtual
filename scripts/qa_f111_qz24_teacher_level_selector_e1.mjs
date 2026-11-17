@@ -1,5 +1,5 @@
-// F111 QZ24 · Mis exámenes: selector B2/I1/I2 sin grupo, vista digital protegida.
-// Verifica controlador auténtico en VM aislado sin API Google ni alumnos.
+// F111 QZ24 · UX docente: una selección de nivel + PC y una única acción de lectura.
+// Se ejecuta sobre el controlador real en VM; sin credenciales ni escrituras.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -8,7 +8,7 @@ const start=src.indexOf('function createQz24RehearsalCard(');
 const end=src.indexOf('function buildTeacherExamsF111(){',start);
 assert.ok(start>0&&end>start);
 assert.ok(src.includes('const rehearsal=createQz24RehearsalCard(select)'));
-assert.ok(src.includes('summary.append(history,rehearsal.card)'));
+assert.ok(src.includes('summary.append(rehearsal.card,history)'));
 const LEVELS=[['B1','Básico I'],['B2','Básico II'],['I1','Intermedio I'],['I2','Intermedio II']];
 const LESSONS=[[4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],[21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']];
 function make(tag,text,className){
@@ -33,41 +33,44 @@ const scope={LEVELS,LESSONS,make,window:{getSessionToken:()=>session?'SYNTHETIC_
 vm.createContext(scope);
 vm.runInContext(src.slice(start,end)+';this.build=createQz24RehearsalCard',scope);
 let checks=0;
-function check(ok,msg){assert.ok(ok,msg);checks++}
+const check=(value,why)=>{assert.ok(value,why);checks++};
 const legacyGroup={value:''},r=scope.build(legacyGroup);
 check(r.card.dataset.f111Qz24Rehearsal==='true','card loaded');
-check(r.levelPicker.children.map(x=>x.value).join(',')==='B2,I1,I2','only 24 future quizzes; B1 separate');
+check(r.levelPicker.children.map(x=>x.value).join(',')==='B2,I1,I2','B1 keeps historic flow');
 check(r.levelPicker.value==='B2','B2 default');
-const buttons=()=>r.card.children.at(-1).children;
-check(buttons().length===8,'eight buttons without group');
-check(buttons()[3].dataset.f111Qz24Lesson==='16','PC04 = L16');
-await buttons()[3].events.click();
+check(r.pcPicker.children.length===8,'8 checks in a select, not a wall of buttons');
+check(r.card.children[2].children.filter(x=>x.tag==='button').length===1,'only one CTA');
+check(r.openButton.textContent==='Ver Progress Check','single primary action');
+r.pcPicker.value='4';r.render();
+check(r.openButton.dataset.f111Qz24Lesson==='16','PC04 = L16');
+await r.openButton.events.click();
 check(calls.length===1&&calls[0].fn==='qzProgressGet','read-only endpoint');
 check(JSON.stringify(calls[0].body)===JSON.stringify({solo_preview_sin_grupo:true,nivel:'B2',pc:4}),
  'no group or calendar sent');
 check(opened.length===1&&opened[0].url.path==='modulos/qz24_preview_digital.html',
- 'opens independent authentic HTML');
+ 'opens private HTML');
 check(opened[0].url.args.nivel==='B2'&&opened[0].url.args.pc===4&&
  !Object.hasOwn(opened[0].url.args,'grupo'),'no group in iframe');
 for(const level of ['I1','I2']){
- r.levelPicker.value=level;r.render();
- check(buttons().length===8,'eight quizzes '+level);
- await buttons()[7].events.click();
+ r.levelPicker.value=level;r.pcPicker.value='8';r.render();
+ check(r.pcPicker.children.length===8,'selector retained at '+level);
+ await r.openButton.events.click();
  check(opened.at(-1).url.args.nivel===level&&opened.at(-1).url.args.pc===8,'PC08 '+level);
 }
 const valid=opened.length;
-permission=false;await buttons()[0].events.click();
-check(opened.length===valid,'403 blocks preview');
-permission=true;altered=true;await buttons()[0].events.click();
-check(opened.length===valid,'cross-level mismatch blocks');
-altered=false;session=false;await buttons()[0].events.click();
-check(opened.length===valid,'missing session blocks');
+permission=false;await r.openButton.events.click();
+check(opened.length===valid,'denied role cannot open');
+permission=true;altered=true;await r.openButton.events.click();
+check(opened.length===valid,'cross-level mismatch blocked');
+altered=false;session=false;await r.openButton.events.click();
+check(opened.length===valid,'missing session blocked');
 session=true;slow=true;
-const delayed=buttons()[0].events.click();
-r.levelPicker.value='B2';r.render();
+const delayed=r.openButton.events.click();
+r.pcPicker.value='7';r.render();
 pending?.();await delayed;
-check(opened.length===valid,'stale server response cannot open');
+check(opened.length===valid,'stale response after changing PC cannot open');
+slow=false;
 check(calls.every(c=>c.fn==='qzProgressGet'&&c.body.solo_preview_sin_grupo===true),
- 'no attempts, no opens, no student writes');
-console.log('F111_QZ24_TEACHER_LEVEL_SELECTOR_E1_PASS '+checks+'/'+checks+
- ' B2/I1/I2 × 8; no group, protected content, zero student writes');
+ 'only read calls; no student writes');
+console.log('F111_QZ24_TEACHER_UX_E1_PASS '+checks+'/'+checks+
+ ' single action, 3 levels, 8 PCs, no groups, no writes');
