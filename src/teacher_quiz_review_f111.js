@@ -715,7 +715,7 @@ function createQz24RehearsalCard(groupSelector){
  const card=make('article',null,'f111-teacher-exam-card f111-qz24-simple-card');
  card.dataset.f111Qz24Rehearsal='true';
  card.append(make('h4','Progress Check · Ver examen'),
-   make('p','Seleccioná un nivel y un Progress Check. Podés ver las preguntas y escuchar el audio sin elegir grupo; esta consulta no abre evaluaciones a estudiantes.'));
+   make('p','Para B2, Intermedio I y II elegí nivel y examen. Básico I conserva su acceso histórico. Esta vista no requiere grupo ni abre evaluaciones a estudiantes.'));
  const controls=make('div',null,'f111-qz24-quick-controls');
  const levelLabel=make('label','Nivel');
  const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
