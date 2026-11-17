@@ -412,6 +412,10 @@ function StudentLiveExamApp() {
     if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
     return await examPostLive('examGetStudentWrittenReceiptPdf', { attempt_id:id });
   };
+  const getWrittenFinalReport = async (id) => {
+    if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
+    return await examPostLive('examGetStudentWrittenFinalReportPdf', { attempt_id:id });
+  };
 
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
@@ -440,6 +444,7 @@ function StudentLiveExamApp() {
       onSave:saveAttempt,
       onSubmit:submitAttempt,
       onGetReceipt:getWrittenReceipt,
+      onGetFinalReport:getWrittenFinalReport,
       onHeartbeat:heartbeatAttempt,
       student:live.student || null,
       activation,
