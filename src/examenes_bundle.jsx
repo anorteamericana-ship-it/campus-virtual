@@ -1510,7 +1510,7 @@ function ExamStyles() {
 //   meta: { nombre, fecha, scoreLabel }
 // ──────────────────────────────────────────────────────────────────────────
 function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
-                     shell='premium', density='comfy', review, meta={}, plan='ambos', onOpenScript, onOpenVideo }) {
+                     shell='premium', density='comfy', review, meta={}, plan='ambos', onOpenScript, onOpenVideo, privateAudioUrl='' }) {
   const tema = NIVEL_TEMA[exam.nivel];
   const ro = mode !== 'student';
   const rootStyle = { '--lvl':tema.color, '--lvl-ink':tema.ink, '--lvl-soft':tema.soft };
@@ -1555,7 +1555,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
         {exam.sections.map(sec => (
           <Section key={sec.letter} sec={sec} exam={exam} answers={answers} onAnswer={onAnswer}
                    ro={ro} mode={mode} showKey={showKey} review={review}
-                   onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} />
+                   onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} privateAudioUrl={privateAudioUrl} />
         ))}
       </div>
       <footer className="ex-footer"><span>Academia Norteamericana · Programa Inglés Conversacional</span><span>Documento institucional · Campus Virtual</span></footer>
@@ -1564,7 +1564,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
 }
 
 // ── Una sección ────────────────────────────────────────────────────────────
-function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOpenScript, onOpenVideo }) {
+function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOpenScript, onOpenVideo, privateAudioUrl='' }) {
   return (
     <section className="exs">
       <div className="exs-h">
@@ -1582,7 +1582,7 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
       {/* Listening: video embebido del mapa maestro (sección A/B del audio,
           distinta de la opción A/B del examen). Guion solo si showKey. */}
       {sec.listening && (
-        <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} />
+        <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} privateAudioUrl={privateAudioUrl} />
       )}
 
       <SectionBody sec={sec} answers={answers} onAnswer={onAnswer} ro={ro} mode={mode} showKey={showKey} review={review} />
@@ -1591,8 +1591,28 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
 }
 
 // ── Media de listening: iframe de YouTube o fallback ──────────────────────
-function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
-  const id = exam.videos ? exam.videos['listening_' + sec.listening] : null;
+function ListeningMedia({ exam, sec, showKey, onOpenScript, privateAudioUrl='' }) {
+  // F111 AUDIO-PRIVATE-01: audio ORIGINAL completo (secciones A y B) se
+  // descarga por intento autenticado; el blob: local NO es una URL pública.
+  // Solo un player para impedir reproducción simultánea/fragmentada.
+  if (privateAudioUrl) {
+    const first = String(sec.listening||'').toUpperCase() === 'A';
+    return <div className="exs-listen" data-f111-private-written-audio="true">
+      <div className="exl-row">
+        <span className="exl-tag">Listening · Sección {sec.listening}</span>
+        {showKey && <button className="exl-script" onClick={()=>onOpenScript && onOpenScript(sec.listening)}>Ver guion (docente)</button>}
+      </div>
+      {first
+        ? <audio controls preload="metadata" controlsList="nodownload"
+                 aria-label="Audio original privado para las secciones A y B"
+                 src={privateAudioUrl} style={{width:'100%',maxWidth:600}} />
+        : <span className="exl-pending">El mismo audio original incluye esta sección; reproducilo desde la sección A.</span>}
+    </div>;
+  }
+  // F111 0826: la versión B del examen NO es la sección B del audio.
+  // Hasta certificar su MP3 privado, nunca reproducir el video A/2 cruzado.
+  const bAudioNoCertificado = /_WRITTEN_L(?:18|32)_TEST[12]_B$/.test(String(exam?.id||exam?.exam_id||''));
+  const id = !bAudioNoCertificado && exam.videos ? exam.videos['listening_' + sec.listening] : null;
   return (
     <div className="exs-listen">
       <div className="exl-row">
@@ -1605,7 +1625,11 @@ function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
                     frameBorder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen></iframe>
           </div>
-        : <span className="exl-pending">♪ Audio pendiente de publicar</span>}
+        : <span className="exl-pending" role={bAudioNoCertificado?'alert':undefined}>
+            {bAudioNoCertificado
+              ? 'Opción B bloqueada: falta certificar el audio propio de esta versión. No iniciar el examen.'
+              : '♪ Audio pendiente de publicar'}
+          </span>}
     </div>
   );
 }
@@ -2147,6 +2171,37 @@ function examStudentSafeUserError(raw, fallback, context) {
   return fallback;
 }
 
+// WRITTEN-FINALIZE-02: ninguna escritura de borrador puede quedar detrás del
+// envío final. El envío siempre transporta una copia de TODAS las respuestas.
+async function examWrittenFinalizeAfterPendingSave(pendingSave, readAnswers, submit) {
+  if (pendingSave) {
+    try { await pendingSave; }
+    catch (_) { /* Un borrador fallido no invalida el envío de respuestas completas. */ }
+  }
+  const finalAnswers = JSON.parse(JSON.stringify(readAnswers() || {}));
+  return submit(finalAnswers);
+}
+
+// F111 AUDIO-PRIVATE-01 · decodificación estricta de un audio ORIGINAL
+// recibido para el intento/versión autenticados. Solo crea blob: local.
+function examWrittenPrivateAudioBlobUrl(response, attemptId, examId) {
+  const r=response||{};
+  if(r.ok!==true || String(r.attempt_id||'')!==String(attemptId||'') ||
+     String(r.exam_id||'')!==String(examId||'') ||
+     r.mime!=='audio/mpeg' || r.source!=='original_private_verified_sha256' ||
+     typeof r.audio_base64!=='string' || !r.audio_base64.length ||
+     Number(r.bytes)<1024 || Number(r.bytes)>4*1024*1024)
+    throw Error('written_private_audio_unavailable');
+  const binary=atob(r.audio_base64);
+  if(binary.length!==Number(r.bytes))throw Error('written_private_audio_size_mismatch');
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  if(!((bytes[0]===73&&bytes[1]===68&&bytes[2]===51) ||
+       (bytes[0]===255&&(bytes[1]&224)===224)))
+    throw Error('written_private_audio_not_mp3');
+  return URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));
+}
+
 // CALGRUPO_F27_20260617_STUDENTMODE_INTENTO_REAL_BACKEND
 function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, examOverride, assignment, backend }) {
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
@@ -2181,15 +2236,46 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const answersRef = React.useRef(answers);
   const dirtyRef = React.useRef(false);
   const savingRef = React.useRef(false);
+  const saveInFlightRef = React.useRef(null);
   const sendingRef = React.useRef(false);
   const lastSavedJsonRef = React.useRef(JSON.stringify(answers || {}));
   const autoSubmitRef = React.useRef(false);
+
+  // F111 AUDIO-PRIVATE-01: solo durante un intento STARTED real. El backend
+  // devuelve MP3 original en base64 tras validar actor/registro/ACL/SHA. El
+  // navegador conserva UN blob: efímero que se revoca al salir del examen.
+  // Nunca se copia el MP3 a respuestas, DOM, localStorage o repositorio.
+  const [privateAudio, setPrivateAudio] = useState({status:'idle',url:''});
+  useEffect(() => {
+    const id = backend && backend.attemptId;
+    if (stage !== 'taking' || !id || !backend || typeof backend.onGetPrivateAudio !== 'function') return;
+    let cancelled = false, blobUrl = '';
+    setPrivateAudio({status:'loading',url:''});
+    (async () => {
+      try {
+        const r = await backend.onGetPrivateAudio(id);
+        if (cancelled) return;
+        const expected = String((exam && (exam.id||exam.exam_id))||'');
+        blobUrl = examWrittenPrivateAudioBlobUrl(r,id,expected);
+        if (cancelled) { URL.revokeObjectURL(blobUrl); blobUrl=''; return; }
+        setPrivateAudio({status:'ready',url:blobUrl});
+      } catch (_) {
+        if (!cancelled) setPrivateAudio({status:'unavailable',url:''});
+      }
+    })();
+    return () => {
+      cancelled=true;
+      if (blobUrl) { try { URL.revokeObjectURL(blobUrl); } catch (_) {} }
+    };
+  }, [stage, backend && backend.attemptId]);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { savingRef.current = saving; }, [saving]);
   useEffect(() => { sendingRef.current = sending; }, [sending]);
 
   const onAnswer = useCallback((id, v) => {
+    // Al enviar (manual o por tiempo), congelar las respuestas visibles.
+    if (sendingRef.current) return;
     setAnswers(a => {
       const next = Object.assign({}, a, { [id]: v });
       answersRef.current = next;
@@ -2216,13 +2302,23 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     savingRef.current = true;
     setSaving(true);
     setSaveMsg(source === 'auto' ? 'Guardando automáticamente…' : 'Guardando…');
+    let saveRequest = null;
     try {
-      const r = await backend.onSave(answersRef.current || {}, { source });
+      // El cuerpo del POST es la misma versión que luego confirma su ACK.
+      saveRequest = Promise.resolve().then(() => backend.onSave(JSON.parse(snapshot), { source }));
+      saveInFlightRef.current = saveRequest;
+      const r = await saveRequest;
       if (r && r.ok && r.saved !== false && !r.deferred) {
+        // La respuesta confirma exclusivamente el snapshot enviado. Si el
+        // estudiante respondió durante la solicitud, esas respuestas nuevas
+        // siguen pendientes y el próximo autoguardado debe conservarlas.
         lastSavedJsonRef.current = snapshot;
-        dirtyRef.current = false;
-        setDirty(false);
-        setSaveMsg(source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.');
+        const hasNewAnswers = JSON.stringify(answersRef.current || {}) !== snapshot;
+        dirtyRef.current = hasNewAnswers;
+        setDirty(hasNewAnswers);
+        setSaveMsg(hasNewAnswers
+          ? 'Se guardó la versión anterior; hay respuestas nuevas pendientes de guardar.'
+          : (source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.'));
       } else if (r && r.ok && (r.deferred || r.saved === false)) {
         // El servidor estaba atendiendo otros estudiantes. Conservamos el
         // indicador de cambios pendientes y el próximo ciclo volverá a intentar.
@@ -2237,6 +2333,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg('No se pudo guardar. Revise la conexión.');
       return { ok:false, error:'save_exception' };
     } finally {
+      if (saveInFlightRef.current === saveRequest) saveInFlightRef.current = null;
       savingRef.current = false;
       setSaving(false);
     }
@@ -2250,9 +2347,12 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg(auto ? 'Tiempo agotado. Enviando automáticamente…' : 'Enviando…');
       try {
         const elapsed = limitSec ? Math.min(limitSec, elapsedNow()) : elapsedNow();
-        const r = await backend.onSubmit(answersRef.current || {}, { autoSubmit:auto, timeSpentSec:elapsed });
-        if (!r || r.ok === false) {
-          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar el examen. Intentá nuevamente.', 'submit'));
+        // Evita carrera: autoguardado anterior NO puede escribir después del submit.
+        const r = await examWrittenFinalizeAfterPendingSave(saveInFlightRef.current,
+          () => answersRef.current,
+          finalAnswers => backend.onSubmit(finalAnswers, { autoSubmit:auto, timeSpentSec:elapsed }));
+        if (!r || r.ok !== true || (backend.attemptId && String(r.attempt_id || '') !== String(backend.attemptId))) {
+          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo confirmar el envío. Consultá el estado del intento antes de reintentar.', 'submit'));
           autoSubmitRef.current = false;
           return r;
         }
@@ -2438,7 +2538,9 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
       grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
     };
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending} /></div>;
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending}
+      onGetReceipt={backend && backend.onGetReceipt}
+      onGetFinalReport={backend && backend.onGetFinalReport} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -2448,8 +2550,17 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   return (
     <div className="stwrap">
       <div className="sttake">
+        {privateAudio.status==='loading' && <div role="status" data-f111-written-audio-state="loading"
+          style={{padding:'10px 16px',fontSize:12.5}}>
+          Validando acceso al audio original de este intento…
+        </div>}
+        {privateAudio.status==='unavailable' && <div role="status" data-f111-written-audio-state="unavailable"
+          style={{padding:'10px 16px',fontSize:12.5,color:'#7A1E2C'}}>
+          El MP3 privado no está disponible en este entorno; avisá al docente antes de responder Listening.
+        </div>}
         <ExamShell exam={exam} answers={answers} onAnswer={timeExpired ? undefined : onAnswer} mode={timeExpired ? 'preview' : 'student'} showKey={false}
                    shell={shell} density={density} plan={plan}
+                   privateAudioUrl={!timeExpired && privateAudio.status==='ready' ? privateAudio.url : ''}
                    meta={{ nombre: metaNombre || 'Estudiante', fecha: metaFecha, grupo: metaGrupo || 'Grupo activo', opcion, scoreLabel:`${answered} / ${all.length} resp.` }} />
       </div>
       <div className="stbar">
@@ -2523,7 +2634,69 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false, onGetReceipt, onGetFinalReport }) {
+  const [receiptBusy,setReceiptBusy] = useState(false);
+  const [receiptError,setReceiptError] = useState('');
+  const [finalBusy,setFinalBusy] = useState(false);
+  const [finalError,setFinalError] = useState('');
+  const downloadReceipt = async () => {
+    if (receiptBusy || !attemptId || typeof onGetReceipt !== 'function') return;
+    setReceiptBusy(true);setReceiptError('');
+    try {
+      const r=await onGetReceipt(attemptId);
+      if (!r || r.ok !== true || r.mime !== 'application/pdf' ||
+          String(r.attempt_id||'') !== String(attemptId) ||
+          typeof r.pdf_base64 !== 'string' || r.pdf_base64.length > 6000000)
+        throw Error('receipt_contract');
+      const binary=atob(r.pdf_base64);
+      if (binary.slice(0,4) !== '%PDF') throw Error('receipt_pdf_invalid');
+      const bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));
+      const file=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(file);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'')
+        ?r.filename:'Recibo_Examen_Escrito.pdf';
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    } catch (_) {
+      setReceiptError('No pudimos descargar el recibo. Tu entrega permanece registrada; reintentá desde tu sesión.');
+    } finally {
+      setReceiptBusy(false);
+    }
+  };
+  const downloadFinalReport = async () => {
+    if (finalBusy || !attemptId || typeof onGetFinalReport !== 'function') return;
+    setFinalBusy(true);setFinalError('');
+    try {
+      const r=await onGetFinalReport(attemptId);
+      if (!r || r.ok !== true) {
+        const pending=['informe_revision_pendiente','informe_nota_no_firme'].includes(String(r&&r.error||''));
+        setFinalError(pending
+          ? 'La nota todavía no está firme en Mis Notas. El informe aparecerá después de la revisión docente.'
+          : 'No se pudo conciliar el informe con el expediente académico. Contactá a la Academia.');
+        return;
+      }
+      if (r.mime !== 'application/pdf' ||
+          String(r.attempt_id||'') !== String(attemptId) ||
+          !/^F111-RES-[A-F0-9]{20}$/.test(String(r.report_id||'')) ||
+          typeof r.pdf_base64 !== 'string' || r.pdf_base64.length > 6000000)
+        throw Error('final_report_contract');
+      const binary=atob(r.pdf_base64);
+      if(binary.slice(0,4)!=='%PDF') throw Error('final_report_pdf_invalid');
+      const file=new Blob([Uint8Array.from(binary,ch=>ch.charCodeAt(0))],
+        {type:'application/pdf'});
+      const url=URL.createObjectURL(file);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'')
+        ?r.filename:'Informe_Examen_Escrito.pdf';
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(_){
+      setFinalError('No se pudo descargar el informe. Tu nota registrada no se modifica; reintentá desde el Campus.');
+    }finally{setFinalBusy(false);}
+  };
   return (
     <>
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
@@ -2533,7 +2706,7 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
         {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
           <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
         </div>}
-        <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
+        <div className="sent-state"><span className="sent-dot" />Entrega registrada · resultado según revisión oficial</div>
         <div className="sent-grid">
           <div><span>Examen</span><b>{exam.titulo}</b></div>
           <div><span>Opción</span><b>{opcion}</b></div>
@@ -2542,6 +2715,26 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
           {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
         </div>
         <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
+        {attemptId && typeof onGetReceipt === 'function' && <div style={{marginTop:14}}>
+          <button type="button" className="btn-primary" onClick={downloadReceipt}
+            disabled={receiptBusy} data-f111-written-receipt-download="true">
+            {receiptBusy?'Preparando recibo…':'Descargar recibo PDF de entrega'}
+          </button>
+          <small style={{display:'block',marginTop:8}}>
+            Comprobante de recepción sin calificación. El informe de nota final se publica después de la revisión.
+          </small>
+          {receiptError && <p role="alert" style={{color:'#8B1F1F',fontSize:12}}>{receiptError}</p>}
+        </div>}
+        {attemptId && typeof onGetFinalReport === 'function' && <div style={{marginTop:10}}>
+          <button type="button" className="btn-ghost" onClick={downloadFinalReport}
+            disabled={finalBusy} data-f111-written-final-report="true">
+            {finalBusy?'Consultando nota firme…':'Descargar informe académico PDF'}
+          </button>
+          <small style={{display:'block',marginTop:8}}>
+            Disponible solamente cuando el docente cerró la revisión y la nota coincide con Mis Notas.
+          </small>
+          {finalError && <p role="status" style={{color:'#7A4A00',fontSize:12}}>{finalError}</p>}
+        </div>}
       </div>
       <div className="sent-summary">
         <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>
@@ -5154,6 +5347,21 @@ function StudentLiveExamApp() {
   const heartbeatAttempt = async () => {
     return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
   };
+  const getWrittenPrivateAudio = async (id) => {
+    // Solo el intento vigente: el servidor vuelve a comprobar titularidad,
+    // tiempo, grupo, firma SHA-256 y acceso privado al archivo original.
+    if (!id || String(id) !== String(attemptId)) return {ok:false,error:'attempt_mismatch'};
+    return await examPostLive('examGetStudentWrittenPrivateAudio', { attempt_id:id });
+  };
+  const getWrittenReceipt = async (id) => {
+    // Identidad y titularidad se verifican nuevamente en Apps Script.
+    if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
+    return await examPostLive('examGetStudentWrittenReceiptPdf', { attempt_id:id });
+  };
+  const getWrittenFinalReport = async (id) => {
+    if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
+    return await examPostLive('examGetStudentWrittenFinalReportPdf', { attempt_id:id });
+  };
 
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
@@ -5181,6 +5389,9 @@ function StudentLiveExamApp() {
       onStart:startAttempt,
       onSave:saveAttempt,
       onSubmit:submitAttempt,
+      onGetReceipt:getWrittenReceipt,
+      onGetFinalReport:getWrittenFinalReport,
+      onGetPrivateAudio:getWrittenPrivateAudio,
       onHeartbeat:heartbeatAttempt,
       student:live.student || null,
       activation,
@@ -5218,6 +5429,105 @@ function TeacherPreviewLiveApp() {
       <PvScript section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
     </div>
   );
+}
+
+// F111 HISTORY-01 · Acceso histórico independiente del grupo/lección activos.
+function StudentWrittenHistoryF111() {
+  const [expanded,setExpanded]=React.useState(false);
+  const [loading,setLoading]=React.useState(false);
+  const [loaded,setLoaded]=React.useState(false);
+  const [rows,setRows]=React.useState([]);
+  const [hasMore,setHasMore]=React.useState(false);
+  const [error,setError]=React.useState('');
+  const [busy,setBusy]=React.useState('');
+  const [notice,setNotice]=React.useState('');
+  const loadHistory=async()=>{
+    setLoading(true);setError('');
+    try{
+      const r=await examPostLive('examListStudentWrittenHistory',{});
+      if(!r || r.ok!==true || r.readonly!==true || !Array.isArray(r.rows))
+        throw Error('history_contract');
+      setRows(r.rows);setHasMore(r.has_more===true);setLoaded(true);
+    }catch(_){
+      setError('No se pudo consultar el historial con tu sesión. Reintentá más tarde.');
+    }finally{setLoading(false);}
+  };
+  const openHistory=()=>{
+    if(expanded){setExpanded(false);return;}
+    setExpanded(true);
+    if(!loaded && !loading)loadHistory();
+  };
+  const download=async(row,kind)=>{
+    if(busy||!row||!row.attempt_id)return;
+    const id=String(row.attempt_id),key=id+':'+kind;
+    setBusy(key);setNotice('');
+    try{
+      const fn=kind==='receipt'?'examGetStudentWrittenReceiptPdf':'examGetStudentWrittenFinalReportPdf';
+      const r=await examPostLive(fn,{attempt_id:id});
+      if(!r || r.ok!==true){
+        const pending=['informe_revision_pendiente','informe_nota_no_firme'].includes(String(r&&r.error||''));
+        setNotice(pending?'El informe de esta entrega aún no tiene nota firme en Mis Notas.':
+          'Documento no disponible; el Campus no pudo verificarlo contra el expediente.');
+        return;
+      }
+      if(r.mime!=='application/pdf' || String(r.attempt_id||'')!==id ||
+         typeof r.pdf_base64!=='string'||r.pdf_base64.length>6000000 ||
+         (kind==='receipt' && String(r.receipt_id||'')!=='F111-ENT-'+id) ||
+         (kind==='final' && !/^F111-RES-[A-F0-9]{20}$/.test(String(r.report_id||''))))
+        throw Error('document_contract');
+      const binary=atob(r.pdf_base64);
+      if(binary.slice(0,4)!=='%PDF')throw Error('pdf_header_invalid');
+      const pdf=new Blob([Uint8Array.from(binary,c=>c.charCodeAt(0))],
+        {type:'application/pdf'});
+      const url=URL.createObjectURL(pdf),link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'') ?
+        r.filename:(kind==='receipt'?'Recibo_Escrito.pdf':'Informe_Escrito.pdf');
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(_){setNotice('No se pudo descargar el PDF. La entrega y la nota oficial no se modificaron.');}
+    finally{setBusy('');}
+  };
+  return <section data-f111-student-written-history="true" style={{
+      background:'#fff',border:'1px solid #dce4ee',borderRadius:16,padding:'16px 18px',
+      margin:'12px 0 18px',boxShadow:'0 4px 14px rgba(0,30,71,.05)'}}>
+    <button type="button" onClick={openHistory} aria-expanded={expanded}
+      style={{border:'none',background:'transparent',color:'#001E47',fontWeight:850,
+        fontSize:15,cursor:'pointer',textAlign:'left',width:'100%',padding:3}}>
+      {expanded?'▾':'▸'} Mis recibos e informes anteriores
+    </button>
+    {expanded&&<div style={{marginTop:13}}>
+      <p style={{fontSize:12,color:'#5e7186',margin:'0 0 12px'}}>
+        Consultá tus exámenes escritos entregados, incluidos grupos y niveles anteriores.
+        La nota final se descarga solo cuando esté confirmada en Mis Notas.
+      </p>
+      <button type="button" onClick={loadHistory} disabled={loading}
+        style={{padding:'7px 12px',borderRadius:8,border:'1px solid #9cb1c6',background:'#f7fafc'}}>
+        {loading?'Consultando…':'Actualizar historial'}
+      </button>
+      {error&&<p role="alert" style={{color:'#9f2525'}}>{error}</p>}
+      {loaded&&rows.length===0&&!loading&&<p>No hay escritos entregados en el historial.</p>}
+      {rows.map(row=><div key={row.attempt_id} style={{
+        marginTop:11,padding:12,borderRadius:12,border:'1px solid #e0e7ef'}}>
+        <div style={{fontWeight:800,color:'#163450'}}>
+          {row.level} · {row.exam_id}
+        </div>
+        <div style={{fontSize:12,color:'#5e7186',margin:'4px 0 9px'}}>
+          {row.group} · Entregado: {row.submitted_at} · {row.status}
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+          <button type="button" disabled={!!busy}
+            onClick={()=>download(row,'receipt')}
+            data-f111-history-receipt="true">{busy===row.attempt_id+':receipt'?'Preparando…':'Recibo PDF'}</button>
+          <button type="button" disabled={!!busy}
+            onClick={()=>download(row,'final')}
+            data-f111-history-final="true">{busy===row.attempt_id+':final'?'Verificando…':'Informe académico PDF'}</button>
+        </div>
+      </div>)}
+      {hasMore&&<p role="status">Hay más de 100 entregas: solicitá un historial ampliado a la Academia.</p>}
+      {notice&&<p role="status" style={{fontSize:12,color:'#854e16'}}>{notice}</p>}
+    </div>}
+  </section>;
 }
 
 function App() {
@@ -5284,6 +5594,7 @@ function App() {
     return (
       <div className="exapp">
         <main className="exmain">
+          <StudentWrittenHistoryF111 />
           <StudentLiveExamApp />
         </main>
       </div>
@@ -5526,4 +5837,3 @@ ReactDOM.createRoot(EXAM_ROOT_F950).render(<ExamRuntimeBoundaryF950><App /></Exa
   } catch (_) {}
   if (tries < 35) window.setTimeout(() => confirmExamMountF950(tries + 1), 100);
 })(0);
-

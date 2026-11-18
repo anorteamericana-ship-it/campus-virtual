@@ -709,83 +709,82 @@ window.F111_QZ_openSavedOral=openSavedOralForStudent;
 // Los grupos vienen exclusivamente de getDocenteGruposActuales; cada clic
 // repite validación de contexto en qzProgressGet, read-only, antes del iframe.
 // El backend en PROD sigue B1-only hasta cierre global 24/24.
+// QZ24 · Ensayo docente digital. No usa grupo ni calendario.
+// La autorización de lectura es siempre del backend; alumnos no tienen acceso.
 function createQz24RehearsalCard(groupSelector){
- const card=make('article',null,'f111-teacher-exam-card');
+ const card=make('article',null,'f111-teacher-exam-card f111-qz24-simple-card');
  card.dataset.f111Qz24Rehearsal='true';
- card.append(make('h4','Ensayo interactivo · Progress Checks'),
-   make('p','Elegí un grupo docente autorizado y uno de sus 8 quizzes. Podés rellenar las respuestas y consultar el PDF/audio desde tu sesión, pero el ensayo NO guarda, entrega ni abre evaluaciones.'));
- const state=make('p','Consultando grupos autorizados…','f111-tqr-feedback');
- state.setAttribute('role','status');
- const filter=make('div',null,'f111-teacher-exam-controls');
+ card.append(make('h4','Progress Check · Ver examen'),
+   make('p','Para B2, Intermedio I y II elegí nivel y examen. Básico I conserva su acceso histórico. Esta vista no requiere grupo ni abre evaluaciones a estudiantes.'));
+ const controls=make('div',null,'f111-qz24-quick-controls');
+ const levelLabel=make('label','Nivel');
  const levelPicker=make('select');levelPicker.dataset.f111Qz24Level='true';
- levelPicker.setAttribute('aria-label','Nivel que desea ensayar el docente');
- for(const [key,name] of LEVELS){const option=make('option',name);option.value=key;levelPicker.append(option);}
- filter.append(make('span','Nivel del quiz:'),levelPicker);
- const grid=make('div',null,'f111-teacher-exam-controls');
- grid.dataset.f111Qz24Lessons='true';
- card.append(state,filter,grid);
- let requestId=0,previousGroup='';
- function render(){
-  requestId++;
-  const group=String(groupSelector.value||'').trim().toUpperCase();
-  // El prefijo del grupo ofrece solo el valor inicial: los grupos pueden
-  // ascender de nivel sin cambiar de código. El backend decide los permisos.
-  if(group!==previousGroup){
-    previousGroup=group;
-    const preferred=group.match(/^(B1|B2|I1|I2)-/);
-    if(preferred)levelPicker.value=preferred[1];
-  }
-  const level=String(levelPicker.value||'').toUpperCase();
-  grid.replaceChildren();
-  if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)||!LEVELS.some(x=>x[0]===level)){
-   state.textContent='Seleccioná un grupo autorizado y un nivel válido.';
-   return;
-  }
-  const levelInfo=LEVELS.find(x=>x[0]===level);
-  state.textContent=(levelInfo?levelInfo[1]:level)+' · '+group+' · ensayo de docente solamente. El servidor comprobará el permiso antes de abrir.';
-  for(let i=0;i<LESSONS.length;i++){
-   const lesson=LESSONS[i][0],number=i+1;
-   const btn=make('button','PC'+String(number).padStart(2,'0')+' · U'+LESSONS[i][1],'f111-tqr-open');
-   btn.type='button';btn.dataset.f111Qz24Lesson=String(lesson);
-   btn.addEventListener('click',async()=>{
-    const wanted=String(groupSelector.value||'').trim().toUpperCase();
-    if(wanted!==group||!window.getSessionToken||!window.getSessionToken())return;
-    const serial=++requestId;
-    btn.disabled=true;state.textContent='Verificando acceso docente a '+level+' PC'+number+'…';
-    try{
-     // No confiar solo en el selector: el servidor autentica docente/grupo/nivel
-     // y valida calendario. Un error 403/PROD bloqueado NO abre el iframe.
-     const q=await postQuiz('qzProgressGet',{cod_grupo:group,nivel:level,leccion:lesson},{qz24TeacherPreview:true});
-     if(serial!==requestId||String(groupSelector.value||'').trim().toUpperCase()!==group)return;
-     if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
-        q.nivel!==level||Number(q.leccion)!==lesson||
-        q.peso_oficial!==0||q.vista_previa!==true)
-       throw Error('El servidor no confirmó un ensayo de este grupo y nivel.');
-     state.textContent='Ensayo privado autorizado para '+level+' · PC'+String(number).padStart(2,'0')+'.';
-     f111TeacherExamModal('Ensayo docente · '+level+' · PC'+String(number).padStart(2,'0'),
-       f111ExamPageUrl('modulos/quiz_progress.html',{
-         teacher_preview:1,qz24_preview:1,grupo:group,nivel:level,leccion:lesson
-       }));
-    }catch(e){
-     if(serial===requestId){
-      const reason=String(e&&e.message||e);
-      if(reason.includes('qz_prod_fuera_de_alcance'))
-       state.textContent='Ensayo privado todavía sin autorizar para este nivel. Dirección debe habilitar el acceso docente en QUIZ; los estudiantes continúan bloqueados.';
-      else if(reason.includes('no_autorizado_grupo_nivel'))
-       state.textContent='Este grupo y nivel no están autorizados para tu sesión docente. Verificá la asignación antes de intentar otro examen.';
-      else if(reason.includes('progress_check_no_programado')||reason.includes('calendario_no_disponible'))
-       state.textContent='No se pudo validar el calendario de este examen. El ensayo permanece bloqueado sin realizar cambios.';
-      else
-       state.textContent='Ensayo no habilitado: '+reason;
-     }
-    }finally{btn.disabled=false;}
-   });
-   grid.append(btn);
-  }
+ levelPicker.setAttribute('aria-label','Nivel del Progress Check digital');
+ for(const [key,name] of LEVELS){
+  if(key==='B1')continue; // El flujo B1 histórico permanece en su propio módulo
+  const option=make('option',name);option.value=key;levelPicker.append(option);
  }
+ levelLabel.append(levelPicker);
+ const pcLabel=make('label','Progress Check');
+ const pcPicker=make('select');pcPicker.dataset.f111Qz24Pc='true';
+ pcPicker.setAttribute('aria-label','Elegí el Progress Check');
+ for(let i=0;i<LESSONS.length;i++){
+  const option=make('option','PC'+String(i+1).padStart(2,'0')+' · Lección '+LESSONS[i][0]+
+   ' · Unidades '+LESSONS[i][1]);option.value=String(i+1);pcPicker.append(option);
+ }
+ pcLabel.append(pcPicker);
+ const button=make('button','Ver Progress Check','f111-tqr-open f111-qz24-main-action');
+ button.type='button';button.dataset.f111Qz24Lesson='4';
+ controls.append(levelLabel,pcLabel,button);
+ const summary=make('p',null,'f111-qz24-current');
+ const state=make('p',null,'f111-tqr-feedback');state.setAttribute('role','status');
+ const footer=make('small','Vista previa privada · 0 % de nota oficial · sin entregas ni cambios de estado.');
+ footer.className='f111-qz24-footnote';
+ card.append(controls,summary,state,footer);
+ let requestId=0;
+ function render(){
+  ++requestId;
+  const level=String(levelPicker.value||'').toUpperCase();
+  const number=Number(pcPicker.value)||1;
+  const info=LESSONS[number-1];
+  button.dataset.f111Qz24Lesson=String(info[0]);
+  summary.textContent=(LEVELS.find(x=>x[0]===level)?.[1]||level)+
+   ' · PC'+String(number).padStart(2,'0')+' · Lección '+info[0]+' · Unidades '+info[1];
+  state.textContent='Examen listo para consulta; el servidor comprueba el permiso al abrir.';
+ }
+ button.addEventListener('click',async()=>{
+  const level=String(levelPicker.value||'').toUpperCase(),number=Number(pcPicker.value);
+  const info=LESSONS[number-1];
+  if(!['B2','I1','I2'].includes(level)||!info)return;
+  if(!window.getSessionToken||!window.getSessionToken()){
+   state.textContent='Iniciá sesión como docente para consultar el contenido.';return;
+  }
+  const req=++requestId;
+  button.disabled=true;state.textContent='Verificando acceso al examen privado…';
+  try{
+   const q=await postQuiz('qzProgressGet',
+    {solo_preview_sin_grupo:true,nivel:level,pc:number},
+    {qz24TeacherPreview:true});
+   if(req!==requestId||String(levelPicker.value).toUpperCase()!==level||
+      Number(pcPicker.value)!==number)return;
+   if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||
+      q.nivel!==level||Number(q.leccion)!==info[0]||
+      q.peso_oficial!==0||q.vista_previa!==true||
+      q.requiere_grupo!==false||q.admite_envio!==false||
+      !Array.isArray(q.secciones)||!q.secciones.length)
+    throw Error('El servidor no confirmó un examen digital privado.');
+   state.textContent='Examen verificado. Consulta sin grupo ni entregas.';
+   f111TeacherExamModal('Progress Check digital · '+level+' · PC'+String(number).padStart(2,'0'),
+    f111ExamPageUrl('modulos/qz24_preview_digital.html',
+     {nivel:level,pc:number,staff_preview:1}));
+  }catch(e){
+   if(req===requestId)state.textContent='No disponible: '+String(e&&e.message||e).slice(0,150);
+  }finally{button.disabled=false;}
+ });
  levelPicker.addEventListener('change',render);
+ pcPicker.addEventListener('change',render);
  render();
- return {card,render,levelPicker};
+ return {card,render,levelPicker,pcPicker,openButton:button};
 }
 function buildTeacherExamsF111(){
  const section=make('section',null,'f111-teacher-exam-center');
@@ -910,7 +909,7 @@ function buildTeacherExamsF111(){
  lookup.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupBtn.click();}});
  select.addEventListener('change',()=>{rehearsal.render();void loadHistory();});
  refresh.addEventListener('click',loadAuthorizedGroups);
- summary.append(history,rehearsal.card);section.append(summary);
+ summary.append(rehearsal.card,history);section.append(summary);
  // R32: el profesor inspecciona el examen SIN códigos, permisos de grupo,
  // activación, entrega, PDF paralelo ni llamadas al backend.
  const quick=make('article',null,'f111-teacher-exam-card');
@@ -953,6 +952,15 @@ function installStyle(){
  '.f111-teacher-exam-card h4{font-size:15px;margin:0;color:#073B7A}',
  '.f111-teacher-exam-controls{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;align-items:center}',
  '.f111-teacher-exam-controls select{border:1px solid #D5E0EC;border-radius:8px;background:#fff;color:#143F64;padding:9px;font:12px Poppins,system-ui,sans-serif}',
+  '.f111-qz24-simple-card{background:linear-gradient(125deg,#f7fbff,#ffffff);border-color:#bdd2e5}',
+ '.f111-qz24-quick-controls{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.4fr) auto;gap:10px;align-items:end;margin-top:14px}',
+ '.f111-qz24-quick-controls label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#173d64}',
+ '.f111-qz24-quick-controls select{width:100%;min-width:0;border:1px solid #b7cde2;border-radius:9px;background:#fff;color:#173d64;padding:12px;font:600 12px Poppins,system-ui,sans-serif}',
+ '.f111-qz24-main-action{white-space:nowrap;background:#073b7a;color:#fff;border-color:#073b7a;font-size:12px;padding:12px 16px;margin:0}',
+ '.f111-qz24-main-action:disabled{opacity:.55;cursor:not-allowed}',
+ '.f111-qz24-current{font-size:12px!important;color:#1e4a71!important;margin:12px 0 7px!important;font-weight:800}',
+ '.f111-qz24-footnote{font-size:10px;color:#6d8297;line-height:1.5}',
+ '@media(max-width:650px){.f111-qz24-quick-controls{grid-template-columns:1fr}.f111-qz24-main-action{width:100%}}',
  '.f111-teacher-exam-entry{border-top:1px solid #DBE5F0;padding:12px 0}',
  '.f111-teacher-exam-entry strong{font-size:13px;color:#123E67}',
  '.f111-tqr{background:#fff;border:1px solid #D6E0EB;border-radius:14px;padding:16px;margin:2px 0;box-shadow:0 3px 12px rgba(10,55,92,.04)}',

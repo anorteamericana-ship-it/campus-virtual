@@ -31,7 +31,18 @@ assert.ok(catalog.includes("!slot.querySelector('[data-f111-teacher-exam-center]
 assert.ok(!catalog.includes('modern.append(buildTeacherExamsF111(),build())'),'ningún duplicado de catálogo en extras');
 assert.ok(view.includes('launch(lesson,groupCode)'),'una sola acción por quiz del grupo actual');
 assert.ok(!view.includes('i>=1\n                   ?<button'),'Quiz1 ya no apunta a extras');
-assert.ok(view.includes("Banco digital no habilitado para este nivel"),'B2/I1/I2 sin falsa disponibilidad');
+assert.ok(view.includes('data-f111-quiz-single-entry="true"') &&
+ view.includes('data-f111-quiz-select={String(i+1).padStart') &&
+ view.includes('data-f111-quiz-primary="preview"') &&
+ view.includes('openQuizPreviewF111(i+1)'),
+ 'pantalla principal muestra 8 selecciones y una sola acción para B2/I1/I2');
+assert.ok(view.includes("url.searchParams.set('staff_preview','1')") &&
+ view.includes("new URL('modulos/qz24_preview_digital.html'") &&
+ !view.includes("url.searchParams.set('token'"),
+ 'preview privado con lectura autorizada, sin token en URL ni envío a estudiantes');
+assert.ok(view.includes('data-f111-quiz-primary="b1"') &&
+ view.includes('launch(lesson,groupCode)'),
+ 'B1 mantiene control histórico del grupo con acción contextual');
 assert.ok(!view.includes('data-f111-lesson-quiz="B1-L4"'),'sin botón adicional de Quiz1 en el drawer');
 assert.ok(catalog.includes("window.getSessionToken"),'QUiZ exige sesión docente');
 assert.ok(catalog.includes("isQuiz&&window.F111_QZ_API_URL"),'QUIZ separado del CORE');
@@ -56,7 +67,10 @@ assert.ok(view.includes("tvUpper(activeSession?.RIEL||activeSession?.riel||'curs
 assert.ok(view.includes('todayQuiz.eligible===true'),'servidor QUIZ decide si existe acción');
 assert.ok(view.includes("if(error||activeSessionError===true)"),'error visible distinto de no elegible');
 assert.ok(view.includes("todayStatus.kind!=='oral'"),'no duplicar CTA oral en la tarjeta');
-assert.ok(view.includes("todayStatus.kind==='quiz'&&todayStatus.lesson===lesson"),'no duplicar CTA quiz activo');
+assert.ok(view.includes('data-f111-quiz-action="true"') &&
+ view.includes('quizLesson===lesson') &&
+ view.includes('setQuizLesson(lesson)'),
+ 'se elige un solo PC; otros siete no exponen siete acciones operativas');
 assert.ok(view.includes('la disponibilidad de estudiantes continúa sin verificación de lectura pura'),
  'la consulta de entregas no auto-activa el escrito ni promete disponibilidad');
 assert.ok(!view.includes("postTeacher('examGetCronogramaExamAvailability'"),

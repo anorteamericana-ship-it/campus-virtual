@@ -1,0 +1,24 @@
+name: F111 QZ24 · Preview digital sin grupo (E1)
+on:
+  pull_request:
+    paths:
+      - 'modulos/qz24_preview_digital.html'
+      - 'src/teacher_quiz_review_f111.js'
+      - 'src/f111_qz24_superadmin_preview.js'
+      - 'scripts/qa_f111_qz24_groupfree_preview_e1.mjs'
+      - '.github/workflows/f111-qz24-digital-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  groupfree-preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verificar HTML y scripts de ensayo digital sin grupo
+        run: node scripts/qa_f111_qz24_groupfree_preview_e1.mjs
+# No se despliega ni se habilitan alumnos desde este flujo.

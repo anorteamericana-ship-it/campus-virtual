@@ -1,153 +1,181 @@
-// F111 R30 · Ensayo QZ24 in the EXISTING superadmin Centro de exámenes.
-// This is an additive entry point. All authorization is server-side in @505.
-// Never calls student save/submit, activation, grading, or CORE mutation APIs.
-(function () {
+// F111 QZ24 · Una sola ruta de consulta: Nivel > Progress Check > Ver.
+// Extensión no invasiva del Centro superadmin. Sin grupo, notas ni escrituras.
+// React conserva el catálogo/ciclo histórico; aquí sólo simplificamos la interfaz.
+(function(){
  'use strict';
  const PREVIEW_API='https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec';
  const LESSONS=[4,8,13,16,21,24,28,30];
+ const UNITS=['1–2','3–4','5–6','7–8','9–10','11–12','13–14','15–16'];
  const root=document.getElementById('root');
  if(!root)return;
- let lastGroup='';
- let scheduling=false;
-
- function parentSuperadmin(){
+ let scheduled=false;
+ function superadmin(){
   try{
    const p=window.parent;
    if(!p||p===window||typeof p.getSesion!=='function')return null;
-   const session=p.getSesion()||{};
-   return String(session.rol||'').trim().toLowerCase()==='superadmin'?p:null;
-  }catch(_){return null}
+   return String((p.getSesion()||{}).rol||'').trim().toLowerCase()==='superadmin'?p:null;
+  }catch(_){return null;}
  }
  function selectedCheck(){
-  const label=root.querySelector('.d1-master .d1-pc-selected b');
-  const match=String(label&&label.textContent||'').match(/\b(B1|B2|I1|I2)\s*[·-]\s*Progress Check\s*0?([1-8])\b/i);
+  const title=root.querySelector('.d1-master .d1-pc-selected b');
+  const match=String(title&&title.textContent||'').match(/\b(B1|B2|I1|I2)\s*[·-]\s*Progress Check\s*0?([1-8])\b/i);
   if(!match)return null;
   const number=Number(match[2]);
   return {nivel:match[1].toUpperCase(),numero:number,leccion:LESSONS[number-1]};
  }
- function make(doc,tag,text){
-  const el=doc.createElement(tag);
-  if(text!==undefined&&text!==null)el.textContent=text;
-  return el;
+ function element(doc,tag,text){
+  const e=doc.createElement(tag);
+  if(text!==undefined&&text!==null)e.textContent=String(text);
+  return e;
  }
- function showPreview(parent,group,selection){
-  const doc=parent.document;
+ function installStyle(){
+  if(document.getElementById('f111-qz24-ux-style'))return;
+  const style=element(document,'style');
+  style.id='f111-qz24-ux-style';
+  style.textContent=[
+   '.d1-pc[data-f111-qz24-simple] .d1-pc-grid{display:none!important}',
+   '.d1-pc[data-f111-qz24-simple] .d1-pc-pending{display:none!important}',
+   '.f111-qz24-choice{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0}',
+   '.f111-qz24-choice label{display:grid;gap:6px;flex:1;min-width:210px;font:700 12px Arial,sans-serif;color:#173c62}',
+   '.f111-qz24-choice select{width:100%;padding:12px 14px;border:1px solid #b9cfe2;border-radius:10px;background:white;font:600 14px Arial,sans-serif;color:#163d64}',
+   '.f111-qz24-oneaction{border:0;border-radius:10px;padding:13px 18px;background:#073b7a;color:#fff;font:800 13px Arial,sans-serif;cursor:pointer}',
+   '.f111-qz24-oneaction:disabled{opacity:.52;cursor:not-allowed}',
+   '.f111-qz24-selected-description{font:600 12px Arial,sans-serif;color:#4c6882;margin:8px 0}',
+   '.f111-qz24-selected-status{font:12px Arial,sans-serif;color:#53708b;line-height:1.5;margin:8px 0 0}',
+   '.f111-qz24-selected-note{font:11px Arial,sans-serif;color:#6b7b8b;margin:7px 0 0}',
+   '@media(max-width:520px){.f111-qz24-choice{display:grid}.f111-qz24-choice label{min-width:0}.f111-qz24-oneaction{width:100%}}'
+  ].join('\n');
+  document.head.append(style);
+ }
+ function openDigital(p,selection){
+  const doc=p.document;
   if(doc.querySelector('[data-f111-qz24-superadmin-modal]'))return;
-  const backdrop=make(doc,'div');
-  backdrop.dataset.f111Qz24SuperadminModal='true';
-  backdrop.setAttribute('role','dialog');
-  backdrop.setAttribute('aria-modal','true');
-  backdrop.setAttribute('aria-label','Ensayo privado docente de Progress Check');
-  backdrop.style.cssText='position:fixed;inset:0;z-index:65000;background:rgba(3,21,44,.76);display:flex;align-items:center;justify-content:center;padding:14px';
-  const box=make(doc,'section');
-  box.style.cssText='width:min(1250px,100%);height:min(94vh,950px);background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 65px #001b3c88';
-  const bar=make(doc,'header');
-  bar.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:14px;padding:15px 20px;background:#073b7a;color:#fff;font:600 14px Poppins,Arial,sans-serif';
-  const heading=make(doc,'div','ENSAYO DOCENTE · '+selection.nivel+' · PC'+String(selection.numero).padStart(2,'0')+' · '+group);
-  const close=make(doc,'button','Cerrar');
-  close.type='button';
-  close.style.cssText='border:0;border-radius:8px;padding:10px 15px;background:#fff;color:#073b7a;font:700 12px Poppins,Arial,sans-serif;cursor:pointer';
-  bar.append(heading,close);
-  const frame=make(doc,'iframe');
-  frame.title='Cuestionario original · ensayo privado de docente';
-  frame.style.cssText='width:100%;flex:1;min-height:0;border:0;background:#f5f7fc';
-  const url=new URL('quiz_progress.html',location.href);
-  url.searchParams.set('teacher_preview','1');
-  url.searchParams.set('qz24_preview','1');
-  url.searchParams.set('grupo',group);
-  url.searchParams.set('nivel',selection.nivel);
-  url.searchParams.set('leccion',String(selection.leccion));
-  frame.src=url.href; // No token or credential in the URL.
-  function dismiss(){
-   doc.removeEventListener('keydown',esc);
-   backdrop.remove();
-  }
-  function esc(e){if(e.key==='Escape'){e.preventDefault();dismiss()}}
+  const overlay=element(doc,'div');
+  overlay.dataset.f111Qz24SuperadminModal='true';
+  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label','Progress Check digital');
+  overlay.style.cssText='position:fixed;inset:0;z-index:65000;background:rgba(3,21,44,.76);display:flex;align-items:center;justify-content:center;padding:14px';
+  const box=element(doc,'section');
+  box.style.cssText='width:min(1200px,100%);height:min(94vh,950px);background:white;border-radius:14px;overflow:hidden;display:flex;flex-direction:column';
+  const head=element(doc,'header');
+  head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#073b7a;color:white;font:700 14px Arial,sans-serif';
+  const name=element(doc,'span','Vista previa digital · '+selection.nivel+' · PC'+String(selection.numero).padStart(2,'0'));
+  const close=element(doc,'button','Cerrar');close.type='button';
+  close.style.cssText='border:0;border-radius:8px;padding:10px 14px;background:#fff;color:#073b7a;font:700 12px Arial,sans-serif;cursor:pointer';
+  head.append(name,close);box.append(head);
+  const frame=element(doc,'iframe');frame.title='Progress Check interactivo · sin grupo';
+  frame.style.cssText='width:100%;flex:1;min-height:0;border:0';
+  const url=new URL('qz24_preview_digital.html',location.href);
+  url.searchParams.set('nivel',selection.nivel);url.searchParams.set('pc',String(selection.numero));
+  url.searchParams.set('staff_preview','1');frame.src=url.href;
+  box.append(frame);overlay.append(box);
+  const previous=doc.activeElement;
+  function dismiss(){doc.removeEventListener('keydown',escape);overlay.remove();if(previous&&previous.isConnected)previous.focus();}
+  function escape(e){if(e.key==='Escape')dismiss();}
   close.addEventListener('click',dismiss);
-  backdrop.addEventListener('click',e=>{if(e.target===backdrop)dismiss()});
-  doc.addEventListener('keydown',esc);
-  box.append(bar,frame);
-  backdrop.append(box);
-  doc.body.append(backdrop);
-  close.focus();
+  overlay.addEventListener('click',e=>{if(e.target===overlay)dismiss();});
+  doc.addEventListener('keydown',escape);doc.body.append(overlay);close.focus();
  }
  function mount(){
-  const host=parentSuperadmin();
-  if(!host)return;
-  const section=root.querySelector('.d1-master .d1-pc');
-  if(!section||section.querySelector('[data-f111-qz24-superadmin-preview]'))return;
-  const card=make(document,'section');
-  card.dataset.f111Qz24SuperadminPreview='true';
-  card.style.cssText='margin-top:16px;padding:18px;border-radius:12px;border:1px solid #c8d8ec;background:#f5f9ff;color:#173c62;font:13px Poppins,Arial,sans-serif';
-  const title=make(document,'h3','Ensayo interactivo · Progress Checks');
-  title.style.cssText='margin:0 0 7px;font-size:17px;color:#073b7a';
-  const explanation=make(document,'p','Vista previa exclusiva para superadmin. Seleccioná B2, I1 o I2 y PC01–PC08 arriba. Ingresá el código real del grupo; el servidor verifica la sesión antes de mostrar PDF y audio. No guarda respuestas ni activa estudiantes.');
-  explanation.style.cssText='margin:0 0 12px;line-height:1.55';
-  const controls=make(document,'div');
-  controls.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:end';
-  const label=make(document,'label','Código de grupo');
-  label.style.cssText='display:grid;gap:5px;flex:1;min-width:210px;font-weight:700';
-  const input=make(document,'input');
-  input.type='text';
-  input.dataset.f111Qz24Group='true';
-  input.autocomplete='off';
-  input.maxLength=45;
-  input.placeholder='Ej. B2-LM69-C2-0526';
-  input.value=lastGroup;
-  input.style.cssText='border:1px solid #aebfd5;border-radius:8px;padding:10px;font:13px Poppins,Arial,sans-serif;width:100%';
-  input.addEventListener('input',()=>{lastGroup=input.value});
-  label.append(input);
-  const button=make(document,'button','Abrir ensayo docente');
-  button.type='button';
-  button.style.cssText='border:0;border-radius:9px;padding:11px 16px;background:#073b7a;color:#fff;font:700 13px Poppins,Arial,sans-serif;cursor:pointer';
-  const status=make(document,'p','Seleccioná un Progress Check de B2, I1 o I2. La apertura requiere un grupo real.');
-  status.setAttribute('role','status');
-  status.style.cssText='margin:10px 0 0;color:#4c617b;font-size:12px';
-  controls.append(label,button);
-  card.append(title,explanation,controls,status);
-  button.addEventListener('click',async()=>{
-   const hostNow=parentSuperadmin();
-   const select=selectedCheck();
-   const group=String(input.value||'').trim().toUpperCase();
-   if(!hostNow){status.textContent='Tu sesión superadmin no está disponible. Volvé a ingresar al Campus.';return}
-   if(!select){status.textContent='Primero seleccioná un Progress Check en la tabla superior.';return}
-   if(select.nivel==='B1'){status.textContent='Para Básico I usá el control histórico B1 de la versión @504; este ensayo nuevo es solo B2, I1 e I2.';return}
-   if(!/^[A-Z0-9][A-Z0-9-]{5,45}$/.test(group)){
-    status.textContent='Ingresá un código válido de grupo académico.';return
+  const owner=superadmin();if(!owner)return;
+  const host=root.querySelector('.d1-master .d1-pc');
+  const selected=host&&host.querySelector('.d1-pc-selected');
+  const legacyGrid=host&&host.querySelector('.d1-pc-grid');
+  if(!selected||!legacyGrid)return;
+  installStyle();
+  host.dataset.f111Qz24Simple='true';
+  let card=selected.querySelector('[data-f111-qz24-superadmin-preview]');
+  if(!card){
+   card=element(document,'section');
+   card.dataset.f111Qz24SuperadminPreview='true';
+   const heading=element(document,'h3','Abrir Progress Check');
+   heading.style.cssText='font:800 17px Arial,sans-serif;color:#073b7a;margin:8px 0';
+   const controls=element(document,'div');controls.className='f111-qz24-choice';
+   const label=element(document,'label','Elegí el examen');
+   const picker=element(document,'select');
+   picker.dataset.f111Qz24PcPicker='true';
+   picker.setAttribute('aria-label','Elegí el Progress Check');
+   for(let n=1;n<=8;n++){
+    const opt=element(document,'option','PC'+String(n).padStart(2,'0')+' · Lección '+LESSONS[n-1]+' · Unidades '+UNITS[n-1]);
+    opt.value=String(n);picker.append(opt);
    }
-   const token=typeof hostNow.getSessionToken==='function'?String(hostNow.getSessionToken()||''):'';
-   if(!token){status.textContent='Sesión no disponible. Cerrá sesión e ingresá nuevamente.';return}
-   button.disabled=true;
-   status.textContent='Validando grupo, nivel y acceso privado en el servidor…';
-   try{
-    const response=await fetch(PREVIEW_API+'?fn=qzProgressGet',{
-     method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-     body:JSON.stringify({fn:'qzProgressGet',token,cod_grupo:group,nivel:select.nivel,leccion:select.leccion})
-    });
-    let data=null;
-    try{data=await response.json()}catch(_){throw Error('La API devolvió una respuesta no válida.')}
-    if(!response.ok||!data||data.ok!==true)throw Error(String(data&&data.error||'ensayo_no_disponible'));
-    const expected='IC5_'+select.nivel+'_WQ'+String(select.numero).padStart(2,'0');
-    if(data.quiz_id!==expected||data.nivel!==select.nivel||Number(data.leccion)!==select.leccion||
-       data.vista_previa!==true||data.peso_oficial!==0)
-     throw Error('El servidor no confirmó un ensayo privado de este quiz.');
-    status.textContent='Acceso confirmado. Abriendo ensayo docente sin entregas ni notas.';
-    showPreview(hostNow,group,select);
-   }catch(err){
-    const reason=String(err&&err.message||'');
-    status.textContent=reason==='qz_prod_fuera_de_alcance'
-     ?'La vista previa todavía está bloqueada en Apps Script; revisá la propiedad autorizada.'
-     :reason==='no_autorizado_grupo_nivel'
-      ?'El servidor no autoriza este grupo y nivel.'
-      :'No se pudo abrir el ensayo: '+reason.slice(0,140);
-   }finally{button.disabled=false}
-  });
-  section.append(card);
+   label.append(picker);
+   const button=element(document,'button','Ver Progress Check');button.type='button';
+   button.className='f111-qz24-oneaction';
+   const description=element(document,'p');description.className='f111-qz24-selected-description';
+   const status=element(document,'p');status.className='f111-qz24-selected-status';
+   status.setAttribute('role','status');
+   const note=element(document,'p','Vista previa privada · sin grupo · sin guardar · 0 % de nota oficial.');
+   note.className='f111-qz24-selected-note';
+   controls.append(label,button);card.append(heading,controls,description,status,note);
+   selected.append(card);
+   picker.addEventListener('change',()=>{
+    const number=Number(picker.value);
+    const target=legacyGrid.querySelectorAll('.d1-eval-card')[number-1];
+    if(target)target.click();
+   });
+   button.addEventListener('click',async()=>{
+    const selection=selectedCheck(),p=superadmin();
+    if(!p||!selection){status.textContent='Iniciá sesión como superadministrador.';return;}
+    if(selection.nivel==='B1'){
+     // B1 PC01/PC02 conserve their original digital link; no second button.
+     const b1=selected.querySelector('[data-f111-digital-oneclick]');
+     if(b1&&selection.numero<=2){b1.click();return;}
+     status.textContent='Esta vista B1 todavía no está disponible desde el Centro.';return;
+    }
+    const token=typeof p.getSessionToken==='function'?String(p.getSessionToken()||''):'';
+    if(!token){status.textContent='La sesión venció. Ingresá nuevamente.';return;}
+    const key=selection.nivel+'|'+selection.numero;
+    button.disabled=true;status.textContent='Verificando el examen privado…';
+    try{
+     const response=await fetch(PREVIEW_API+'?fn=qzProgressGet',{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({fn:'qzProgressGet',token,solo_preview_sin_grupo:true,
+       nivel:selection.nivel,pc:selection.numero})});
+     const data=await response.json();
+     if(!response.ok||!data||data.ok!==true)throw Error(data&&data.error||'sin_respuesta');
+     if(data.quiz_id!=='IC5_'+selection.nivel+'_WQ'+String(selection.numero).padStart(2,'0')||
+        data.nivel!==selection.nivel||Number(data.leccion)!==selection.leccion||
+        data.vista_previa!==true||data.requiere_grupo!==false||
+        data.admite_envio!==false||data.peso_oficial!==0||
+        !Array.isArray(data.secciones)||!data.secciones.length)
+      throw Error('El servidor no confirmó el banco digital.');
+     const current=selectedCheck();
+     if(!current||current.nivel+'|'+current.numero!==key)return;
+     status.textContent='Examen verificado. Vista previa sin alumnos ni entregas.';
+     openDigital(p,selection);
+    }catch(e){
+     const live=selectedCheck();
+     if(live&&live.nivel+'|'+live.numero===key)status.textContent='No disponible: '+String(e&&e.message||e).slice(0,140);
+    }finally{button.disabled=false;}
+   });
+  }
+  const picker=card.querySelector('[data-f111-qz24-pc-picker]');
+  const button=card.querySelector('.f111-qz24-oneaction');
+  const description=card.querySelector('.f111-qz24-selected-description');
+  const status=card.querySelector('.f111-qz24-selected-status');
+  const current=selectedCheck();if(!current)return;
+  const key=current.nivel+'|'+current.numero;
+  if(card.dataset.lastSelection!==key){
+   // React puede reconstruir esta ficha; el filtro debe depender de la selección actual.
+   card.dataset.lastSelection=key;
+   picker.value=String(current.numero);
+   description.textContent='Lección '+current.leccion+' · Unidades '+UNITS[current.numero-1];
+   status.textContent=current.nivel==='B1'
+    ?(current.numero<=2?'Banco digital histórico B1: consultar sin modificar notas.':'La vista B1 de este PC todavía no está disponible aquí.')
+    :'Contenido para ensayo de personal autorizado. La disponibilidad se verifica al abrir.';
+  }
+  // Ocultar enlace heredado sin cambiar su destino, para mantener una sola acción visible.
+  const b1=selected.querySelector('[data-f111-digital-oneclick]');
+  if(b1&&b1.style.display!=='none')b1.style.display='none';
+  const disabled=current.nivel==='B1'&&(current.numero>2||!b1);
+  if(button.disabled!==disabled&&!/Verificando/.test(status.textContent))button.disabled=disabled;
+  const old=selected.querySelector('p:not(.f111-qz24-selected-description):not(.f111-qz24-selected-status):not(.f111-qz24-selected-note)');
+  if(old&&!old.hidden)old.hidden=true; // Mensaje antiguo de 'pendiente', ya desactualizado.
  }
  const observer=new MutationObserver(()=>{
-  if(scheduling)return;
-  scheduling=true;
-  queueMicrotask(()=>{scheduling=false;mount()});
+  if(scheduled)return;
+  scheduled=true;queueMicrotask(()=>{scheduled=false;mount();});
  });
  observer.observe(root,{childList:true,subtree:true});
  mount();

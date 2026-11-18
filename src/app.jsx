@@ -337,23 +337,47 @@ function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, i
       </div>}
 
       {typeof topContent==='function'?topContent(openWrittenFocus):(topContent || null)}
-      {view==='teacher'?<details data-f111-written-bank="true" ref={writtenBankRef}
-        open={teacherBankOpen} onToggle={e=>setTeacherBankOpen(e.currentTarget.open)}
-        style={{border:'1px solid #E8DFD2',borderRadius:14,background:'#FFF',padding:'12px 15px'}}>
-        <summary style={{fontSize:13,fontWeight:900,cursor:'pointer',color:'#001E47'}}>
-          Banco de escritos y controles institucionales · Opciones A/B
-        </summary>
-        <p style={{fontSize:11,color:'#6B6259'}}>
-          Modelos y controles históricos. Esta sección no habilita estudiantes ni reabre lecciones.
-        </p>
-        {teacherBankOpen&&writtenFocus&&<div role="status" style={{padding:'9px 11px',marginBottom:10,
-          background:'#F4F7FB',border:'1px solid #C9D7E6',borderRadius:9,fontSize:12,color:'#001E47'}}>
-          {writtenFocus.grupo} · {writtenFocus.nivel} · L{writtenFocus.leccion}
-          {writtenFocus.cod_estudiante?' · estudiante '+writtenFocus.cod_estudiante:''}
-          {' · consulta de entregas, sin activación automática'}
-        </div>}
-        {teacherBankOpen&&bank}
-      </details>:bank}
+      {view==='teacher'?
+        (writtenFocus&&teacherBankOpen?
+          <section ref={writtenBankRef} data-f111-written-focus-panel="true"
+            role="region" aria-label="Revisión escrita del grupo seleccionado"
+            style={{border:'1px solid #C9D7E6',borderRadius:14,background:'#FFF',
+              padding:'12px 15px',display:'grid',gap:12}}>
+            <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+              flexWrap:'wrap',gap:12,padding:'8px 4px'}}>
+              <div>
+                <div style={{fontSize:10,letterSpacing:'.12em',fontWeight:900,color:'#7A1E2C'}}>
+                  REVISIÓN DE EXÁMENES ESCRITOS · SOLO GRUPO AUTORIZADO
+                </div>
+                <h2 style={{fontSize:19,margin:'5px 0',color:'#001E47'}}>
+                  Entregas · {writtenFocus.nivel} · Lección {writtenFocus.leccion}
+                </h2>
+                <p style={{fontSize:12,color:'#514D47',margin:0}}>
+                  {writtenFocus.grupo}
+                  {writtenFocus.cod_estudiante?' · estudiante '+writtenFocus.cod_estudiante:''}
+                  {' · el servidor verifica cada entrega y sus permisos'}
+                </p>
+              </div>
+              <button type="button" className="btn btn-ghost"
+                data-f111-written-close="true"
+                onClick={()=>{setWrittenFocus(null);setTeacherBankOpen(false);}}>
+                Volver a Mis exámenes
+              </button>
+            </header>
+            {bank}
+          </section>:
+          <details data-f111-written-bank="true" ref={writtenBankRef}
+            open={teacherBankOpen} onToggle={e=>setTeacherBankOpen(e.currentTarget.open)}
+            style={{border:'1px solid #E8DFD2',borderRadius:14,background:'#FFF',padding:'12px 15px'}}>
+            <summary style={{fontSize:13,fontWeight:900,cursor:'pointer',color:'#001E47'}}>
+              Opciones avanzadas de escritos · revisión histórica
+            </summary>
+            <p style={{fontSize:11,color:'#6B6259'}}>
+              Acceso al motor institucional de escritos, sin abrir ni reprogramar exámenes de estudiantes.
+            </p>
+            {teacherBankOpen&&bank}
+          </details>):
+        bank}
     </section>
   );
 }
@@ -587,16 +611,13 @@ function WrittenSessionCardF929({ session }) {
 
 function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSessionReady=true, activeSessionError=false }) {
   const [extraOpen,setExtraOpen]=React.useState(false);
-  const s=activeState?.sesion, l=activeState?.leccion, oral=activeState?.oral;
-  const pending=pendingOral&&typeof pendingOral==='object'?pendingOral:null;
-  const lec=Number(s?.LECCION||s?.leccion||pending?.leccion||0), open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
-  const esOral=open&&(String(l?.tipo||'').toUpperCase()==='EVAL_ORAL'||[9,17,25,31].includes(lec));
+  const s=activeState?.sesion;
+  const lec=Number(s?.LECCION||s?.leccion||0);
+  const open=String(s?.ESTADO||s?.estado||'').toUpperCase()==='ABIERTA';
   const esEscrito=open&&[18,32].includes(lec);
-  const label=({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[lec]||'Examen Oral';
-  const ctx={grupo:s?.COD_GRUPO||s?.cod_grupo||pending?.grupo||'',nivel:s?.NIVEL||s?.nivel||pending?.nivel||'',leccion:lec,fecha:String(l?.fecha||s?.FECHA||pending?.fecha||'').slice(0,10)};
-  const activeExamCard=esOral?<div style={{padding:'15px 17px',border:'2px solid #2B8A57',borderRadius:14,background:'#EAF8EF',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#197044'}}>ORAL · SESIÓN ACTIVA</div><div style={{fontSize:19,fontWeight:900,color:'#145C38',marginTop:3}}>{label}</div><div style={{fontSize:12,color:'#2A5B45',marginTop:3}}>{appTeacherGroupLabelF88(ctx.grupo)} · Lección {String(lec).padStart(2,'0')} · {oral?.cerradas||0}/{oral?.total??'—'} evaluaciones cerradas</div></div><button className="btn btn-primary" type="button" style={{background:'#16834A',borderColor:'#16834A'}} onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:ctx})}>ABRIR {label.toUpperCase()}</button></div>
-  :esEscrito?<WrittenSessionCardF929 session={s}/>
-  :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
+  // EXUI-07: la tarjeta oral activa ya existe en Mis exámenes (acción de hoy).
+  // Solo se conserva el componente escrito histórico, que consulta la
+  // asignación y su modelo. No ejecutar esa consulta al renderizar el menú.
   const top=onWrittenFocus=><>
     <LazyRoute title="Mis exámenes" component="TeacherExamsWorkspaceF111"
       files={F96_LAZY.teacher_views} onNavigate={onNavigate} onWrittenFocus={onWrittenFocus}
@@ -608,7 +629,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSess
       </summary>
       <div style={{display:'grid',gap:14,marginTop:14}}>
         {extraOpen&&<>
-          {activeExamCard}
+          {esEscrito&&<WrittenSessionCardF929 session={s}/>}
           <LazyRoute title="Reposiciones R57 del docente" component="ReposicionesR57Docente"
             files={['src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C']}
             onNavigate={onNavigate}/>

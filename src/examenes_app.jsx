@@ -407,6 +407,21 @@ function StudentLiveExamApp() {
   const heartbeatAttempt = async () => {
     return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
   };
+  const getWrittenPrivateAudio = async (id) => {
+    // Solo el intento vigente: el servidor vuelve a comprobar titularidad,
+    // tiempo, grupo, firma SHA-256 y acceso privado al archivo original.
+    if (!id || String(id) !== String(attemptId)) return {ok:false,error:'attempt_mismatch'};
+    return await examPostLive('examGetStudentWrittenPrivateAudio', { attempt_id:id });
+  };
+  const getWrittenReceipt = async (id) => {
+    // Identidad y titularidad se verifican nuevamente en Apps Script.
+    if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
+    return await examPostLive('examGetStudentWrittenReceiptPdf', { attempt_id:id });
+  };
+  const getWrittenFinalReport = async (id) => {
+    if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
+    return await examPostLive('examGetStudentWrittenFinalReportPdf', { attempt_id:id });
+  };
 
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
@@ -434,6 +449,9 @@ function StudentLiveExamApp() {
       onStart:startAttempt,
       onSave:saveAttempt,
       onSubmit:submitAttempt,
+      onGetReceipt:getWrittenReceipt,
+      onGetFinalReport:getWrittenFinalReport,
+      onGetPrivateAudio:getWrittenPrivateAudio,
       onHeartbeat:heartbeatAttempt,
       student:live.student || null,
       activation,
@@ -471,6 +489,105 @@ function TeacherPreviewLiveApp() {
       <PvScript section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
     </div>
   );
+}
+
+// F111 HISTORY-01 · Acceso histórico independiente del grupo/lección activos.
+function StudentWrittenHistoryF111() {
+  const [expanded,setExpanded]=React.useState(false);
+  const [loading,setLoading]=React.useState(false);
+  const [loaded,setLoaded]=React.useState(false);
+  const [rows,setRows]=React.useState([]);
+  const [hasMore,setHasMore]=React.useState(false);
+  const [error,setError]=React.useState('');
+  const [busy,setBusy]=React.useState('');
+  const [notice,setNotice]=React.useState('');
+  const loadHistory=async()=>{
+    setLoading(true);setError('');
+    try{
+      const r=await examPostLive('examListStudentWrittenHistory',{});
+      if(!r || r.ok!==true || r.readonly!==true || !Array.isArray(r.rows))
+        throw Error('history_contract');
+      setRows(r.rows);setHasMore(r.has_more===true);setLoaded(true);
+    }catch(_){
+      setError('No se pudo consultar el historial con tu sesión. Reintentá más tarde.');
+    }finally{setLoading(false);}
+  };
+  const openHistory=()=>{
+    if(expanded){setExpanded(false);return;}
+    setExpanded(true);
+    if(!loaded && !loading)loadHistory();
+  };
+  const download=async(row,kind)=>{
+    if(busy||!row||!row.attempt_id)return;
+    const id=String(row.attempt_id),key=id+':'+kind;
+    setBusy(key);setNotice('');
+    try{
+      const fn=kind==='receipt'?'examGetStudentWrittenReceiptPdf':'examGetStudentWrittenFinalReportPdf';
+      const r=await examPostLive(fn,{attempt_id:id});
+      if(!r || r.ok!==true){
+        const pending=['informe_revision_pendiente','informe_nota_no_firme'].includes(String(r&&r.error||''));
+        setNotice(pending?'El informe de esta entrega aún no tiene nota firme en Mis Notas.':
+          'Documento no disponible; el Campus no pudo verificarlo contra el expediente.');
+        return;
+      }
+      if(r.mime!=='application/pdf' || String(r.attempt_id||'')!==id ||
+         typeof r.pdf_base64!=='string'||r.pdf_base64.length>6000000 ||
+         (kind==='receipt' && String(r.receipt_id||'')!=='F111-ENT-'+id) ||
+         (kind==='final' && !/^F111-RES-[A-F0-9]{20}$/.test(String(r.report_id||''))))
+        throw Error('document_contract');
+      const binary=atob(r.pdf_base64);
+      if(binary.slice(0,4)!=='%PDF')throw Error('pdf_header_invalid');
+      const pdf=new Blob([Uint8Array.from(binary,c=>c.charCodeAt(0))],
+        {type:'application/pdf'});
+      const url=URL.createObjectURL(pdf),link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'') ?
+        r.filename:(kind==='receipt'?'Recibo_Escrito.pdf':'Informe_Escrito.pdf');
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(_){setNotice('No se pudo descargar el PDF. La entrega y la nota oficial no se modificaron.');}
+    finally{setBusy('');}
+  };
+  return <section data-f111-student-written-history="true" style={{
+      background:'#fff',border:'1px solid #dce4ee',borderRadius:16,padding:'16px 18px',
+      margin:'12px 0 18px',boxShadow:'0 4px 14px rgba(0,30,71,.05)'}}>
+    <button type="button" onClick={openHistory} aria-expanded={expanded}
+      style={{border:'none',background:'transparent',color:'#001E47',fontWeight:850,
+        fontSize:15,cursor:'pointer',textAlign:'left',width:'100%',padding:3}}>
+      {expanded?'▾':'▸'} Mis recibos e informes anteriores
+    </button>
+    {expanded&&<div style={{marginTop:13}}>
+      <p style={{fontSize:12,color:'#5e7186',margin:'0 0 12px'}}>
+        Consultá tus exámenes escritos entregados, incluidos grupos y niveles anteriores.
+        La nota final se descarga solo cuando esté confirmada en Mis Notas.
+      </p>
+      <button type="button" onClick={loadHistory} disabled={loading}
+        style={{padding:'7px 12px',borderRadius:8,border:'1px solid #9cb1c6',background:'#f7fafc'}}>
+        {loading?'Consultando…':'Actualizar historial'}
+      </button>
+      {error&&<p role="alert" style={{color:'#9f2525'}}>{error}</p>}
+      {loaded&&rows.length===0&&!loading&&<p>No hay escritos entregados en el historial.</p>}
+      {rows.map(row=><div key={row.attempt_id} style={{
+        marginTop:11,padding:12,borderRadius:12,border:'1px solid #e0e7ef'}}>
+        <div style={{fontWeight:800,color:'#163450'}}>
+          {row.level} · {row.exam_id}
+        </div>
+        <div style={{fontSize:12,color:'#5e7186',margin:'4px 0 9px'}}>
+          {row.group} · Entregado: {row.submitted_at} · {row.status}
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+          <button type="button" disabled={!!busy}
+            onClick={()=>download(row,'receipt')}
+            data-f111-history-receipt="true">{busy===row.attempt_id+':receipt'?'Preparando…':'Recibo PDF'}</button>
+          <button type="button" disabled={!!busy}
+            onClick={()=>download(row,'final')}
+            data-f111-history-final="true">{busy===row.attempt_id+':final'?'Verificando…':'Informe académico PDF'}</button>
+        </div>
+      </div>)}
+      {hasMore&&<p role="status">Hay más de 100 entregas: solicitá un historial ampliado a la Academia.</p>}
+      {notice&&<p role="status" style={{fontSize:12,color:'#854e16'}}>{notice}</p>}
+    </div>}
+  </section>;
 }
 
 function App() {
@@ -537,6 +654,7 @@ function App() {
     return (
       <div className="exapp">
         <main className="exmain">
+          <StudentWrittenHistoryF111 />
           <StudentLiveExamApp />
         </main>
       </div>

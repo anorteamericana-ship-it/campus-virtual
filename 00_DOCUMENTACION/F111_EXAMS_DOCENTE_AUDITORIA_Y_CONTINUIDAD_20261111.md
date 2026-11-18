@@ -1,4 +1,76 @@
 # F111 — Exámenes Docente: auditoría canónica, simplificación y continuidad
+
+
+<!-- F111_ORDEN_CONTINUIDAD_PERMANENTE_20261117 -->
+## ORDEN OPERATIVA PERMANENTE · F111 — 17-nov-2026 (prioridad sobre cortes históricos)
+
+**Mandato explícito de Dirección:** el trabajo del Campus debe continuar siempre desde la **última evidencia comprobable**, no desde una reconstrucción de contexto. Este documento sigue siendo el inventario operativo **de Exámenes Docente**; el índice maestro de TODO el Campus es [F111 issue #499](https://github.com/anorteamericana-ship-it/campus-virtual/issues/499). No crear documentos competidores. Cada cambio debe actualizar la fuente canónica del área, el índice #499 y el PR afectado, con enlace al SHA y al CI. Las notas históricas que siguen debajo no se borran ni se convierten en estado actual.
+
+### Antes de iniciar cualquier pasada: REGLAS OBLIGATORIAS DE COMUNICACIÓN
+1. **Abrir con un reporte claro**: (a) qué se verificó realmente, (b) qué ya está implementado, (c) qué sigue pendiente, (d) número de pasos restantes y porcentaje con denominador, (e) bloqueos/riesgos, (f) **QUÉ HAGO AHORA**, (g) **QUÉ ACCIÓN EXACTA NECESITO DE DIRECCIÓN** y si **NO NECESITO NADA**, decirlo explícitamente.
+2. **Cerrar cada pasada** con: archivos/PR/commits/cambios; E0 código / E1 sintético / E2 autenticado / E3 publicado / E4 escritura aislada discriminados; resultados PASS/FAIL/BLOQUEADO con enlace; impacto/no impacto en Sheets, Drive, notas, asistencia y estudiantes; siguiente operación concreta y su criterio de aceptación.
+3. Nunca expresar un porcentaje sin fracción y universo fijo. No subir F111 por sumar commits o cerrar E1. Separar implantación visual, transcripción de bancos, certificación funcional por evaluación y despliegue LIVE.
+4. Frente a conflictos de documentos, reconciliar **fecha de evento, SHA de código, commit y fuente canónica**; señalar contradicciones, no fusionar cifras incompatible ni marcar PASS por intuición. Ningún control FAIL puede borrarse o relajarse para mejorar métricas.
+5. Mantener una sola rama PR para frontend (#778) y backend (#145) donde corresponda; consultar último HEAD antes de editar por automatizaciones concurrentes; no duplicar trabajos, no rehacer QA aprobada, no tocar CORE/QUIZ vivo ni promover cambios sin autorización y rollback probado.
+6. **No dar por terminada una tarea por tener interfaz/código listo.** Señalar explícitamente último paso probado y primera prueba E2 faltante. Las acciones de Dirección se piden cuando exista dependencia concreta: credenciales no se solicitan en chat; nunca compartir token/contraseña.
+7. **Cuando el grupo 0826 haga un escrito real, es P0 operativo**: no permitir que su primera entrega sea el test E2 de una ruta que solo pasó E1. Preparar antes un ensayo aislado con cuentas/pruebas autorizadas, evidencia, rollback y decisión formal de promoción.
+
+### Inventario con denominadores NO intercambiables (corte de fuentes a 17-nov)
+| Universo | Fuente/estado verificable | Qué NO significa |
+| --- | --- | --- |
+| Plan maestro **F111 35 hitos** | **16/35 = 45,7%**, faltan **19/35 = 54,3%**; **último corte formal histórico NO recertificado** a esta fecha | No es «solo 45,7% del Campus funciona» ni el porcentaje real de líneas de código |
+| Cola de #499 | **10 frentes operativos** aún requieren revisión/cierre dependiente; número de frentes, NO de commits | No son 10 clics ni 10 exámenes |
+| Catálogo de 56 de la línea de trabajo | 16 orales (4 niveles × L09/L17/L25/L31) + 16 **variantes** escritas (4 × L18/L32 × A/B, 8 lecciones escritas) + 24 QZ B2/I1/I2. Los **8 PC B1** se llevan aparte; todo el currículo 4×8 tiene 32 PC | No confundir 56 con todos los PC B1 incluidos |
+| Interfaz docente | 6/6 tarjetas oral/escrito con CTA único y opciones de modelo A/B; implementación visual | No es E2 ni 6 exámenes publicados |
+| Documentos escritos | Recibo sin nota y PDF de informe tras nota firme: **1/3 familias** por tipo; historial de escrito y archivo bajo bandera OFF en PR #778/#145 | No es PDF GAS real verificado, ni archivo firmado permanente ni orales/PC conectados |
+| QZ24 | 24/24 bancos **transcritos**; revisión de contenido real 22/24 por dos discrepancias I1 PC02/PC04; 312/360 controles E1 históricos; **0/24 certificados E2 para estudiante** | Ni 86,7% de examen funcional ni 24 listos para abrir |
+| Oral y R57 | Orales reales existen y requieren conciliación de borradores, notas cero y PDF; R57 27/48 en corte histórico | No borrar 0 oficiales ni afirmar 16 orales E2 por existir muestras |
+
+**Regla porcentual:** cualquier estimación de cierre general basada en 16/35 debe llamarse «**aceptación histórica**». El porcentaje ACTUAL del plan maestro solo se modifica tras recorrer y recertificar nominalmente los 35 criterios; si no hay tal lectura, reportar «actual no certificado» en vez de inventar 70–90%.
+
+### PDFs — decisión técnica recomendada, sin atribuirla como autorización definitiva
+**Tres capas diferentes, sin copiar cuestionarios Cambridge al PDF público:**
+- **1 · Recibo de entrega del estudiante**: PDF sin nota, clave ni respuestas; referencia de intento, grupo, nivel, opción A/B, fecha y recepción. **CÓDIGO escrito existe en PRs; no LIVE ni PDF auténtico GAS E2.**
+- **2 · Informe académico individual del estudiante**: PDF de **resultado** (nota sobre 100, puntos oficiales /5 INA o /15 SIN INA, fechas, opción, docente, retroalimentación, referencia). Disponible SOLO si REVIEWED + revisión CLOSED/LOCKED=SI/PUSHED_TO_NOTAS=SI + PUSHED_AT y e1/e2 ESTATUS conciliado; acepta cero legítimo. **Código escrito existe; no LIVE ni firma digital certificada**. **No imprime cuestionario completo ni respuestas.**
+- **3 · Anexo probatorio interno propuesto, AÚN NO IMPLEMENTADO**: identificadores de preguntas, respuesta exacta del alumno, corrección por apartado y revisión docente, ligados al intento y a la versión de banco; confidencial para auditoría, no enlaces públicos ni claves. Evaluar el formulario íntegro SOLO con permiso y resguardo de derechos/editorial Cambridge. El banco original sigue aparte. No decir que ya hay este tercer PDF.
+- **Archivo:** bajo demanda, privado en expediente F89, condición `F111_DOC_ARCHIVE_ENABLED=YES` **OFF por defecto**, con E2 Drive y políticas de inmutabilidad/versionado todavía pendientes; si el alumno cambia de nivel puede consultar metadatos del escrito histórico en desarrollo, no afirmar producción.
+
+### ANTES del primer escrito real del grupo 0826 — puerta P0 de ejecución
+1. Verificar grupo real, lección **18 o 32**, modalidad **GRUPOS.PROGRAMA** (INA 5% / sin INA 15%, sin inferir de beca/CONAPE), banco/variante A/B oficial y quién asigna la opción; **no ofrecer B a elección del alumno**.
+2. Ensayo **E2 autenticado controlado** con estudiante de prueba autorizado: activación, cuestionario íntegro, audio si corresponde, guardado concurrente, límite de tiempo, desconexión/reingreso, confirmación única, readback del intento y aislamiento de otro alumno.
+3. Docente real autorizado: bandeja contextual, revisión, feedback, CLOSE/LOCK, PUSHED_TO_NOTAS, conciliación exacta ESTATUS e1/e2 incluida nota **0** y conflictos/revisión duplicada.
+4. Descargar **recibo e informe** desde sesión estudiante, probar PDF GAS real, seguridad/identidad y grupo anterior; archivo Drive privado solo tras aprobación para el flag; preservar reporte original si se rectifica nota posteriormente.
+5. QA regresión INA/SIN_INA, móvil, roles, copias/hashes y rollback; mostrar a Dirección paquete de cambios y pedir **autorización EXPLÍCITA de publicación/cambio de flag y piloto**. Un PASS E1 no habilita por sí solo a la generación 0826.
+
+**Qué hace Dirección hoy:** **nada por defecto**; no requiere ingresar tokens ni publicar. Se solicitará (a) fecha/hora de lección escrita y grupo exacto cuando se confirme, (b) decisión/permiso concreto antes de E2 que escriba o active intentos y (c) autorización expresa antes de publicar/encender flag/piloto. No pedir el mismo permiso repetidamente dentro de un alcance autorizado. Hasta ese gate, trabajo solo en desarrollo.
+
+### Próximo bloque técnico, sin repetir el anterior
+- **PR frontend #778**: commit HISTORY-01 `0a25ba7`, panel de documentos históricos escrito; CI E1 de circuito y frontend PASS. **PR backend #145**: commit HISTORY-01 `3928a75`, consulta histórica y archivo privado condicionado; E1 backend PASS. Ambos **DRAFT, no merge ni LIVE** a este corte.
+- **Primera operación inmediata**: preparar checklist/fixtures y preflight de uso escrito real 0826, luego E2 de extremo a extremo **SIN usar alumnos reales**. Revalidar HEAD y matriz exacta antes de nuevas ediciones. Después pasar a archivo permanente y a PDF orales/PC sin crear tres motores.
+- **Bloqueos que permanecen abiertos**: 2 gates R57 selective / D1 exact SHA antiguos (no disimular); 2 discrepancias QZ I1 PC02/PC04; claves originales y corrección real de QZ, 0/24 E2; archivo Drive escrito no habilitado; informe oral/PC no desarrollado.
+- **Continuidad obligatoria para todo nuevo chat:** abrir #499, leer primer bloque de ESTE documento y auditoría HISTORY-01 backend; leer HEAD PR #778/#145 y últimos jobs CI; operar desde primer pendiente, no abrir una «nueva estrategia» ni comenzar desde cero.
+<!-- /F111_ORDEN_CONTINUIDAD_PERMANENTE_20261117 -->
+
+<!-- F111_0826_ESCRITO_PREFLIGHT_E2_20261117 -->
+### PRE-FLIGHT 0826 · Corte efectivo 17-nov-2026 — continuidad obligatoria
+- **NUEVA PRIMERA FUENTE PARA EL ESCRITO:** [Preflight completo y matriz E2 0/20](https://github.com/anorteamericana-ship-it/campus_backend/blob/feat/f111-qz24-implementation/auditorias/F111_0826_ESCRITO_PREFLIGHT_E2_CONTROLADA_20261117.md), **backend PR #145**. Releer primero ese documento antes de repetir consultas de hojas o tests.
+- **Readback operativo real SOLO LECTURA:** grupo B1-KJ18-C3-0826, programa **INA** (APOLLO GRUPOS filas 46–49), horario KJ 18–21; escrito B1 **L18 14/12/2026 LUN** reprogramado según CALENDARIO_LECCIONES fila 2819; B1 L32 **04/02/2027** coincide con B2 L01 mismo día — alerta P1 planificación. EXAM_ACTIVATIONS grupo 0826 **0**; EXAM_CONFIG global STUDENT_EXAMS_ENABLED=YES, EXAM_PUSH_TO_NOTAS_ENABLED=YES, EXAM_DUAL_ACTIVE_MODE_TEMP=YES (no mutar). Dos vías del runtime exigen sesión docente; flag global activo NO implica activación 0826.
+- **Banco B1 L18 A y B confirmado en backend (E0 estructural):** 11 apartados/50 puntos por opción, variantes distintas, 2 apartados Listening y 5 para revisión humana, fuente ponderaciones con INA 5 / sin INA 15. **No cotejado con PDF original ni audio de navegador.**
+- **Preflight ejecutable E1:** tests/qa_f111_0826_written_preflight_e1.mjs, **9/9 PASS**, CI backend [44201375503](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/44201375503) SUCCESS. Backend E1 recibo, final e historial CI SUCCESS; frontend save-race/receipt/history E1 local PASS. **0/20 E2 auténticas** y sin entorno de staging completamente aislado demostrado. No registrar certificación integral ni dar GO.
+- **Próxima ejecución exacta:** (1) auditar original A/B + Listening; (2) demostrar aislamiento GAS+Sheets+Drive sin conectar a PROD; (3) preparar identidades QA y ejecutar matriz E2-01→20 **solo tras permiso para escrituras aisladas**; (4) presentar aceptación/rollback y pedir publicación explícita. **Acción requerida de Dirección AHORA: NINGUNA**; se señalará decisión de fecha L32/B2 L1 antes de febrero. **0 cambios de estudiantes/notas/Drive/fechas, 0 deploy y 0 merges**.
+<!-- /F111_0826_ESCRITO_PREFLIGHT_E2_20261117 -->
+
+<!-- F111_0826_AUDIO_P0_R3_20261117 -->
+### F111 0826 R3 — Hallazgo real Cambridge y bloqueo B en DESARROLLO
+- Se leyeron originales privados `IC5_Intro_T1to8A/B.pdf`, claves y scripts oficiales (11 apartados/50 puntos), así como MP3 institucionales **A 1.841.750 bytes / 152,859 s** y **B 1.789.449 bytes / 148,581 s**, 2/2 decodificación real PASS. Los MP3 no se subieron a GitHub ni se publicaron. Texto del banco coincidente por extracción A 46/63 y B 45/60 fragmentos; restantes requieren cotejo visual y **no representan un porcentaje de digitalización**.
+- **P0 transversal:** el generador `src/examenes_data.jsx` usa VIDEO_MAP del **apartado B** para los apartados A y B de la **versión B**; afecta **8/8 escritos B**. YouTube oEmbed HTTP válido NO certifica sonido correcto. Fuente B MP3 privada existe; guion B marca Track11 mientras archivo dice Track10 (A script Track10/archivo Track09): conciliar al escuchar, no reinterpretar sin verificar.
+- **Corrección acotada en PR frontend #778** commit `96d5cdc`: `src/examenes_render.jsx` y bundle dejan de montar el video cruzado en opción B y muestran alerta. [CI F111 Written B Audio Fail-Closed E1](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/44206753250) PASS. **Backend PR #145** commit `bcf52e8` evita iniciar intentos NUEVOS B; conserva STARTED históricos, 8/8 B negados + 8/8 recuperaciones + 8/8 A funcionando en pruebas VM, [CI backend B](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/44206779193) PASS. **Sin deploy LIVE.**
+- **Guard de SHA D1 NO cerrado:** [QA Admin Safe Errors](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/44206753256) FAIL porque hash protegido EXUI-05C no se ha reconciliado; no cambiarle SHA a ciegas ni considerar el PR listo para merge. Otros FAIL antiguos R57 mantienen su estado. E2 auténtica permanece **0/20**, staging R57 separado pero **0/11 funciones escritas**, NO GO.
+- **Fuente técnica canónica de detalle y próximos pasos:** [Auditoría 0826 actualizada](https://github.com/anorteamericana-ship-it/campus_backend/blob/feat/f111-qz24-implementation/auditorias/F111_0826_ESCRITO_PREFLIGHT_E2_CONTROLADA_20261117.md). **Próximo bloque:** construir lector de MP3 privado y auditar fidelidad audible en QA, configurar entorno QA escrito aislado y E2-01, conciliar guard D1 bajo su procedimiento, correr E2 01–20 y pedir autorización de piloto. **Acción requerida de Dirección ahora: NINGUNA.**
+<!-- /F111_0826_AUDIO_P0_R3_20261117 -->
+
+
+
 Corte 11 de noviembre de 2026, hora Costa Rica. Dueño del seguimiento: GitHub issue anorteamericana-ship-it/campus-virtual#499. ESTE ARCHIVO ES EL ÚNICO INVENTARIO OPERATIVO DEL REDISEÑO; no duplicar planes.
 Evidencia: captura real del docente Diego, Campus /campus-virtual/campus.html (grupo B1-KJ18-C3-0826, martes/jueves 9 pm, padrón visual 15, programa INA); código frontend main SHA 9e0242d8ffb5b313bdc11df78cf2d887fdfa66b3; CORE Apps Script estable @499 confirmado por captura de la consola; QUIZ @477 según último readback técnico previo (número NO visible en la captura CORE). No hay prueba funcional autenticada con clics mutantes en esta auditoría.
 
@@ -145,3 +217,58 @@ FIN DEL DOCUMENTO CANÓNICO F111 EXAMS DOCENTE.
 **Casos E1 previstos:** grupo no asignado, identidad de expediente ambigua, estudiante sin historial, mensaje de origen ajeno, grupo/estudiante/lección no coincidentes, resultados tardíos, cero notas oficiales escrito en consulta, sin auto-activación. Se incluye versión explícita del paquete de escritos y cachés de navegación. **La matriz no aumenta sin E2:** F111 16/35=45,7%, R57 27/48=56,3%, B6 3/4=75%, R57 Fase1 4/4=100%, EXUI aceptación 1/5=20%. 0526/0626 siguen SIN INA; escrito INA 5% / sin INA 15%, PC 0%.
 
 **Límites pendientes deliberados:** ficha F91 es una consulta read-only del estado, no autoriza anular/reescribir ni descargar PDF F91 si no existe endpoint de permiso; escritos muestran solamente la cola de entregas que requieren acción, no la totalidad del historial de intentos. Los controles especiales R57/F91 de backend se conservan en Herramientas. Una prueba real Diego/Keylor y estudiante, escritorio y móvil, todavía hace falta para E2; no declarar cerrada EXUI-05C ni 05D/05E antes de esa prueba.
+
+
+---
+
+## ADENDA DE INVENTARIO VISUAL Y SALIDAS PDF · 16-nov-2026
+
+**Alcance:** revisión de referencia de diseño aportada por usuario: `1 · Teacher · Exams-html(2).zip` (archivos `Main.dc.html`, `README.md` y runtime). El README declara que el prototipo es un **mockup visual** con datos de muestra; no es un sistema operativo ni evidencia de API, cifras académicas o PDF. No guardar ni copiar estudiantes/estados ficticios como si fueran reales.
+
+### Decisión de interfaz (no crear un tercer centro)
+La pantalla principal ya es `TeacherExamsWorkspaceF111` en `src/teacher_views.jsx`: agenda de grupos, nivel vigente, tarjetas de 4 orales, 2 escritos y 8 quizzes, roster y autorizaciones. Esa es la ruta a simplificar, **NO** la sección secundaria `buildTeacherExamsF111` ni un nuevo catálogo global.
+
+Se mantiene el diseño académico de Claude y sus indicadores de progreso, con esta jerarquía:
+1. **Grupo y nivel** (una sola selección desde Mis grupos).
+2. **Tres secciones legibles:** Orales (4), Escritos (2) y Progress Check (8); estado proveniente del backend y conteo comprobado (no cifras simuladas).
+3. **Una acción principal según estado**: Ver examen (modo consulta, sin grupo extra); Revisar entregas; Continuar borrador; Descargar informe, únicamente cuando el backend confirma que existe y pertenece a ese estudiante.
+4. **Opciones secundarias contextuales (···)**: Ver modelo/banco; Opción B o reposición autorizada; Historial; Clave privada (personal autorizado); Ver PDF final (si existe). Nunca mostrar activar, guardar notas ni descargar PDF de otro estudiante como una alternativa ordinaria.
+5. **Ficha del estudiante** contextual, sin pedir nuevamente grupo/curso/examen. Los controles R57/F91 históricos permanecen en su motor, sin duplicarse en listas visuales.
+
+El PR #778 simplifica **la vista secundaria docente y el Centro superadmin**; no debe declararse como solución final de la pantalla docente principal hasta integrar allí el recorrido anterior. No fusionar/publicar a ciegas.
+
+### Catálogo y avance comprobados por fuente
+
+| Familia | Cobertura de fuente/estructura | Estado funcional y brecha |
+|---|---|---|
+| Escritos | **16/16 variantes con contenido (100%)**: 4 niveles × Escrito 1 L18/Unidades 1–8 y Escrito 2 L32/Unidades 9–16 × opciones A/B. `src/examenes_data.jsx`. | StudentMode incluye inicio, autoguardado, envío y confirmación; TeacherWrittenBackendReviewF940 incluye revisión, comentarios, cierre y paso a Mis Notas; no se certificó aquí el recorrido E2 real completo por las 16 variantes. PDF docente R57 solo para reposición escrita autorizada, no PDF universal del estudiante. |
+| Orales | **16/16 hitos**: L9, L17, L25, L31 × 4 niveles. **64/64 unidades con banco transcrito/local**: B1 80 preguntas (QB), B2 146, I1 127, I2 82 (`oral_bancos_ic5.js`); **435** formulaciones en total. | B1 emplea QB histórico; B2 exige banco aprobado desde el backend; I1/I2 presentan fuentes transcritas para selección docente pero no cuentan con certificación del banco aprobado en la ruta oficial. `oralSaveDraft`, `oralCloseEvaluacion`, `oralGeneratePdf` y readback/backup existen en el módulo docente; no equivale a PDF entregado al estudiante. |
+| Quizzes | **32/32 entradas** en backend: B1 PC01–08 + B2/I1/I2 PC01–08. **24/24 bancos de los niveles nuevos transcritos, 592 controles**, 24 audios por metadatos, PR backend #145. | 312/360 controles del gate (86,7 %), 22/24 sin anomalía editorial, 2 bloqueados (I1 PC02/PC04); **0/24 certificados extremo a extremo**, claves reales/audio navegador/entrega y revisión sin certificar; PR #778 frontend no LIVE. B1 PC01 tiene 13 expedientes REVISADO (1 de ellos sin campo E1b); PC02 tiene vista digital en frontend. No asumir 8/8 B1 E2 certificado. |
+| PDF final para estudiante | **0 de 3 familias con entrega estudiantil de PDF integral demostrada en esta auditoría** (no equivale a decir que ningún PDF existe). | PDF oral actual se genera y descarga en módulo docente; escrito R57 genera/descarga PDF de reposición en contexto docente; Progress Check `qzProgressPaper` entrega **el PDF del cuestionario**, no un comprobante o informe final. El estudiante recibe confirmación o ve Mis Notas, pero no se verificó endpoint+botón+autorización+prueba E2 de PDF final por evaluación. |
+
+**Porcentaje metodológico:** 100 % contenido escrito y 100 % unidades/preguntas orales *disponibles como fuente*; no convertir esto en 100 % académico publicado. QZ24 estructural 24/24, cierre íntegro 0/24. La disponibilidad del **informe PDF estudiantil** se reporta como **sin certificación**, no como porcentaje inventado de éxito.
+
+### Diseño del expediente PDF que falta validar/implantar
+- **Después de Entregar**: comprobante de recepción: estudiante, nivel, lección, intento y fecha; sin respuestas correctas ni nota pendiente.
+- **Después de Revisar y cerrar**: **Informe de evaluación PDF** con nombre/código del estudiante, grupo y curso, fecha, examen y opción A/B, resultado obtenido, ponderación CON INA/SIN INA (o 0 % diagnóstico del quiz), retroalimentación individual y código verificable; entrega únicamente al mismo estudiante autenticado.
+- **Cadena de aceptación** por familia: banco/clave → preview docente → apertura autorizada → intento/guardado → entrega/readback → corrección/revisión → resultado visible en Mis Notas → PDF generado/archivado → recuperación del propio estudiante. Probar reposición, nota modificada, reingreso, duplicados y falta de conexión. No exponer soluciones Cambridge en el PDF estudiantil por defecto.
+
+**Fuentes canónicas de corroboración:** `src/examenes_data.jsx`, `src/examenes_modes.jsx`, `src/teacher_views.jsx`, `modulos/examen_oral.html`, `modulos/oral_bancos_ic5.js`, `modulos/quiz_progress.html`, backend `auditorias/F111_QZ24_ESTADO_CANONICO_20261116.md`. Esta adenda no modifica producción, calificaciones, disponibilidad ni alumnos.
+
+
+<!-- F111_0826_AUDIO_PRIVATE_AND_STAGING_R5_20261117 -->
+### Corte R4–R5 F111 · Audio original privado + E2-01 preparado, NO LIVE
+- **Backend PR #145**: endpoint `examGetStudentWrittenPrivateAudio` protegido `student`, con intento STARTED propio, grupo/activación, reloj servidor, Script ID/Spreadsheet ID correctos, MP3 privado en carpeta verificada, MIME/tamaño/firma/SHA256. ScriptProperties por **proyecto** Apps Script, OFF por defecto. **Sin IDs ni claves en GitHub.** OFF evita toda lectura EXAM_ATTEMPTS. Tests VM PASS locales, 0 escritura externa.
+- **Frontend PR #778**: `047bc9b` implementa MP3 en blob local efímero con revocación al salir; un único reproductor para las dos secciones Listening. [CI propia SUCCESS](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/44224282815); [guard B SUCCESS](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/44224282658). Bundle de seis fuentes, sincronizador preserva CSS/appcss/data. Ninguna versión B nueva se habilita mientras no certifiquemos su MP3 por intento.
+- **QA de aislamiento**: `qa/f111_0826_written/01_F111_Written_QA_Only_Attestor.js` solamente para proyecto GAS QA NUEVO; verifica Script ID ≠ CORE, hoja/Drive ≠ producción, marcador, privacidad y **ascendencia de carpeta no contenida en Drive PROD**. **11 denegaciones + un caso positivo E1**, cero escrituras, pero devuelve siempre `e2_01_certified:false` y `eligible_for_mutations:false`. **No se creó entorno QA real**; E2 sigue **0/20**.
+- **CI backend BLOQUEADA**: runs recientes de PR #145 reportan FAIL al arrancar, sin steps/logs, incluso suites sin cambios. Diagnosticar capa de runner/cuenta GitHub sin inferir causa exacta ni desactivar los checks; pruebas locales PASS no sustituyen CI. Guards frontend D1 SHA y R57 selectivo siguen FAIL históricos.
+- **Fuente canónica:** [Auditoría 0826, R4–R5](https://github.com/anorteamericana-ship-it/campus_backend/blob/feat/f111-qz24-implementation/auditorias/F111_0826_ESCRITO_PREFLIGHT_E2_CONTROLADA_20261117.md). **Próximo hito exacto E2-01** requiere autorización explícita de Dirección para crear GAS QA + hoja QA + carpeta Drive QA, con identidades ficticias, lectura del attestor y 11 endpoints aislados. Solo entonces 20 E2 y autorización aparte de publicación. Ningún merge, deployment LIVE, modificación de notas, estudiantes, pagos o Drive PROD. F111 institucional 16/35 histórica no recertificada.
+<!-- /F111_0826_AUDIO_PRIVATE_AND_STAGING_R5_20261117 -->
+
+
+<!-- F111_0826_CI_BILLING_CAUSE_R6_20261117 -->
+### F111 0826 R6 · Bloqueo de CI backend ACTUALIZADO
+- `gh run view 44224920749 -R anorteamericana-ship-it/campus_backend --verbose` confirmó anotación de GitHub: `The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings`. Por lo tanto los FAIL de backend nacen de **Billing/spending limit**, antes de iniciar tests; NO es fallo de contrato E1. [Evidencia de job](https://github.com/anorteamericana-ship-it/campus_backend/actions/runs/44224920749).
+- **Dos acciones concretas de Dirección, independientes:** (1) revisar GitHub Settings → Billing & plans y resolver pago/límite Actions; (2) cuando se autorice E2-01, aprobar creación de GAS QA nuevo + Sheet QA ficticia + carpeta Drive QA privada, sin LIVE. El consentimiento de QA no permite publicación.
+- Hasta regularizar: CI backend **NO CERTIFICADA** a pesar de pruebas locales PASS; frontend CI [audio privado MP3](https://github.com/anorteamericana-ship-it/campus-virtual/actions/runs/44224282815) PASS. E2 0/20, F111 macro 16/35 histórico. Fuente técnica ampliada: [Auditoría 0826 R6](https://github.com/anorteamericana-ship-it/campus_backend/blob/feat/f111-qz24-implementation/auditorias/F111_0826_ESCRITO_PREFLIGHT_E2_CONTROLADA_20261117.md).
+<!-- /F111_0826_CI_BILLING_CAUSE_R6_20261117 -->

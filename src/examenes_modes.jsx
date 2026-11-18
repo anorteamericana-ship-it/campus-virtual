@@ -92,6 +92,37 @@ function examStudentSafeUserError(raw, fallback, context) {
   return fallback;
 }
 
+// WRITTEN-FINALIZE-02: ninguna escritura de borrador puede quedar detrás del
+// envío final. El envío siempre transporta una copia de TODAS las respuestas.
+async function examWrittenFinalizeAfterPendingSave(pendingSave, readAnswers, submit) {
+  if (pendingSave) {
+    try { await pendingSave; }
+    catch (_) { /* Un borrador fallido no invalida el envío de respuestas completas. */ }
+  }
+  const finalAnswers = JSON.parse(JSON.stringify(readAnswers() || {}));
+  return submit(finalAnswers);
+}
+
+// F111 AUDIO-PRIVATE-01 · decodificación estricta de un audio ORIGINAL
+// recibido para el intento/versión autenticados. Solo crea blob: local.
+function examWrittenPrivateAudioBlobUrl(response, attemptId, examId) {
+  const r=response||{};
+  if(r.ok!==true || String(r.attempt_id||'')!==String(attemptId||'') ||
+     String(r.exam_id||'')!==String(examId||'') ||
+     r.mime!=='audio/mpeg' || r.source!=='original_private_verified_sha256' ||
+     typeof r.audio_base64!=='string' || !r.audio_base64.length ||
+     Number(r.bytes)<1024 || Number(r.bytes)>4*1024*1024)
+    throw Error('written_private_audio_unavailable');
+  const binary=atob(r.audio_base64);
+  if(binary.length!==Number(r.bytes))throw Error('written_private_audio_size_mismatch');
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  if(!((bytes[0]===73&&bytes[1]===68&&bytes[2]===51) ||
+       (bytes[0]===255&&(bytes[1]&224)===224)))
+    throw Error('written_private_audio_not_mp3');
+  return URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));
+}
+
 // CALGRUPO_F27_20260617_STUDENTMODE_INTENTO_REAL_BACKEND
 function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, examOverride, assignment, backend }) {
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
@@ -126,15 +157,46 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const answersRef = React.useRef(answers);
   const dirtyRef = React.useRef(false);
   const savingRef = React.useRef(false);
+  const saveInFlightRef = React.useRef(null);
   const sendingRef = React.useRef(false);
   const lastSavedJsonRef = React.useRef(JSON.stringify(answers || {}));
   const autoSubmitRef = React.useRef(false);
+
+  // F111 AUDIO-PRIVATE-01: solo durante un intento STARTED real. El backend
+  // devuelve MP3 original en base64 tras validar actor/registro/ACL/SHA. El
+  // navegador conserva UN blob: efímero que se revoca al salir del examen.
+  // Nunca se copia el MP3 a respuestas, DOM, localStorage o repositorio.
+  const [privateAudio, setPrivateAudio] = useState({status:'idle',url:''});
+  useEffect(() => {
+    const id = backend && backend.attemptId;
+    if (stage !== 'taking' || !id || !backend || typeof backend.onGetPrivateAudio !== 'function') return;
+    let cancelled = false, blobUrl = '';
+    setPrivateAudio({status:'loading',url:''});
+    (async () => {
+      try {
+        const r = await backend.onGetPrivateAudio(id);
+        if (cancelled) return;
+        const expected = String((exam && (exam.id||exam.exam_id))||'');
+        blobUrl = examWrittenPrivateAudioBlobUrl(r,id,expected);
+        if (cancelled) { URL.revokeObjectURL(blobUrl); blobUrl=''; return; }
+        setPrivateAudio({status:'ready',url:blobUrl});
+      } catch (_) {
+        if (!cancelled) setPrivateAudio({status:'unavailable',url:''});
+      }
+    })();
+    return () => {
+      cancelled=true;
+      if (blobUrl) { try { URL.revokeObjectURL(blobUrl); } catch (_) {} }
+    };
+  }, [stage, backend && backend.attemptId]);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { savingRef.current = saving; }, [saving]);
   useEffect(() => { sendingRef.current = sending; }, [sending]);
 
   const onAnswer = useCallback((id, v) => {
+    // Al enviar (manual o por tiempo), congelar las respuestas visibles.
+    if (sendingRef.current) return;
     setAnswers(a => {
       const next = Object.assign({}, a, { [id]: v });
       answersRef.current = next;
@@ -161,13 +223,23 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     savingRef.current = true;
     setSaving(true);
     setSaveMsg(source === 'auto' ? 'Guardando automáticamente…' : 'Guardando…');
+    let saveRequest = null;
     try {
-      const r = await backend.onSave(answersRef.current || {}, { source });
+      // El cuerpo del POST es la misma versión que luego confirma su ACK.
+      saveRequest = Promise.resolve().then(() => backend.onSave(JSON.parse(snapshot), { source }));
+      saveInFlightRef.current = saveRequest;
+      const r = await saveRequest;
       if (r && r.ok && r.saved !== false && !r.deferred) {
+        // La respuesta confirma exclusivamente el snapshot enviado. Si el
+        // estudiante respondió durante la solicitud, esas respuestas nuevas
+        // siguen pendientes y el próximo autoguardado debe conservarlas.
         lastSavedJsonRef.current = snapshot;
-        dirtyRef.current = false;
-        setDirty(false);
-        setSaveMsg(source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.');
+        const hasNewAnswers = JSON.stringify(answersRef.current || {}) !== snapshot;
+        dirtyRef.current = hasNewAnswers;
+        setDirty(hasNewAnswers);
+        setSaveMsg(hasNewAnswers
+          ? 'Se guardó la versión anterior; hay respuestas nuevas pendientes de guardar.'
+          : (source === 'auto' ? 'Guardado automático correcto.' : 'Avance guardado correctamente.'));
       } else if (r && r.ok && (r.deferred || r.saved === false)) {
         // El servidor estaba atendiendo otros estudiantes. Conservamos el
         // indicador de cambios pendientes y el próximo ciclo volverá a intentar.
@@ -182,6 +254,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg('No se pudo guardar. Revise la conexión.');
       return { ok:false, error:'save_exception' };
     } finally {
+      if (saveInFlightRef.current === saveRequest) saveInFlightRef.current = null;
       savingRef.current = false;
       setSaving(false);
     }
@@ -195,9 +268,12 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       setSaveMsg(auto ? 'Tiempo agotado. Enviando automáticamente…' : 'Enviando…');
       try {
         const elapsed = limitSec ? Math.min(limitSec, elapsedNow()) : elapsedNow();
-        const r = await backend.onSubmit(answersRef.current || {}, { autoSubmit:auto, timeSpentSec:elapsed });
-        if (!r || r.ok === false) {
-          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar el examen. Intentá nuevamente.', 'submit'));
+        // Evita carrera: autoguardado anterior NO puede escribir después del submit.
+        const r = await examWrittenFinalizeAfterPendingSave(saveInFlightRef.current,
+          () => answersRef.current,
+          finalAnswers => backend.onSubmit(finalAnswers, { autoSubmit:auto, timeSpentSec:elapsed }));
+        if (!r || r.ok !== true || (backend.attemptId && String(r.attempt_id || '') !== String(backend.attemptId))) {
+          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo confirmar el envío. Consultá el estado del intento antes de reintentar.', 'submit'));
           autoSubmitRef.current = false;
           return r;
         }
@@ -383,7 +459,9 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       fecha:(backend && backend.submittedAt) || new Date().toLocaleDateString('es-CR'),
       grupo:(assignment && (assignment.COD_GRUPO || assignment.grupo)) || (backend && backend.student && backend.student.grupo) || 'Grupo activo',
     };
-    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending} /></div>;
+    return <div className="stwrap"><SentCard exam={exam} tema={tema} opcion={opcion} plan={plan} attemptId={backend && backend.attemptId} answers={answers} meta={sentMeta} reposicionSyncPending={reposicionSyncPending}
+      onGetReceipt={backend && backend.onGetReceipt}
+      onGetFinalReport={backend && backend.onGetFinalReport} /></div>;
   }
 
   const metaNombre = assignment && (assignment.NOMBRE || assignment.nombre) || (backend && backend.student && backend.student.nombre) || '';
@@ -393,8 +471,17 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   return (
     <div className="stwrap">
       <div className="sttake">
+        {privateAudio.status==='loading' && <div role="status" data-f111-written-audio-state="loading"
+          style={{padding:'10px 16px',fontSize:12.5}}>
+          Validando acceso al audio original de este intento…
+        </div>}
+        {privateAudio.status==='unavailable' && <div role="status" data-f111-written-audio-state="unavailable"
+          style={{padding:'10px 16px',fontSize:12.5,color:'#7A1E2C'}}>
+          El MP3 privado no está disponible en este entorno; avisá al docente antes de responder Listening.
+        </div>}
         <ExamShell exam={exam} answers={answers} onAnswer={timeExpired ? undefined : onAnswer} mode={timeExpired ? 'preview' : 'student'} showKey={false}
                    shell={shell} density={density} plan={plan}
+                   privateAudioUrl={!timeExpired && privateAudio.status==='ready' ? privateAudio.url : ''}
                    meta={{ nombre: metaNombre || 'Estudiante', fecha: metaFecha, grupo: metaGrupo || 'Grupo activo', opcion, scoreLabel:`${answered} / ${all.length} resp.` }} />
       </div>
       <div className="stbar">
@@ -468,7 +555,69 @@ function PendingCard({ tema, opcion }) {
   );
 }
 
-function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false }) {
+function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}, reposicionSyncPending = false, onGetReceipt, onGetFinalReport }) {
+  const [receiptBusy,setReceiptBusy] = useState(false);
+  const [receiptError,setReceiptError] = useState('');
+  const [finalBusy,setFinalBusy] = useState(false);
+  const [finalError,setFinalError] = useState('');
+  const downloadReceipt = async () => {
+    if (receiptBusy || !attemptId || typeof onGetReceipt !== 'function') return;
+    setReceiptBusy(true);setReceiptError('');
+    try {
+      const r=await onGetReceipt(attemptId);
+      if (!r || r.ok !== true || r.mime !== 'application/pdf' ||
+          String(r.attempt_id||'') !== String(attemptId) ||
+          typeof r.pdf_base64 !== 'string' || r.pdf_base64.length > 6000000)
+        throw Error('receipt_contract');
+      const binary=atob(r.pdf_base64);
+      if (binary.slice(0,4) !== '%PDF') throw Error('receipt_pdf_invalid');
+      const bytes=Uint8Array.from(binary,ch=>ch.charCodeAt(0));
+      const file=new Blob([bytes],{type:'application/pdf'});
+      const url=URL.createObjectURL(file);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'')
+        ?r.filename:'Recibo_Examen_Escrito.pdf';
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    } catch (_) {
+      setReceiptError('No pudimos descargar el recibo. Tu entrega permanece registrada; reintentá desde tu sesión.');
+    } finally {
+      setReceiptBusy(false);
+    }
+  };
+  const downloadFinalReport = async () => {
+    if (finalBusy || !attemptId || typeof onGetFinalReport !== 'function') return;
+    setFinalBusy(true);setFinalError('');
+    try {
+      const r=await onGetFinalReport(attemptId);
+      if (!r || r.ok !== true) {
+        const pending=['informe_revision_pendiente','informe_nota_no_firme'].includes(String(r&&r.error||''));
+        setFinalError(pending
+          ? 'La nota todavía no está firme en Mis Notas. El informe aparecerá después de la revisión docente.'
+          : 'No se pudo conciliar el informe con el expediente académico. Contactá a la Academia.');
+        return;
+      }
+      if (r.mime !== 'application/pdf' ||
+          String(r.attempt_id||'') !== String(attemptId) ||
+          !/^F111-RES-[A-F0-9]{20}$/.test(String(r.report_id||'')) ||
+          typeof r.pdf_base64 !== 'string' || r.pdf_base64.length > 6000000)
+        throw Error('final_report_contract');
+      const binary=atob(r.pdf_base64);
+      if(binary.slice(0,4)!=='%PDF') throw Error('final_report_pdf_invalid');
+      const file=new Blob([Uint8Array.from(binary,ch=>ch.charCodeAt(0))],
+        {type:'application/pdf'});
+      const url=URL.createObjectURL(file);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=/^[A-Za-z0-9_.-]+\.pdf$/.test(r.filename||'')
+        ?r.filename:'Informe_Examen_Escrito.pdf';
+      document.body.appendChild(link);link.click();link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch(_){
+      setFinalError('No se pudo descargar el informe. Tu nota registrada no se modifica; reintentá desde el Campus.');
+    }finally{setFinalBusy(false);}
+  };
   return (
     <>
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
@@ -478,7 +627,7 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
         {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
           <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
         </div>}
-        <div className="sent-state"><span className="sent-dot" />En revisión docente</div>
+        <div className="sent-state"><span className="sent-dot" />Entrega registrada · resultado según revisión oficial</div>
         <div className="sent-grid">
           <div><span>Examen</span><b>{exam.titulo}</b></div>
           <div><span>Opción</span><b>{opcion}</b></div>
@@ -487,6 +636,26 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
           {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
         </div>
         <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
+        {attemptId && typeof onGetReceipt === 'function' && <div style={{marginTop:14}}>
+          <button type="button" className="btn-primary" onClick={downloadReceipt}
+            disabled={receiptBusy} data-f111-written-receipt-download="true">
+            {receiptBusy?'Preparando recibo…':'Descargar recibo PDF de entrega'}
+          </button>
+          <small style={{display:'block',marginTop:8}}>
+            Comprobante de recepción sin calificación. El informe de nota final se publica después de la revisión.
+          </small>
+          {receiptError && <p role="alert" style={{color:'#8B1F1F',fontSize:12}}>{receiptError}</p>}
+        </div>}
+        {attemptId && typeof onGetFinalReport === 'function' && <div style={{marginTop:10}}>
+          <button type="button" className="btn-ghost" onClick={downloadFinalReport}
+            disabled={finalBusy} data-f111-written-final-report="true">
+            {finalBusy?'Consultando nota firme…':'Descargar informe académico PDF'}
+          </button>
+          <small style={{display:'block',marginTop:8}}>
+            Disponible solamente cuando el docente cerró la revisión y la nota coincide con Mis Notas.
+          </small>
+          {finalError && <p role="status" style={{color:'#7A4A00',fontSize:12}}>{finalError}</p>}
+        </div>}
       </div>
       <div className="sent-summary">
         <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>

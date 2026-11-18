@@ -1,0 +1,38 @@
+// F111 QZ24 · Verificación del preview sin grupo (rama no desplegada).
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const root=new URL('../',import.meta.url);
+const get=path=>fs.readFileSync(new URL(path,root),'utf8');
+const page=get('modulos/qz24_preview_digital.html');
+const teacher=get('src/teacher_quiz_review_f111.js');
+const superadmin=get('src/f111_qz24_superadmin_preview.js');
+const b1=get('modulos/qz_b1_pc01_digital.html');
+assert.doesNotMatch(b1,/Grupo Diego 0826/,'B1 PC01 must not hardcode an old classroom/teacher');
+const p1=page.indexOf('<script>'),p2=page.indexOf('</script>',p1);
+assert.ok(p1>0&&p2>p1);
+new vm.Script(page.slice(p1+8,p2),{filename:'qz24_preview_digital.html'});
+new vm.Script(teacher,{filename:'teacher_quiz_review_f111.js'});
+new vm.Script(superadmin,{filename:'f111_qz24_superadmin_preview.js'});
+assert.match(page,/solo_preview_sin_grupo:true/);
+assert.match(teacher,/solo_preview_sin_grupo:true/);
+assert.match(superadmin,/solo_preview_sin_grupo:true/);
+assert.match(page,/qzProgressAudio/);
+assert.match(page,/audio_base64/);
+assert.match(page,/Number\.isInteger\(pc\)/);
+assert.match(page,/q\.opciones/);
+assert.match(page,/data\.secciones/);
+assert.match(page,/admite_envio!==false/);
+assert.match(page,/requiere_grupo!==false/);
+assert.doesNotMatch(page,/qzProgressSubmit|qzProgressSaveDraft|qzProgressTeacherReview/);
+assert.doesNotMatch(superadmin,/cod_grupo:|Código de grupo|Ingresá un código válido/);
+const begin=teacher.indexOf('function createQz24RehearsalCard('),
+ end=teacher.indexOf('function buildTeacherExamsF111(){',begin);
+assert.ok(begin>0&&end>begin);
+const widget=teacher.slice(begin,end);
+assert.doesNotMatch(widget,/cod_grupo|groupSelector\.value|Seleccioná un grupo/);
+assert.match(widget,/Ver Progress Check/);
+assert.match(widget,/qz24_preview_digital\.html/);
+assert.match(superadmin,/qz24_preview_digital\.html/);
+assert.doesNotMatch(page,/"respuesta_correcta"|"claves"/);
+console.log('F111_QZ24_GROUPFREE_FRONTEND_E1_PASS: HTML+2 JS parse, 0 group selection, 0 submits, protected audio and teacher roles');

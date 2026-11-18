@@ -86,7 +86,7 @@ function ExamStyles() {
 //   meta: { nombre, fecha, scoreLabel }
 // ──────────────────────────────────────────────────────────────────────────
 function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
-                     shell='premium', density='comfy', review, meta={}, plan='ambos', onOpenScript, onOpenVideo }) {
+                     shell='premium', density='comfy', review, meta={}, plan='ambos', onOpenScript, onOpenVideo, privateAudioUrl='' }) {
   const tema = NIVEL_TEMA[exam.nivel];
   const ro = mode !== 'student';
   const rootStyle = { '--lvl':tema.color, '--lvl-ink':tema.ink, '--lvl-soft':tema.soft };
@@ -131,7 +131,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
         {exam.sections.map(sec => (
           <Section key={sec.letter} sec={sec} exam={exam} answers={answers} onAnswer={onAnswer}
                    ro={ro} mode={mode} showKey={showKey} review={review}
-                   onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} />
+                   onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} privateAudioUrl={privateAudioUrl} />
         ))}
       </div>
       <footer className="ex-footer"><span>Academia Norteamericana · Programa Inglés Conversacional</span><span>Documento institucional · Campus Virtual</span></footer>
@@ -140,7 +140,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
 }
 
 // ── Una sección ────────────────────────────────────────────────────────────
-function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOpenScript, onOpenVideo }) {
+function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOpenScript, onOpenVideo, privateAudioUrl='' }) {
   return (
     <section className="exs">
       <div className="exs-h">
@@ -158,7 +158,7 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
       {/* Listening: video embebido del mapa maestro (sección A/B del audio,
           distinta de la opción A/B del examen). Guion solo si showKey. */}
       {sec.listening && (
-        <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} />
+        <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} privateAudioUrl={privateAudioUrl} />
       )}
 
       <SectionBody sec={sec} answers={answers} onAnswer={onAnswer} ro={ro} mode={mode} showKey={showKey} review={review} />
@@ -167,8 +167,28 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
 }
 
 // ── Media de listening: iframe de YouTube o fallback ──────────────────────
-function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
-  const id = exam.videos ? exam.videos['listening_' + sec.listening] : null;
+function ListeningMedia({ exam, sec, showKey, onOpenScript, privateAudioUrl='' }) {
+  // F111 AUDIO-PRIVATE-01: audio ORIGINAL completo (secciones A y B) se
+  // descarga por intento autenticado; el blob: local NO es una URL pública.
+  // Solo un player para impedir reproducción simultánea/fragmentada.
+  if (privateAudioUrl) {
+    const first = String(sec.listening||'').toUpperCase() === 'A';
+    return <div className="exs-listen" data-f111-private-written-audio="true">
+      <div className="exl-row">
+        <span className="exl-tag">Listening · Sección {sec.listening}</span>
+        {showKey && <button className="exl-script" onClick={()=>onOpenScript && onOpenScript(sec.listening)}>Ver guion (docente)</button>}
+      </div>
+      {first
+        ? <audio controls preload="metadata" controlsList="nodownload"
+                 aria-label="Audio original privado para las secciones A y B"
+                 src={privateAudioUrl} style={{width:'100%',maxWidth:600}} />
+        : <span className="exl-pending">El mismo audio original incluye esta sección; reproducilo desde la sección A.</span>}
+    </div>;
+  }
+  // F111 0826: la versión B del examen NO es la sección B del audio.
+  // Hasta certificar su MP3 privado, nunca reproducir el video A/2 cruzado.
+  const bAudioNoCertificado = /_WRITTEN_L(?:18|32)_TEST[12]_B$/.test(String(exam?.id||exam?.exam_id||''));
+  const id = !bAudioNoCertificado && exam.videos ? exam.videos['listening_' + sec.listening] : null;
   return (
     <div className="exs-listen">
       <div className="exl-row">
@@ -181,7 +201,11 @@ function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
                     frameBorder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen></iframe>
           </div>
-        : <span className="exl-pending">♪ Audio pendiente de publicar</span>}
+        : <span className="exl-pending" role={bAudioNoCertificado?'alert':undefined}>
+            {bAudioNoCertificado
+              ? 'Opción B bloqueada: falta certificar el audio propio de esta versión. No iniciar el examen.'
+              : '♪ Audio pendiente de publicar'}
+          </span>}
     </div>
   );
 }

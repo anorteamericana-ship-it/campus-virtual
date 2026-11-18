@@ -1,23 +1,21 @@
-// F111 QZ24 · Mis exámenes: selector por grupo/nivel y ensayo privado de 8 PC.
-// Prueba aislada del controlador real; ninguna sesión ni petición de producción.
+// F111 QZ24 · UX docente: una selección de nivel + PC y una única acción de lectura.
+// Se ejecuta sobre el controlador real en VM; sin credenciales ni escrituras.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const src=fs.readFileSync(new URL('../src/teacher_quiz_review_f111.js',import.meta.url),'utf8');
 const start=src.indexOf('function createQz24RehearsalCard(');
 const end=src.indexOf('function buildTeacherExamsF111(){',start);
-assert.ok(start>0&&end>start,'QZ24 selector must exist');
-assert.ok(src.includes('const rehearsal=createQz24RehearsalCard(select)'),'selector uses authorized group');
-assert.ok(src.includes('summary.append(history,rehearsal.card)'),'selector appears in Mis exámenes');
+assert.ok(start>0&&end>start);
+assert.ok(src.includes('const rehearsal=createQz24RehearsalCard(select)'));
+assert.ok(src.includes('summary.append(rehearsal.card,history)'));
 const LEVELS=[['B1','Básico I'],['B2','Básico II'],['I1','Intermedio I'],['I2','Intermedio II']];
 const LESSONS=[[4,'1–2'],[8,'3–4'],[13,'5–6'],[16,'7–8'],[21,'9–10'],[24,'11–12'],[28,'13–14'],[30,'15–16']];
 function make(tag,text,className){
- const e={tag,textContent:text??'',className:className||'',dataset:{},children:[],disabled:false,events:{},
-  append(...xs){this.children.push(...xs)},
+ return {tag,textContent:text??'',className:className||'',value:'',dataset:{},children:[],disabled:false,events:{},
+  append(...xs){this.children.push(...xs);if(this.tag==='select'&&!this.value&&xs.length)this.value=xs[0].value||''},
   replaceChildren(...xs){this.children=xs},
-  addEventListener(type,handler){this.events[type]=handler},
-  setAttribute(){}};
- return e;
+  addEventListener(type,handler){this.events[type]=handler},setAttribute(){}};
 }
 let permission=true,session=true,altered=false,calls=[],opened=[],pending=null,slow=false,denyReason='denied';
 const scope={LEVELS,LESSONS,make,window:{getSessionToken:()=>session?'SYNTHETIC_TEACHER':''},
@@ -25,62 +23,54 @@ const scope={LEVELS,LESSONS,make,window:{getSessionToken:()=>session?'SYNTHETIC_
   calls.push({fn,body});
   if(slow)await new Promise(resolve=>{pending=resolve});
   if(!permission)throw Error(denyReason);
-  const i=LESSONS.findIndex(x=>x[0]===body.leccion)+1;
-  return {quiz_id:altered?'IC5_B1_WQ99':'IC5_'+body.nivel+'_WQ'+String(i).padStart(2,'0'),
-   nivel:body.nivel,leccion:body.leccion,peso_oficial:0,vista_previa:true};
+  const i=Number(body.pc);
+  return {ok:true,quiz_id:altered?'IC5_B1_WQ99':'IC5_'+body.nivel+'_WQ'+String(i).padStart(2,'0'),
+   nivel:body.nivel,leccion:LESSONS[i-1][0],peso_oficial:0,vista_previa:true,
+   requiere_grupo:false,admite_envio:false,secciones:[{id:'A',preguntas:[{id:'A1'}]}]};
  },
  f111ExamPageUrl:(path,args)=>({path,args}),
  f111TeacherExamModal:(title,url)=>opened.push({title,url})};
 vm.createContext(scope);
 vm.runInContext(src.slice(start,end)+';this.build=createQz24RehearsalCard',scope);
 let checks=0;
-const check=(v,msg)=>{assert.ok(v,msg);checks++};
-const sel={value:''},r=scope.build(sel);
-check(r.card.dataset.f111Qz24Rehearsal==='true','card is unique');
-const buttons=()=>r.card.children.at(-1).children;
-check(buttons().length===0,'no group means no quiz links');
-sel.value='B2-KJ18-C3-0826';r.render();
-check(buttons().length===8,'eight B2 quizzes for assigned group');
-check(buttons()[3].dataset.f111Qz24Lesson==='16','PC04 corresponds to L16');
-await buttons()[3].events.click();
-check(calls.length===1&&calls[0].fn==='qzProgressGet','only read-only source endpoint');
-check(JSON.stringify(calls[0].body)===JSON.stringify({cod_grupo:'B2-KJ18-C3-0826',nivel:'B2',leccion:16}),
- 'group, level, lesson exact');
-check(opened.length===1&&opened[0].url.path==='modulos/quiz_progress.html','preview opens actual interactive form');
-check(opened[0].url.args.teacher_preview===1&&opened[0].url.args.grupo==='B2-KJ18-C3-0826',
- 'private teacher preview no submit');
-for(const lev of ['I1','I2']){
- sel.value=lev+'-KJ18-C3-0826';r.render();
- check(buttons().length===8,'eight quizzes '+lev);
- await buttons()[7].events.click();
- check(opened.at(-1).url.args.nivel===lev&&opened.at(-1).url.args.leccion===30,'correct level/PC08 '+lev);
+const check=(value,why)=>{assert.ok(value,why);checks++};
+const legacyGroup={value:''},r=scope.build(legacyGroup);
+check(r.card.dataset.f111Qz24Rehearsal==='true','card loaded');
+check(r.levelPicker.children.map(x=>x.value).join(',')==='B2,I1,I2','B1 keeps historic flow');
+check(r.levelPicker.value==='B2','B2 default');
+check(r.pcPicker.children.length===8,'8 checks in a select, not a wall of buttons');
+check(r.card.children[2].children.filter(x=>x.tag==='button').length===1,'only one CTA');
+check(r.openButton.textContent==='Ver Progress Check','single primary action');
+r.pcPicker.value='4';r.render();
+check(r.openButton.dataset.f111Qz24Lesson==='16','PC04 = L16');
+await r.openButton.events.click();
+check(calls.length===1&&calls[0].fn==='qzProgressGet','read-only endpoint');
+check(JSON.stringify(calls[0].body)===JSON.stringify({solo_preview_sin_grupo:true,nivel:'B2',pc:4}),
+ 'no group or calendar sent');
+check(opened.length===1&&opened[0].url.path==='modulos/qz24_preview_digital.html',
+ 'opens private HTML');
+check(opened[0].url.args.nivel==='B2'&&opened[0].url.args.pc===4&&
+ !Object.hasOwn(opened[0].url.args,'grupo'),'no group in iframe');
+for(const level of ['I1','I2']){
+ r.levelPicker.value=level;r.pcPicker.value='8';r.render();
+ check(r.pcPicker.children.length===8,'selector retained at '+level);
+ await r.openButton.events.click();
+ check(opened.at(-1).url.args.nivel===level&&opened.at(-1).url.args.pc===8,'PC08 '+level);
 }
-// A group may advance to the next academic level while keeping its original
-// code. The level picker must not silently lock I1 to an I1-prefixed group.
-sel.value='B1-KJ18-C3-0826';r.render();
-check(r.levelPicker.value==='B1','group prefix selects a default level only');
-r.levelPicker.value='I1';r.render();
-check(buttons().length===8,'advanced group can request an I1 rehearsal');
-await buttons()[1].events.click();
-check(opened.at(-1).url.args.nivel==='I1'&&opened.at(-1).url.args.grupo==='B1-KJ18-C3-0826',
- 'server validates explicit group and level; UI does not grant authorization');
-const valid=opened.length;sel.value='I1-KJ18-C3-0826';r.render();
-permission=false;await buttons()[0].events.click();check(opened.length===valid,'server permission rejection denies preview');
-denyReason='qz_prod_fuera_de_alcance';await buttons()[0].events.click();
-check(r.card.children[2].textContent.includes('todavía sin autorizar'),'runtime OFF shows clear teacher-only gate');
-check(opened.length===valid,'no modal on runtime OFF');
-denyReason='no_autorizado_grupo_nivel';await buttons()[0].events.click();
-check(r.card.children[2].textContent.includes('no están autorizados'),'foreign group shows assignment denial');
-denyReason='calendario_no_disponible';await buttons()[0].events.click();
-check(r.card.children[2].textContent.includes('calendario'),'calendar failure stays closed');
-permission=true;altered=true;await buttons()[0].events.click();check(opened.length===valid,'mismatched quiz metadata blocked');
-altered=false;session=false;await buttons()[0].events.click();
-check(opened.length===valid,'missing session token blocks preview');
-session=true;sel.value='BAD';r.render();check(buttons().length===0,'invalid group code blocked');
-sel.value='I1-KJ18-C3-0826';r.render();slow=true;
-const delayed=buttons()[0].events.click();
-sel.value='I2-KJ18-C3-0826';r.render();
-pending?.();await delayed;check(opened.length===valid,'stale read from previous group cannot open modal');
-check(calls.every(c=>c.fn==='qzProgressGet'),'no opening, attempts, notes or student writes');
-console.log('F111_QZ24_TEACHER_LEVEL_SELECTOR_E1_PASS '+checks+'/'+checks+
- ' checks; B2/I1/I2 × 8; backend group/level readback; no student actions');
+const valid=opened.length;
+permission=false;await r.openButton.events.click();
+check(opened.length===valid,'denied role cannot open');
+permission=true;altered=true;await r.openButton.events.click();
+check(opened.length===valid,'cross-level mismatch blocked');
+altered=false;session=false;await r.openButton.events.click();
+check(opened.length===valid,'missing session blocked');
+session=true;slow=true;
+const delayed=r.openButton.events.click();
+r.pcPicker.value='7';r.render();
+pending?.();await delayed;
+check(opened.length===valid,'stale response after changing PC cannot open');
+slow=false;
+check(calls.every(c=>c.fn==='qzProgressGet'&&c.body.solo_preview_sin_grupo===true),
+ 'only read calls; no student writes');
+console.log('F111_QZ24_TEACHER_UX_E1_PASS '+checks+'/'+checks+
+ ' single action, 3 levels, 8 PCs, no groups, no writes');
