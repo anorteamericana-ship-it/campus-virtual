@@ -2062,12 +2062,10 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
         </div>
         <strong style={{fontSize:17,color:'#001E47'}}>{todayStatus.title}</strong>
         <p role="status" style={{margin:0,fontSize:12,color:'#615850'}}>{todayStatus.detail}</p>
-        {todayStatus.kind==='oral'&&<button type="button" className="btn btn-primary"
-          style={{justifySelf:'start'}} onClick={()=>{
-            const lesson=findLesson(activeLesson);
-            onNavigate&&onNavigate('examen_oral',{oral:{grupo:groupCode,nivel,leccion:activeLesson,
-              fecha:String(lesson?.fecha||'').slice(0,10)}});
-          }}>{tr('Abrir control oral activo','Open active oral controls')}</button>}
+        {todayStatus.kind==='oral'&&<p style={{margin:0,fontSize:12,color:'#615850'}}>
+          {tr('Abrí la evaluación desde su tarjeta de Oral correspondiente; es la única acción principal habilitada para esta sesión.',
+            'Open the assessment from its Oral card; this is the only primary action enabled for this session.')}
+        </p>}
         {todayStatus.kind==='written_read'&&<button type="button" className="btn btn-primary"
           style={{justifySelf:'start'}} onClick={()=>{
             if(!openWrittenInbox(todayStatus.lesson))
