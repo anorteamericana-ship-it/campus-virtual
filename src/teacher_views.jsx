@@ -1788,11 +1788,50 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const [historyBusy,setHistoryBusy]=React.useState('');
   const [historyFeedback,setHistoryFeedback]=React.useState('');
   const [preview,setPreview]=React.useState(null);
+  // F111 LIVE · una sola fuente por grupo: lecturas docentes autorizadas de
+  // QUIZ_PROGRESS_ATTEMPTS y QUIZ_PROGRESS_APERTURAS, sin datos DEMO.
+  // No registrar ni guardar nada; las respuestas no salen al DOM.
+  const [pcFocused,setPcFocused]=React.useState(8);
+  const [pcReal,setPcReal]=React.useState({status:'idle',grupo:'',nivel:'',leccion:0});
   const en=window.AN_I18N?.getLang?.()==='en';
   const tr=(es,english)=>en?english:es;
   const pal=nivelPal(nivel);
   const groupLabel=tvGrupoLabel(meta);
   const groupCode=String(codGrupo||'');
+  React.useEffect(()=>{
+    let current=true;
+    if(!groupCode||nivel!=='B1'||!Number.isInteger(pcFocused)) {
+      setPcReal({status:'idle',grupo:groupCode,nivel,leccion:pcFocused});
+      return()=>{current=false;};
+    }
+    setPcReal({status:'loading',grupo:groupCode,nivel,leccion:pcFocused});
+    const args={cod_grupo:groupCode,nivel,leccion:pcFocused};
+    Promise.allSettled([
+      postTeacher('qzProgressTeacherAvailability',args,30000),
+      postTeacher('qzProgressTeacherList',args,30000)
+    ]).then(results=>{
+      if(!current)return;
+      const availability=results[0].status==='fulfilled'?results[0].value:null;
+      const delivered=results[1].status==='fulfilled'?results[1].value:null;
+      const stateOk=availability?.ok===true&&
+        String(availability.grupo||'').toUpperCase()===groupCode.toUpperCase()&&
+        Number(availability.leccion)===pcFocused;
+      const listOk=delivered?.ok===true&&Number(delivered.leccion)===pcFocused&&
+        Array.isArray(delivered.intentos);
+      if(!stateOk&&!listOk){
+        setPcReal({status:'error',grupo:groupCode,nivel,leccion:pcFocused});
+        return;
+      }
+      const attempts=listOk?delivered.intentos:[];
+      setPcReal({status:'ready',grupo:groupCode,nivel,leccion:pcFocused,
+        availabilityVerified:stateOk,deliveriesVerified:listOk,
+        estado:stateOk?String(availability.estado||'NO_VERIFICADO').toUpperCase():'',
+        delivered:listOk?attempts.length:null,
+        reviewed:listOk?attempts.filter(a=>tvUpper(a.ESTADO)==='REVISADO').length:null,
+        waiting:listOk?attempts.filter(a=>tvUpper(a.ESTADO)==='ENTREGADO').length:null});
+    }).catch(()=>{if(current)setPcReal({status:'error',grupo:groupCode,nivel,leccion:pcFocused});});
+    return()=>{current=false;};
+  },[groupCode,nivel,pcFocused]);
   // EXUI-03: ciclos R57 de SOLO lectura. La fuente y los permisos pertenecen
   // al servidor; nunca convertir ausencia de nota en ausencia/reposición.
   const [r57Lookup,setR57Lookup]=React.useState({status:'idle',group:'',level:'',rows:[]});
@@ -1938,10 +1977,14 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const openModel=d=>{
     const url=new URL(d.kind==='oral'?'modulos/examen_oral.html':'modulos/examenes.html',
       new URL('./',window.location.href));
+    // El grupo proviene de F80 (sesión docente autenticada); no usar demo.
+    url.searchParams.set('grupo',groupCode);
     if(d.kind==='oral'){
       url.searchParams.set('preview','1');
       url.searchParams.set('nivel',nivel);
       url.searchParams.set('leccion',String(d.lesson));
+      const oralDate=String(findLesson(d.lesson)?.fecha||'').slice(0,10);
+      if(oralDate)url.searchParams.set('fecha',oralDate);
       url.searchParams.set('plan',plan);
     }else{
       url.searchParams.set('view','teacher_preview');
@@ -2124,6 +2167,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                   <div style={{fontSize:11,color:'#4A413A',marginTop:5}}>
                     <strong>{count}</strong> / {total} {tr('con componente oficial registrado','with a registered official grade component')}
                   </div>
+                  {d.kind==='oral'&&finished&&total>0&&count===0&&
+                    <div role="status" style={{fontSize:11,color:'#8A4B10',marginTop:6,
+                      background:'#FFF7E6',padding:'7px 9px',borderRadius:8}}>
+                      Lección cerrada; el padrón consultado no confirma notas orales.
+                      No es una calificación cero. Revisá el expediente antes de regularizar.
+                    </div>}
                   {legacyVerified&&(drafts>0||historical>0)&&
                     <div style={{fontSize:10.5,color:pal.dark,marginTop:4,fontWeight:800}}>
                       {drafts>0&&tr(drafts+' borrador(es)',''+drafts+' draft(s)')}
@@ -2297,14 +2346,22 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:8}}>
             {TV_EXAM_QUIZ_F111.map(([lesson,units],i)=>{
               const event=findLesson(lesson),isNext=next?.lesson===lesson&&next.title==='Progress Check '+(i+1);
-              return <div key={lesson} style={{border:'1px solid '+(isNext?pal.dark:'#E8DFD2'),
-                borderLeft:'4px solid '+pal.dark,borderRadius:11,padding:12,background:isNext?pal.light:'#FFF'}}>
+              const focused=pcFocused===lesson;
+              return <div key={lesson} style={{border:'1px solid '+(focused||isNext?pal.dark:'#E8DFD2'),
+                borderLeft:'4px solid '+pal.dark,borderRadius:11,padding:12,background:focused||isNext?pal.light:'#FFF'}}>
                 <strong style={{fontSize:13}}>Quiz {i+1}</strong>
                 <div style={{fontSize:11,color:'#6B6259',margin:'4px 0'}}>{tr('Lección','Lesson')} {lesson} · U{units}</div>
                 <div style={{fontSize:10,color:'#6B6259',marginBottom:9}}>
                   {event?.fecha?String(event.fecha).slice(0,10):tr('Disponibilidad por verificar','Availability to verify')}
                 </div>
-                {nivel==='B1'&&!(todayStatus.kind==='quiz'&&todayStatus.lesson===lesson)
+                {nivel==='B1'&&<button type="button" aria-pressed={focused}
+                  onClick={()=>setPcFocused(lesson)}
+                  style={{fontSize:11,padding:'7px 9px',marginBottom:8,borderRadius:8,
+                    border:'1px solid '+pal.dark,background:focused?pal.dark:'#FFF',
+                    color:focused?'#FFF':pal.dark,cursor:'pointer',fontWeight:850}}>
+                  {focused?tr('Estado seleccionado','Selected status'):tr('Ver estado real','View live status')}
+                </button>}
+                {nivel==='B1'
                    ?<button className="btn btn-ghost" type="button"
                      onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
                        if(typeof launch==='function'){
@@ -2322,6 +2379,28 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
               </div>;
             })}
           </div>
+          {nivel==='B1'&&<div role="status" data-f111-live-pc-readback="true"
+            style={{padding:'12px 15px',background:'#F8FAFD',
+              border:'1px solid #D4DCE7',borderRadius:11,color:'#183653',
+              fontSize:12,lineHeight:1.6}}>
+            <strong>Progress Check {Math.max(1,TV_EXAM_QUIZ_F111.findIndex(([lesson])=>lesson===pcFocused)+1)}
+              {' · Lección '+pcFocused+' · Datos reales del servidor'}</strong>
+            {pcReal.grupo!==groupCode||pcReal.nivel!==nivel||pcReal.leccion!==pcFocused||
+             pcReal.status==='loading'||pcReal.status==='idle'?
+              <div>Consultando apertura y entregas de este grupo…</div>:
+              pcReal.status==='error'?
+              <div style={{color:'#8B1F1F'}}>No se pudo consultar el servidor. No significa que no existan entregas.</div>:
+              <div style={{display:'grid',gap:3,marginTop:5}}>
+                <span>{'Apertura: '+(pcReal.availabilityVerified?
+                  pcReal.estado:'No verificable')}</span>
+                <span>{pcReal.deliveriesVerified?
+                  pcReal.delivered+' entregas registradas · '+pcReal.reviewed+' revisadas · '+
+                    pcReal.waiting+' pendientes de revisión':
+                  'Entregas: no verificables en esta consulta'}</span>
+                <small style={{color:'#586b82'}}>Los borradores sin entregar no están incluidos
+                  en este lector docente. Gestionar Quiz abre el control oficial del grupo.</small>
+              </div>}
+          </div>}
           <p style={{margin:0,fontSize:11,color:'#6B6259'}}>
             {tr('Quiz 2 (L08): el botón abre el control docente oficial del grupo. La activación y la revisión dependen de permisos y disponibilidad verificados por el servidor.',
               'Quiz 2 (L08): the button opens the assigned group’s official teacher controls. Availability and review still depend on server authorization.')}
