@@ -22,9 +22,9 @@ function previewB1Protected(lesson,authorizedGroup){
  const token=window.getSessionToken?String(window.getSessionToken()||''):'';
  if(!token||!window.F111_QZ_API_URL){
   window.alert('Abrí el Campus con tu sesión docente para consultar el material protegido.');
-  return;
+  return false;
  }
- if(document.querySelector('[data-f111-b1-private-preview]'))return;
+ if(document.querySelector('[data-f111-b1-private-preview]'))return true;
  const overlay=make('div',null,'f111-tqr-workspace-backdrop');
  overlay.dataset.f111B1PrivatePreview='true';
  overlay.setAttribute('role','dialog');
@@ -53,7 +53,7 @@ function previewB1Protected(lesson,authorizedGroup){
  overlay.onclick=e=>{if(e.target===overlay)dismiss();};
  document.addEventListener('keydown',onKey);
  shell.append(header,frame);overlay.append(shell);document.body.append(overlay);
- close.focus();
+ close.focus();return true;
 }
 // F111 D5: revisión digital compartida para B1 PC02–PC08.
 // Solo profesor autenticado y grupo que ya pasó qzProgressTeacherB1Groups.
@@ -253,11 +253,14 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
    toggle.textContent=data.estado==='ABIERTO'?'CERRAR QUIZ PARA ESTUDIANTES':'ACTIVAR QUIZ PARA ESTUDIANTES';
    toggle.disabled=busy||(data.estado!=='ABIERTO'&&data.puede_abrir!==true);
    status.textContent='Quiz '+String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' · '+
-    (data.estado==='ABIERTO'?'Abierto por docente':data.puede_abrir?'Cerrado; requiere activación expresa':'No elegible según fecha, clase o permisos');
+    (data.estado==='ABIERTO'?'Abierto por docente':data.puede_abrir?
+     'Disponible para apertura docente. Si la fecha ya pasó, puede aplicarse hoy sin cambiar el calendario ni notas anteriores.':
+     'No elegible según fecha, clase o permisos')+
+    (data.fecha_programada?' · Fecha original: '+data.fecha_programada:'');
   }catch(e){toggle.textContent='NO DISPONIBLE';status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;}
  }
  select.addEventListener('change',()=>{previewBtn.disabled=!select.value;reviewBtn.disabled=!select.value;void refresh();});
- previewBtn.addEventListener('click',()=>{if(select.value){if(Number(lesson)===4)preview(select.value);else previewB1Protected(lesson,select.value);}});
+ previewBtn.addEventListener('click',()=>{if(select.value)previewB1Protected(lesson,select.value);});
  reviewBtn.addEventListener('click',()=>{if(select.value){if(Number(lesson)===4)openReviewWorkspace(select.value);else openB1TeacherReview(lesson,select.value);}});
  toggle.addEventListener('click',async()=>{
   if(busy||!info||!select.value)return;
@@ -355,6 +358,36 @@ function openB1ProgressFromExamCard(lesson,group){
  document.addEventListener('keydown',onKey);close.focus();return true;
 }
 window.F111_QZ_openTeacherControls=openB1ProgressFromExamCard;
+// F111: acceso a MODELOS desde la plantilla docente principal, reutilizando
+// los visores protegidos existentes. Jamás abre una evaluación al estudiante.
+// La fecha programada no condiciona consultar materiales; la apertura sí
+// requiere el control docente y la validación de QUIZ.
+async function openTeacherQuizModelF111(lesson,group,level){
+ const i=LESSONS.findIndex(x=>x[0]===Number(lesson));
+ const lv=String(level||'').toUpperCase(),g=String(group||'').trim().toUpperCase();
+ if(i<0||!g||!['B1','B2','I1','I2'].includes(lv))return false;
+ const session=window.getSessionToken?String(window.getSessionToken()||''):'';
+ if(!session)return false;
+ if(lv==='B1'){
+  // PC01 tampoco debe abrir el antiguo demo sintético; usa el mismo
+  // modelo protegido de PDF, MP3 y controles por sesión real.
+  return previewB1Protected(Number(lesson),g)===true;
+ }
+ // Estos tres niveles siguen bajo habilitación explícita de QUIZ.
+ // La consulta comprueba rol, grupo, nivel y modelo desde el servidor.
+ const response=await postQuiz('qzProgressGet',
+  {cod_grupo:g,nivel:lv,leccion:Number(lesson)},
+  {qz24TeacherPreview:true});
+ if(response?.ok!==true||response.quiz_id!=='IC5_'+lv+'_WQ'+String(i+1).padStart(2,'0')||
+    String(response.nivel)!==lv||Number(response.leccion)!==Number(lesson)||
+    response.vista_previa!==true||Number(response.peso_oficial)!==0)
+    return false;
+ f111TeacherExamModal('Modelo docente · '+lv+' · PC'+String(i+1).padStart(2,'0'),
+   f111ExamPageUrl('modulos/quiz_progress.html',
+     {teacher_preview:1,qz24_preview:1,grupo:g,nivel:lv,leccion:Number(lesson)}));
+ return true;
+}
+window.F111_QZ_openTeacherModel=openTeacherQuizModelF111;
 function previewPC02(){
  // Vista editorial histórica, nunca concede acceso de estudiantes.
  const url=new URL('modulos/qz_b1_pc02_preview.html',new URL('./',location.href));
