@@ -2114,6 +2114,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                 .map(r=>String(r.cod_estudiante)))].length;
               const historical=[...new Set(extraRows.filter(r=>r.source==='F91')
                 .map(r=>String(r.cod_estudiante)))].length;
+              // Solo el readback autorizado del backend concede el CTA oral.
+              // sessionFor() sirve para la etiqueta de calendario, nunca para permisos.
+              const oralReady=d.kind==='oral'&&todayStatus.kind==='oral'&&
+                Number(activeLesson)===Number(d.lesson)&&
+                activeSessionReady===true&&activeSessionError!==true&&
+                !loading&&!error&&sameCourseSession===true;
               const tone=active?pal.dark:finished?'#915B10':nextUp?'#16834A':'#6B6259';
               const status=active?tr('Sesión activa','Active session'):finished?
                 tr('Lección cerrada','Lesson closed'):nextUp?tr('Próxima','Next'):tr('Programada','Scheduled');
@@ -2162,6 +2168,14 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,
                         padding:'10px 13px',fontWeight:800,fontSize:12,cursor:'pointer'}}>
                       {tr('Consultar entregas','Review submissions')}
+                    </button>:oralReady?
+                    <button type="button" data-f111-exam-primary="oral-active"
+                      onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
+                        grupo:groupCode,nivel,leccion:d.lesson,
+                        fecha:String(lesson?.fecha||'').slice(0,10)}})}
+                      style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,
+                        padding:'10px 13px',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                      {tr('Abrir evaluación oral','Open oral assessment')}
                     </button>:
                     <button type="button" data-f111-exam-primary="students"
                       aria-expanded={chosen}
@@ -2181,7 +2195,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     <div style={{display:'grid',gap:7,padding:'11px',marginTop:5,
                       background:'#FFF',border:'1px solid #D4DCE7',
                       borderRadius:10,minWidth:200,boxShadow:'0 8px 18px #001E4714'}}>
-                      {d.kind==='written'&&
+                      {(d.kind==='written'||oralReady)&&
                         <button className="btn btn-ghost" type="button"
                           onClick={()=>setExamKey(chosen?'':d.key)}
                           style={{fontSize:12,textAlign:'left'}}>
@@ -2200,14 +2214,6 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                         style={{fontSize:12,textAlign:'left'}}>
                         {tr('Ver modelo','View model')}
                       </button>}
-                      {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&
-                        <button className="btn btn-ghost" type="button"
-                          onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
-                            grupo:groupCode,nivel,leccion:d.lesson,
-                            fecha:String(lesson?.fecha||'').slice(0,10)}})}
-                          style={{fontSize:12,textAlign:'left'}}>
-                          {tr('Abrir oral activo','Open active oral')}
-                        </button>}
                     </div>
                   </details>
                 </div>
