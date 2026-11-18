@@ -1592,7 +1592,10 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
 
 // ── Media de listening: iframe de YouTube o fallback ──────────────────────
 function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
-  const id = exam.videos ? exam.videos['listening_' + sec.listening] : null;
+  // F111 0826: la versión B del examen NO es la sección B del audio.
+  // Hasta certificar su MP3 privado, nunca reproducir el video A/2 cruzado.
+  const bAudioNoCertificado = /_WRITTEN_L(?:18|32)_TEST[12]_B$/.test(String(exam?.id||exam?.exam_id||''));
+  const id = !bAudioNoCertificado && exam.videos ? exam.videos['listening_' + sec.listening] : null;
   return (
     <div className="exs-listen">
       <div className="exl-row">
@@ -1605,7 +1608,11 @@ function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
                     frameBorder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen></iframe>
           </div>
-        : <span className="exl-pending">♪ Audio pendiente de publicar</span>}
+        : <span className="exl-pending" role={bAudioNoCertificado?'alert':undefined}>
+            {bAudioNoCertificado
+              ? 'Opción B bloqueada: falta certificar el audio propio de esta versión. No iniciar el examen.'
+              : '♪ Audio pendiente de publicar'}
+          </span>}
     </div>
   );
 }

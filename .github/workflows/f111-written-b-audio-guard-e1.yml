@@ -1,0 +1,22 @@
+name: F111 Written B Audio Fail-Closed E1
+on:
+  pull_request:
+    paths:
+      - 'src/examenes_render.jsx'
+      - 'src/examenes_bundle.jsx'
+      - 'src/examenes_data.jsx'
+      - 'scripts/qa_f111_written_b_audio_guard_e1.mjs'
+      - '.github/workflows/f111-written-b-audio-guard-e1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  written-option-b-no-crossed-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/qa_f111_written_b_audio_guard_e1.mjs
