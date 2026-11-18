@@ -1793,6 +1793,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   // No registrar ni guardar nada; las respuestas no salen al DOM.
   const [pcFocused,setPcFocused]=React.useState(8);
   const [pcReal,setPcReal]=React.useState({status:'idle',grupo:'',nivel:'',leccion:0});
+  const [pcModelStatus,setPcModelStatus]=React.useState({group:'',lesson:0,busy:false,message:''});
   const en=window.AN_I18N?.getLang?.()==='en';
   const tr=(es,english)=>en?english:es;
   const pal=nivelPal(nivel);
@@ -1974,7 +1975,8 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     }catch(_){setHistoryFeedback(tr('No se pudo consultar el historial oral.','Oral history could not be checked.'));}
     finally{setHistoryBusy('');}
   };
-  const openModel=d=>{
+  const openModel=(d,variant='A')=>{
+    const safeVariant=variant==='B'?'B':'A';
     const url=new URL(d.kind==='oral'?'modulos/examen_oral.html':'modulos/examenes.html',
       new URL('./',window.location.href));
     // El grupo proviene de F80 (sesión docente autenticada); no usar demo.
@@ -1990,10 +1992,34 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
       url.searchParams.set('view','teacher_preview');
       url.searchParams.set('nivel',nivel);
       url.searchParams.set('test',d.n===1?'TEST1':'TEST2');
-      url.searchParams.set('opcion','A');
+      url.searchParams.set('opcion',safeVariant);
       url.searchParams.set('plan',plan.toLowerCase());
     }
-    setPreview({title:renderLabel(d),url:url.href});
+    setPreview({title:renderLabel(d)+(d.kind==='written'?' · Opción '+safeVariant:''),
+      variant:d.kind==='written'?safeVariant:'',url:url.href});
+  };
+  const openPcModel=async(lesson)=>{
+    if(!groupCode||!nivel||loading||error){
+      setPcModelStatus({group:groupCode,lesson,busy:false,
+        message:'Primero verificá el grupo y el nivel reales.'});
+      return;
+    }
+    const open=window.F111_QZ_openTeacherModel;
+    if(typeof open!=='function'){
+      setPcModelStatus({group:groupCode,lesson,busy:false,
+        message:'El visor protegido aún no se cargó. Actualizá el Campus.'});
+      return;
+    }
+    setPcModelStatus({group:groupCode,lesson,busy:true,message:''});
+    try{
+      const allowed=await Promise.resolve(open(lesson,groupCode,nivel));
+      if(allowed!==true)throw Error('El servidor no confirmó el acceso a este modelo.');
+      setPcModelStatus({group:groupCode,lesson,busy:false,message:''});
+    }catch(e){
+      setPcModelStatus({group:groupCode,lesson,busy:false,
+        message:'Modelo no habilitado para este docente/grupo: '+
+          String(e?.message||'acceso no confirmado').slice(0,180)});
+    }
   };
   // Única acción destacada. Un cronograma o una consulta fallida jamás producen permiso.
   const todayStatus=(()=>{
@@ -2110,6 +2136,34 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                 'Protected controls could not open. Refresh and try again.'));
           }}>{tr('Gestionar Quiz '+todayStatus.number,'Manage Quiz '+todayStatus.number)}</button>}
       </section>
+      {nivel==='B1'&&pcReal.status==='ready'&&pcReal.grupo===groupCode&&
+       pcReal.nivel===nivel&&pcReal.availabilityVerified===true&&
+       pcReal.deliveriesVerified===true&&pcReal.estado==='ABIERTO'&&
+       roster.length>0&&pcReal.delivered<roster.length&&
+       <section role="status" data-f111-pc-overdue="verified" style={{
+         padding:'14px 16px',border:'1px solid #D2A85A',borderLeft:'5px solid #A47020',
+         borderRadius:12,background:'#FFF8E8',display:'grid',gap:6}}>
+         <strong style={{fontSize:14,color:'#805019'}}>
+           Progress Check {Math.max(1,TV_EXAM_QUIZ_F111.findIndex(([l])=>l===pcFocused)+1)}
+           {' · Lección '+pcFocused+' · seguimiento pendiente'}
+         </strong>
+         <span style={{fontSize:12,color:'#634B23'}}>
+           Apertura confirmada por QUIZ. {pcReal.delivered} de {roster.length}
+           {' estudiantes tienen una entrega consultable; '+pcReal.reviewed+
+             ' revisadas y '+pcReal.waiting+' entregadas por revisar.'}
+           {' Los borradores de estudiantes no forman parte de esta consulta.'}
+         </span>
+         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+           <button className="btn btn-ghost" type="button"
+             onClick={()=>openPcModel(pcFocused)}>{tr('Ver modelo pendiente','View pending model')}</button>
+           <button className="btn btn-primary" type="button"
+             onClick={()=>{
+               const launch=window.F111_QZ_openTeacherControls;
+               if(typeof launch!=='function'||launch(pcFocused,groupCode)===false)
+                 window.alert('El control protegido no está disponible.');
+             }}>{tr('Gestionar aplicación y entregas','Manage quiz and submissions')}</button>
+         </div>
+       </section>}
       {next&&<div role="status" style={{padding:'12px 14px',background:pal.light,
         border:'1px solid '+pal.dark,borderRadius:12,color:pal.dark,fontWeight:800,fontSize:13}}>
         {tr('Próxima evaluación según cronograma','Next assessment in the timetable')}: {next.title} · L{String(next.lesson).padStart(2,'0')}
@@ -2192,8 +2246,14 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       fontWeight:800,fontSize:12,cursor:'pointer'}}>
                     {tr('Ver estudiantes','See students')}
                   </button>
-                  <button className="btn btn-ghost" type="button" onClick={()=>openModel(d)}
-                    style={{fontSize:11}}>{tr('Ver modelo','View model')}</button>
+                  <button className="btn btn-ghost" type="button" onClick={()=>openModel(d,'A')}
+                    style={{fontSize:11}}>{d.kind==='oral'?tr('Ver modelo oral','View oral model'):
+                      tr('Ver escrito A','View written A')}</button>
+                  {d.kind==='written'&&<button className="btn btn-ghost" type="button"
+                    onClick={()=>openModel(d,'B')} title="El audio de la opción B no está certificado para aplicación."
+                    style={{fontSize:11,borderColor:'#AA7530',color:'#805019'}}>
+                    {tr('Ver escrito B · solo consulta','View written B · review only')}
+                  </button>}
                   {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&<button className="btn btn-primary" type="button"
                     onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
                       grupo:groupCode,nivel,leccion:d.lesson,fecha:String(lesson?.fecha||'').slice(0,10)}})}>
@@ -2361,6 +2421,20 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     color:focused?'#FFF':pal.dark,cursor:'pointer',fontWeight:850}}>
                   {focused?tr('Estado seleccionado','Selected status'):tr('Ver estado real','View live status')}
                 </button>}
+                <button className="btn btn-ghost" type="button"
+                  disabled={loading||pcModelStatus.busy}
+                  onClick={()=>openPcModel(lesson)}
+                  style={{fontSize:11,marginBottom:8,borderColor:pal.dark,color:pal.dark,fontWeight:850}}>
+                  {pcModelStatus.busy&&pcModelStatus.group===groupCode&&
+                   pcModelStatus.lesson===lesson?
+                    tr('Abriendo modelo…','Opening model…'):
+                    tr('Ver modelo · PDF y audio','View model · PDF and audio')}
+                </button>
+                {pcModelStatus.group===groupCode&&pcModelStatus.lesson===lesson&&
+                 pcModelStatus.message&&<div role="alert"
+                   style={{fontSize:11,color:'#8B1F1F',margin:'4px 0 9px'}}>
+                   {pcModelStatus.message}
+                 </div>}
                 {nivel==='B1'
                    ?<button className="btn btn-ghost" type="button"
                      onClick={()=>{const launch=window.F111_QZ_openTeacherControls;
@@ -2418,6 +2492,11 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
           <strong>{tr('Modelo docente','Teacher preview')} · {preview.title} · {nivel}</strong>
           <button className="btn btn-ghost" type="button" onClick={()=>setPreview(null)}>{tr('Cerrar','Close')}</button>
         </div>
+        {preview.variant==='B'&&<p role="status" style={{margin:'0 14px 9px',
+          padding:'9px 12px',borderRadius:9,background:'#FFF7E6',color:'#805019',fontSize:12}}>
+          Modelo de consulta únicamente: la pista original de la opción B todavía no está
+          certificada. No se debe habilitar su aplicación a estudiantes.
+        </p>}
         <iframe title={preview.title} src={preview.url} style={{border:0,width:'100%',flex:1}}
           sandbox="allow-scripts allow-same-origin allow-modals allow-presentation"
           referrerPolicy="same-origin"/>

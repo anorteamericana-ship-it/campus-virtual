@@ -448,6 +448,9 @@ function TeacherPreviewLiveApp() {
   const [showKey, setShowKey] = React.useState(false);
   const [scriptSec, setScriptSec] = React.useState(null);
   const exam = window.getExam ? window.getExam(cfg.nivel, cfg.test, cfg.opcion) : null;
+  // Los IDs públicos del listening para opción B no están certificados.
+  // Solo se ocultan en el MODELO; nunca marcar audio B como listo.
+  const safeModel = exam && cfg.opcion==='B'?{...exam,videos:{}}:exam;
   const tema = NIVEL_TEMA[cfg.nivel] || NIVEL_TEMA.B1;
   if (!exam) return <StudentLiveStatusCard title="Modelo no disponible" badge="Revisar catálogo" tone="red">No existe contenido para {cfg.nivel} · {cfg.test} · Opción {cfg.opcion}.</StudentLiveStatusCard>;
   return (
@@ -463,9 +466,17 @@ function TeacherPreviewLiveApp() {
       <div className="pv-banner" style={{'--lvl':tema.color,'--lvl-soft':tema.soft,'--lvl-ink':tema.ink,marginTop:12}}>
         <span className="pv-tag">{showKey?'CLAVE DOCENTE':'VISTA ESTUDIANTE'}</span>
         <span>{exam.id}</span>
-        <span className="pv-dim">· audio disponible · el guion aparece únicamente al mostrar respuestas</span>
+        <span className="pv-dim">{cfg.opcion==='B'
+          ?'· audio de esta opción NO certificado · modelo sin audio'
+          :'· la reproducción de audio requiere fuente válida · guion solo en modo docente'}</span>
       </div>
-      <ExamShell exam={exam} answers={{}} mode="preview" showKey={showKey} shell="premium" density="comfy" plan={cfg.plan}
+      {cfg.opcion==='B'&&<div role="status" style={{margin:'10px 14px',padding:'11px 13px',
+        background:'#FFF7E6',border:'1px solid #CDAA6D',borderRadius:10,
+        fontSize:12,color:'#77500E',fontWeight:800}}>
+        Opción B: el listening no está certificado. Se oculta el reproductor incorrecto
+        en este modelo. No autoricés su aplicación a estudiantes todavía.
+      </div>}
+      <ExamShell exam={safeModel} answers={{}} mode="preview" showKey={showKey} shell="premium" density="comfy" plan={cfg.plan}
         onOpenScript={setScriptSec}
         meta={{nombre:'Modelo para el docente',fecha:'',grupo:cfg.grupo,opcion:cfg.opcion,scoreLabel:'solo lectura'}} />
       <PvScript section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
