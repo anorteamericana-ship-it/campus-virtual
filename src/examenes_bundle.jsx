@@ -1510,7 +1510,7 @@ function ExamStyles() {
 //   meta: { nombre, fecha, scoreLabel }
 // ──────────────────────────────────────────────────────────────────────────
 function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
-                     shell='premium', density='comfy', review, meta={}, plan='ambos', onOpenScript, onOpenVideo }) {
+                     shell='premium', density='comfy', review, meta={}, plan='ambos', onOpenScript, onOpenVideo, privateAudioUrl='' }) {
   const tema = NIVEL_TEMA[exam.nivel];
   const ro = mode !== 'student';
   const rootStyle = { '--lvl':tema.color, '--lvl-ink':tema.ink, '--lvl-soft':tema.soft };
@@ -1555,7 +1555,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
         {exam.sections.map(sec => (
           <Section key={sec.letter} sec={sec} exam={exam} answers={answers} onAnswer={onAnswer}
                    ro={ro} mode={mode} showKey={showKey} review={review}
-                   onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} />
+                   onOpenScript={onOpenScript} onOpenVideo={onOpenVideo} privateAudioUrl={privateAudioUrl} />
         ))}
       </div>
       <footer className="ex-footer"><span>Academia Norteamericana · Programa Inglés Conversacional</span><span>Documento institucional · Campus Virtual</span></footer>
@@ -1564,7 +1564,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
 }
 
 // ── Una sección ────────────────────────────────────────────────────────────
-function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOpenScript, onOpenVideo }) {
+function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOpenScript, onOpenVideo, privateAudioUrl='' }) {
   return (
     <section className="exs">
       <div className="exs-h">
@@ -1582,7 +1582,7 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
       {/* Listening: video embebido del mapa maestro (sección A/B del audio,
           distinta de la opción A/B del examen). Guion solo si showKey. */}
       {sec.listening && (
-        <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} />
+        <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} privateAudioUrl={privateAudioUrl} />
       )}
 
       <SectionBody sec={sec} answers={answers} onAnswer={onAnswer} ro={ro} mode={mode} showKey={showKey} review={review} />
@@ -1591,7 +1591,24 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
 }
 
 // ── Media de listening: iframe de YouTube o fallback ──────────────────────
-function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
+function ListeningMedia({ exam, sec, showKey, onOpenScript, privateAudioUrl='' }) {
+  // F111 AUDIO-PRIVATE-01: audio ORIGINAL completo (secciones A y B) se
+  // descarga por intento autenticado; el blob: local NO es una URL pública.
+  // Solo un player para impedir reproducción simultánea/fragmentada.
+  if (privateAudioUrl) {
+    const first = String(sec.listening||'').toUpperCase() === 'A';
+    return <div className="exs-listen" data-f111-private-written-audio="true">
+      <div className="exl-row">
+        <span className="exl-tag">Listening · Sección {sec.listening}</span>
+        {showKey && <button className="exl-script" onClick={()=>onOpenScript && onOpenScript(sec.listening)}>Ver guion (docente)</button>}
+      </div>
+      {first
+        ? <audio controls preload="metadata" controlsList="nodownload"
+                 aria-label="Audio original privado para las secciones A y B"
+                 src={privateAudioUrl} style={{width:'100%',maxWidth:600}} />
+        : <span className="exl-pending">El mismo audio original incluye esta sección; reproducilo desde la sección A.</span>}
+    </div>;
+  }
   // F111 0826: la versión B del examen NO es la sección B del audio.
   // Hasta certificar su MP3 privado, nunca reproducir el video A/2 cruzado.
   const bAudioNoCertificado = /_WRITTEN_L(?:18|32)_TEST[12]_B$/.test(String(exam?.id||exam?.exam_id||''));
@@ -2165,6 +2182,26 @@ async function examWrittenFinalizeAfterPendingSave(pendingSave, readAnswers, sub
   return submit(finalAnswers);
 }
 
+// F111 AUDIO-PRIVATE-01 · decodificación estricta de un audio ORIGINAL
+// recibido para el intento/versión autenticados. Solo crea blob: local.
+function examWrittenPrivateAudioBlobUrl(response, attemptId, examId) {
+  const r=response||{};
+  if(r.ok!==true || String(r.attempt_id||'')!==String(attemptId||'') ||
+     String(r.exam_id||'')!==String(examId||'') ||
+     r.mime!=='audio/mpeg' || r.source!=='original_private_verified_sha256' ||
+     typeof r.audio_base64!=='string' || !r.audio_base64.length ||
+     Number(r.bytes)<1024 || Number(r.bytes)>4*1024*1024)
+    throw Error('written_private_audio_unavailable');
+  const binary=atob(r.audio_base64);
+  if(binary.length!==Number(r.bytes))throw Error('written_private_audio_size_mismatch');
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  if(!((bytes[0]===73&&bytes[1]===68&&bytes[2]===51) ||
+       (bytes[0]===255&&(bytes[1]&224)===224)))
+    throw Error('written_private_audio_not_mp3');
+  return URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));
+}
+
 // CALGRUPO_F27_20260617_STUDENTMODE_INTENTO_REAL_BACKEND
 function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, examOverride, assignment, backend }) {
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
@@ -2203,6 +2240,34 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const sendingRef = React.useRef(false);
   const lastSavedJsonRef = React.useRef(JSON.stringify(answers || {}));
   const autoSubmitRef = React.useRef(false);
+
+  // F111 AUDIO-PRIVATE-01: solo durante un intento STARTED real. El backend
+  // devuelve MP3 original en base64 tras validar actor/registro/ACL/SHA. El
+  // navegador conserva UN blob: efímero que se revoca al salir del examen.
+  // Nunca se copia el MP3 a respuestas, DOM, localStorage o repositorio.
+  const [privateAudio, setPrivateAudio] = useState({status:'idle',url:''});
+  useEffect(() => {
+    const id = backend && backend.attemptId;
+    if (stage !== 'taking' || !id || !backend || typeof backend.onGetPrivateAudio !== 'function') return;
+    let cancelled = false, blobUrl = '';
+    setPrivateAudio({status:'loading',url:''});
+    (async () => {
+      try {
+        const r = await backend.onGetPrivateAudio(id);
+        if (cancelled) return;
+        const expected = String((exam && (exam.id||exam.exam_id))||'');
+        blobUrl = examWrittenPrivateAudioBlobUrl(r,id,expected);
+        if (cancelled) { URL.revokeObjectURL(blobUrl); blobUrl=''; return; }
+        setPrivateAudio({status:'ready',url:blobUrl});
+      } catch (_) {
+        if (!cancelled) setPrivateAudio({status:'unavailable',url:''});
+      }
+    })();
+    return () => {
+      cancelled=true;
+      if (blobUrl) { try { URL.revokeObjectURL(blobUrl); } catch (_) {} }
+    };
+  }, [stage, backend && backend.attemptId]);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { savingRef.current = saving; }, [saving]);
@@ -2485,8 +2550,17 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   return (
     <div className="stwrap">
       <div className="sttake">
+        {privateAudio.status==='loading' && <div role="status" data-f111-written-audio-state="loading"
+          style={{padding:'10px 16px',fontSize:12.5}}>
+          Validando acceso al audio original de este intento…
+        </div>}
+        {privateAudio.status==='unavailable' && <div role="status" data-f111-written-audio-state="unavailable"
+          style={{padding:'10px 16px',fontSize:12.5,color:'#7A1E2C'}}>
+          El MP3 privado no está disponible en este entorno; avisá al docente antes de responder Listening.
+        </div>}
         <ExamShell exam={exam} answers={answers} onAnswer={timeExpired ? undefined : onAnswer} mode={timeExpired ? 'preview' : 'student'} showKey={false}
                    shell={shell} density={density} plan={plan}
+                   privateAudioUrl={!timeExpired && privateAudio.status==='ready' ? privateAudio.url : ''}
                    meta={{ nombre: metaNombre || 'Estudiante', fecha: metaFecha, grupo: metaGrupo || 'Grupo activo', opcion, scoreLabel:`${answered} / ${all.length} resp.` }} />
       </div>
       <div className="stbar">
@@ -5273,6 +5347,12 @@ function StudentLiveExamApp() {
   const heartbeatAttempt = async () => {
     return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
   };
+  const getWrittenPrivateAudio = async (id) => {
+    // Solo el intento vigente: el servidor vuelve a comprobar titularidad,
+    // tiempo, grupo, firma SHA-256 y acceso privado al archivo original.
+    if (!id || String(id) !== String(attemptId)) return {ok:false,error:'attempt_mismatch'};
+    return await examPostLive('examGetStudentWrittenPrivateAudio', { attempt_id:id });
+  };
   const getWrittenReceipt = async (id) => {
     // Identidad y titularidad se verifican nuevamente en Apps Script.
     if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
@@ -5311,6 +5391,7 @@ function StudentLiveExamApp() {
       onSubmit:submitAttempt,
       onGetReceipt:getWrittenReceipt,
       onGetFinalReport:getWrittenFinalReport,
+      onGetPrivateAudio:getWrittenPrivateAudio,
       onHeartbeat:heartbeatAttempt,
       student:live.student || null,
       activation,

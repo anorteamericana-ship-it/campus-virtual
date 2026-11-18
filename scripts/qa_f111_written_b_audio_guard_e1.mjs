@@ -7,7 +7,7 @@ import fs from 'node:fs';
 const render=fs.readFileSync('src/examenes_render.jsx','utf8');
 const bundle=fs.readFileSync('src/examenes_bundle.jsx','utf8');
 const data=fs.readFileSync('src/examenes_data.jsx','utf8');
-const start='function ListeningMedia({ exam, sec, showKey, onOpenScript }) {';
+const start="function ListeningMedia({ exam, sec, showKey, onOpenScript, privateAudioUrl='' }) {";
 const end='// ── Cuerpo por tipo ──';
 const section=(s)=>{
  const a=s.indexOf(start),b=s.indexOf(end,a);

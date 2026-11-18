@@ -407,6 +407,12 @@ function StudentLiveExamApp() {
   const heartbeatAttempt = async () => {
     return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
   };
+  const getWrittenPrivateAudio = async (id) => {
+    // Solo el intento vigente: el servidor vuelve a comprobar titularidad,
+    // tiempo, grupo, firma SHA-256 y acceso privado al archivo original.
+    if (!id || String(id) !== String(attemptId)) return {ok:false,error:'attempt_mismatch'};
+    return await examPostLive('examGetStudentWrittenPrivateAudio', { attempt_id:id });
+  };
   const getWrittenReceipt = async (id) => {
     // Identidad y titularidad se verifican nuevamente en Apps Script.
     if (!id || String(id) !== String(attemptId)) return { ok:false, error:'attempt_mismatch' };
@@ -445,6 +451,7 @@ function StudentLiveExamApp() {
       onSubmit:submitAttempt,
       onGetReceipt:getWrittenReceipt,
       onGetFinalReport:getWrittenFinalReport,
+      onGetPrivateAudio:getWrittenPrivateAudio,
       onHeartbeat:heartbeatAttempt,
       student:live.student || null,
       activation,
