@@ -2351,8 +2351,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         const r = await examWrittenFinalizeAfterPendingSave(saveInFlightRef.current,
           () => answersRef.current,
           finalAnswers => backend.onSubmit(finalAnswers, { autoSubmit:auto, timeSpentSec:elapsed }));
-        if (!r || r.ok === false) {
-          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo enviar el examen. Intentá nuevamente.', 'submit'));
+        if (!r || r.ok !== true || (backend.attemptId && String(r.attempt_id || '') !== String(backend.attemptId))) {
+          setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo confirmar el envío. Consultá el estado del intento antes de reintentar.', 'submit'));
           autoSubmitRef.current = false;
           return r;
         }
