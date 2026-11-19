@@ -5387,6 +5387,22 @@ function StudentLiveExamApp() {
     if (r && r.ok) setCurrentAttempt(Object.assign({}, currentAttempt || {}, { STATUS:'SUBMITTED', SUBMITTED_AT:r.server_now || '' }));
     return r;
   };
+  const checkWrittenSubmission = async (id) => {
+    if (!id || String(id)!==String(attemptId))
+      return {ok:false,error:'attempt_mismatch'};
+    // Solo lectura: no se llama examSubmitAttempt ni se crea otro intento.
+    const r=await examPostLive('examGetStudentLivePanel', {
+      client_meta:{source:'f111_submit_readback_03'}
+    });
+    if(!r||r.ok!==true)return {ok:false,error:'readback_unavailable'};
+    const matches=[r.current_attempt,...(Array.isArray(r.attempts)?r.attempts:[])]
+      .filter(a=>a&&String(a.ATTEMPT_ID||'')===String(id));
+    if(!matches.length)return {ok:false,error:'readback_attempt_missing'};
+    const statuses=[...new Set(matches.map(a=>String(a.STATUS||'').toUpperCase()))];
+    if(statuses.length!==1||!['STARTED','SUBMITTED','REVIEWED'].includes(statuses[0]))
+      return {ok:false,error:'readback_ambiguous'};
+    return {ok:true,attempt_id:id,status:statuses[0]};
+  };
   const heartbeatAttempt = async () => {
     return await examPostLive('examHeartbeatAttempt', { attempt_id: attemptId, client_meta:{ source:'student_iframe_f43_heartbeat' } });
   };
@@ -5436,6 +5452,7 @@ function StudentLiveExamApp() {
       onGetFinalReport:getWrittenFinalReport,
       onGetPrivateAudio:getWrittenPrivateAudio,
       onHeartbeat:heartbeatAttempt,
+      onCheckSubmission:checkWrittenSubmission,
       student:live.student || null,
       activation,
       timeLimitMin:Number(activation && activation.TIME_LIMIT_MIN || 90) || 90,
