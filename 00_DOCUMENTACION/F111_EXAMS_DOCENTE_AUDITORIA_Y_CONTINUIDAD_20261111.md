@@ -1,4 +1,43 @@
 # F111 — Exámenes Docente: auditoría canónica, simplificación y continuidad
+
+## ESTADO VIGENTE — R58/R59 · 19-nov-2026 · Entrega única LIVE
+
+**Fuente única de verdad operativa**: Campus público `https://anorteamerican.com/campus-virtual/campus.html`; frontend `main` de `campus-virtual`; Apps Script CORE desplegado `@507` en el deployment original `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`. Los informes anteriores de esta misma página son históricos; las instrucciones que difieran quedan reemplazadas por esta sección.
+
+### Forma de trabajo ordenada por Dirección
+
+- **Una sola interfaz en vivo** y cambios pequeños, dirigidos a la función en uso; evitar producir ramas paralelas indefinidas. GitHub impide escribir directamente a `main` por regla del repositorio: usar **PR único, temporal, con QA focalizada y fusión inmediata**; no arrastrar ramas abiertas como alternativa de producción.
+- En cada cambio comprobar código servido por URL pública sin caché y, cuando proceda, aceptar el recorrido con la cuenta docente. Jamás confundir código integrado con examen real completado.
+- **No fusionar** los PR grandes antiguos frontend #778 ni backend #145; 5 automatizaciones F111 **pausadas** (5/5). No tocar QZ @504, ni notas, asistencia, PDF oral institucional o historiales de alumnos salvo operación académica real autorizada.
+
+### Entrega R58 — Mis exámenes → Ver estudiantes (frontend)
+
+- PR [#787](https://github.com/anorteamericana-ship-it/campus-virtual/pull/787), merge `f9beda94e9aab7f1727b8a069170019f9f6a97b6` en `main`. `src/teacher_views.jsx` únicamente: Ver estudiantes desplaza a la lista real del examen; muestra estudiantes con nota oficial primero, nota y estado (aplicado, borrador o pendiente); **Ver detalle de evaluación** oral usa `F111_QZ_openSavedOral` para cargar rúbrica y PDF existentes sin duplicarlos. Escritos reutilizan lista y su bandeja de entregas.
+- Recordatorio oral: solo ofrece **copiar mensaje** a estudiantes `CA` sin nota y dentro de 48 horas desde la fecha del cronograma. Al no disponer de hora oficial, cálculo conservador desde 00:00 Costa Rica. No se envía automáticamente WhatsApp ni se extraen teléfonos. Pasadas 48 h, solo ofrece **copiar indicaciones de reprogramación**; esto NO crea ni autoriza reposición.
+- Los registros sin nota **NO son automáticamente nota cero**. B1 grupo `B1-KJ18-C3-0826` tiene **15** estudiantes, **11 APR + 4 CA** y **columna G o1 vacía en todos** según Apollo. Registrar 15 ceros sin investigación alteraría expedientes ya aprobados. Nota cero requiere resolución académica/registro oficial verificado, separada del recordatorio.
+- QA local con Babel versión del Campus **PASS**: JSX compiló y controles esperados presentes; la validación humana docente aún pendiente.
+
+### Entrega R59 — Aplicar oral pendiente con sesión cerrada (backend)
+
+- Apps Script CORE versión **@507** desplegada sobre mismo deployment, sin cambiar dirección ni alterar QUIZ @504. Se conservó la guarda integral de identidad docente, grupo asignado, calendario único `PRACTICA/EVAL_ORAL`, fecha original, lección cerrada, ausencia de otra sesión activa, alumno `CA` no duplicado y protección de APR y notas oficiales.
+- La activación institucional se incorpora explícitamente en el release: propiedad `F111_ORAL_TARDIO_ORDINARIO_ENABLED` vacía o `YES` permite iniciar **si todo el resto cumple**; `NO` o valor inválido bloquea, así como errores al leer la propiedad. Esto corrige el bloqueo anterior cuando la configuración estaba ausente. No es reposición R57/F91, no reabre asistencia y no altera notas por consulta.
+- **Pendiente de aceptación real:** el profesor debe comprobar `Aplicar oral pendiente` en el Campus, con alumno `CA` verdaderamente elegible. No se realizó guardado ni cierre real desde esta entrega. Hay alumnos APR históricos sin nota o1: **no** son candidatos de regularización automática.
+
+### Matriz de avance honesta / próximas operaciones
+
+| Operación | Estado al 19-nov | Validación pendiente |
+|---|---|---|
+| Ver estudiantes, nota y detalle | Publicado en `main`, QA sintáctica PASS | Una consulta docente real de rúbrica/PDF |
+| Recordatorios 48 h / reprogramación | UI implementada, copia de mensaje sin envío ni escritura | Comprobar botón dentro/fuera de plazo en navegador |
+| Oral cerrado | CORE **@507 desplegado**, lectura protegida | Apertura real de un `CA` elegible, sin sesión activa |
+| Guardar y cerrar nota | Motor institucional previo conservado, no modificado | Una aceptación académica supervisada; nunca expediente APR |
+| Cero por vencimiento | **No implementado** como escritura automática | Definir fuente/criterio oficial sin perder registros históricos |
+| PDF oral existente | Conservado, sin cambios | Verificar consulta read-only desde detalle |
+| Automatizaciones F111 | **5/5 pausadas** | No reactivar hasta cierre funcional |
+| Frontend #778 / Backend #145 | **DRAFT, NO MERGE** | Extraer solo cambios útiles tras validar LIVE |
+
+**Regla de continuidad:** trabajo siguiente = verificar LIVE con docente, registrar resultado y corregir exclusivamente el error observado. No repetir inspecciones históricas ni atribuir progreso por número de commits.
+
 Corte 11 de noviembre de 2026, hora Costa Rica. Dueño del seguimiento: GitHub issue anorteamericana-ship-it/campus-virtual#499. ESTE ARCHIVO ES EL ÚNICO INVENTARIO OPERATIVO DEL REDISEÑO; no duplicar planes.
 Evidencia: captura real del docente Diego, Campus /campus-virtual/campus.html (grupo B1-KJ18-C3-0826, martes/jueves 9 pm, padrón visual 15, programa INA); código frontend main SHA 9e0242d8ffb5b313bdc11df78cf2d887fdfa66b3; CORE Apps Script estable @499 confirmado por captura de la consola; QUIZ @477 según último readback técnico previo (número NO visible en la captura CORE). No hay prueba funcional autenticada con clics mutantes en esta auditoría.
 
