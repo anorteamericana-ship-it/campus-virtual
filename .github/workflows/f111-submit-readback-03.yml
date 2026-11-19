@@ -1,0 +1,22 @@
+name: F111 Written Submit Readback 03
+on:
+  pull_request:
+    paths:
+      - 'src/examenes_modes.jsx'
+      - 'src/examenes_bundle.jsx'
+      - 'src/examenes_app.jsx'
+      - 'scripts/qa_f111_submit_readback_03.mjs'
+      - '.github/workflows/f111-submit-readback-03.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  submit-readback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/qa_f111_submit_readback_03.mjs
