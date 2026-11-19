@@ -2562,7 +2562,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       onClick={()=>setRecordKey(recordOpen?'':key)}
                       style={{fontSize:11}}>
                       {recordOpen?tr('Cerrar ficha','Close record'):tr('Ficha de evaluación','Assessment record')}
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 {recordOpen&&<div data-f111-student-assessment-record="true" role="region"
