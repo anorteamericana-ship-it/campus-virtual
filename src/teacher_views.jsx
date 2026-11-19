@@ -1799,6 +1799,21 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const pal=nivelPal(nivel);
   const groupLabel=tvGrupoLabel(meta);
   const groupCode=String(codGrupo||'');
+  // Cambiar de grupo: destacar el último PC con fecha vencida que conste en
+  // el calendario REAL. La fecha nunca activa el examen por sí misma.
+  React.useEffect(()=>{
+    if(!groupCode||nivel!=='B1'||loading||error)return;
+    const today=tvTodayIsoCostaRicaF98();
+    const due=(lecciones||[]).filter(l=>
+      tvLessonRielF97(l)==='curso'&&
+      TV_EXAM_QUIZ_F111.some(([n])=>Number(l.leccion)===n)&&
+      /^\d{4}-\d{2}-\d{2}$/.test(String(l.fecha||'').slice(0,10))&&
+      String(l.fecha).slice(0,10)<=today&&
+      !['SUSPENDIDA','CANCELADA','ANULADA'].includes(tvUpper(l.estado)))
+      .sort((a,b)=>Number(b.leccion)-Number(a.leccion));
+    // Ningún PC programado todavía: PC01 solo para consultar su estado.
+    setPcFocused(due.length?Number(due[0].leccion):4);
+  },[groupCode,nivel,loading,error]);
   React.useEffect(()=>{
     let current=true;
     if(!groupCode||nivel!=='B1'||!Number.isInteger(pcFocused)) {
@@ -1827,6 +1842,8 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
       setPcReal({status:'ready',grupo:groupCode,nivel,leccion:pcFocused,
         availabilityVerified:stateOk,deliveriesVerified:listOk,
         estado:stateOk?String(availability.estado||'NO_VERIFICADO').toUpperCase():'',
+        puedeAbrir:stateOk&&availability.puede_abrir===true,
+        fechaOriginal:stateOk?String(availability.fecha_programada||''):'',
         delivered:listOk?attempts.length:null,
         reviewed:listOk?attempts.filter(a=>tvUpper(a.ESTADO)==='REVISADO').length:null,
         waiting:listOk?attempts.filter(a=>tvUpper(a.ESTADO)==='ENTREGADO').length:null});
@@ -2138,7 +2155,8 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
       </section>
       {nivel==='B1'&&pcReal.status==='ready'&&pcReal.grupo===groupCode&&
        pcReal.nivel===nivel&&pcReal.availabilityVerified===true&&
-       pcReal.deliveriesVerified===true&&pcReal.estado==='ABIERTO'&&
+       pcReal.deliveriesVerified===true&&
+       (pcReal.estado==='ABIERTO'||pcReal.puedeAbrir===true)&&
        roster.length>0&&pcReal.delivered<roster.length&&
        <section role="status" data-f111-pc-overdue="verified" style={{
          padding:'14px 16px',border:'1px solid #D2A85A',borderLeft:'5px solid #A47020',
@@ -2148,7 +2166,10 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
            {' · Lección '+pcFocused+' · seguimiento pendiente'}
          </strong>
          <span style={{fontSize:12,color:'#634B23'}}>
-           Apertura confirmada por QUIZ. {pcReal.delivered} de {roster.length}
+           {pcReal.estado==='ABIERTO'?'Quiz abierto para estudiantes. ':
+             pcReal.puedeAbrir===true?'Quiz cerrado; se permite abrirlo después de su fecha original. ':
+             'Estado de apertura por confirmar. '}
+           {pcReal.delivered} de {roster.length}
            {' estudiantes tienen una entrega consultable; '+pcReal.reviewed+
              ' revisadas y '+pcReal.waiting+' entregadas por revisar.'}
            {' Los borradores de estudiantes no forman parte de esta consulta.'}
@@ -2466,7 +2487,10 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
               <div style={{color:'#8B1F1F'}}>No se pudo consultar el servidor. No significa que no existan entregas.</div>:
               <div style={{display:'grid',gap:3,marginTop:5}}>
                 <span>{'Apertura: '+(pcReal.availabilityVerified?
-                  pcReal.estado:'No verificable')}</span>
+                  pcReal.estado:'No verificable')+
+                  (pcReal.puedeAbrir?' · aplicación tardía permitida':'')}</span>
+                {pcReal.fechaOriginal&&<span>{'Fecha original: '+pcReal.fechaOriginal+
+                  ' · los cambios de disponibilidad los autoriza el servidor'}</span>}
                 <span>{pcReal.deliveriesVerified?
                   pcReal.delivered+' entregas registradas · '+pcReal.reviewed+' revisadas · '+
                     pcReal.waiting+' pendientes de revisión':
