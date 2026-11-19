@@ -70,9 +70,9 @@ const F96_LAZY = {
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
-  student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C','src/student_modules.jsx?v=F111PROFILECANONICAL20261020&four=F111FOURTABSEN20261104A&orallate=F11120261118'],
+  student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C','src/student_modules.jsx?v=F111PROFILECANONICAL20261020&four=F111FOURTABSEN20261104A&orallate=F11120261118&oralui=F111R61N19'],
   syllabus_views: ['src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023'],
-  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI05C20261111&attedit=F111ATTEDITV320261113&models=F111REALMODELS20261118&orallate=F11120261118&modelview=F111R57&students=F111R58L19&latecore=F111R59C19&oralanytime=F111R60N19','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110'],
+  teacher_views: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI05C20261111&attedit=F111ATTEDITV320261113&models=F111REALMODELS20261118&orallate=F11120261118&modelview=F111R57&students=F111R58L19&latecore=F111R59C19&oralanytime=F111R60N19&oralui=F111R61N19','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110'],
   english_lab_live: ['src/english_lab_live.jsx?v=F98.4Z6CS20H'],
   vista_docente: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A'],
   admin_views: ['src/becas_admin.jsx?v=F96.5G','src/admin_views.jsx?v=F98.4Z6R-HOTFIX-DATES-SUPER'],
@@ -83,7 +83,7 @@ const F96_LAZY = {
   cronograma_todos: ['src/cronograma_todos.jsx?v=F98.4Z6CM'],
   cronograma_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A'],
   calendario_grupo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/cronograma_todos.jsx?v=F98.4Z6CM','src/cronograma_grupo.jsx?v=F111ATTEND20261021&crday=F111CRDAY20261104A','src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/calendario_grupo.jsx?v=F98.4Z6CM'],
-  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI05C20261111&attedit=F111ATTEDITV320261113&models=F111REALMODELS20261118&orallate=F11120261118&modelview=F111R57&students=F111R58L19&latecore=F111R59C19&oralanytime=F111R60N19','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110','src/docente_operativo.jsx?v=F96.5G'],
+  docente_operativo: ['src/vista_docente.jsx?v=F111ARCHIVESEP20261020&menus=F111MENUSENFINAL20261104A','src/teacher_views.jsx?v=F111R56CONAPERO20261106A&rl=F111ROSTER20261104CLEAN&menus=F111MENUSENFINAL20261104A&exui=F111EXUI05C20261111&attedit=F111ATTEDITV320261113&models=F111REALMODELS20261118&orallate=F11120261118&modelview=F111R57&students=F111R58L19&latecore=F111R59C19&oralanytime=F111R60N19&oralui=F111R61N19','src/teacher_agenda_slots_cs19f.jsx?v=F98.4Z6CS21A146CAL&exui=F111EXUI011110','src/docente_operativo.jsx?v=F96.5G'],
   buscador: ['src/admin_students.jsx?v=F111PEPAID20261102&hotfix=F111ANTICIPOS20261103&att=F111ATTLIMIT20261103A&coadvance=F111CONAPEADVANCEREADONLY20261104A&quote=F111CONSULTA410330&compact=F111COMPACT1107&aplicados=F111APLICADOS1107','src/buscador.jsx?v=F98.4Z6AS'],
   banco: ['src/importador_banco.jsx?v=F96.5G','src/importador_banco_integridad_cs21a114.jsx?v=F98.4Z6CS21A114'],
   aplicar_pago: ['src/aplicar_pago.jsx?v=F98.4Z6AP&hotfix=F111ANTICIPOS20261103'],
@@ -430,7 +430,7 @@ function ExamenesAdminPanel() {
       iframeTitle="Centro de exámenes · Escritos, Orales y Progress Check"
     />;
   }
-  const oralSrc=`modulos/examen_oral.html?preview=1&nivel=${encodeURIComponent(nivel)}&leccion=${leccion}&v=F92.6`;
+  const oralSrc=`modulos/examen_oral.html?preview=1&nivel=${encodeURIComponent(nivel)}&leccion=${leccion}&v=F111R61N19`;
   return <section data-screen-label="Admin · Exámenes" style={{display:'flex',flexDirection:'column',gap:14}}>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',padding:'14px 16px',background:'#fff',border:'1px solid var(--line)',borderRadius:14}}>
       <div><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>EXÁMENES INSTITUCIONALES</div><div style={{fontSize:20,fontWeight:900,marginTop:2}}>Vista previa y administración</div><div style={{fontSize:11.5,color:'var(--ink-3)',marginTop:3}}>{superadmin?'Superadmin puede administrar los escritos; el oral se muestra como vista previa segura.':'Vista previa segura sin modificación de notas ni contenido.'}</div></div>
