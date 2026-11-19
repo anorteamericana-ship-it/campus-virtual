@@ -27,23 +27,29 @@ body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;ba
 .qbody{padding:8px;overflow:visible}.unit{border:1px solid var(--line);border-radius:11px;background:#fff;margin-bottom:8px;overflow:hidden}.unit h3{margin:0;padding:9px 10px;background:#FFF6F5;color:var(--rojo);font-size:14px;font-weight:900;border-bottom:1px solid #FFD8D5}.q{display:flex;gap:8px;padding:8px 9px;border-bottom:1px solid #EEF2F7;cursor:pointer}.q:last-child{border-bottom:0}.q input{margin-top:2px;flex:0 0 auto}.q span{font-size:12.5px;line-height:1.4}.other{padding:8px;border-top:1px dashed var(--line);background:#FBFCFF}.other input{font-size:11px}.global-other{padding:9px;border-top:1px solid var(--line);background:#F8FAFF;border-radius:0 0 var(--r) var(--r)}.global-other textarea{min-height:70px}.empty{padding:18px;text-align:center;color:var(--muted);font-size:11px}.warnline,.errorline{font-size:11px;border-radius:10px;padding:9px 10px;margin-bottom:9px}.warnline{color:#805500;background:#FFF4D6;border:1px solid #EED18A}.errorline{color:#8B1F1F;background:#FDECEA;border:1px solid #F3B9B9}
 .toast{position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 18px 45px rgba(0,0,0,.25);font-size:11px;z-index:99;display:none}.toast.show{display:block}.modal{position:fixed;inset:0;background:rgba(7,20,45,.62);z-index:90;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}.modal.open{display:flex}.pdf{background:#fff;width:min(920px,96vw);border-radius:16px;box-shadow:0 22px 70px rgba(0,0,0,.32);overflow:hidden}.pdf-toolbar{display:flex;gap:10px;justify-content:flex-end;background:#F8FAFF;border-bottom:1px solid var(--line);padding:12px;position:sticky;top:0;z-index:2}.pdf-page{padding:28px 36px}.pdf-page h2{margin:0 0 4px;color:var(--azul);font-size:22px}.pdf-page table{width:100%;border-collapse:collapse;margin-top:14px}.pdf-page th{background:#082F68;color:#fff;padding:8px;font-size:11px}.pdf-page td{border:1px solid #CDD7E5;padding:8px;font-size:12px}.pdf-box{border:1px solid #CDD7E5;padding:10px;margin-top:10px;border-radius:10px;white-space:pre-wrap}
 
-/* Vista docente del banco oral: contenido curricular, sin paneles técnicos. */
-body.oral-model-preview .main{display:flex;flex-direction:column;max-width:1200px;margin:0 auto;padding:16px}
-body.oral-model-preview .work{width:100%}
-body.oral-model-preview .side{display:block;width:100%}
-body.oral-model-preview .eval,
+/* Modelo docente: el examen oral y las preguntas se usan juntos. */
+body.oral-model-preview .main{display:grid;grid-template-columns:minmax(610px,1.65fr) minmax(380px,1fr);align-items:start;gap:12px;max-width:1500px;margin:0 auto;padding:12px}
+body.oral-model-preview .work,body.oral-model-preview .side{width:100%;min-width:0}
+body.oral-model-preview .side{display:block}
 body.oral-model-preview .students-panel,
 body.oral-model-preview #r50-admin-panel,
-body.oral-model-preview .global-other,
 body.oral-model-preview .top-actions,
-body.oral-model-preview .context-head p{display:none!important}
-body.oral-model-preview .questions-panel{width:100%}
-body.oral-model-preview #qbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px}
-body.oral-model-preview .unit{margin:0}
-body.oral-model-preview .model-question-list{margin:0;padding:12px 20px 15px 36px}
-body.oral-model-preview .model-question-list li{padding-left:3px;margin-bottom:9px;font-size:13px;line-height:1.55}
-body.oral-model-preview .model-question-list li:last-child{margin-bottom:0}
-@media(max-width:800px){body.oral-model-preview #qbody{grid-template-columns:1fr}body.oral-model-preview .main{padding:9px}}
+body.oral-model-preview .context-head p,
+body.oral-model-preview .student-banner,
+body.oral-model-preview .actions{display:none!important}
+body.oral-model-preview .questions-panel{width:100%;position:sticky;top:8px;max-height:calc(100vh - 24px);display:flex;flex-direction:column}
+body.oral-model-preview #qbody{display:block;overflow-y:auto;flex:1;min-height:0;padding:9px}
+body.oral-model-preview .unit{margin-bottom:9px}
+body.oral-model-preview .q{cursor:pointer}
+body.oral-model-preview .q:has(input:checked){background:#EAF4FF}
+body.oral-model-preview .global-other{flex:0 0 auto;display:block}
+body.oral-model-preview .eval{display:block}
+@media(max-width:1090px){
+  body.oral-model-preview .main{grid-template-columns:minmax(0,1fr)}
+  body.oral-model-preview .questions-panel{position:static;max-height:none}
+  body.oral-model-preview #qbody{overflow:visible}
+}
+@media(max-width:700px){body.oral-model-preview .main{padding:7px}}
 
 /* F111 D3-R4: PDF oficial con estilos exclusivos del servidor. */
 
@@ -228,7 +234,7 @@ function levelLabelF90(v){return({B1:'Básico I',B2:'Básico II',I1:'Intermedio 
 function formatDateEsF90(v){const raw=String(v||'').slice(0,10);const d=/^\d{4}-\d{2}-\d{2}$/.test(raw)?new Date(raw+'T12:00:00'):new Date(v);if(Number.isNaN(d.getTime()))return String(v||'');return d.toLocaleDateString('es-CR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
 function escF90(v){return String(v==null?'':v).replace(/[&<>\"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[ch]));}
 function setStatus(text,kind='warn'){const el=document.getElementById('status-chip');el.className=`status ${kind}`;el.textContent=text;}
-function buildRubric(){document.getElementById('rubric-body').innerHTML=CRITERIA.map(c=>`<tr><td><div class="crit">${c[1]}</div><div class="desc">${c[2]}</div></td>${[0,1,2,3,4,5].map(v=>`<td><button class="score-btn" data-crit="${c[0]}" data-v="${v}">${v}</button></td>`).join('')}</tr>`).join('');document.querySelectorAll('.score-btn').forEach(b=>b.onclick=()=>{if(state.busy||!state.selected)return;if(oralLockedF111(state.evaluations[state.selected.codigo]))return;state.scores[b.dataset.crit]=Number(b.dataset.v);oralMarcarCambiosR49();renderScores();});}
+function buildRubric(){document.getElementById('rubric-body').innerHTML=CRITERIA.map(c=>`<tr><td><div class="crit">${c[1]}</div><div class="desc">${c[2]}</div></td>${[0,1,2,3,4,5].map(v=>`<td><button class="score-btn" data-crit="${c[0]}" data-v="${v}">${v}</button></td>`).join('')}</tr>`).join('');document.querySelectorAll('.score-btn').forEach(b=>b.onclick=()=>{if(state.busy||(!state.selected&&!state.panel?.preview))return;if(state.selected&&oralLockedF111(state.evaluations[state.selected.codigo]))return;state.scores[b.dataset.crit]=Number(b.dataset.v);if(!state.panel?.preview)oralMarcarCambiosR49();renderScores();});}
 function oralNeedsReviewF111(ev){const st=String(ev?.ESTADO||'').toUpperCase(),sync=String(ev?.NOTA_OFICIAL_ESTADO||'').toUpperCase();return st==='CIERRE_PENDIENTE_NOTA'||sync==='CONCILIACION_REQUERIDA'||(['CERRADO','PDF_GENERADO'].includes(st)&&sync!=='SINCRONIZADA');}
 function oralLockedF111(ev){return ['CERRADO','PDF_GENERADO'].includes(String(ev?.ESTADO||'').toUpperCase())||oralNeedsReviewF111(ev);}
 function oralCompletedF111(ev){return ['CERRADO','PDF_GENERADO'].includes(String(ev?.ESTADO||'').toUpperCase())&&String(ev?.NOTA_OFICIAL_ESTADO||'').toUpperCase()==='SINCRONIZADA';}
@@ -405,20 +411,29 @@ function renderQBank(){
   const qbody=document.getElementById('qbody');
   if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay unidades asignadas a esta lección.</div>';return;}
   if(p.preview){
-    // La consulta solo muestra el banco existente del nivel y de la lección.
-    // B1 mantiene las preguntas históricas y sus índices; B2/I1/I2 leen
-    // la transcripción estructurada. No se carga ni altera un expediente.
+    // Práctica interactiva sobre el banco original existente:
+    // los cambios quedan en memoria de esta pantalla; no se crea expediente.
     const nivel=String(p.nivel||'').toUpperCase();
     const source=nivel==='B1'?QB:originalBankF111();
     qbody.innerHTML=meta.units.map(u=>{
       const unit=source?.[u]||{title:'Unit '+u,qs:[]};
       const questions=Array.isArray(unit.qs)?unit.qs:[];
+      const selected=state.questions[u]||[];
       return '<section class="unit"><h3>'+escF90(unit.title||'Unit '+u)+'</h3>'+
-        (questions.length?'<ol class="model-question-list">'+
-          questions.map(q=>'<li>'+escF90(q)+'</li>').join('')+'</ol>':
+        (questions.length?questions.map((q,i)=>
+          '<label class="q"><input type="checkbox" data-model-unit="'+u+
+          '" data-model-idx="'+i+'" '+(selected.includes(i)?'checked':'')+
+          '><span>'+escF90(q)+'</span></label>').join(''):
           '<div class="empty">No hay preguntas para esta unidad.</div>')+
         '</section>';
     }).join('');
+    qbody.querySelectorAll('[data-model-unit]').forEach(ch=>ch.onchange=()=>{
+      const u=ch.dataset.modelUnit,i=Number(ch.dataset.modelIdx);
+      const selected=state.questions[u]||[];
+      state.questions[u]=ch.checked?
+        [...new Set([...selected,i])]:
+        selected.filter(x=>x!==i);
+    });
     return;
   }
   const bank=questionBankForLevelF111();
@@ -807,9 +822,9 @@ async function loadPanel(){
         peso_porcentaje:15,preview:true};state.bank=null;
       state.students=[];state.evaluations={};state.selected=null;
       document.body.classList.add('oral-model-preview');
-      document.title='Banco de preguntas orales · Academia Norteamericana';
-      document.querySelector('.context-head h2').textContent='Banco de preguntas';
-      document.getElementById('session-chip').textContent='Banco de preguntas';
+      document.title='Modelo de examen oral · Academia Norteamericana';
+      document.querySelector('.context-head h2').textContent='Modelo de examen oral';
+      document.getElementById('session-chip').textContent='Modelo oral';
       document.getElementById('ctx-grupo').textContent=verifiedGroup?
         teacherGroupLabelF88(verifiedGroup):'Grupo no seleccionado';
       document.getElementById('ctx-nivel').textContent=nivel;
@@ -818,8 +833,9 @@ async function loadPanel(){
       document.getElementById('ctx-fecha').textContent=fechaVisible;
       document.getElementById('warning-box').style.display='none';
       document.getElementById('warning-box').textContent='';
-      renderQBank();
-      setStatus('Banco de preguntas','ok');
+      state.scores={};state.questions={};
+      renderScores();renderQBank();
+      setStatus('Modelo oral','ok');
       const draftBtn=document.getElementById('btn-draft');
       if(draftBtn)draftBtn.disabled=true;
       const pdfBtn=document.getElementById('btn-pdf');
