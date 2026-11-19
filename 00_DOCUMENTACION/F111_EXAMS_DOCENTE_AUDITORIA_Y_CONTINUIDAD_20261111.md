@@ -179,3 +179,8 @@ Frontend en rama feat/f111-oral-atrasado-docente-20261118, pendiente de publicar
 No ejecutar tests automáticos ni CI por orden del usuario; inspección estática de fuentes únicamente. Cero escrituras reales o cambios de asistencia. Próximo: revisión e integración segura de backend, despliegue CORE por propietario exclusivamente, activar flag solo con autorización y después integrar frontend. Si se requiere entregar el alumno/resultado en vivo, será validación humana en Campus autenticado.
 
 Escritos atrasados: BLOQUE separado. Antes de habilitarlos, resolver con fuente real EXAM_ACTIVATIONS, EXAM_ATTEMPTS y notas oficiales: comprobación de act. previa, cierre de otra OPEN, audio B sin certificar, plazo desde nueva aplicación y permiso docente. No aceptar fecha del navegador como permiso. Backend escrito NO modificado en este corte.
+
+### Extensión del candidato de interfaz — escrito L18/L32
+
+En la misma rama feat/f111-oral-atrasado-docente-20261118, las tarjetas Escritos 1/2 incluyen un botón Estado real del escrito. Llama SOLAMENTE al nuevo endpoint backend examGetWrittenLateSnapshotF111 de PR #146, sesión docente y grupo F80, comprueba identidad, versión, production_writes=0 y muestra fecha original, estado de clase, conteos de activaciones y de intentos reales; no entrega respuestas ni claves. Si falla la lectura, informa ERROR y no muestra cero engañoso. No crea ni abre activaciones, no altera porcentajes, y NO concede aplicación tardía.
+Este botón y el de oral tardío no deben integrarse a LIVE antes de publicar el backend y habilitar su contrato; los dos PR permanecen DRAFT. Sin tests automáticos por orden de Dirección.

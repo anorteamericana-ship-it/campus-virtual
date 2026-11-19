@@ -1795,7 +1795,9 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const [pcReal,setPcReal]=React.useState({status:'idle',grupo:'',nivel:'',leccion:0});
   const [pcModelStatus,setPcModelStatus]=React.useState({group:'',lesson:0,busy:false,message:''});
   const [lateOralStatus,setLateOralStatus]=React.useState({key:'',busy:false,message:''});
+  const [writtenHistory,setWrittenHistory]=React.useState({key:'',busy:false,error:'',data:null});
   const lateOralSeq=React.useRef(0);
+  const writtenReadSeq=React.useRef(0);
   const en=window.AN_I18N?.getLang?.()==='en';
   const tr=(es,english)=>en?english:es;
   const pal=nivelPal(nivel);
@@ -1803,7 +1805,9 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const groupCode=String(codGrupo||'');
   React.useEffect(()=>{
     lateOralSeq.current+=1;
+    writtenReadSeq.current+=1;
     setLateOralStatus({key:'',busy:false,message:''});
+    setWrittenHistory({key:'',busy:false,error:'',data:null});
   },[groupCode,nivel]);
   // Cambiar de grupo: destacar el último PC con fecha vencida que conste en
   // el calendario REAL. La fecha nunca activa el examen por sí misma.
@@ -1978,6 +1982,31 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     if(typeof onWrittenFocus!=='function'||!groupCode||!nivel)return false;
     return onWrittenFocus({grupo:groupCode,nivel,leccion:Number(lesson),
       cod_estudiante:String(student||'')})===true;
+  };
+  const readWrittenHistoryF111=async d=>{
+    const key=groupCode+'|'+nivel+'|'+d.lesson;
+    if(!groupCode||!['B1','B2','I1','I2'].includes(nivel)||loading||error) {
+      setWrittenHistory({key,busy:false,data:null,error:'Grupo y nivel no verificados.'});
+      return;
+    }
+    const seq=++writtenReadSeq.current;
+    setWrittenHistory({key,busy:true,error:'',data:null});
+    try {
+      const response=await postTeacher('examGetWrittenLateSnapshotF111',{
+        cod_grupo:groupCode,nivel,leccion:d.lesson
+      },30000);
+      if(seq!==writtenReadSeq.current)return;
+      if(response?.ok!==true||response.solo_lectura!==true||
+         response.production_writes!==0||
+         response.version!=='F111_WRITTEN_LATE_READ_ONLY_V1'||
+         response.grupo!==groupCode||response.nivel!==nivel||
+         Number(response.leccion)!==d.lesson)throw Error(
+          'El CORE no confirmó la consulta del escrito. No se crea ninguna activación.');
+      setWrittenHistory({key,busy:false,error:'',data:response});
+    }catch(e) {
+      if(seq===writtenReadSeq.current)setWrittenHistory({key,busy:false,data:null,
+        error:String(e?.message||'No se pudieron consultar los escritos.').slice(0,200)});
+    }
   };
   // La fecha del calendario nunca otorga permiso. Se consulta el endpoint
   // solo si el docente pulsa una acción, y se revalida al guardar o cerrar.
@@ -2335,6 +2364,14 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     style={{fontSize:11,borderColor:'#AA7530',color:'#805019'}}>
                     {tr('Ver escrito B · solo consulta','View written B · review only')}
                   </button>}
+                  {d.kind==='written'&&<button className="btn btn-ghost" type="button"
+                    onClick={()=>readWrittenHistoryF111(d)}
+                    disabled={writtenHistory.busy}
+                    style={{fontSize:11,borderColor:'#2B6A89',color:'#17415A'}}>
+                    {writtenHistory.busy&&writtenHistory.key===
+                       groupCode+'|'+nivel+'|'+d.lesson?
+                       'Consultando intentos…':'Estado real del escrito'}
+                  </button>}
                   {active&&d.kind==='oral'&&todayStatus.kind!=='oral'&&<button className="btn btn-primary" type="button"
                     onClick={()=>onNavigate&&onNavigate('examen_oral',{oral:{
                       grupo:groupCode,nivel,leccion:d.lesson,fecha:String(lesson?.fecha||'').slice(0,10)}})}>
@@ -2352,6 +2389,28 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                   <div role="alert" style={{fontSize:11,color:'#8B1F1F',
                     background:'#FFF7E6',borderRadius:8,padding:'8px 10px'}}>
                     {lateOralStatus.message}
+                  </div>}
+                {d.kind==='written'&&writtenHistory.key===
+                  groupCode+'|'+nivel+'|'+d.lesson&&
+                  (writtenHistory.error||writtenHistory.data)&&
+                  <div role="status" style={{fontSize:11,background:'#F1F6FB',
+                    border:'1px solid #CDDDEB',borderRadius:9,padding:'10px 12px',
+                    color:writtenHistory.error?'#8B1F1F':'#17415A',
+                    display:'grid',gap:4}}>
+                    {writtenHistory.error?<span>{writtenHistory.error}</span>:
+                      <>
+                        <strong>Consulta real · escrito L{d.lesson} · solo lectura</strong>
+                        <span>{'Fecha original: '+writtenHistory.data.fecha_original+
+                          ' · clase '+writtenHistory.data.estado_leccion}</span>
+                        <span>{'Activaciones: '+writtenHistory.data.activaciones+
+                          ' · abiertas '+(writtenHistory.data.activaciones_por_estado?.OPEN||0)+
+                          ' · programadas '+(writtenHistory.data.activaciones_por_estado?.SCHEDULED||0)+
+                          ' · cerradas '+(writtenHistory.data.activaciones_por_estado?.CLOSED||0)}</span>
+                        <span>{'Intentos iniciados '+(writtenHistory.data.intentos_por_estado?.STARTED||0)+
+                          ' · enviados '+(writtenHistory.data.intentos_por_estado?.SUBMITTED||0)+
+                          ' · revisados '+(writtenHistory.data.intentos_por_estado?.REVIEWED||0)}</span>
+                        <small>Consulta sin escritura. No se habilita un nuevo examen desde esta tarjeta.</small>
+                      </>}
                   </div>}
               </article>;
             })}
