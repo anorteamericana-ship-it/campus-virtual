@@ -1794,11 +1794,17 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const [pcFocused,setPcFocused]=React.useState(8);
   const [pcReal,setPcReal]=React.useState({status:'idle',grupo:'',nivel:'',leccion:0});
   const [pcModelStatus,setPcModelStatus]=React.useState({group:'',lesson:0,busy:false,message:''});
+  const [lateOralStatus,setLateOralStatus]=React.useState({key:'',busy:false,message:''});
+  const lateOralSeq=React.useRef(0);
   const en=window.AN_I18N?.getLang?.()==='en';
   const tr=(es,english)=>en?english:es;
   const pal=nivelPal(nivel);
   const groupLabel=tvGrupoLabel(meta);
   const groupCode=String(codGrupo||'');
+  React.useEffect(()=>{
+    lateOralSeq.current+=1;
+    setLateOralStatus({key:'',busy:false,message:''});
+  },[groupCode,nivel]);
   // Cambiar de grupo: destacar el último PC con fecha vencida que conste en
   // el calendario REAL. La fecha nunca activa el examen por sí misma.
   React.useEffect(()=>{
@@ -1972,6 +1978,50 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     if(typeof onWrittenFocus!=='function'||!groupCode||!nivel)return false;
     return onWrittenFocus({grupo:groupCode,nivel,leccion:Number(lesson),
       cod_estudiante:String(student||'')})===true;
+  };
+  // La fecha del calendario nunca otorga permiso. Se consulta el endpoint
+  // solo si el docente pulsa una acción, y se revalida al guardar o cerrar.
+  const openLateOralF111=async d=>{
+    const original=String(findLesson(d.lesson)?.fecha||'').slice(0,10);
+    const key=groupCode+'|'+nivel+'|'+d.lesson;
+    if(loading||error||!groupCode||!['B1','B2','I1','I2'].includes(nivel)||
+       !/^\d{4}-\d{2}-\d{2}$/.test(original)||
+       !closed(findLesson(d.lesson))) {
+      setLateOralStatus({key,busy:false,
+        message:'No se pudo confirmar el calendario cerrado de este examen.'});
+      return;
+    }
+    const seq=++lateOralSeq.current;
+    setLateOralStatus({key,busy:true,message:''});
+    try {
+      const response=await postTeacher('oralGetLateAvailability',{
+        cod_grupo:groupCode,nivel,leccion:d.lesson,fecha:original
+      },30000);
+      if(seq!==lateOralSeq.current)return;
+      if(response?.ok!==true||response.solo_lectura!==true||
+         response.production_writes!==0||response.disponible!==true||
+         response.grupo!==groupCode||response.nivel!==nivel||
+         Number(response.leccion)!==d.lesson||
+         response.fecha_original!==original) {
+        const reason=response?.motivo||response?.error||'';
+        throw Error(reason==='oral_tardio_pendiente_de_habilitacion'?
+          'La Academia todavía no habilitó las aplicaciones orales atrasadas.':
+          'El servidor no autorizó regularizar esta evaluación; consultá el expediente antes de continuar.');
+      }
+      const approved=window.confirm('Se abrirá el oral ordinario del grupo '+
+        groupCode+' · '+nivel+' · lección '+d.lesson+
+        '. Fecha original: '+original+'. Aplicación actual: '+
+        String(response.fecha_aplicacion||'por verificar')+
+        '. Esto no reabre asistencia. Cada nota existente permanece protegida. ¿Continuar?');
+      if(!approved){setLateOralStatus({key,busy:false,message:'Apertura cancelada.'});return;}
+      setLateOralStatus({key,busy:false,message:''});
+      if(typeof onNavigate==='function')
+        onNavigate('examen_oral',{oral:{grupo:groupCode,nivel,
+          leccion:d.lesson,fecha:original,aplicacion_tardia:'SI'}});
+    }catch(e){
+      if(seq===lateOralSeq.current)setLateOralStatus({key,busy:false,
+        message:String(e?.message||'No se confirmó autorización del servidor.').slice(0,220)});
+    }
   };
   const openStudentOralHistory=async(exam,student)=>{
     const key=groupCode+'|'+nivel+'|'+exam.lesson+'|'+student;
@@ -2270,6 +2320,16 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                   <button className="btn btn-ghost" type="button" onClick={()=>openModel(d,'A')}
                     style={{fontSize:11}}>{d.kind==='oral'?tr('Ver modelo oral','View oral model'):
                       tr('Ver escrito A','View written A')}</button>
+                  {d.kind==='oral'&&finished&&total>0&&count<total&&
+                    <button className="btn btn-ghost" type="button"
+                      disabled={lateOralStatus.busy}
+                      onClick={()=>openLateOralF111(d)}
+                      title="Consulta al CORE si el oral ordinario puede aplicarse fuera de la fecha original."
+                      style={{fontSize:11,borderColor:'#B67D2B',color:'#805019'}}>
+                      {lateOralStatus.busy&&lateOralStatus.key===
+                        groupCode+'|'+nivel+'|'+d.lesson?
+                        'Consultando autorización…':'Consultar oral atrasado'}
+                    </button>}
                   {d.kind==='written'&&<button className="btn btn-ghost" type="button"
                     onClick={()=>openModel(d,'B')} title="El audio de la opción B no está certificado para aplicación."
                     style={{fontSize:11,borderColor:'#AA7530',color:'#805019'}}>
@@ -2287,6 +2347,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                         window.alert(tr('El revisor escrito no está disponible.','The written review inbox is unavailable.'));
                     }}>{tr('Consultar entregas escritas','Check written submissions')}</button>}
                 </div>
+                {d.kind==='oral'&&lateOralStatus.key===
+                  groupCode+'|'+nivel+'|'+d.lesson&&lateOralStatus.message&&
+                  <div role="alert" style={{fontSize:11,color:'#8B1F1F',
+                    background:'#FFF7E6',borderRadius:8,padding:'8px 10px'}}>
+                    {lateOralStatus.message}
+                  </div>}
               </article>;
             })}
           </div>

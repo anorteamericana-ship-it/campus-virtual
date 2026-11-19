@@ -472,6 +472,9 @@ function currentPayload(){return{
   otras_preguntas:document.getElementById('otras-global').value,
   comentarios:document.getElementById('comentarios').value,
   sugerencias:document.getElementById('sugerencias').value,
+  // Se manda de nuevo en cada guardado; el backend lo revalida contra
+  // flag institucional, docente, calendario, padrón y nota oficial.
+  aplicacion_tardia:state.panel?.aplicacion_tardia==='SI'?'SI':'',
   reposicion_id:state.panel?.reposicion_id||''
 };}
 function validateClose(){if(!state.selected)return'Seleccioná estudiante.';if(oralNeedsReviewF111(state.evaluations[state.selected.codigo]))return'El cierre está incompleto o la nota requiere conciliación. No repitás la operación desde el panel docente.';const c=calc();if(!c.complete)return'Completá los 5 criterios.';if(!document.getElementById('comentarios').value.trim())return'Comentarios generales es obligatorio.';if(!document.getElementById('sugerencias').value.trim())return'Sugerencias de mejora es obligatorio.';const anyQ=Object.values(state.questions).some(a=>a&&a.length)||Object.values(state.otherByUnit).some(v=>String(v||'').trim())||document.getElementById('otras-global').value.trim();if(!anyQ)return'Seleccioná al menos una pregunta o escribí otra pregunta aplicada.';return'';}
@@ -820,7 +823,14 @@ async function loadPanel(){
       return;
     }
     const esHistorial=new URLSearchParams(location.search).get('historial')==='1';
-    const j=await api(esHistorial?'oralGetPanelHistorico':'oralGetPanelDocente',{cod_grupo:qs.get('grupo')||'',nivel:qs.get('nivel')||'',leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',reposicion_id:qs.get('reposicion_id')||''});
+    const tarda=qs.get('aplicacion_tardia')==='SI'&&!esHistorial;
+    if(tarda&&qs.has('reposicion_id'))
+      throw new Error('Regularización ordinaria y reposición son procesos distintos.');
+    const j=await api(esHistorial?'oralGetPanelHistorico':'oralGetPanelDocente',{
+      cod_grupo:qs.get('grupo')||'',nivel:qs.get('nivel')||'',
+      leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',
+      aplicacion_tardia:tarda?'SI':'',reposicion_id:qs.get('reposicion_id')||''
+    });
     // Verificar identidad del servidor antes de pintar cualquier expediente QA.
     if(ORAL_F111_QA_MODE){
       const members=Array.isArray(j.estudiantes)?j.estudiantes:[];

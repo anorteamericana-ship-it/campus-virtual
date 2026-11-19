@@ -169,3 +169,13 @@ Modelo docente único por grupo (TeacherExamsWorkspaceF111):
 Pendientes sin certificar: aplicación tardía segura para orales tras cierre (sin reabrir asistencias ni duplicar notas); programación docente de escritos con relectura de activaciones e intentos previos; incorporación del banco B1 original por servicio autenticado manteniendo índices históricos; habilitación staff/estudiante de QZ24 B2/I1/I2; verificación visual humana de modelos, entrega y revisión. No ejecutar QA automática para conseguir estas metas.
 
 Rama de consolidación de este corte: feat/f111-profesor-modelos-reales-20261118, desde origin/main ddf17e7. Backend NO modificado ni publicado. F111 16/35 = 45,7% conserva su base histórica sin recertificación.
+
+## 10. Modelo operativo de oral atrasado — interfaz preparada, no LIVE (18-nov-2026)
+
+Backend: PR #146, commit ac08841, estado BORRADOR sin despliegue Apps Script. Propiedad requerida F111_ORAL_TARDIO_ORDINARIO_ENABLED=YES, por defecto OFF. Contrato nuevo oralGetLateAvailability es SOLO lectura y requiere sesión teacher, grupo APOLLO, fecha original exacta y lección 9/17/25/31 CERRADA. En cada guardado y cierre el backend vuelve a verificar misma autorización y AUSENCIA positiva de nota oficial por alumno. No es reposición F91.
+
+Frontend en rama feat/f111-oral-atrasado-docente-20261118, pendiente de publicar: en la tarjeta oral cerrada con menos componentes oficiales registrados que alumnos del padrón real, botón «Consultar oral atrasado» llama al endpoint autenticado, valida respuesta, abre confirmación humana y entonces navega al ExamenOralView original con el grupo, nivel, lección y fecha original, agregando aplicacion_tardia=SI. Sin autorización, no abre. El propio motor oral reenvía la señal al guardar borrador y cerrar (nunca a los modelos preview). Los cierres normales siguen sin cambios. La interfaz no se integra en LIVE antes del despliegue del endpoint.
+
+No ejecutar tests automáticos ni CI por orden del usuario; inspección estática de fuentes únicamente. Cero escrituras reales o cambios de asistencia. Próximo: revisión e integración segura de backend, despliegue CORE por propietario exclusivamente, activar flag solo con autorización y después integrar frontend. Si se requiere entregar el alumno/resultado en vivo, será validación humana en Campus autenticado.
+
+Escritos atrasados: BLOQUE separado. Antes de habilitarlos, resolver con fuente real EXAM_ACTIVATIONS, EXAM_ATTEMPTS y notas oficiales: comprobación de act. previa, cierre de otra OPEN, audio B sin certificar, plazo desde nueva aplicación y permiso docente. No aceptar fecha del navegador como permiso. Backend escrito NO modificado en este corte.
