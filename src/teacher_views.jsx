@@ -1998,7 +1998,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
       if(seq!==writtenReadSeq.current)return;
       if(response?.ok!==true||response.solo_lectura!==true||
          response.production_writes!==0||
-         response.version!=='F111_WRITTEN_LATE_READ_ONLY_V1'||
+         response.version!=='F111_WRITTEN_LATE_READ_ONLY_V2'||
          response.grupo!==groupCode||response.nivel!==nivel||
          Number(response.leccion)!==d.lesson)throw Error(
           'El CORE no confirmó la consulta del escrito. No se crea ninguna activación.');
@@ -2409,7 +2409,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                         <span>{'Intentos iniciados '+(writtenHistory.data.intentos_por_estado?.STARTED||0)+
                           ' · enviados '+(writtenHistory.data.intentos_por_estado?.SUBMITTED||0)+
                           ' · revisados '+(writtenHistory.data.intentos_por_estado?.REVIEWED||0)}</span>
-                        <small>Consulta sin escritura. No se habilita un nuevo examen desde esta tarjeta.</small>
+                        <span>{'Revisiones: '+(writtenHistory.data.revisiones||0)+
+                          ' · cerradas '+(writtenHistory.data.revisiones_por_estado?.CLOSED||0)+
+                          ' · asentadas en notas '+(writtenHistory.data.revisiones_en_notas||0)+
+                          ' · bloqueadas '+(writtenHistory.data.revisiones_bloqueadas||0)}</span>
+                        <span>{'Otras activaciones del mismo escrito: '+(writtenHistory.data.otras_activaciones||0)}</span>
+                        <small>Historial real · solo lectura. No autoriza una aplicación fuera de fecha ni sustituye la conciliación de notas y audio.</small>
                       </>}
                   </div>}
               </article>;
