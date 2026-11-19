@@ -2475,11 +2475,11 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
           {historyFeedback&&<div role="alert" style={{padding:'9px 15px',color:'#8B1F1F',
             borderTop:'1px solid #EEE8DC',fontSize:12}}>{historyFeedback}</div>}
           {roster.length===0?<p style={{padding:14}}>{tr('Sin estudiantes confirmados para el grupo.','No verified roster for this group.')}</p>:
-            <div style={{maxHeight:420,overflow:'auto'}}>
+            <div style={{maxHeight:540,overflow:'auto',padding:'8px 10px',display:'grid',gap:8,alignContent:'start'}}>
               {[...roster].sort((a,b)=>{
                 const aOfficial=notasGrupo?.[a.code]?.componentes?.[selected.key]?.registrado===true;
                 const bOfficial=notasGrupo?.[b.code]?.componentes?.[selected.key]?.registrado===true;
-                return Number(bOfficial)-Number(aOfficial)||
+                return Number(aOfficial)-Number(bOfficial)||
                   String(a.name||a.code).localeCompare(String(b.name||b.code),'es');
               }).map(s=>{
                 const c=notasGrupo?.[s.code]?.componentes?.[selected.key];
@@ -2489,22 +2489,41 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                 const otherStatuses=extraForExam(selected).filter(r=>String(r.cod_estudiante)===String(s.code));
                 const hasLegacy=otherStatuses.some(r=>r.source==='F91');
                 const hasRegularDraft=otherStatuses.some(r=>r.source==='ORAL_ORDINARIO'&&tvUpper(r.estado)==='BORRADOR');
+                const examState=official?'CERRADO':!legacyVerified&&selected.kind==='oral'?'CONSULTANDO':hasRegularDraft?'BORRADOR':'PENDIENTE';
+                const gradeText=official?String(c.puntos)+' / '+String(c.max):'';
                 const [makeupText,makeupAuthorized]=r57StatusLabel(r57?.ESTADO);
                 const conflicting=studentCycles.filter(r=>tvUpper(r.ESTADO)==='AUTORIZADA_48H').length>1;
                 const canApply=!!r57Verified&&!official&&!conflicting&&makeupAuthorized&&
                   !!String(r57?.REPOSICION_ID||'').trim();
                 const key=groupCode+'|'+nivel+'|'+selected.key+'|'+s.code;
                 const recordOpen=recordKey===key;
-                return <React.Fragment key={s.code}><div style={{display:'flex',justifyContent:'space-between',
-                  alignItems:'center',flexWrap:'wrap',gap:8,padding:'10px 15px',borderTop:'1px solid #EEE8DC',fontSize:12}}>
-                  <div><strong>{s.name||s.code}</strong>
-                    <div style={{fontSize:10,color:'#6B6259'}}>{s.code} · {s.estatus}</div></div>
-                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <span style={{fontSize:11,color:official?'#146C2E':'#6B6259',fontWeight:800}}>
-                      {official?tr('Aplicado · Nota','Completed · Grade')+': '+c.puntos+' / '+c.max:
-                        hasRegularDraft?tr('Borrador pendiente','Draft pending'):
-                          tr('Pendiente de nota','Grade pending')}
-                    </span>
+                return <React.Fragment key={s.code}><div data-exam-student-card={examState} style={{display:'flex',justifyContent:'space-between',
+                  alignItems:'center',flexWrap:'wrap',gap:12,padding:'12px 14px',border:'1px solid '+(official?'#BDEBC8':hasRegularDraft?'#E7C35A':'#D8E1EF'),borderRadius:11,
+                  background:official?'#EAF8EF':hasRegularDraft?'#FFF9E8':'#FFF',fontSize:12}}>
+                  <div style={{minWidth:220,flex:'1 1 220px'}}>
+                    <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8}}>
+                      <strong style={{fontSize:12.5,color:'#132238'}}>{s.name||s.code}</strong>
+                      <span style={{fontSize:9,fontWeight:900,padding:'3px 7px',borderRadius:999,
+                        background:official?'#CFF2D8':hasRegularDraft?'#FFE4A2':'#EEF2F7',
+                        color:official?'#166534':hasRegularDraft?'#795000':'#60708A'}}>
+                        {examState==='CERRADO'?tr('✓ Evaluado / cerrado','✓ Graded / closed'):
+                          examState==='BORRADOR'?tr('◷ Borrador guardado','◷ Draft saved'):
+                          examState==='CONSULTANDO'?tr('Consultando estado','Checking status'):
+                            tr('Pendiente','Pending')}
+                      </span>
+                    </div>
+                    <div style={{fontSize:10,color:'#60708A',marginTop:3}}>{'#'+s.code+' · '+s.estatus}</div>
+                    <div style={{marginTop:6,display:'inline-block',fontSize:11,fontWeight:850,
+                      color:official?'#166534':hasRegularDraft?'#795000':'#60708A',
+                      border:'1px solid '+(official?'#BDEBC8':'#D8E1EF'),borderRadius:7,padding:'4px 8px',
+                      background:official?'#E3F5E9':'#F7F9FC'}}>
+                      {official?tr('Aporte oficial','Official weighted grade')+': '+gradeText:
+                        hasRegularDraft?tr('Borrador pendiente de cierre','Draft awaiting closure'):
+                          examState==='CONSULTANDO'?tr('Consultando expediente','Checking assessment'):
+                            tr('Sin nota oficial registrada','No official grade recorded')}
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',justifyContent:'flex-end',flex:'1 1 270px'}}>
                     {legacyVerified&&otherStatuses.map(r=><span key={r.source+'|'+r.id}
                       style={{fontSize:10.5,fontWeight:800,color:'#63521F',
                         padding:'4px 7px',borderRadius:8,background:'#FFF5DC'}}>
@@ -2514,11 +2533,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       style={{fontSize:10.5}} onClick={()=>setRecordKey(recordOpen?'':key)}>
                       {tr('Ver historial F91','View F91 history')}
                     </button>}
-                    {legacyVerified&&hasRegularDraft&&sessionFor(selected.lesson)&&
+                    {legacyVerified&&hasRegularDraft&&selected.kind==='oral'&&
+                      /^\d{4}-\d{2}-\d{2}$/.test(String(findLesson(selected.lesson)?.fecha||'').slice(0,10))&&
                       <button className="btn btn-primary" type="button" onClick={()=>
                         onNavigate&&onNavigate('examen_oral',{oral:{
                           grupo:groupCode,nivel,leccion:selected.lesson,
-                          fecha:String(findLesson(selected.lesson)?.fecha||'').slice(0,10)}})}>
+                          fecha:String(findLesson(selected.lesson)?.fecha||'').slice(0,10),aplicacion_tardia:'SI'}})}>
                         {tr('Continuar borrador oral','Continue oral draft')}
                       </button>}
                     {r57Verified&&r57&&<span style={{fontSize:10.5,fontWeight:800,
