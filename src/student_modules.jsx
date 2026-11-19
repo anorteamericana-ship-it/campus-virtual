@@ -1417,7 +1417,7 @@ function ExamenOralView({ context = null }) {
   if (ctx.reposicion_id) params.set('reposicion_id', String(ctx.reposicion_id));
   if (ctx.aplicacion_tardia==='SI'&&!ctx.reposicion_id)
     params.set('aplicacion_tardia','SI');
-  params.set('v', 'F111ORALTARDIO20261118');
+  params.set('v', 'F111R61N19');
   const src = `modulos/examen_oral.html?${params.toString()}`;
   const titulo = ({9:'1.er Examen Oral',17:'2.º Examen Oral',25:'3.er Examen Oral',31:'4.º Examen Oral'})[Number(ctx.leccion || 0)] || 'Examen Oral';
   React.useEffect(() => {
