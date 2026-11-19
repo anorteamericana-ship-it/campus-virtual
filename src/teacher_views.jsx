@@ -2079,6 +2079,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     url.searchParams.set('grupo',groupCode);
     if(d.kind==='oral'){
       url.searchParams.set('preview','1');
+      url.searchParams.set('modelview','F111R57');
       url.searchParams.set('nivel',nivel);
       url.searchParams.set('leccion',String(d.lesson));
       const oralDate=String(findLesson(d.lesson)?.fecha||'').slice(0,10);
