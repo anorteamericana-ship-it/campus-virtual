@@ -837,6 +837,19 @@ async function loadPanel(){
       leccion:Number(qs.get('leccion')||0)||'',fecha:qs.get('fecha')||'',
       aplicacion_tardia:tarda?'SI':'',reposicion_id:qs.get('reposicion_id')||''
     });
+    // El CORE de producción puede estar desfasado: aun cuando la tarjeta
+    // autorizó lectura, no cargar un oral tardío si el panel no certifica
+    // ausencia de mutaciones y la misma fecha/grupo/nivel/lección históricos.
+    if(tarda&&(
+      j?.ok!==true||j.solo_lectura!==true||j.production_writes!==0||
+      j.panel?.aplicacion_tardia!=='SI'||
+      j.panel?.fuente_docente!=='REGULARIZACION_ORDINARIA_F111'||
+      String(j.panel?.cod_grupo||'')!==String(qs.get('grupo')||'')||
+      String(j.panel?.nivel||'')!==String(qs.get('nivel')||'')||
+      Number(j.panel?.leccion)!==Number(qs.get('leccion'))||
+      String(j.panel?.fecha_iso||'')!==String(qs.get('fecha')||'')||
+      !Array.isArray(j.estudiantes)||!j.estudiantes.some(x=>x.aplicacion_tardia_elegible===true)
+    ))throw new Error('El CORE no confirmó el contrato histórico de solo lectura. No se abrirá el oral; verificá la versión desplegada.');
     // Verificar identidad del servidor antes de pintar cualquier expediente QA.
     if(ORAL_F111_QA_MODE){
       const members=Array.isArray(j.estudiantes)?j.estudiantes:[];
@@ -864,7 +877,9 @@ async function loadPanel(){
     document.getElementById('ctx-fecha').textContent=state.panel.es_reposicion?((state.panel.fecha_aplicacion||state.panel.fecha||'—')+' · tentativa '+(state.panel.fecha_tentativa||'sin coordinar')):(state.panel.fecha||'—');
     if(state.panel.fallback){const w=document.getElementById('warning-box');w.style.display='block';w.textContent=state.panel.fallback;}else document.getElementById('warning-box').style.display='none';
     renderStudents(); renderQBank(); setStatus('Listo','ok');
-    const codigoBuscado=esHistorial?String(qs.get('cod_estudiante')||''):'';const alumnoElegido=state.students.find(x=>String(x.codigo)===codigoBuscado)||state.students[0];if(alumnoElegido)selectStudent(alumnoElegido.codigo,true);
+    const codigoBuscado=esHistorial?String(qs.get('cod_estudiante')||''):'';const alumnoElegido=state.students.find(x=>String(x.codigo)===codigoBuscado)||
+      (tarda?state.students.find(x=>x.aplicacion_tardia_elegible===true):null)||
+      state.students[0];if(alumnoElegido)selectStudent(alumnoElegido.codigo,true);
   }catch(e){
     setStatus('Revisar','bad');
     const msg=e.message||String(e);
