@@ -145,3 +145,27 @@ FIN DEL DOCUMENTO CANÓNICO F111 EXAMS DOCENTE.
 **Casos E1 previstos:** grupo no asignado, identidad de expediente ambigua, estudiante sin historial, mensaje de origen ajeno, grupo/estudiante/lección no coincidentes, resultados tardíos, cero notas oficiales escrito en consulta, sin auto-activación. Se incluye versión explícita del paquete de escritos y cachés de navegación. **La matriz no aumenta sin E2:** F111 16/35=45,7%, R57 27/48=56,3%, B6 3/4=75%, R57 Fase1 4/4=100%, EXUI aceptación 1/5=20%. 0526/0626 siguen SIN INA; escrito INA 5% / sin INA 15%, PC 0%.
 
 **Límites pendientes deliberados:** ficha F91 es una consulta read-only del estado, no autoriza anular/reescribir ni descargar PDF F91 si no existe endpoint de permiso; escritos muestran solamente la cola de entregas que requieren acción, no la totalidad del historial de intentos. Los controles especiales R57/F91 de backend se conservan en Herramientas. Una prueba real Diego/Keylor y estudiante, escritorio y móvil, todavía hace falta para E2; no declarar cerrada EXUI-05C ni 05D/05E antes de esa prueba.
+
+## 9. Corte operativo 18-nov-2026 — Modelos reales y exámenes atrasados
+
+Regla de Dirección: no ejecutar más pruebas automáticas ni GitHub Actions, no recrear copias locales o estudiantes ficticios. Solo cambios en el Campus oficial; notas, pagos y asistencia intactos. Revisión humana del usuario, no tests sintéticos. Distinguir guardado, PR, merged, Pages built y lectura humana.
+
+Frontend LIVE de corte anterior: PR #780, main ddf17e7, GitHub Pages built 18-nov-2026. Banco oral B1 de 5 preguntas legado retirado como supuesto catálogo original; PDF auténtico Cambridge IC5_Intro_OQ_Question_Bank.pdf está en Drive y requiere permisos. La página usa el padrón real F80, no demos. Los identificadores de preguntas históricas no se reindexan.
+
+Lectura real de CAMPUS_OPERATIVO para grupo B1-KJ18-C3-0826, nivel B1, docente Diego:
+- QUIZ_PROGRESS_ATTEMPTS: PC01 L4, 13 REVISADO; PC02 L8, 2 BORRADOR. Los borradores NO son entregas.
+- QUIZ_PROGRESS_APERTURAS: PC01 CERRADO, PC02 ABIERTO (10 nov).
+- CALENDARIO_LECCIONES curso: L8 CERRADA 10-nov; L9 CERRADA 12-nov; L17 programada 10-dic; L18 programada 14-dic.
+- ORAL_EVALUACIONES y EXAM_ATTEMPTS del grupo: cero coincidencias en las tablas leídas; no equivale a nota cero ni prueba que no se realizó un examen.
+- NOTAS_OFICIALES_LOG: existen ICAN; no asumir que equivalen a ORAL.
+
+Modelo docente único por grupo (TeacherExamsWorkspaceF111):
+- Orales L9/L17/L25/L31: modelo del motor existente, B1 enlaza banco Intro original. Aplicación oficial exige sesión autorizada. NO se ha habilitado aplicación tardía de oral cerrado; requiere expediente protegido separado.
+- Escritos L18/L32: modelos A/B, vista alumno sin respuestas y botón para ver respuestas de docente. B todavía sin audio certificado, no aplicable. La activación de escritos sigue en CORE, no duplicar ni reabrir intentos.
+- Ocho Progress Checks por nivel: B1 usa visor protegido con PDF/MP3 y backend QUIZ existente. B2/I1/I2 solo preview condicionado por flag de propiedad, NO habilitados para estudiantes.
+- PC atrasado B1: el backend QUIZ PROD ya permite abrir PC02–08 tras su fecha y aunque la lección esté cerrada (si no suspendida/cancelada y rol docente verificado), con confirmación manual y lectura posterior. La interfaz destaca el último PC vencido según calendario, pero fecha nunca sustituye validación real.
+- Pantalla real muestra estado, entregas y notas registradas; errores de lectura no se tratan como ausencia.
+
+Pendientes sin certificar: aplicación tardía segura para orales tras cierre (sin reabrir asistencias ni duplicar notas); programación docente de escritos con relectura de activaciones e intentos previos; incorporación del banco B1 original por servicio autenticado manteniendo índices históricos; habilitación staff/estudiante de QZ24 B2/I1/I2; verificación visual humana de modelos, entrega y revisión. No ejecutar QA automática para conseguir estas metas.
+
+Rama de consolidación de este corte: feat/f111-profesor-modelos-reales-20261118, desde origin/main ddf17e7. Backend NO modificado ni publicado. F111 16/35 = 45,7% conserva su base histórica sin recertificación.
