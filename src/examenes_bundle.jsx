@@ -2222,6 +2222,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   // Do not mislabel it as an unsent exam or expose server internals.
   const [reposicionSyncPending, setReposicionSyncPending] = useState(false);
   const [sending, setSending] = useState(false);
+  const [submitUncertain,setSubmitUncertain] = useState(false);
+  const [checkingSubmission,setCheckingSubmission] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [missingWarningShown, setMissingWarningShown] = useState(false);
 
@@ -2238,6 +2240,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   const savingRef = React.useRef(false);
   const saveInFlightRef = React.useRef(null);
   const sendingRef = React.useRef(false);
+  const submitUncertainRef = React.useRef(false);
   const lastSavedJsonRef = React.useRef(JSON.stringify(answers || {}));
   const autoSubmitRef = React.useRef(false);
 
@@ -2339,8 +2342,39 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
     }
   }, [backend && backend.attemptId, backend && backend.onSave]);
 
+  // SUBMIT-READBACK-03: una confirmación perdida jamás habilita reenvío ciego.
+  // La lectura oficial por sesión resuelve si el intento ya fue enviado.
+  const checkSubmission = useCallback(async () => {
+    if (checkingSubmission || !backend || !backend.attemptId ||
+        typeof backend.onCheckSubmission !== 'function') return;
+    setCheckingSubmission(true);
+    try {
+      const r=await backend.onCheckSubmission(backend.attemptId);
+      if (r && r.ok===true && String(r.attempt_id||'')===String(backend.attemptId)) {
+        const status=String(r.status||'').toUpperCase();
+        if(status==='SUBMITTED'||status==='REVIEWED'){
+          submitUncertainRef.current=false;
+          setSubmitUncertain(false);
+          dirtyRef.current=false;setDirty(false);
+          setStage('sent');
+          return;
+        }
+        if(status==='STARTED'){
+          submitUncertainRef.current=false;
+          setSubmitUncertain(false);
+          setSaveMsg('El servidor confirma que este intento sigue sin enviarse. Podés reintentar el envío.');
+          return;
+        }
+      }
+      setSaveMsg('No se pudo verificar el estado oficial. No reenviés hasta confirmar la entrega.');
+    }catch(_){
+      setSaveMsg('No se pudo consultar el intento. No reenviés hasta recuperar la conexión.');
+    }finally{setCheckingSubmission(false);}
+  }, [backend && backend.attemptId, backend && backend.onCheckSubmission, checkingSubmission]);
+
   const doSubmit = useCallback(async (auto=false) => {
     if (sendingRef.current) return null;
+    if (submitUncertainRef.current) { setSaveMsg('Primero verificá el envío anterior para evitar duplicados.'); return {ok:false,error:'submit_readback_required'}; }
     if (backend && typeof backend.onSubmit === 'function') {
       sendingRef.current = true;
       setSending(true);
@@ -2352,6 +2386,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
           () => answersRef.current,
           finalAnswers => backend.onSubmit(finalAnswers, { autoSubmit:auto, timeSpentSec:elapsed }));
         if (!r || r.ok !== true || (backend.attemptId && String(r.attempt_id || '') !== String(backend.attemptId))) {
+          submitUncertainRef.current=true;
+          setSubmitUncertain(true);
           setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo confirmar el envío. Consultá el estado del intento antes de reintentar.', 'submit'));
           autoSubmitRef.current = false;
           return r;
@@ -2362,7 +2398,9 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         setStage('sent');
         return r;
       } catch (e) {
-        setSaveMsg('No se pudo enviar. Revise la conexión.');
+        submitUncertainRef.current=true;
+        setSubmitUncertain(true);
+        setSaveMsg('La confirmación se perdió. Verificá el estado oficial antes de reintentar.');
         autoSubmitRef.current = false;
         return { ok:false, error:'submit_exception' };
       } finally {
@@ -2570,6 +2608,11 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
           {limitSec > 0 && <span style={{ marginLeft:10, color:lowTime ? '#7A1E2C' : '#001E47', fontWeight:800 }}>Tiempo: {examFormatClock(timeLeftSec == null ? limitSec : timeLeftSec)}</span>}
           {dirty && <span style={{ marginLeft:10, color:'#7A4A00' }}>Cambios sin guardar</span>}
           {saveMsg && <span style={{ marginLeft:10, color: saveMsg.includes('correct') ? '#1F6B25' : '#7A1E2C' }}>{saveMsg}</span>}
+          {submitUncertain && <button type="button" className="btn-ghost"
+            data-f111-submit-readback="true" disabled={checkingSubmission || sending}
+            onClick={checkSubmission}>
+            {checkingSubmission?'Consultando entrega…':'Verificar envío con el servidor'}
+          </button>}
           {missingWarningShown && missingIds.length > 0 && (
             <span className="stbar-missing"><b>Sin responder:</b> <code>{missingIds.join(', ')}</code></span>
           )}
