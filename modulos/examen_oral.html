@@ -27,6 +27,24 @@ body{margin:0;font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;ba
 .qbody{padding:8px;overflow:visible}.unit{border:1px solid var(--line);border-radius:11px;background:#fff;margin-bottom:8px;overflow:hidden}.unit h3{margin:0;padding:9px 10px;background:#FFF6F5;color:var(--rojo);font-size:14px;font-weight:900;border-bottom:1px solid #FFD8D5}.q{display:flex;gap:8px;padding:8px 9px;border-bottom:1px solid #EEF2F7;cursor:pointer}.q:last-child{border-bottom:0}.q input{margin-top:2px;flex:0 0 auto}.q span{font-size:12.5px;line-height:1.4}.other{padding:8px;border-top:1px dashed var(--line);background:#FBFCFF}.other input{font-size:11px}.global-other{padding:9px;border-top:1px solid var(--line);background:#F8FAFF;border-radius:0 0 var(--r) var(--r)}.global-other textarea{min-height:70px}.empty{padding:18px;text-align:center;color:var(--muted);font-size:11px}.warnline,.errorline{font-size:11px;border-radius:10px;padding:9px 10px;margin-bottom:9px}.warnline{color:#805500;background:#FFF4D6;border:1px solid #EED18A}.errorline{color:#8B1F1F;background:#FDECEA;border:1px solid #F3B9B9}
 .toast{position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 18px 45px rgba(0,0,0,.25);font-size:11px;z-index:99;display:none}.toast.show{display:block}.modal{position:fixed;inset:0;background:rgba(7,20,45,.62);z-index:90;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px}.modal.open{display:flex}.pdf{background:#fff;width:min(920px,96vw);border-radius:16px;box-shadow:0 22px 70px rgba(0,0,0,.32);overflow:hidden}.pdf-toolbar{display:flex;gap:10px;justify-content:flex-end;background:#F8FAFF;border-bottom:1px solid var(--line);padding:12px;position:sticky;top:0;z-index:2}.pdf-page{padding:28px 36px}.pdf-page h2{margin:0 0 4px;color:var(--azul);font-size:22px}.pdf-page table{width:100%;border-collapse:collapse;margin-top:14px}.pdf-page th{background:#082F68;color:#fff;padding:8px;font-size:11px}.pdf-page td{border:1px solid #CDD7E5;padding:8px;font-size:12px}.pdf-box{border:1px solid #CDD7E5;padding:10px;margin-top:10px;border-radius:10px;white-space:pre-wrap}
 
+/* Vista docente del banco oral: contenido curricular, sin paneles técnicos. */
+body.oral-model-preview .main{display:flex;flex-direction:column;max-width:1200px;margin:0 auto;padding:16px}
+body.oral-model-preview .work{width:100%}
+body.oral-model-preview .side{display:block;width:100%}
+body.oral-model-preview .eval,
+body.oral-model-preview .students-panel,
+body.oral-model-preview #r50-admin-panel,
+body.oral-model-preview .global-other,
+body.oral-model-preview .top-actions,
+body.oral-model-preview .context-head p{display:none!important}
+body.oral-model-preview .questions-panel{width:100%}
+body.oral-model-preview #qbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px}
+body.oral-model-preview .unit{margin:0}
+body.oral-model-preview .model-question-list{margin:0;padding:12px 20px 15px 36px}
+body.oral-model-preview .model-question-list li{padding-left:3px;margin-bottom:9px;font-size:13px;line-height:1.55}
+body.oral-model-preview .model-question-list li:last-child{margin-bottom:0}
+@media(max-width:800px){body.oral-model-preview #qbody{grid-template-columns:1fr}body.oral-model-preview .main{padding:9px}}
+
 /* F111 D3-R4: PDF oficial con estilos exclusivos del servidor. */
 
 @media print{
@@ -386,46 +404,21 @@ function renderQBank(){
   document.getElementById('qb-label').textContent=meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
   const qbody=document.getElementById('qbody');
   if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay unidades asignadas a esta lección.</div>';return;}
-  if(String(p.nivel||'').toUpperCase()==='B1'){
-    // El QB histórico de cinco preguntas por unidad NO equivale al banco
-    // Cambridge Intro (IC5_Intro_OQ_Question_Bank.pdf). No disfrazarlo de
-    // material oficial ni reindexar expedientes previos: los códigos de
-    // PREGUNTAS_JSON guardados siguen usando el legado.
-    const officialTitles={
-      1:"What's your name?",2:'Where are my keys?',3:'Where are you from?',
-      4:'Is this coat yours?',5:'What time is it?',6:'I walk to school.',
-      7:'Does it have a view?',8:'Where do you work?',9:'I always eat breakfast.',
-      10:'What sports do you like?',11:"I'm going to have a party.",
-      12:'How do you feel?',13:'How do I get there?',14:'I had a busy weekend.',
-      15:'Where were you born?',16:'Can I take a message?'
-    };
-    const pdfId='1VRiW04m28MZnbC1vjPilIL-2vVJ6QV5R';
-    const pdfUrl='https://drive.google.com/file/d/'+pdfId+'/view';
-    const pdfPreview='https://drive.google.com/file/d/'+pdfId+'/preview';
-    const labels=meta.units.map(u=>
-      '<span style="display:inline-flex;padding:6px 10px;margin:3px;border-radius:8px;'+
-      'background:#EDF3FB;color:#073B7A;font-size:11px;font-weight:800">'+
-      'Unidad '+u+' · '+escF90(officialTitles[u]||'')+'</span>').join('');
-    qbody.innerHTML='<div style="padding:12px;background:#FFF7E6;border:1px solid #E5C88C;'+
-      'border-radius:10px;font-size:12px;color:#514018;line-height:1.6">'+
-      '<b>BANCO ORIGINAL · INTERCHANGE INTRO 5.ª EDICIÓN</b>'+
-      '<p>El banco anterior de 5 preguntas era una adaptación incompleta y no se muestra'+
-      ' como oficial. Estas unidades y su banco corresponden al PDF de Cambridge'+
-      ' conservado en Drive institucional.</p>'+labels+
-      '<p><a href="'+pdfUrl+'" target="_blank" rel="noopener noreferrer"'+
-      ' style="color:#003B7A;font-weight:900">Abrir banco original de preguntas (Google Drive)</a>'+
-      ' · Requiere acceso al documento institucional.</p>'+
-      '<details><summary style="cursor:pointer;font-weight:850;color:#003B7A">'+
-      'Visualizar PDF original aquí</summary>'+
-      '<iframe title="Banco oral Cambridge Intro original privado" src="'+pdfPreview+'"'+
-      ' loading="lazy" referrerpolicy="no-referrer"'+
-      ' style="width:100%;min-height:480px;margin-top:10px;border:1px solid #CAD5E2;border-radius:8px"></iframe>'+
-      '</details><p>Para registrar preguntas realmente aplicadas, escribilas en'+
-      ' «Otras preguntas aplicadas» debajo. Se conserva sin reinterpretación'+
-      ' la trazabilidad de los índices históricos. '+
-      (p.preview?'Esta vista previa no guarda notas ni documentos.':
-        'El guardado oficial exige la sesión docente y las verificaciones del servidor.')+
-      '</p></div>';
+  if(p.preview){
+    // La consulta solo muestra el banco existente del nivel y de la lección.
+    // B1 mantiene las preguntas históricas y sus índices; B2/I1/I2 leen
+    // la transcripción estructurada. No se carga ni altera un expediente.
+    const nivel=String(p.nivel||'').toUpperCase();
+    const source=nivel==='B1'?QB:originalBankF111();
+    qbody.innerHTML=meta.units.map(u=>{
+      const unit=source?.[u]||{title:'Unit '+u,qs:[]};
+      const questions=Array.isArray(unit.qs)?unit.qs:[];
+      return '<section class="unit"><h3>'+escF90(unit.title||'Unit '+u)+'</h3>'+
+        (questions.length?'<ol class="model-question-list">'+
+          questions.map(q=>'<li>'+escF90(q)+'</li>').join('')+'</ol>':
+          '<div class="empty">No hay preguntas para esta unidad.</div>')+
+        '</section>';
+    }).join('');
     return;
   }
   const bank=questionBankForLevelF111();
@@ -813,19 +806,24 @@ async function loadPanel(){
         docente:ses.nombre||'Docente autenticado',fecha:fechaVisible,
         peso_porcentaje:15,preview:true};state.bank=null;
       state.students=[];state.evaluations={};state.selected=null;
-      document.getElementById('session-chip').textContent='Modelo docente · sin escritura';
+      document.body.classList.add('oral-model-preview');
+      document.title='Banco de preguntas orales · Academia Norteamericana';
+      document.querySelector('.context-head h2').textContent='Banco de preguntas';
+      document.getElementById('session-chip').textContent='Banco de preguntas';
       document.getElementById('ctx-grupo').textContent=verifiedGroup?
         teacherGroupLabelF88(verifiedGroup):'Grupo no seleccionado';
       document.getElementById('ctx-nivel').textContent=nivel;
       document.getElementById('ctx-examen').textContent=meta.label;
       document.getElementById('ctx-docente').textContent=state.panel.docente;
       document.getElementById('ctx-fecha').textContent=fechaVisible;
-      document.getElementById('warning-box').style.display='block';
-      document.getElementById('warning-box').textContent='Modelo de consulta. El padrón y las evaluaciones reales se consultan en Mis exámenes del Campus, no se inventan alumnos aquí. Este modelo no guarda notas ni documentos.';
-      renderStudents();renderQBank();setStatus('Modelo de consulta','ok');
-      document.getElementById('students').innerHTML='<div class="empty">Padrón real: abrí «Ver estudiantes» en Mis exámenes. Este modelo no crea estudiantes de muestra.</div>';
-      const draftBtn=document.getElementById('btn-draft');if(draftBtn)draftBtn.disabled=true;
-      const pdfBtn=document.getElementById('btn-pdf');if(pdfBtn){pdfBtn.disabled=true;pdfBtn.textContent='Modelo · sin guardar';}
+      document.getElementById('warning-box').style.display='none';
+      document.getElementById('warning-box').textContent='';
+      renderQBank();
+      setStatus('Banco de preguntas','ok');
+      const draftBtn=document.getElementById('btn-draft');
+      if(draftBtn)draftBtn.disabled=true;
+      const pdfBtn=document.getElementById('btn-pdf');
+      if(pdfBtn)pdfBtn.disabled=true;
       return;
     }
     const esHistorial=new URLSearchParams(location.search).get('historial')==='1';
