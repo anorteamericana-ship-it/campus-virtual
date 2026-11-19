@@ -1787,6 +1787,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const [recordKey,setRecordKey]=React.useState('');
   const [historyBusy,setHistoryBusy]=React.useState('');
   const [historyFeedback,setHistoryFeedback]=React.useState('');
+  const [reminderFeedback,setReminderFeedback]=React.useState('');
   const [preview,setPreview]=React.useState(null);
   // F111 LIVE · una sola fuente por grupo: lecturas docentes autorizadas de
   // QUIZ_PROGRESS_ATTEMPTS y QUIZ_PROGRESS_APERTURAS, sin datos DEMO.
@@ -1807,6 +1808,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     lateOralSeq.current+=1;
     writtenReadSeq.current+=1;
     setLateOralStatus({key:'',busy:false,message:''});
+    setReminderFeedback('');
     setWrittenHistory({key:'',busy:false,error:'',data:null});
   },[groupCode,nivel]);
   // Cambiar de grupo: destacar el último PC con fecha vencida que conste en
@@ -1930,6 +1932,25 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
   const sessions=(lecciones||[]).filter(l=>tvLessonRielF97(l)==='curso');
   const findLesson=number=>sessions.find(l=>Number(l.leccion)===number);
   const closed=l=>['CERRADA','CERRADO','FINALIZADA'].includes(tvUpper(l?.estado));
+  // Calendario solo indica fecha, no hora: iniciar conservadoramente
+  // a medianoche Costa Rica para no recordar después de 48 horas.
+  const reminderAllowed=d=>{
+    const iso=String(findLesson(d.lesson)?.fecha||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return false;
+    const started=Date.parse(iso+'T00:00:00-06:00');
+    const elapsed=Date.now()-started;
+    return Number.isFinite(started)&&elapsed>=0&&elapsed<48*60*60*1000;
+  };
+  const copyAcademicMessage=async(text,label)=>{
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('clipboard_not_available');
+      await navigator.clipboard.writeText(text);
+      setReminderFeedback(label);
+    }catch(_){
+      window.prompt('Copiá este mensaje para enviarlo por tu canal habitual:',text);
+      setReminderFeedback('Mensaje preparado. No se ha enviado automáticamente.');
+    }
+  };
   const activeCode=String(activeSession?.COD_GRUPO||activeSession?.cod_grupo||'');
   const activeLesson=Number(activeSession?.LECCION||activeSession?.leccion||0);
   const sessionOpen=tvUpper(activeSession?.ESTADO||activeSession?.estado)==='ABIERTA';
@@ -2342,7 +2363,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     </div>}
                 </div>
                 <div style={{display:'flex',flexWrap:'wrap',gap:7,alignItems:'center'}}>
-                  <button type="button" onClick={()=>setExamKey(chosen?'':d.key)}
+                  <button type="button" onClick={()=>{
+                    if(chosen){setExamKey('');return;}
+                    setExamKey(d.key);setReminderFeedback('');
+                    requestAnimationFrame(()=>document.getElementById('f111-exam-students')
+                      ?.scrollIntoView({behavior:'smooth',block:'start'}));
+                  }}
                     style={{background:pal.dark,color:'#FFF',border:0,borderRadius:9,padding:'10px 12px',
                       fontWeight:800,fontSize:12,cursor:'pointer'}}>
                     {tr('Ver estudiantes','See students')}
@@ -2358,7 +2384,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       style={{fontSize:11,borderColor:'#B67D2B',color:'#805019'}}>
                       {lateOralStatus.busy&&lateOralStatus.key===
                         groupCode+'|'+nivel+'|'+d.lesson?
-                        'Consultando autorización…':'Consultar oral atrasado'}
+                        'Verificando…':tr('Aplicar oral pendiente','Apply pending oral')}
                     </button>}
                   {d.kind==='written'&&<button className="btn btn-ghost" type="button"
                     onClick={()=>openModel(d,'B')} title="El audio de la opción B no está certificado para aplicación."
@@ -2422,7 +2448,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
             })}
           </div>
         </div>)}
-        {!!selected&&<section style={{border:'1px solid #E8DFD2',borderRadius:14,overflow:'hidden'}}
+        {!!selected&&<section id="f111-exam-students" style={{border:'1px solid #E8DFD2',borderRadius:14,overflow:'hidden'}}
           aria-label={tr('Estudiantes del examen seleccionado','Students in selected exam')}>
           <div style={{padding:'15px 17px',background:'#FBF8F2',display:'flex',
             justifyContent:'space-between',flexWrap:'wrap',gap:10,alignItems:'center'}}>
@@ -2430,20 +2456,26 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
               {tr('3 · ESTUDIANTES DEL EXAMEN','3 · EXAM STUDENTS')}
             </div><strong style={{fontSize:16}}>{renderLabel(selected)} · {tr('Lección','Lesson')} {selected.lesson}</strong>
               <div style={{fontSize:11,color:'#665E55',marginTop:4}}>
-                {r57Lookup.status==='loading'?tr('Consultando autorizaciones R57…','Checking R57 authorizations…'):
-                 r57Verified?tr('Autorizaciones R57 consultadas con el servidor','R57 authorizations checked with server'):
-                 tr('R57 no verificable; no se habilitan reposiciones','R57 unavailable; no make-up actions enabled')}
+                {registered(selected)+' / '+roster.length+' '+tr('con nota oficial registrada','with official grade recorded')}
+                {' · '+(roster.length-registered(selected))+' '+tr('sin nota oficial','without official grade')}
               </div>
             </div>
             <button className="btn btn-ghost" onClick={()=>setExamKey('')} type="button">
               {tr('Cerrar lista','Collapse list')}
             </button>
           </div>
+          {reminderFeedback&&<div role="status" style={{padding:'9px 15px',color:'#146C2E',
+            borderTop:'1px solid #EEE8DC',fontSize:12}}>{reminderFeedback}</div>}
           {historyFeedback&&<div role="alert" style={{padding:'9px 15px',color:'#8B1F1F',
             borderTop:'1px solid #EEE8DC',fontSize:12}}>{historyFeedback}</div>}
           {roster.length===0?<p style={{padding:14}}>{tr('Sin estudiantes confirmados para el grupo.','No verified roster for this group.')}</p>:
             <div style={{maxHeight:420,overflow:'auto'}}>
-              {roster.map(s=>{
+              {[...roster].sort((a,b)=>{
+                const aOfficial=notasGrupo?.[a.code]?.componentes?.[selected.key]?.registrado===true;
+                const bOfficial=notasGrupo?.[b.code]?.componentes?.[selected.key]?.registrado===true;
+                return Number(bOfficial)-Number(aOfficial)||
+                  String(a.name||a.code).localeCompare(String(b.name||b.code),'es');
+              }).map(s=>{
                 const c=notasGrupo?.[s.code]?.componentes?.[selected.key];
                 const official=c?.registrado===true;
                 const studentCycles=r57ForExam(selected).filter(r=>String(r.COD_ESTUDIANTE)===String(s.code));
@@ -2463,8 +2495,9 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     <div style={{fontSize:10,color:'#6B6259'}}>{s.code} · {s.estatus}</div></div>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                     <span style={{fontSize:11,color:official?'#146C2E':'#6B6259',fontWeight:800}}>
-                      {official?tr('Nota oficial','Official grade')+': '+c.puntos+' / '+c.max:
-                        tr('Sin nota oficial registrada','No official grade recorded')}
+                      {official?tr('Aplicado · Nota','Completed · Grade')+': '+c.puntos+' / '+c.max:
+                        hasRegularDraft?tr('Borrador pendiente','Draft pending'):
+                          tr('Pendiente de nota','Grade pending')}
                     </span>
                     {legacyVerified&&otherStatuses.map(r=><span key={r.source+'|'+r.id}
                       style={{fontSize:10.5,fontWeight:800,color:'#63521F',
@@ -2508,13 +2541,28 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       style={{fontSize:10.5}}>
                       {historyBusy===groupCode+'|'+nivel+'|'+selected.lesson+'|'+s.code?
                         tr('Verificando historial…','Checking history…'):
-                        tr('Ver rúbrica / PDF oral','View oral rubric / PDF')}
+                        tr('Ver detalle de evaluación','View assessment details')}
                     </button>}
-                    <button type="button" className="btn btn-ghost"
+                    {selected.kind==='oral'&&!official&&s.estatus==='CA'&&
+                      (reminderAllowed(selected)?
+                        <button type="button" className="btn btn-ghost"
+                          style={{fontSize:10.5}} onClick={()=>copyAcademicMessage(
+                            'Hola, '+(s.name||'')+'. Tenés pendiente el examen oral '+selected.n+
+                            ' de '+nivel+' (lección '+selected.lesson+'). Por favor, comunicate cuanto antes con tu docente para coordinar dentro del plazo establecido. Academia Norteamericana.',
+                            'Recordatorio copiado para '+(s.name||s.code)+'. Enviá el mensaje por tu canal habitual.'
+                          )}>{tr('Copiar recordatorio','Copy reminder')}</button>:
+                        <button type="button" className="btn btn-ghost"
+                          style={{fontSize:10.5}} onClick={()=>copyAcademicMessage(
+                            'Hola, '+(s.name||'')+'. El plazo ordinario del examen oral '+selected.n+
+                            ' de '+nivel+' ya venció. Si necesitás reprogramación, debés solicitarla a Administración de Academia Norteamericana. La solicitud está sujeta a autorización.',
+                            'Indicaciones copiadas. No se ha creado ni autorizado una solicitud.'
+                          )}>{tr('Copiar pasos de reprogramación','Copy rescheduling steps')}</button>
+                      )}
+                    {selected.kind==='written'&&<button type="button" className="btn btn-ghost"
                       onClick={()=>setRecordKey(recordOpen?'':key)}
                       style={{fontSize:11}}>
                       {recordOpen?tr('Cerrar ficha','Close record'):tr('Ficha de evaluación','Assessment record')}
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 {recordOpen&&<div data-f111-student-assessment-record="true" role="region"
@@ -2545,10 +2593,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                 </React.Fragment>;
               })}
             </div>}
-          <div style={{padding:'9px 15px',background:'#FBF8F2',fontSize:11,color:'#6B6259'}}>
-            {tr('Estados R57, F91 y borradores proceden de lecturas independientes sin escrituras; solo el motor del examen concede permiso para aplicar. Los controles históricos se conservan en Herramientas especiales.',
-              'R57, F91 and draft statuses come from independent read-only calls; only the exam engine authorizes an attempt. Historical controls remain available in Special tools.')}
-          </div>
+
         </section>}
         <section style={{display:'grid',gap:10}}>
           <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
