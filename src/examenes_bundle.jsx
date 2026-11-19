@@ -2362,6 +2362,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         if(status==='STARTED'){
           submitUncertainRef.current=false;
           setSubmitUncertain(false);
+          autoSubmitRef.current=false;
           setSaveMsg('El servidor confirma que este intento sigue sin enviarse. Podés reintentar el envío.');
           return;
         }
@@ -2389,7 +2390,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
           submitUncertainRef.current=true;
           setSubmitUncertain(true);
           setSaveMsg(examStudentSafeUserError(r && (r.mensaje || r.error), 'No se pudo confirmar el envío. Consultá el estado del intento antes de reintentar.', 'submit'));
-          autoSubmitRef.current = false;
+          // Mantener el temporizador en pausa hasta verificar el ACK.
+          autoSubmitRef.current = true;
           return r;
         }
         dirtyRef.current = false;
@@ -2401,7 +2403,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
         submitUncertainRef.current=true;
         setSubmitUncertain(true);
         setSaveMsg('La confirmación se perdió. Verificá el estado oficial antes de reintentar.');
-        autoSubmitRef.current = false;
+        autoSubmitRef.current = true;
         return { ok:false, error:'submit_exception' };
       } finally {
         sendingRef.current = false;
