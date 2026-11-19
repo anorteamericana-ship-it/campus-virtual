@@ -1941,6 +1941,13 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     const elapsed=Date.now()-started;
     return Number.isFinite(started)&&elapsed>=0&&elapsed<48*60*60*1000;
   };
+  // Nunca declarar vencido un examen futuro o sin fecha confirmada.
+  const reminderExpired=d=>{
+    const iso=String(findLesson(d.lesson)?.fecha||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return false;
+    const started=Date.parse(iso+'T00:00:00-06:00');
+    return Number.isFinite(started)&&Date.now()-started>=48*60*60*1000;
+  };
   const copyAcademicMessage=async(text,label)=>{
     try{
       if(!navigator.clipboard?.writeText)throw Error('clipboard_not_available');
@@ -2035,10 +2042,9 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
     const original=String(findLesson(d.lesson)?.fecha||'').slice(0,10);
     const key=groupCode+'|'+nivel+'|'+d.lesson;
     if(loading||error||!groupCode||!['B1','B2','I1','I2'].includes(nivel)||
-       !/^\d{4}-\d{2}-\d{2}$/.test(original)||
-       !closed(findLesson(d.lesson))) {
+       !/^\d{4}-\d{2}-\d{2}$/.test(original)) {
       setLateOralStatus({key,busy:false,
-        message:'No se pudo confirmar el calendario cerrado de este examen.'});
+        message:'No se pudo identificar este examen en el calendario académico.'});
       return;
     }
     const seq=++lateOralSeq.current;
@@ -2376,11 +2382,11 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                   <button className="btn btn-ghost" type="button" onClick={()=>openModel(d,'A')}
                     style={{fontSize:11}}>{d.kind==='oral'?tr('Ver modelo oral','View oral model'):
                       tr('Ver escrito A','View written A')}</button>
-                  {d.kind==='oral'&&finished&&total>0&&count<total&&
+                  {d.kind==='oral'&&total>0&&count<total&&
                     <button className="btn btn-ghost" type="button"
                       disabled={lateOralStatus.busy}
                       onClick={()=>openLateOralF111(d)}
-                      title="Consulta al CORE si el oral ordinario puede aplicarse fuera de la fecha original."
+                      title="Aplicar el examen oral en cualquier fecha o estado de lección; el CORE valida permiso y notas previas."
                       style={{fontSize:11,borderColor:'#B67D2B',color:'#805019'}}>
                       {lateOralStatus.busy&&lateOralStatus.key===
                         groupCode+'|'+nivel+'|'+d.lesson?
@@ -2551,12 +2557,12 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                             ' de '+nivel+' (lección '+selected.lesson+'). Por favor, comunicate cuanto antes con tu docente para coordinar dentro del plazo establecido. Academia Norteamericana.',
                             'Recordatorio copiado para '+(s.name||s.code)+'. Enviá el mensaje por tu canal habitual.'
                           )}>{tr('Copiar recordatorio','Copy reminder')}</button>:
-                        <button type="button" className="btn btn-ghost"
+                        reminderExpired(selected)?<button type="button" className="btn btn-ghost"
                           style={{fontSize:10.5}} onClick={()=>copyAcademicMessage(
                             'Hola, '+(s.name||'')+'. El plazo ordinario del examen oral '+selected.n+
                             ' de '+nivel+' ya venció. Si necesitás reprogramación, debés solicitarla a Administración de Academia Norteamericana. La solicitud está sujeta a autorización.',
                             'Indicaciones copiadas. No se ha creado ni autorizado una solicitud.'
-                          )}>{tr('Copiar pasos de reprogramación','Copy rescheduling steps')}</button>
+                          )}>{tr('Copiar pasos de reprogramación','Copy rescheduling steps')}</button>:null
                       )}
                     {selected.kind==='written'&&<button type="button" className="btn btn-ghost"
                       onClick={()=>setRecordKey(recordOpen?'':key)}
