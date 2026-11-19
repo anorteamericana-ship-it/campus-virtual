@@ -65,6 +65,20 @@ body.oral-model-preview .eval{display:block}
 @media(max-width:1080px){.main{grid-template-columns:1fr}.context{grid-template-columns:1fr 1fr}.ctx.examen{grid-column:span 2}.side{display:grid;grid-template-columns:1fr 1fr;align-items:start}}
 @media(max-width:700px){.topbar{height:auto;padding:9px}.top-actions{display:none}.main{padding:6px}.side{display:flex}.comments,.student-banner,.summary,.context{grid-template-columns:1fr}.ctx.examen{grid-column:auto}.rubric{overflow-x:auto}.rubric table{min-width:680px}.pdf-page{padding:20px}}
 
+/* R61: banco debajo de la evaluación; la columna derecha se reserva al padrón. */
+.questions-panel{width:100%;min-width:0}
+.qb-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.qb-toggle-all,.unit-fold{font:800 11px Poppins,sans-serif;border-radius:8px;border:1px solid #B9CAE1;background:#FFF;color:#073B7A;padding:7px 10px;cursor:pointer}
+.qb-toggle-all:hover,.unit-fold:hover{background:#EFF5FF}
+.unit h3{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.unit h3 .unit-fold{flex:none;background:#FFF;border-color:#EDCAC7;color:#8E332B;font-size:10px;padding:6px 9px}
+.unit.folded > :not(h3){display:none!important}
+.unit.folded h3{border-bottom:0}
+body.oral-model-preview .main{grid-template-columns:minmax(0,1fr);max-width:1100px}
+body.oral-model-preview .side{display:none}
+body.oral-model-preview .questions-panel{position:static;max-height:none;display:block}
+body.oral-model-preview #qbody{overflow:visible;max-height:none}
+@media(max-width:1080px){body.oral-model-preview .main{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -108,11 +122,11 @@ body.oral-model-preview .eval{display:block}
         </div>
         <div class="actions" aria-label="Dos acciones del examen"><button class="btn ghost" id="btn-reload" type="button" style="display:none">Recargar</button><button class="btn ghost" id="btn-draft" type="button">GUARDAR BORRADOR</button><button class="btn red" id="btn-finalize-saved" type="button" style="display:none">GUARDAR NOTA OFICIAL</button><button class="btn red" id="btn-pdf" type="button">GUARDAR NOTA OFICIAL</button></div>
       </section>
+      <section class="panel questions-panel"><div class="panel-title"><h2>Banco de preguntas</h2><div class="qb-actions"><span id="qb-label">—</span><button type="button" class="qb-toggle-all" id="qb-toggle-all" hidden>Mostrar todas</button></div></div><div class="qbody" id="qbody"><div class="empty">Cargando preguntas…</div></div><div class="global-other"><div class="field"><label>Otras preguntas aplicadas</label><textarea id="otras-global" placeholder="Preguntas adicionales utilizadas."></textarea></div></div></section>
     </div>
     <aside class="side">
       <section class="panel students-panel"><div class="panel-title"><h2>Estudiantes</h2><span id="student-count">—</span></div><div class="students" id="students"></div></section>
       <section class="panel" id="r50-admin-panel" style="display:none"><div class="panel-title"><h2>Conciliación académica R50</h2></div><p id="r50-admin-status" style="font-size:12px;color:#314c67">Seleccioná un estudiante para consultar la solicitud.</p><button type="button" class="btn red" id="r50-admin-approve" disabled>Autorizar corrección de cero</button></section>
-      <section class="panel questions-panel"><div class="panel-title"><h2>Banco de preguntas</h2><span id="qb-label">—</span></div><div class="qbody" id="qbody"><div class="empty">Cargando preguntas…</div></div><div class="global-other"><div class="field"><label>Otras preguntas aplicadas</label><textarea id="otras-global" placeholder="Preguntas adicionales utilizadas."></textarea></div></div></section>
     </aside>
   </div>
 </div>
@@ -405,11 +419,54 @@ function setOriginalQuestionF111(unit,idx,checked){
 }
 
 function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&state.bank?.aprobado===true&&state.bank?.version&&state.bank?.unidades?state.bank.unidades:{};}
+const f111BankExpandedUnits=Object.create(null);
+function decorateQBankF111(){
+  const area=document.getElementById('qbody'),all=document.getElementById('qb-toggle-all');
+  if(!area)return;
+  const units=Array.from(area.querySelectorAll('.unit'));
+  const updateAll=()=>{
+    if(!all)return;
+    all.hidden=!units.length;
+    all.textContent=units.some(x=>x.classList.contains('folded'))?'Mostrar todas':'Ocultar todas';
+  };
+  units.forEach((unit,index)=>{
+    const h=unit.querySelector('h3');
+    if(!h)return;
+    const key=[state.panel?.cod_grupo||'',state.panel?.nivel||'',state.panel?.leccion||'',index].join('|');
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='unit-fold';
+    unit.dataset.bankUnitKey=key;
+    const setExpanded=expanded=>{
+      unit.classList.toggle('folded',!expanded);
+      btn.textContent=expanded?'− Ocultar':'＋ Ver preguntas';
+      btn.setAttribute('aria-expanded',String(expanded));
+    };
+    setExpanded(f111BankExpandedUnits[key]===true);
+    btn.addEventListener('click',e=>{
+      e.preventDefault();
+      const expanded=unit.classList.contains('folded');
+      f111BankExpandedUnits[key]=expanded;
+      setExpanded(expanded);updateAll();
+    });
+    h.appendChild(btn);
+  });
+  if(all)all.onclick=()=>{
+    const expanded=units.some(u=>u.classList.contains('folded'));
+    units.forEach(unit=>{
+      f111BankExpandedUnits[unit.dataset.bankUnitKey]=expanded;
+      unit.classList.toggle('folded',!expanded);
+      const btn=unit.querySelector('h3 .unit-fold');
+      if(btn){btn.textContent=expanded?'− Ocultar':'＋ Ver preguntas';btn.setAttribute('aria-expanded',String(expanded));}
+    });
+    updateAll();
+  };
+  updateAll();
+}
 function renderQBank(){
   const p=state.panel||{},lec=Number(p.leccion||0),meta=LECCIONES[lec]||{units:[]};
   document.getElementById('qb-label').textContent=meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
   const qbody=document.getElementById('qbody');
-  if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay unidades asignadas a esta lección.</div>';return;}
+  if(!meta.units.length){qbody.innerHTML='<div class="empty">No hay unidades asignadas a esta lección.</div>';decorateQBankF111();return;}
   if(p.preview){
     // Práctica interactiva sobre el banco original existente:
     // los cambios quedan en memoria de esta pantalla; no se crea expediente.
@@ -434,6 +491,7 @@ function renderQBank(){
         [...new Set([...selected,i])]:
         selected.filter(x=>x!==i);
     });
+    decorateQBankF111();
     return;
   }
   const bank=questionBankForLevelF111();
@@ -451,6 +509,7 @@ function renderQBank(){
       oralMarcarCambiosR49();
     });
     qbody.querySelectorAll('[data-other-unit]').forEach(inp=>inp.oninput=()=>{state.otherByUnit[inp.dataset.otherUnit]=inp.value;oralMarcarCambiosR49();});
+    decorateQBankF111();
     return;
   }
   const source=originalBankF111();
@@ -469,9 +528,11 @@ function renderQBank(){
     qbody.querySelectorAll('[data-original-unit]').forEach(ch=>ch.onchange=()=>{
       if(!setOriginalQuestionF111(ch.dataset.originalUnit,ch.dataset.originalIdx,ch.checked))ch.checked=!ch.checked;
     });
+    decorateQBankF111();
     return;
   }
   qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado.</div>';
+  decorateQBankF111();
 }
 
 
