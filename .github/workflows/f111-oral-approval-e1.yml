@@ -1,0 +1,20 @@
+name: F111 Oral Bank Approval E1
+on:
+  pull_request:
+    paths:
+      - 'modulos/examen_oral.html'
+      - 'scripts/qa_f111_oral_approval_contract_e1.mjs'
+      - '.github/workflows/f111-oral-approval-e1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  approval-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/qa_f111_oral_approval_contract_e1.mjs

@@ -380,7 +380,29 @@ function setOriginalQuestionF111(unit,idx,checked){
   return true;
 }
 
-function questionBankForLevelF111(){const n=String(state.panel?.nivel||'').toUpperCase();return n==='B1'?QB:n==='B2'&&state.bank?.aprobado===true&&state.bank?.version&&state.bank?.unidades?state.bank.unidades:{};}
+// ORAL-APPROVAL-02: alineado con _oralF111_prepareQuestions_ del backend.
+// Hoy el backend acepta índices B1 legado y B2 documentado, no I1/I2.
+// Los transcritos I1/I2 siguen disponibles como texto libre sin promoción.
+function oralApprovedBankF111(panel,banco){
+  if(String(panel?.nivel||'').toUpperCase()!=='B2'||
+     banco?.aprobado!==true||banco?.estado!=='APROBADO_DOCUMENTADO'||
+     banco?.id!=='IC5-L1-ACADEMIA-B2'||
+     banco?.version!=='AN-ORAL-B2-CANDIDATO-R5-20261018')return null;
+  const units=banco.unidades;
+  if(!units||typeof units!=='object'||Array.isArray(units))return null;
+  for(let u=1;u<=16;u++){
+    const entry=units[u];
+    if(!entry||typeof entry.title!=='string'||!entry.title.trim()||
+       !Array.isArray(entry.qs)||entry.qs.length!==4||
+       entry.qs.some(q=>typeof q!=='string'||!q.trim()))return null;
+  }
+  return units;
+}
+function questionBankForLevelF111(){
+  const nivel=String(state.panel?.nivel||'').toUpperCase();
+  if(nivel==='B1')return QB; // histórico, no banco aprobado.
+  return oralApprovedBankF111(state.panel,state.bank)||{};
+}
 function renderQBank(){
   const p=state.panel||{},lec=Number(p.leccion||0),meta=LECCIONES[lec]||{units:[]};
   document.getElementById('qb-label').textContent=meta.units.length?'U'+meta.units[0]+'–'+meta.units[meta.units.length-1]:'—';
@@ -448,7 +470,7 @@ function renderQBank(){
   const source=originalBankF111();
   if(source){
     const saved=String(document.getElementById('otras-global')?.value||'').split(/\r?\n/);
-    qbody.innerHTML='<div style="font-size:11px;padding:8px 10px;margin-bottom:8px;border-radius:9px;background:#EFF6FF;color:#073B7A">Banco de preguntas · Interchange 5ª edición. Marcá las preguntas realmente aplicadas y guardá el borrador del estudiante.</div>'+
+    qbody.innerHTML='<div style="font-size:11px;padding:8px 10px;margin-bottom:8px;border-radius:9px;background:#EFF6FF;color:#073B7A">Material fuente transcrito · NO es banco aprobado por backend. Las preguntas marcadas se registran como texto en OTRAS PREGUNTAS; no generan índices oficiales. Guardá el borrador del estudiante.</div>'+
       meta.units.map(u=>{
         const data=source[u]||{title:'Unit '+u,qs:[],notes:[]};
         return '<div class="unit"><h3>'+escF90(data.title)+'</h3>'+
@@ -463,7 +485,7 @@ function renderQBank(){
     });
     return;
   }
-  qbody.innerHTML='<div class="warnline">El banco de preguntas de este nivel aún no está validado.</div>';
+  qbody.innerHTML='<div class="warnline">No hay banco aprobado por backend ni material fuente disponible para este nivel. No se pueden seleccionar índices oficiales.</div>';
 }
 
 
@@ -857,7 +879,7 @@ async function loadPanel(){
          members.length!==1||String(members[0].codigo)!==ORAL_F111_QA_STUDENT)
         throw new Error('QA: respuesta fuera del grupo/alumno sintético; no se mostrará el expediente.');
     }
-    state.panel=j.panel; state.bank=j.banco_oral?.aprobado===true?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;state.uncertainCloseCodes={};state.reviewConflicts={};state.r50ApprovedFor='';
+    state.panel=j.panel; state.bank=oralApprovedBankF111(j.panel,j.banco_oral)?j.banco_oral:null; state.students=j.estudiantes||[]; state.evaluations=j.evaluaciones||{};state.dirty=false;state.uncertainCloseCodes={};state.reviewConflicts={};state.r50ApprovedFor='';
     // R50: el servidor lee NOTAS_OFICIALES_LOG sin escribir datos. Marcar el
     // conflicto ANTES de cualquier clic de cierre, sin bloquear guardar borrador.
     if(state.panel?.historico){
