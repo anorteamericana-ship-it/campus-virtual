@@ -1,5 +1,22 @@
 # F111 — Exámenes Docente: auditoría canónica, simplificación y continuidad
 
+## ESTADO VIGENTE — R65 · 19-nov-2026 · B1 QUIZ 8/8 DIGITALES LIVE
+
+**Directriz del Director:** TODOS los ocho Progress Checks del nivel B1 deben tener el mismo formato digital del Quiz 1 (preguntas y opciones visibles, audios cuando correspondan, guardar avance, entregar, comprobación de entrega y revisión docente), **nunca PDF + campos de respuesta genéricos**. La fecha de la lección no es un bloqueo para el docente autorizado.
+
+### Cierre R65: quizzes 4–8
+- Código integrado en `main` por [PR #796](https://github.com/anorteamericana-ship-it/campus-virtual/pull/796) squash `f83601928dc4296a8028dadea2743434c7d98f18`.
+- Fuentes institucionales efectivamente consultadas: `ic5_intro_wq_u7to8.pdf`, `u9to10.pdf`, `u11to12.pdf`, `u13to14.pdf`, `u15to16.pdf`, sus claves y scripts de audio; interfaz del alumno basada únicamente en preguntas transcritas, sin respuestas correctas ni claves.
+- Archivos: `src/b1_pc04_pc08_bank.js` (contenido y controles), `modulos/qz_b1_pc04_pc08_digital.html` (interfaz) y enlaces actualizados en `src/student_b1_progress_f111.js`, `src/teacher_quiz_review_f111.js`, `src/teacher_views.jsx`, `modulos/quiz_progress.html`, `src/app.jsx`, `campus.html`.
+- **PC04:** L16 / U7–8, 7 apartados, **23 campos serializados = 25 puntos**; el G es una pregunta de selección de tres afirmaciones, código de respuesta `G`, no tres IDs. **PC05:** L21 / U9–10, 6 apartados, **25 campos / 25 puntos**. **PC06:** L24 / U11–12, 6 apartados, **25 / 25**, tarjetas de medicamentos equivalentes a las imágenes fuente y lectura Home Remedies incorporada. **PC07:** L28 / U13–14, 6 apartados, **25 / 25**, plano interactivo esquemático equivalente en relaciones a Main Street, Green Avenue y Park Avenue, sin PDF. **PC08:** L30 / U15–16, 6 apartados, **25 / 25**, lectura Sally Ride incorporada.
+- **8/8 B1 (100%)** significa **interfaces digitales integradas**, no E2 de alumnos reales. PC01 existente, PC02–03 R63/R64, PC04–08 R65. Se eliminó el bypass `legacy_editorial` que permitía mostrar PDF a B1 L8/L13 y se redirigen L8,13,16,21,24,28,30 a sus dos módulos digitales.
+- **QA focalizada PASS**: 123/123 campos con claves EXACTAMENTE iguales al contrato `F111_QZ_SECTIONS_B1` del servidor; 5/5 vistas locales con navegación y controles, 5/5 E1 sintético de borrador → guardar → entregar 1 vez → lectura posterior → bloqueo de edición (0 escritura productiva); compilación Babel 2/2, JS 3/3, HTML 2/2 y rutas; **5/5 previews Chromium dominio oficial** sin PDF; **5/5 redirecciones heredadas** oficiales; ocho recursos HTTP 200 R65 y Campus de entrada actualizado.
+- **Apps Script estable sin cambios:** QUIZ B1 **@510** deployment `AKfycbwT4nYpH2MqxgP-ydwndWW7OdSkDXRCiI-l4qxBdsqq0IXuTNSKIvogvpj-1PgtsNjZhw`; CORE **@509** deployment `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ` (ambas versiones verificadas read-only); ninguna nueva versión de backend, cero notas reales modificadas.
+- **E2 pendiente (NO CERTIFICADO):** docente Diego/estudiantes B1 autorizados deben confirmar en grupo real la invitación vigente, el MP3 original de PC04–08, guardado y entrega real, el comentario/nota diagnóstica y visibilidad en Evaluaciones. Para R65 matriz E2 **0/5**; la prueba sintética no sustituye al alumno real. PC01 tuvo registros reales previos, no mezclar con E2 R65.
+- **Otros niveles:** B2/I1/I2 QZ24 continúan pendientes (su QA estructural 312/360 no es publicación digital final). No mezclar ni habilitar sin fuente académica y pruebas. Cinco automatizaciones F111 continúan pausadas, PR legados no se fusionaron.
+- **R64 precedente:** Quiz 3 F fue corregido por [PR #795](https://github.com/anorteamericana-ship-it/campus-virtual/pull/795) para presentar seis diálogos originales con respuestas escritas y no opciones hipotéticas.
+
+---
 ## ESTADO VIGENTE — R63 · 19-nov-2026 · Quiz 2 y 3 DIGITALES LIVE
 
 **Única referencia actual**: [Campus oficial](https://anorteamerican.com/campus-virtual/campus.html) y repositorio `main`. Implementaciones verificadas por lectura posterior: **CORE @509** (`AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`) y **QUIZ B1 @510** (`AKfycbwT4nYpH2MqxgP-ydwndWW7OdSkDXRCiI-l4qxBdsqq0IXuTNSKIvogvpj-1PgtsNjZhw`). Las referencias a @507/@504 contenidas abajo son **históricas** y NO deben usarse para desplegar.
