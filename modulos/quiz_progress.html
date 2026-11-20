@@ -49,10 +49,11 @@ const preview=qs.get('preview')==='1'; // QA sintético, cero servidor
 const teacherPreview=qs.get('teacher_preview')==='1'; // backend autentica rol y grupo
 const qz24TeacherPreview=teacherPreview&&qs.get('qz24_preview')==='1';
 // R63: PC02/PC03 B1 tienen cuestionario digital canónico, nunca PDF.
-if(level==='B1'&&(lesson===8||lesson===13)&&!qs.has('legacy_editorial')){
- const digital=new URL('qz_b1_pc02_pc03_digital.html',location.href);
+if(level==='B1'&&[8,13,16,21,24,28,30].includes(lesson)){
+ const digital=new URL([8,13].includes(lesson)?'qz_b1_pc02_pc03_digital.html':
+   'qz_b1_pc04_pc08_digital.html',location.href);
  digital.searchParams.set('grupo',group);digital.searchParams.set('leccion',String(lesson));
- digital.searchParams.set('v','F111R64PC03COPY20261119');
+ digital.searchParams.set('v','F111R65B1DIGITAL20261119');
  if(teacherPreview)digital.searchParams.set('teacher_preview','1');
  else if(preview)digital.searchParams.set('preview','1');
  else if(qs.get('review')==='1')digital.searchParams.set('review','1');
