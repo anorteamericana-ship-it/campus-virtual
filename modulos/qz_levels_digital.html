@@ -85,8 +85,9 @@ const context={cod_grupo:group,nivel:level,leccion:lesson};
 function sessionToken(){try{if(window.parent!==window&&typeof window.parent.getSessionToken==='function')return String(window.parent.getSessionToken()||'')}catch(_){}
  try{return String(JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||'')}catch(_){return ''}}
 async function api(fn,payload={}){
- const url=String(teacher?'https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec':
-  (window.parent!==window&&window.parent.F111_QZ_API_URL)||window.F111_QZ_API_URL||'');
+ // R70: docente y estudiante usan el mismo QUIZ seguro; el servidor determina roles.
+ const url=String((window.parent!==window&&window.parent.F111_QZ_API_URL)||
+   window.F111_QZ_API_URL||'');
  if(!url||!token)throw Error('Abrí el examen desde el Campus con sesión vigente.');
  const resp=await fetch(url+'?fn='+encodeURIComponent(fn),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
   body:JSON.stringify({fn,token,...context,...payload})});
