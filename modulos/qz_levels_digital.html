@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Quiz digital · Academia Norteamericana</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#193957;background:#f3f7fc}
+*{box-sizing:border-box}body{margin:0}
+.wrap{max-width:1050px;margin:auto;padding:22px}
+.hero{border-radius:15px;background:#113e7a;color:white;padding:24px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.hero small{color:#ffe3a1;font-weight:850;letter-spacing:.09em}.hero h1{font-size:clamp(23px,4vw,34px);margin:8px 0}.hero p{margin:5px 0;font-size:13px;color:#dce8f4}
+.pill{align-self:flex-start;background:#ffdfa0;color:#624510;border-radius:9px;padding:11px;font-size:12px;font-weight:900}
+.info{margin:13px 0;padding:14px;border-radius:11px;border:1px solid #d2e0ef;background:#fef9e9;font-size:13px;line-height:1.55}
+.tabs{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0}.tabs button{border:1px solid #bdcfe1;border-radius:9px;background:white;color:#1c426b;font-weight:850;cursor:pointer;padding:10px 13px}
+.tabs button[aria-selected=true]{background:#f4c642;border-color:#d9aa26}
+.track{height:8px;border-radius:99px;background:#d9e5f0;overflow:hidden;margin:0 0 15px}.track>div{height:100%;width:0;background:#e9b62a}
+.panel{background:#fff;border:1px solid #d5e3f1;border-radius:15px;padding:22px;min-height:230px}
+.panel h2{margin:0;color:#113f75}.help{color:#526b86;font-size:13px;line-height:1.65}
+.reading{background:#ecf4fb;border:1px solid #d3e0ee;white-space:pre-line;line-height:1.7;padding:17px;margin:16px 0;border-radius:11px;font-size:13px}
+.question{border:1px solid #d5e3ef;border-radius:11px;margin:14px 0;padding:14px;background:#fbfdff;display:grid;gap:8px}
+.question legend{padding:0 5px;white-space:pre-line;font-size:14px;font-weight:850;line-height:1.5;color:#173e6c}
+.question label{display:flex;align-items:start;gap:9px;background:white;border:1px solid #cddcec;border-radius:8px;padding:10px;font-size:13px;line-height:1.5;cursor:pointer}
+.question label:has(input:checked){background:#e9f3ff;border-color:#3b8ccc}
+.question input[type=radio],.question input[type=checkbox]{accent-color:#1468b4;flex:none;margin-top:2px}
+.question input[type=text],.question select,.question textarea{width:100%;max-width:680px;border:1px solid #b8cfe4;background:white;border-radius:9px;padding:11px;font-size:14px}
+.question textarea{min-height:84px;resize:vertical}
+.subfield{margin:8px 0;border-left:3px solid #c8d9e9;padding:7px 12px;display:grid;gap:7px}
+.subfield strong{font-size:12px;color:#204d7b}
+.controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:11px;margin:18px 0}
+.controls .buttons{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:#0d427e;color:white;border:0;border-radius:9px;padding:11px 14px;font-weight:850;cursor:pointer}
+.btn.secondary{background:white;border:1px solid #b4c8de;color:#164675}
+.btn:disabled{opacity:.42;cursor:default}
+.status{font-size:12px;color:#536b85;font-weight:750}
+.media{border:1px solid #bad4ec;border-radius:10px;background:#f0f7ff;padding:15px;margin:14px 0}
+.media audio{display:block;width:100%;max-width:590px;margin-top:10px}
+.media button{background:#fff;border:1px solid #a9c7e1;color:#1d4c80;border-radius:8px;padding:9px 13px;font-weight:800;cursor:pointer}
+.result{background:#e7f5e9;border:1px solid #aed3b7;color:#256346;padding:13px;border-radius:11px;margin:10px 0;font-size:13px}
+@media(max-width:650px){.wrap{padding:10px}.hero,.panel{padding:15px}.question{padding:11px}}
+</style>
+</head>
+<body><main class="wrap">
+<header class="hero"><div><small>ACADEMIA NORTEAMERICANA · PROGRESS CHECK DIGITAL</small><h1 id="heading">Quiz · Básico II</h1><p id="subtitle">Preparando banco original…</p></div><span class="pill" id="pill">Cuestionario digital</span></header>
+<p class="info" role="status" id="notice">Preparando preguntas y matrícula…</p>
+<nav class="tabs" id="tabs" aria-label="Apartados del cuestionario" role="tablist"></nav>
+<div class="track"><div id="fill"></div></div>
+<section class="panel" id="questions"></section>
+<footer class="controls">
+ <span class="status" id="progress">0 respuestas</span><div class="buttons">
+ <button type="button" class="btn secondary" id="previous">Anterior</button>
+ <button type="button" class="btn secondary" id="save">Guardar avance</button>
+ <button type="button" class="btn secondary" id="next">Siguiente sección</button>
+ <button type="button" class="btn" id="submit">ENTREGAR QUIZ</button></div>
+</footer></main>
+<script src="../src/f111_qz24_b2_bank.js?v=F111R66QZ24DIGITAL20261119"></script>
+<script src="../src/f111_qz24_i1_bank.js?v=F111R66QZ24DIGITAL20261119"></script>
+<script src="../src/f111_qz24_i2_bank.js?v=F111R66QZ24DIGITAL20261119"></script>
+<script>
+(function(){
+'use strict';
+const qs=new URLSearchParams(location.search);
+const level=String(qs.get('nivel')||'B2').trim().toUpperCase(),lesson=Number(qs.get('leccion')||0),
+ group=String(qs.get('grupo')||'').trim().toUpperCase();
+const preview=qs.get('preview')==='1'||qs.get('teacher_preview')==='1',teacher=qs.get('teacher_preview')==='1';
+const review=qs.get('review')==='1'&&!preview,live=qs.get('live')==='1'&&!review&&!preview;
+const banks={B2:window.F111_QZ24_B2_BANK,I1:window.F111_QZ24_I1_BANK,I2:window.F111_QZ24_I2_BANK};
+const names={B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
+const data=(banks[level]||{})[lesson]||null;
+const $=id=>document.getElementById(id),create=(tag,t)=>{const e=document.createElement(tag);if(t!==undefined&&t!==null)e.textContent=t;return e};
+const sections=data?.sections||[],quizId='IC5_'+level+'_WQ'+String(data?.quiz||0).padStart(2,'0');
+const total=sections.reduce((n,s)=>n+s.items.length,0),points=sections.reduce((n,s)=>n+s.points,0);
+if(!data||!names[level]||points!==(data.points||25)||![25,26].includes(points)||!sections.length||!group)throw Error('Banco editorial no verificado o grupo ausente.');
+document.title='Quiz '+data.quiz+' · '+names[level]+' · Academia Norteamericana';
+$('heading').textContent='Quiz '+data.quiz+' · '+names[level];
+$('subtitle').textContent='Lección '+lesson+' · Unidades '+data.units+' · '+points+' puntos de referencia · 0% oficial';
+$('pill').textContent=live?'CUESTIONARIO DIGITAL':review?'REVISIÓN DOCENTE':'VISTA PREVIA SIN ENTREGA';
+const answers=Object.create(null);
+let active=0,finished=false,busy=false,uncertain=false,dirty=false,saveTimer=null,token='',audioUrl='',audioLoading=false;
+const context={cod_grupo:group,nivel:level,leccion:lesson};
+function sessionToken(){try{if(window.parent!==window&&typeof window.parent.getSessionToken==='function')return String(window.parent.getSessionToken()||'')}catch(_){}
+ try{return String(JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||'')}catch(_){return ''}}
+async function api(fn,payload={}){
+ const url=String(teacher?'https://script.google.com/macros/s/AKfycbx8S98VaY9QwC5qHMAtpVvzrijYsnINHQMCshA-l9SI47V7QLfLdcJ32L_UMV6Wd23xJg/exec':
+  (window.parent!==window&&window.parent.F111_QZ_API_URL)||window.F111_QZ_API_URL||'');
+ if(!url||!token)throw Error('Abrí el examen desde el Campus con sesión vigente.');
+ const resp=await fetch(url+'?fn='+encodeURIComponent(fn),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+  body:JSON.stringify({fn,token,...context,...payload})});
+ let j;try{j=await resp.json()}catch(_){throw Error('El servidor devolvió una respuesta inválida.')}
+ if(!resp.ok||j?.ok!==true)throw Error(String(j?.error||'Servicio no disponible'));
+ return j;
+}
+function message(t){$('notice').textContent=t}
+function isComplete(val,spec){
+ const t=String(val||'');
+ if(spec.type!=='compound')return t.trim().length>0;
+ try{const v=JSON.parse(t);return Array.isArray(v)&&v.length===spec.fields.length&&v.every(x=>String(x||'').trim())}catch(_){return false}
+}
+function answerCount(){return sections.reduce((n,s)=>n+s.items.filter(x=>{
+ const k=x[0],type=s.type==='compound'?'compound':s.type;
+ return isComplete(answers[k],{type,fields:x[2]||[]});
+}).length,0)}
+function controlState(){
+ $('save').disabled=busy||finished||uncertain||!live;
+ $('submit').disabled=busy||finished||uncertain||!live||answerCount()===0;
+}
+function progress(){
+ const n=answerCount();
+ $('progress').textContent=n+'/'+total+' reactivos completos · '+Math.round(n/total*100)+'%'+(preview?' (sin guardar)':'');
+ $('fill').style.width=Math.round(n/total*100)+'%';controlState();
+}
+function onChange(key,value){
+ if(finished||busy||uncertain||review||!live&& !preview)return;
+ answers[key]=String(value);dirty=true;progress();
+ if(live){message('Cambios pendientes de guardar.');clearTimeout(saveTimer);saveTimer=setTimeout(()=>void save(),1300)}
+}
+function optionField(key,items,kind,value,changed){
+ const root=create('div');let n=0;
+ for(const labelText of items){
+  n++;const label=create('label'),input=create('input');
+  input.type=kind;input.value=String(n);input.name=key;
+  input.checked=kind==='checkbox'?String(value||'').split(',').includes(String(n)):String(value||'')===String(n);
+  input.disabled=finished||review;
+  input.onchange=()=>changed(input,root);
+  label.append(input,create('span',labelText));root.append(label);
+ }
+ return root;
+}
+function makeQuestion(s,q){
+ const key=q[0],box=create('fieldset'),title=create('legend',key+' · '+q[1]);box.className='question';box.append(title);
+ const saved=String(answers[key]||'');
+ if(s.type==='compound'){
+  let previous=[];try{previous=JSON.parse(saved);if(!Array.isArray(previous))previous=[]}catch(_){}
+  const all=q[2]||[];
+  all.forEach(([subhead,options],index)=>{
+   const sub=create('div');sub.className='subfield';sub.append(create('strong',subhead));
+   if(Array.isArray(options)){
+    const sel=create('select');sel.append(create('option','Seleccioná una respuesta'));
+    sel.firstChild.value='';
+    options.forEach((v,k)=>{const option=create('option',v);option.value=String(k+1);sel.append(option)});
+    sel.value=String(previous[index]||'');sel.disabled=finished||review;
+    sel.onchange=()=>{previous[index]=sel.value;onChange(key,JSON.stringify(Array.from({length:all.length},(_,i)=>String(previous[i]||''))))};
+    sub.append(sel);
+   }else{
+    const input=create('input');input.type='text';input.maxLength=500;input.placeholder='Escribí tu respuesta';
+    input.value=String(previous[index]||'');input.disabled=finished||review;
+    input.oninput=()=>{previous[index]=input.value;onChange(key,JSON.stringify(Array.from({length:all.length},(_,i)=>String(previous[i]||''))))};
+    sub.append(input);
+   }box.append(sub);
+  });
+ }else if(s.type==='radio'||s.type==='multi'){
+  box.append(optionField(key,q[2],s.type==='multi'?'checkbox':'radio',saved,(field,root)=>{
+   if(s.type==='multi'){const checked=[...root.querySelectorAll('input:checked')].map(x=>x.value);
+    if(checked.length>Number(s.maxSelections||2)){field.checked=false;return}
+    onChange(key,checked.join(','));
+   }else onChange(key,field.value);
+  }));
+ }else if(s.type==='select'||s.type==='distinct'){
+  const select=create('select');select.append(create('option','Seleccioná una opción'));select.firstChild.value='';
+  (s.options||[]).forEach(([value,name])=>{const opt=create('option',name);opt.value=String(value);select.append(opt)});
+  select.value=saved;select.disabled=finished||review;
+  select.onchange=()=>{
+   if(s.type==='distinct'&&sections[active].items.some(x=>x[0]!==key&&answers[x[0]]===select.value)){
+    select.value=saved;message('Cada sugerencia debe seleccionarse una sola vez.');return;
+   }onChange(key,select.value);
+  };box.append(select);
+ }else{
+  const input=create('textarea');input.maxLength=800;input.placeholder='Escribí tu respuesta';
+  input.value=saved;input.disabled=finished||review;input.oninput=()=>onChange(key,input.value);box.append(input);
+ }
+ if(review){const out=create('div',saved||'Sin responder');out.className='result';box.append(create('strong','Respuesta archivada: '),out)}
+ return box;
+}
+async function loadAudio(){
+ if(audioLoading||audioUrl||(!live&&!teacher)||!token)return;
+ audioLoading=true;
+ try{
+  const r=await api('qzProgressAudio');
+  if(r.quiz_id!==quizId||r.mime!=='audio/mpeg'||typeof r.audio_base64!=='string')throw Error('Pista no corresponde al Quiz');
+  const bytes=Uint8Array.from(atob(r.audio_base64),c=>c.charCodeAt(0));
+  if(bytes.length<1024||bytes.length>4*1024*1024)throw Error('Pista de audio incompleta');
+  audioUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));
+  if(active===0)render();
+ }catch(e){message('Listening original no disponible: '+String(e.message||e)+'. Consultar al docente.')}
+ finally{audioLoading=false}
+}
+function render(){
+ const p=$('questions'),s=sections[active];p.replaceChildren();
+ p.append(create('h2','Apartado '+s.id+' · '+s.title+' · '+s.points+' puntos'),create('p',s.help||'Completá las preguntas.','help'));
+ if(s.reading){const reading=create('div',s.reading);reading.className='reading';p.append(reading)}
+ if(active===0){
+  const audio=create('div');audio.className='media';audio.append(create('strong','♪ Listening original · Quiz '+data.quiz));
+  if(audioUrl){const player=create('audio');player.controls=true;player.preload='metadata';player.src=audioUrl;audio.append(player)}
+  else{
+   const button=create('button','Cargar audio autenticado');button.type='button';button.disabled=!token||(!live&&!teacher);
+   button.onclick=()=>void loadAudio();audio.append(button);
+   audio.append(create('p',preview&&!teacher?'En vista previa sin sesión no se descarga audio protegido.':'Requiere sesión autorizada.','help'));
+  }p.append(audio);
+ }
+ s.items.forEach(q=>p.append(makeQuestion(s,q)));
+ if(finished)p.append(create('p',review?'Solo lectura: respuestas archivadas.':live?'Examen entregado; ya no puede modificarse.':'Vista previa finalizada.','result'));
+ $('tabs').replaceChildren();
+ sections.forEach((entry,index)=>{const btn=create('button',entry.id+' · '+entry.points+' pts');btn.type='button';
+  btn.setAttribute('aria-selected',String(active===index));btn.onclick=()=>{active=index;render()};$('tabs').append(btn)});
+ $('previous').disabled=active===0;$('next').hidden=active===sections.length-1;
+ $('submit').hidden=active!==sections.length-1||finished||review||preview;
+ progress();
+}
+async function save(){
+ if(!live||busy||finished||uncertain||!dirty)return;
+ busy=true;controlState();const vals={...answers};dirty=false;
+ try{const r=await api('qzProgressSaveDraft',{respuestas:vals});
+  if(r.quiz_id!==quizId||!['BORRADOR','ENTREGADO','REVISADO'].includes(r.estado))throw Error('Borrador sin confirmar');
+  if(r.estado!=='BORRADOR'){finished=true;render()}
+  message(finished?'Prueba ya entregada o revisada.':'✓ Avance guardado.');
+ }catch(e){dirty=true;message('No se pudo confirmar el borrador: '+String(e.message||e))}
+ finally{busy=false;controlState()}
+}
+$('save').onclick=()=>{dirty=true;clearTimeout(saveTimer);void save()};
+$('previous').onclick=()=>{if(active>0){active--;render()}};
+$('next').onclick=()=>{if(active<sections.length-1){active++;render()}};
+$('submit').onclick=async()=>{
+ if(!live||busy||finished||uncertain||answerCount()===0)return;
+ if(!confirm('¿Entregar Quiz '+data.quiz+'? Las respuestas no podrán editarse después.'))return;
+ clearTimeout(saveTimer);busy=true;controlState();
+ try{
+  const sent=await api('qzProgressSubmit',{respuestas:{...answers}});
+  if(sent.quiz_id!==quizId||!['ENTREGADO','REVISADO'].includes(sent.estado))throw Error('Entrega sin confirmar');
+  const read=await api('qzProgressMyAttempt');
+  if(read.quiz_id!==quizId||!['ENTREGADO','REVISADO'].includes(read.estado))throw Error('Verificación posterior falló');
+  finished=true;dirty=false;render();message('✓ ENTREGA CONFIRMADA · Tu respuesta quedó archivada para revisión del profesor.');
+ }catch(e){uncertain=true;message('ENTREGA SIN CONFIRMAR. No reenviés. Verificá el intento antes de repetir: '+String(e.message||e))}
+ finally{busy=false;controlState()}
+};
+async function start(){
+ if(review){
+  finished=true;token='';$('save').hidden=true;$('submit').hidden=true;
+  window.addEventListener('message',evt=>{
+   if(evt.origin!==location.origin||evt.source!==window.parent||evt.data?.type!=='F111_QZ24_DIGITAL_REVIEW'||evt.data.grupo!==group||
+      evt.data.leccion!==lesson||evt.data.nivel!==level||!evt.data.respuestas)return;
+   for(const s of sections)for(const q of s.items){if(Object.prototype.hasOwnProperty.call(evt.data.respuestas,q[0]))answers[q[0]]=String(evt.data.respuestas[q[0]]??'').slice(0,4000)}
+   render();message('Respuestas archivadas; vista docente de solo lectura.');
+  });
+  message('Revisión docente de solo lectura. Esperando expediente autorizado.');render();return;
+ }
+ token=sessionToken();
+ if(preview){$('save').hidden=true;$('submit').hidden=true;
+  message('Vista previa docente / editorial · No crea intentos ni notas. '+(!token?'Audio protegido requiere iniciar sesión.':''));
+  render();return;}
+ if(!live){finished=true;message('Abrí la evaluación desde Evaluaciones en el Campus.');render();return;}
+ try{
+  if(!token||!group)throw Error('Sesión estudiantil y grupo requeridos.');
+  const meta=await api('qzProgressGet');
+  if(meta.quiz_id!==quizId||meta.nivel!==level||Number(meta.leccion)!==lesson||Number(meta.peso_oficial)!==0||
+     meta.disponible_hoy!==true)throw Error('Quiz todavía no habilitado por el docente para tu grupo.');
+  const past=await api('qzProgressMyAttempt');
+  if(past.quiz_id!==quizId||!['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(past.estado))throw Error('Expediente de matrícula no verificado.');
+  for(const s of sections)for(const q of s.items)if(typeof past.respuestas?.[q[0]]==='string')answers[q[0]]=past.respuestas[q[0]];
+  finished=['ENTREGADO','REVISADO'].includes(past.estado);
+  message(finished?past.estado==='REVISADO'?'✓ REVISADO · Diagnóstico: '+String(past.nota??'—')+'/100 · '+String(past.comentario_docente||''):
+   '✓ ENTREGADO · Pendiente de revisión docente.':'Quiz digital habilitado; guardá el avance y entregá al finalizar.');
+  render();void loadAudio();
+ }catch(e){finished=true;message('Acceso NO habilitado: '+String(e.message||e));render()}
+}
+window.addEventListener('beforeunload',()=>{clearTimeout(saveTimer);if(audioUrl)URL.revokeObjectURL(audioUrl)});
+start();
+})();
+</script></body></html>
