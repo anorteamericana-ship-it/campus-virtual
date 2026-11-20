@@ -2651,7 +2651,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                   {pcModelStatus.busy&&pcModelStatus.group===groupCode&&
                    pcModelStatus.lesson===lesson?
                     tr('Abriendo modelo…','Opening model…'):
-                    nivel==='B1'&&[8,13].includes(lesson)?
+                    nivel==='B1'&&[8,13,16,21,24,28,30].includes(lesson)?
                      tr('Ver cuestionario digital','View digital questionnaire'):
                      tr('Ver modelo','View model')}
                 </button>
