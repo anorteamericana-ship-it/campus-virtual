@@ -237,28 +237,96 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
  const previewBtn=make('button','VER PDF + AUDIO DEL GRUPO','f111-tqr-open');
  const toggle=make('button','CONSULTANDO…','f111-tqr-activate');
  const reviewBtn=make('button','REVISAR ENTREGAS','f111-tqr-open');
- for(const b of [previewBtn,toggle,reviewBtn]){b.type='button';b.disabled=true;}
- wrap.append(make('strong','Grupo seleccionado: '+String(preferredGroup||'sin grupo')),select,previewBtn,toggle,reviewBtn,status);
+ const resendBtn=make('button','REENVIAR INVITACIÓN','f111-tqr-activate');
+ const studentsBtn=make('button','ACTUALIZAR ESTUDIANTES','f111-tqr-open');
+ const rosterBox=make('div',null,'f111-r62-quiz-roster');
+ rosterBox.setAttribute('role','region');
+ rosterBox.setAttribute('aria-label','Estudiantes del Quiz y estado de entrega');
+ rosterBox.style.cssText='width:100%;margin-top:12px;display:grid;gap:7px;background:#f8faff;border:1px solid #d8e1ef;border-radius:12px;padding:12px';
+ for(const b of [previewBtn,toggle,reviewBtn,resendBtn,studentsBtn]){b.type='button';b.disabled=true;}
+ wrap.append(make('strong','Grupo seleccionado: '+String(preferredGroup||'sin grupo')),select,previewBtn,toggle,resendBtn,reviewBtn,studentsBtn,status,rosterBox);
  let info=null,busy=false;
  const context=()=>({cod_grupo:select.value,nivel:'B1',leccion:lesson});
+ async function refreshRoster(){
+  rosterBox.replaceChildren(make('small','Consultando estudiantes y entregas reales…'));
+  if(!select.value)return;
+  try{
+   const data=await postQuiz('qzProgressTeacherList',context());
+   if(data?.ok!==true||Number(data.leccion)!==lesson||
+      data.padron_verificado!==true||!Array.isArray(data.estudiantes))
+    throw Error('El servidor no confirmó el padrón completo; no inferir ausencias.');
+   const students=data.estudiantes;
+   const groups=[['SIN_INICIAR','Listos para iniciar'],['BORRADOR','Borrador guardado'],
+      ['ENTREGADO','Entregados · por revisar'],['REVISADO','Aplicados y revisados'],
+      ['NO_HABILITADO','Matrícula no habilitada'],['VERIFICAR','Expediente por verificar']];
+   rosterBox.replaceChildren();
+   const valid=students.filter(x=>x.elegible===true);
+   rosterBox.append(make('strong','Estado real · '+valid.length+' estudiantes habilitados'),
+    make('small',students.filter(x=>x.estado==='REVISADO').length+' revisados · '+
+      students.filter(x=>x.estado==='ENTREGADO').length+' entregados · '+
+      students.filter(x=>x.estado==='BORRADOR').length+' borradores · '+
+      students.filter(x=>x.estado==='SIN_INICIAR').length+' sin iniciar'));
+   groups.forEach(([state,label])=>{
+    const rows=students.filter(x=>x.estado===state);if(!rows.length)return;
+    const details=make('details');details.open=state==='SIN_INICIAR'||state==='BORRADOR';
+    const title=make('summary',label+' ('+rows.length+')');
+    title.style.cssText='cursor:pointer;font-size:12px;font-weight:900;color:#173d67;padding:5px';
+    details.append(title);
+    rows.forEach(x=>{
+      const el=make('div',String(x.nombre||x.codigo)+' · #'+String(x.codigo)+
+        (state==='REVISADO'&&x.nota!==''?' · '+x.nota+'/100 (diagnóstico)':''));
+      el.style.cssText='font-size:11px;padding:6px 8px;border-top:1px solid #d8e1ef';
+      details.append(el);
+    });
+    rosterBox.append(details);
+   });
+   if(!students.length)rosterBox.append(make('p','Sin estudiantes verificables para este grupo y nivel.'));
+  }catch(err){rosterBox.replaceChildren(make('p','No se pudo verificar la lista completa: '+String(err.message||err)));}
+ }
  async function refresh(){
-  toggle.disabled=true;previewBtn.disabled=true;reviewBtn.disabled=true;info=null;
+  toggle.disabled=true;previewBtn.disabled=true;reviewBtn.disabled=true;
+  resendBtn.disabled=true;studentsBtn.disabled=true;info=null;
   if(!select.value){toggle.textContent='SIN GRUPO SELECCIONADO';status.textContent='Seleccioná un grupo autorizado.';return;}
   try{
    const data=await postQuiz('qzProgressTeacherAvailability',context());
    if(data.grupo!==select.value||Number(data.leccion)!==lesson||data.digital_disponible!==true)
     throw Error('Grupo o lección no habilitados');
    info=data;
-   previewBtn.disabled=false;reviewBtn.disabled=false;
+   previewBtn.disabled=false;reviewBtn.disabled=false;studentsBtn.disabled=false;
+   resendBtn.disabled=busy||data.estado!=='ABIERTO'||data.puede_reenviar!==true;
    toggle.textContent=data.estado==='ABIERTO'?'CERRAR QUIZ PARA ESTUDIANTES':'ACTIVAR QUIZ PARA ESTUDIANTES';
    toggle.disabled=busy||(data.estado!=='ABIERTO'&&data.puede_abrir!==true);
    status.textContent='Quiz '+String(LESSONS.findIndex(x=>x[0]===lesson)+1)+' · '+
     (data.estado==='ABIERTO'?'Abierto por docente':data.puede_abrir?
      'Disponible para apertura docente. Si la fecha ya pasó, puede aplicarse hoy sin cambiar el calendario ni notas anteriores.':
      'No elegible según fecha, clase o permisos')+
-    (data.fecha_programada?' · Fecha original: '+data.fecha_programada:'');
-  }catch(e){toggle.textContent='NO DISPONIBLE';status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;}
+    (data.fecha_programada?' · Fecha original: '+data.fecha_programada:'')+
+    (data.estado==='ABIERTO'?' · Podés reenviar invitación sin cerrar ni reiniciar el Quiz.':'');
+   void refreshRoster();
+  }catch(e){toggle.textContent='NO DISPONIBLE';status.textContent='Servidor: '+String(e.message||e);toggle.disabled=true;
+   rosterBox.replaceChildren(make('p','No se pudo consultar el estado del Quiz.'));}
  }
+ studentsBtn.addEventListener('click',()=>{if(!busy)void refreshRoster()});
+ resendBtn.addEventListener('click',async()=>{
+  if(busy||!info||info.estado!=='ABIERTO'||!select.value)return;
+  if(!window.confirm('¿Reenviar la invitación interna del Quiz al grupo '+select.value+
+    '? Los estudiantes pendientes y con borrador volverán a ver el aviso en Evaluaciones. No se borran respuestas ni entregas.'))return;
+  busy=true;resendBtn.disabled=true;select.disabled=true;
+  status.textContent='Registrando nueva invitación interna…';
+  try{
+   const old=String(info.invitacion_version||'');
+   const result=await postQuiz('qzProgressTeacherSetAvailability',
+     {...context(),estado:'ABIERTO',reenviar_invitacion:true});
+   if(result.reenviada!==true||!String(result.invitacion_version||'')||
+      String(result.invitacion_version)===old)
+    throw Error('El servidor no confirmó una invitación nueva.');
+   const check=await postQuiz('qzProgressTeacherAvailability',context());
+   if(check.estado!=='ABIERTO'||check.invitacion_version!==result.invitacion_version)
+    throw Error('No coincide la lectura posterior; verificar antes de reenviar otra vez.');
+   status.textContent='Nueva invitación interna registrada. Al entrar al Campus, cada estudiante pendiente verá el aviso.';
+  }catch(err){status.textContent='Reenvío NO confirmado: '+String(err.message||err);}
+  finally{busy=false;select.disabled=false;void refresh()}
+ });
  select.addEventListener('change',()=>{previewBtn.disabled=!select.value;reviewBtn.disabled=!select.value;void refresh();});
  previewBtn.addEventListener('click',()=>{if(select.value)previewB1Protected(lesson,select.value);});
  reviewBtn.addEventListener('click',()=>{if(select.value){if(Number(lesson)===4)openReviewWorkspace(select.value);else openB1TeacherReview(lesson,select.value);}});
