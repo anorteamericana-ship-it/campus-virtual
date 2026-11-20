@@ -28,7 +28,7 @@ const banks={
  [['A: _____ (go) to the playground when you were a child?',null],
   ['B: Yes, I _____ to the playground every day after school.',null],
   ['A: And what things _____ (collect)?',null],
-  ['B: Oh, I never _____ anything, but now I collect art.',null]]]]]},
+  ['B: Oh, I never _____ anything, but now I collect art.',null]]]]},
 {id:'F',title:'Indirect questions',points:4,type:'text',help:'Rewrite each as a polite indirect question using the word in parentheses.',items:[
 ['F1','Where is the nearest subway station? (Do)'],
 ['F2','How much does a train ticket cost? (Could)'],
@@ -68,7 +68,7 @@ const banks={
 {id:'F',title:'Present perfect and simple past',points:4,type:'compound',help:'Complete the dialogue with the correct verb forms.',items:[
 ['F','A: _____ you ever _____ (try) Japanese food?\nB: Yes, I _____. I _____ (go) to a Japanese restaurant last week.\nA: _____ you _____ (like) it?\nB: Yeah, it _____ (be) delicious.',
  [['Question · blank 1',null],['Question · blank 2',null],['Short answer',null],['Past tense of go',null],
- ['Past question · blank 1',null],['Past question · blank 2',null],['Past tense of be',null]]]]]},
+ ['Past question · blank 1',null],['Past question · blank 2',null],['Past tense of be',null]]]]},
 {id:'G',title:'Reading · Competitive Food Eating',points:4,type:'multi',maxSelections:4,
  help:'Select FOUR true statements.',
  reading:"COMPETITIVE FOOD EATING\nParents, doctors and nutritionists tell us to eat healthy food and eat only until we feel full. However, some people train themselves to eat huge quantities of food and compete to eat the most in a short time. Competitive food eaters can earn $10,000 or more in prize money.\nNathan’s Hot Dog Eating Contest takes place on July 4th at Coney Island in New York. Professional eater Joey Chestnut of San Francisco won seven years in a row from 2007 to 2014. His best record in 2013 was 68 hot dogs in 10 minutes.\nSonya Thomas was born in Korea and now lives in the U.S. She began competing in 2002. Her best record at the Nathan’s contest was 45 hot dogs in 2012. She has also eaten 11 pounds of cheesecake in nine minutes and 65 hard-boiled eggs in six minutes and 40 seconds.",
@@ -138,7 +138,7 @@ const banks={
  [['Fall is the season ...',['a. some people stay up all night','b. people celebrate Valentine’s Day','c. students often go back to school','d. many families take summer vacations']],
  ['July and August are the months ...',null],
  ['New Year’s Eve is a night ...',null],
- ['February 14 is the day ...',null]]]]]},
+ ['February 14 is the day ...',null]]]]},
 {id:'F',title:'Reading · Festival of the Flowers',points:4,type:'multi',maxSelections:4,
  help:'Read the article and choose FOUR true statements.',
  reading:"FESTIVAL OF THE FLOWERS\nFestival de las Flores in Medellín, Colombia, celebrates the country’s beautiful flowers. The festival takes place every August and lasts about ten days. There are parades, a pageant and amazing flower arrangements.\nColombians first celebrated the festival on May 1, 1957, when forty peasants formed a parade with flowers they carried from town to town. In 1958 officials moved it to August to celebrate independence from Spain in the summer as well.\nA popular event is the parade of silletas, huge flower arrangements, and the sillateros who create flower art. Over 7,000 horses and riders participate in a three-hour parade. Horses and riders wear the blue, red and yellow colors of the Colombian flag, and the parade holds the Guinness World Record as the largest horse parade.",
@@ -266,7 +266,7 @@ const banks={
 ['A4','According to Henry, Liza should have _____.',['told her students not to use cell phones in class.','switched off her cell phone.','told the teacher about her grandmother.']]]},
 {id:'B',title:'Hypothetical conditionals',points:4,type:'compound',help:'Complete the dialogue using the correct conditional verb forms.',items:[
 ['B',"A: My brother starts school in the fall, but he doesn’t have a summer job.\nB: If I _____ (not have) a job, I _____ (sleep) late every day.\nA: If I _____ (have) time, I _____ (not stay) home every day.\nB: What would you do?\nA: I _____ (borrow) some money and _____ (travel).",
- [['Blank 1',null],['Blank 2',null],['Blank 3',null],['Blank 4',null],['Blank 5',null],['Blank 6',null]]]]]},
+ [['Blank 1',null],['Blank 2',null],['Blank 3',null],['Blank 4',null],['Blank 5',null],['Blank 6',null]]]]},
 {id:'C',title:'Past modals',points:4,type:'compound',help:'Complete each conversation with past modal forms.',items:[
 ['C1',"A: These flowers were delivered to my house by accident. I kept them.\nB: I wouldn’t _____ (do) that. I would _____ (called) the shop.",
  [['Blank 1',null],['Blank 2',null]]],
@@ -285,7 +285,7 @@ const banks={
  ['Fred _____ (say) there around nine.',null],
  ['Susan _____ (tell) late.',null],
  ['Fred _____ (tell) any other plans.',null],
- ['Susan _____ (say) very grateful.',null]]]]]},
+ ['Susan _____ (say) very grateful.',null]]]]},
 {id:'F',title:'Reading · Carolyn Hax',points:4,type:'radio',help:'Read the article and check the correct answers.',
  reading:"CAROLYN HAX\nWho do many young people go to for advice on personal problems? Carolyn Hax, a Harvard graduate, has written practical, funny advice for The Washington Post since 1999. Her advice is unusual because she does not tell readers exactly what she would do; she offers new ways to think about problems, so they can find their own solutions.\nShe first wrote one column per week. She now writes three original columns per week and four additional columns adapted from weekly online discussions, providing a daily column. Her discussions can last over two hours and offer in-depth real-time advice. Her column appears in over 200 U.S. newspapers, edited and illustrated by her ex-husband Nick Galifianakis. She has written a book and is the mother of three boys.",
  items:[
