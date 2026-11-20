@@ -57,7 +57,7 @@ function openQuiz(item){
    new URL('./',location.href));
  url.searchParams.set('grupo',item.grupo);url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(item.leccion));
- if(digital){url.searchParams.set('live','1');url.searchParams.set('v','F111R63DIGITAL20261119');}
+ if(digital){url.searchParams.set('live','1');url.searchParams.set('v','F111R64PC03COPY20261119');}
  frame.src=url.href;frame.setAttribute('referrerpolicy','same-origin');
  pane.append(frame);modal.append(pane);document.body.append(modal);
  close.focus();
