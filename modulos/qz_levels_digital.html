@@ -102,7 +102,7 @@ function answerCount(){return sections.reduce((n,s)=>n+s.items.filter(x=>{
 }).length,0)}
 function controlState(){
  $('save').disabled=busy||finished||uncertain||!live;
- $('submit').disabled=busy||finished||uncertain||!live||answerCount()===0;
+ $('submit').disabled=busy||finished||uncertain||!live||!audioUrl||answerCount()===0;
 }
 function progress(){
  const n=answerCount();
@@ -179,9 +179,13 @@ async function loadAudio(){
   if(r.quiz_id!==quizId||r.mime!=='audio/mpeg'||typeof r.audio_base64!=='string')throw Error('Pista no corresponde al Quiz');
   const bytes=Uint8Array.from(atob(r.audio_base64),c=>c.charCodeAt(0));
   if(bytes.length<1024||bytes.length>4*1024*1024)throw Error('Pista de audio incompleta');
+  const id3=bytes[0]===73&&bytes[1]===68&&bytes[2]===51;
+  const mpeg=bytes[0]===255&&(bytes[1]&224)===224;
+  if(!id3&&!mpeg)throw Error('El servidor no entregó un MP3 válido');
   audioUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));
+  progress();
   if(active===0)render();
- }catch(e){message('Listening original no disponible: '+String(e.message||e)+'. Consultar al docente.')}
+ }catch(e){message('Listening original no disponible: '+String(e.message||e)+'. La entrega queda bloqueada hasta recuperar la pista.');progress()}
  finally{audioLoading=false}
 }
 function render(){
@@ -220,7 +224,7 @@ $('save').onclick=()=>{dirty=true;clearTimeout(saveTimer);void save()};
 $('previous').onclick=()=>{if(active>0){active--;render()}};
 $('next').onclick=()=>{if(active<sections.length-1){active++;render()}};
 $('submit').onclick=async()=>{
- if(!live||busy||finished||uncertain||answerCount()===0)return;
+ if(!live||busy||finished||uncertain||!audioUrl||answerCount()===0)return;
  if(!confirm('¿Entregar Quiz '+data.quiz+'? Las respuestas no podrán editarse después.'))return;
  clearTimeout(saveTimer);busy=true;controlState();
  try{
@@ -253,6 +257,7 @@ async function start(){
   const meta=await api('qzProgressGet');
   if(meta.quiz_id!==quizId||meta.nivel!==level||Number(meta.leccion)!==lesson||Number(meta.peso_oficial)!==0||
      meta.disponible_hoy!==true)throw Error('Quiz todavía no habilitado por el docente para tu grupo.');
+  if(meta.listening?.grabacion_disponible!==true)throw Error('Listening Cambridge no verificado. Este Quiz no se puede aplicar ni entregar sin la pista original.');
   const past=await api('qzProgressMyAttempt');
   if(past.quiz_id!==quizId||!['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(past.estado))throw Error('Expediente de matrícula no verificado.');
   for(const s of sections)for(const q of s.items)if(typeof past.respuestas?.[q[0]]==='string')answers[q[0]]=past.respuestas[q[0]];
