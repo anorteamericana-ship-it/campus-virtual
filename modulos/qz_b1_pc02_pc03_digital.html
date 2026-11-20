@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Progress Check 02 · Básico I · Examen digital</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;background:#f3f7fc;color:#193a5b}
+*{box-sizing:border-box}body{margin:0}.wrap{width:min(1080px,100%);margin:auto;padding:20px}
+header{background:#073b77;border-radius:16px;color:white;padding:24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header small{color:#ffe19b;font-weight:900;letter-spacing:.1em}h1{margin:7px 0;font-size:clamp(24px,4vw,35px)}
+header p{margin:0;color:#d9e9f8;font-size:14px}.pill{background:#ffdfa1;color:#6b4804;padding:12px;border-radius:11px;font-size:12px;font-weight:900;align-self:flex-start}
+.notice{margin:15px 0;background:#fff5df;border:1px solid #ebcb83;border-left:4px solid #c8871b;color:#654c1b;border-radius:10px;padding:15px;line-height:1.55;font-size:13px}
+.noticesub{background:#e8f3fd;border-color:#c6ddf2;border-left-color:#2677b2;color:#2c536e}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0 11px}nav button{padding:11px 14px;border-radius:9px;border:1px solid #ccdae9;background:white;color:#22486c;font-weight:800;cursor:pointer}nav button[aria-selected=true]{background:#f7c940;border-color:#daa81a;color:#5a4207}
+.progress{height:8px;background:#d6e3ef;border-radius:99px;overflow:hidden;margin:11px 0 17px}.progress>div{height:100%;background:#f0bf32;width:0;transition:width .2s}
+.panel{background:white;border:1px solid #dbe4f0;border-radius:15px;padding:20px;box-shadow:0 7px 25px #143d5a0b}
+.panel h2{margin:0;color:#143f6b;font-size:21px}
+.listening-box{background:#eff7ff;border:1px solid #b5d3ef;border-radius:11px;padding:14px;margin:13px 0 20px}
+.listening-box strong{display:block;font-size:14px;color:#174a7e;margin-bottom:10px}
+.listening-box audio{display:block;width:100%;max-width:530px}
+.done{background:#e8f5ec;border:1px solid #b5d7c1;color:#195b3d;border-radius:8px;padding:11px;font-weight:700;font-size:13px;margin-top:14px}.help{font-size:13px;color:#65788d;line-height:1.6;margin:8px 0 16px}
+.item{background:#f9fbfe;border:1px solid #dbe5f1;border-radius:11px;padding:15px;margin:10px 0}
+.item legend{padding:0 5px;font-size:13px;font-weight:850;line-height:1.5;color:#143e6b}
+.item label{display:block;background:white;border:1px solid #d8e3ee;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;cursor:pointer}
+.item label:has(input:checked){background:#fff5d5;border-color:#d7b351}
+.item input[type=radio]{accent-color:#0b4c85;margin-right:10px}
+.item input[type=text],.item select{margin:9px 0 0;width:min(620px,100%);padding:12px;border:1px solid #bdcedf;border-radius:8px;color:#224766;font:inherit;background:white}
+.item input:disabled{background:#edf1f6;cursor:not-allowed}
+.item[disabled]{opacity:.75}.badge{display:inline-block;background:#f6dfb0;color:#715217;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:850;margin:8px 0}
+.actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:space-between;margin-top:15px}
+.actions button{border:1px solid #becfe0;background:#fff;color:#14416d;border-radius:9px;padding:11px 15px;cursor:pointer;font-weight:850}
+.actions button.primary{background:#f6c638;border-color:#e1b125;color:#3e330f}
+.actions button:disabled{opacity:.4;cursor:default}
+#state{font-size:12px;color:#687f94}
+footer{font-size:12px;color:#627a93;text-align:center;padding:18px;line-height:1.6}
+@media(max-width:650px){.wrap{padding:10px}.panel{padding:13px}.item{padding:11px}}
+</style>
+</head>
+<body><main class="wrap">
+<header><div><small>ACADEMIA NORTEAMERICANA · INTERCHANGE 5ª EDICIÓN</small>
+<h1>Progress Check 02 · Básico I</h1><p>Lección 08 · Unidades 3–4 · 25 puntos · ponderación oficial 0%</p></div>
+<div class="pill">VISTA PREVIA · SIN ENVÍO OFICIAL</div></header>
+<section class="notice noticesub" role="status"><b>Vista previa docente.</b> Este es el cuestionario digital que utilizará el estudiante: preguntas y opciones originales, cinco apartados y audio de Listening integrado. Podés responderlo completo para revisarlo. <b>No se guarda, no se envía ni genera nota oficial.</b></section>
+<nav id="nav" aria-label="Secciones de la prueba"></nav><div class="progress"><div id="progress" aria-hidden="true"></div></div>
+<section id="panel" class="panel" aria-live="polite"></section>
+<div class="actions"><button type="button" id="prev">← Anterior</button><span id="state">0 de 25 campos completados en esta vista local</span>
+<button type="button" id="next" class="primary">Siguiente →</button>
+<button type="button" id="finish" class="primary" hidden>Finalizar vista previa</button></div>
+<footer>PROGRESS CHECK 02 · Unidades 3–4 · Lección 8 · 25 respuestas · 0% oficial. Vista de práctica: sin guardado ni entrega a estudiantes.</footer>
+</main>
+<script>
+'use strict';
+// Transcripción de trabajo desde ic5_intro_wq_u3to4.pdf, clave y script en
+// Drive privado. A = 4, B = 5, C = 5, D = 5 (4 preguntas, una con 2 espacios),
+// E = 6. TOTAL = 25. No se incluye ningún mapa de claves en el frontend.
+const pc02Sections=[
+{id:'A',title:'Listen to the conversations',points:4,
+ help:'Listen to the conversations. Check the correct answers. (4 POINTS).',
+ type:'radio',items:[
+ ['A1','Where is Justine from?',["She's from Canada.","She's from France.","She's from Italy."]],
+ ['A2','What is Mike like?',["He's serious, but not very quiet.","He's a little quiet, but very funny.","He's a little quiet and very serious."]],
+ ['A3',"What's the weather like?",["It's very warm and sunny.","It's raining, but it's warm.","It's very sunny, but it's cool."]],
+ ['A4','Is Sue wearing a blue dress?',["Yes, she is.","No, she's not. She's wearing a swimsuit.","No, she's not. She's wearing a suit."]]
+]},
+{id:'B',title:'Circle the correct words',points:5,
+ help:'Circle the correct words. (5 POINTS)',
+ type:'radio',items:[
+ ['B1',"Lucas isn't serious. He's ____.",['heavy','pretty','funny']],
+ ['B2',"Maria is a really good student. She's very ____.",['friendly','smart','thin']],
+ ['B3',"Dan isn't very talkative. He's ____.",['funny','good-looking','quiet']],
+ ['B4',"My sister isn't short. She's ____.",['pretty','tall','heavy']],
+ ['B5',"My brother is good-looking. He's ____.",['interesting','pretty','handsome']]
+]},
+{id:'C',title:'Match the questions with the answers',points:5,
+ help:"Match each question with one letter. (5 POINTS). Choices: a. Maybe they're Annie's. · b. No, they aren't theirs. They're ours! · c. I think it's yours. · d. No, it's not hers. It's mine. · e. Yes, they're hers.",
+ type:'select',items:[
+ ['C1',"Is this Sue's scarf?"],['C2','Whose boots are these?'],['C3',"Are these Lisa's gloves?"],
+ ['C4','Whose hat is this?'],['C5',"Are these Peter's and Kathy's coats?"]
+]},
+{id:'D',title:'Complete the conversations',points:5,
+ help:'Use the correct present continuous form of the verb in parentheses. (5 POINTS)',
+ type:'text',items:[
+ ['D1',"A: Are you wearing high heels? B: No, I ____ (wear) sneakers."],
+ ['D2',"A: Is Mr. Martinez wearing a cap? B: No, he ____ (not wear) a cap."],
+ ['D3',"A: Are Carl and Tonya wearing coats? B: No, they're not. It's very hot. They ____ (wear) shorts and T-shirts."],
+ ['D4a',"A: It ____ (not rain)."],
+ ['D4b',"B: You're right. It ____ (snow)."]
+]},
+{id:'E',title:'Read the answers. Then write the questions',points:6,
+ help:"Write the question that matches each answer. (6 POINTS). Examples: 'Are they in Peru?' / 'What's your name?'",
+ type:'text',items:[
+ ['E1',"B: No, they're not from Australia. They're from New Zealand."],
+ ['E2',"B: We're from Miami."],['E3',"B: I think she's twenty-five."],
+ ['E4',"B: No, my first language isn't Spanish. It's Portuguese."],
+ ['E5',"B: Yes, I'm Chinese. I'm from Shanghai."],
+ ['E6',"B: He's shy and very quiet."]
+]}
+];
+const pc02MatchOptions=[
+  ["a","Maybe they're Annie's."],
+  ["b","No, they aren't theirs. They're ours!"],
+  ["c","I think it's yours."],
+  ["d","No, it's not hers. It's mine."],
+  ["e","Yes, they're hers."]
+];
+
+const pc03MatchOptions=[['a','a bike'],['b','breakfast'],['c','a walk'],['d','dinner'],['e','a movie'],['f','tennis'],['g','music']];
+const pc03Sections=[
+{id:'A',title:'Listening · Daily activities',points:4,help:'Escuchá las conversaciones y completá las oraciones. (4 POINTS)',type:'text',items:[
+ ['A1','On Saturdays, Judy ____ at 4:30 in the morning.'],
+ ['A2','Rich ____ with his brother.'],
+ ['A3','On Sundays, Tracey ____ with her family.'],
+ ['A4','On Mondays, Wednesdays, and Fridays, Greg ____ downtown.']]},
+{id:'B',title:'Telling the time',points:3,help:'Complete the sentences. (3 POINTS)',type:'text',items:[
+ ['B1',"It's ____ twelve."],['B2',"It's ____ five."],['B3',"It's six ____." ]]},
+{id:'C',title:"Joseph Conway's Schedule",points:3,help:'Leé el texto. Marcá DOS respuestas correctas en cada pregunta. (3 POINTS)',type:'multi',
+ reading:"Joseph has a busy schedule. He gets up at 5:00 in the morning and starts his first job at 5:30. He finishes that job at 8 A.M. Then he eats breakfast. Joseph goes to class from 10 A.M. to 3 P.M. He doesn't have time for lunch, but he eats dinner after class. Then he starts another job. He drives a bus from 4:00 to 9:00 at night. After work, he goes home and studies from 10:00 until midnight. Then he goes to bed and sleeps.",
+ items:[
+ ['C1','Joseph _____.',['is a student','has one job','takes the bus','studies at night']],
+ ['C2','Joseph works from _____.',['5:30 A.M. to 8:00 A.M.','10:00 A.M. to 3:00 P.M.','4:00 P.M. to 9:00 P.M.','10:00 P.M. to midnight']],
+ ['C3','Joseph eats _____.',['breakfast','dinner','lunch','late at night']]]},
+{id:'D',title:'Present continuous Wh-questions',points:3,help:'Escribí las preguntas en presente continuo. (3 POINTS)',type:'text',items:[
+ ['D1','(Brenda and Katie / study)\nB: Math and science.'],
+ ['D2','(Julio / work)\nB: In an office.'],
+ ['D3','(you / go)\nB: To the supermarket.']]},
+{id:'E',title:'Match verbs with nouns',points:6,help:'Relacioná cada verbo con una expresión (a–g). El documento fuente tiene 7 reactivos y 6 puntos; la calificación requiere revisión docente.',type:'select',items:[
+ ['E1','have ____'],['E2','eat ____'],['E3','play ____'],['E4','ride ____'],
+ ['E5','listen to ____'],['E6','take ____'],['E7','watch ____']]},
+{id:'F',title:'Find the incorrect phrase',points:6,help:'Seleccioná la expresión incorrecta de cada diálogo. (6 POINTS)',type:'radio',items:[
+ ['F1','Do your brother work in the morning? / No, he works at night.',['Do','your brother','work']],
+ ['F2','When does Carol have lunch? / She have lunch at noon.',['does','have (pregunta)','have (respuesta)']],
+ ['F3','Does your father goes to work by bus? / No, he takes the train.',['Does','goes','takes']],
+ ['F4',"What are you make? / I'm making spaghetti.",['What','make','making']],
+ ['F5',"What's your father doing right now? / He sleeping.",["What's",'doing','He sleeping']],
+ ['F6','Are your friends study today? / Yes, they are.',['Are','study','they are']]
+]}
+];
+
+const params=new URLSearchParams(location.search);
+const lesson=Number(params.get('leccion')||8),group=String(params.get('grupo')||'').trim();
+const pcNumber=lesson===8?2:lesson===13?3:0;
+const live=params.get('live')==='1',review=params.get('review')==='1'&&!live,
+ teacherPreview=params.get('teacher_preview')==='1';
+const sections=lesson===13?pc03Sections:pc02Sections,matchOptions=lesson===13?pc03MatchOptions:pc02MatchOptions;
+const TOTAL=sections.reduce((a,s)=>a+s.items.length,0);
+const POINTS=sections.reduce((a,s)=>a+s.points,0);
+if(!pcNumber||POINTS!==25||(TOTAL!==25&&!(lesson===13&&TOTAL===26)))throw Error('Banco Quiz inválido');
+let token='',busy=false,uncertain=false,dirty=false,lastSave=null,lastAudioUrl='',quizState='SIN_INICIAR',voiceLoaded=false;
+const context={cod_grupo:group,nivel:'B1',leccion:lesson},expected='IC5_B1_WQ0'+pcNumber;
+function sessionToken(){try{if(window.parent!==window&&typeof window.parent.getSessionToken==='function')return String(window.parent.getSessionToken()||'')}catch(_){}
+ try{return String(JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||'')}catch(_){return ''}}
+async function api(fn,data={}){
+ const base=String((window.parent!==window&&window.parent.F111_QZ_API_URL)||window.F111_QZ_API_URL||'');
+ if(!token||!base)throw Error('Abrí el quiz desde Evaluaciones con tu sesión');
+ const r=await fetch(base+'?fn='+encodeURIComponent(fn),{method:'POST',
+  headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token,...context,...data})});
+ let j;try{j=await r.json()}catch(_){throw Error('Respuesta del servidor inválida')}
+ if(!r.ok||j?.ok!==true)throw Error(String(j?.error||'Servicio de Quiz no disponible'));
+ return j;
+}
+function setMessage(t){document.querySelector('.notice[role=status]').textContent=t}
+function updateButtons(){
+ if(saveBtn)saveBtn.disabled=!live||finished||busy||uncertain;
+ document.getElementById('finish').disabled=!live||finished||busy||uncertain||counts()===0;
+}
+async function saveReal(){
+ if(!live||finished||uncertain||busy||!dirty)return;
+ busy=true;updateButtons();const snapshot={...answers};dirty=false;
+ try{const r=await api('qzProgressSaveDraft',{respuestas:snapshot});
+  if(r.quiz_id!==expected||!['BORRADOR','ENTREGADO','REVISADO'].includes(r.estado))throw Error('No se confirmó el borrador');
+  if(r.estado!=='BORRADOR')finished=true;
+  setMessage(finished?'Prueba ya entregada: no se pueden modificar respuestas.':'✓ Borrador guardado en el Campus.');
+ }catch(_){dirty=true;setMessage('No se confirmó el guardado. Podés reintentar Guardar borrador.')}
+ finally{busy=false;updateButtons()}
+}
+function changed(){if(!live||finished||busy)return;dirty=true;updateButtons();clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),1400)}
+async function loadVoice(){
+ if((!live&&!teacherPreview)||lesson!==13||voiceLoaded)return;
+ try{
+  const r=await api('qzProgressAudio');
+  if(r.quiz_id!==expected||r.mime!=='audio/mpeg'||typeof r.audio_base64!=='string')throw Error('Audio no disponible');
+  const bytes=Uint8Array.from(atob(r.audio_base64),c=>c.charCodeAt(0));
+  if(bytes.length<1024||bytes.length>4*1024*1024)throw Error('Pista inválida');
+  lastAudioUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/mpeg'}));voiceLoaded=true;
+  if(sections[active]?.id==='A')show();
+ }catch(_){setMessage('El audio no cargó. El docente podrá reproducir el listening durante la clase.')}
+}
+const answers=Object.create(null);
+let finished=false;
+let active=0;
+const nav=document.getElementById('nav'),panel=document.getElementById('panel'),state=document.getElementById('state');
+function el(tag,text,cls){const x=document.createElement(tag);if(text!==undefined&&text!==null)x.textContent=text;if(cls)x.className=cls;return x;}
+function counts(){let n=0;sections.forEach(s=>s.items.forEach(q=>{if(String(answers[q[0]]||'').trim())n++}));return n;}
+
+document.title='Quiz '+pcNumber+' · Básico I · Academia Norteamericana';
+document.querySelector('h1').textContent='Quiz '+pcNumber+' · Básico I';
+document.querySelector('header p').textContent='Lección '+String(lesson).padStart(2,'0')+' · Unidades '+(lesson===8?'3–4':'5–6')+' · 25 puntos · 0% oficial';
+document.querySelector('.pill').textContent=live?'CUESTIONARIO DIGITAL':review?'REVISIÓN DOCENTE':'VISTA PREVIA DIGITAL';
+document.querySelector('footer').textContent='Progress Check · 0% oficial · '+TOTAL+' campos de respuesta · '+POINTS+' puntos';
+const saveBtn=el('button','GUARDAR BORRADOR');saveBtn.type='button';saveBtn.className='primary';
+saveBtn.style.background='#123f76';saveBtn.style.color='#fff';saveBtn.onclick=()=>{dirty=true;clearTimeout(lastSave);void saveReal()};
+document.querySelector('.actions').insertBefore(saveBtn,document.getElementById('next'));
+document.getElementById('finish').textContent=live?'ENTREGAR QUIZ':'Finalizar vista previa';
+document.getElementById('panel').addEventListener('change',changed);
+document.getElementById('panel').addEventListener('input',changed);
+function show(){
+ nav.replaceChildren();
+ sections.forEach((s,i)=>{const b=el('button',s.id+' · '+s.points+' puntos');b.type='button';b.setAttribute('aria-selected',String(active===i));b.onclick=()=>{active=i;show()};nav.append(b)});
+ const s=sections[active];panel.replaceChildren(el('h2',s.id+' · '+s.title),el('p',s.help,'help'));
+ if(s.reading){panel.append(el('p',s.reading,'help'));}
+ if(s.id==='A'){
+  const audioBox=el('section',null,'listening-box');
+  audioBox.append(el('strong','♪ Listening · pista original 02'));
+  const player=el('audio');
+  player.controls=true;player.preload='metadata';
+  player.src=lesson===8?'../media/qz32/b1_pc02_listening_track02.mp3?v=F111R63PC02':lastAudioUrl;
+  player.setAttribute('aria-label','Listening original de Progress Check 02 · unidades 3 y 4');
+  const audioError=el('p','','help');
+  player.addEventListener('error',()=>{audioError.textContent='No se pudo reproducir el audio original. Informá al equipo académico.'});
+  audioBox.append(player,audioError);
+  panel.append(audioBox);
+ }
+ if(finished)panel.append(el('p',review?'Revisión del docente · intento archivado, solo lectura.':
+  live?'PRUEBA ENTREGADA · No se pueden modificar respuestas.':
+  'Vista previa finalizada. Esta simulación no envía respuestas.','done'));
+ s.items.forEach(q=>{
+ const box=el('fieldset',null,'item'),legend=el('legend',q[0]+' · '+q[1]);box.append(legend);
+ if(s.type==='radio'||s.type==='multi'){q[2].forEach((opt,k)=>{
+  const label=el('label'),input=el('input');
+  input.type=s.type==='multi'?'checkbox':'radio';input.name=q[0];input.value=String(k+1);
+  input.checked=s.type==='multi'?String(answers[q[0]]||'').split(',').includes(String(k+1)):answers[q[0]]===String(k+1);
+  input.disabled=finished||review;
+  input.onchange=()=>{if(s.type==='multi'){
+   const chosen=Array.from(box.querySelectorAll('input:checked')).map(i=>i.value);
+   if(chosen.length>2){input.checked=false;return}
+   answers[q[0]]=chosen.join(',');
+  }else answers[q[0]]=input.value;refresh()};label.append(input,document.createTextNode(opt));box.append(label);
+ });}
+ else if(s.type==='select'){
+  const sel=el('select');sel.setAttribute('aria-label',q[0]);const blank=el('option','Elegir la letra…');blank.value='';sel.append(blank);
+  matchOptions.forEach(([letter,answer])=>{const option=el('option',letter+' · '+answer);option.value=letter;sel.append(option)});
+  sel.value=answers[q[0]]||'';sel.disabled=finished||review;sel.onchange=()=>{answers[q[0]]=sel.value;refresh()};box.append(sel);
+ } else {
+  const input=el('input');input.type='text';input.autocomplete='off';input.maxLength=240;input.placeholder='Respuesta para revisar el diseño';
+  input.setAttribute('aria-label',q[0]);input.value=answers[q[0]]||'';input.disabled=finished||review;
+  input.oninput=()=>{answers[q[0]]=input.value;refresh()};box.append(input);
+ }
+ panel.append(box);
+ });
+ document.getElementById('prev').disabled=active===0;
+ document.getElementById('next').hidden=active===sections.length-1;
+ document.getElementById('finish').hidden=active!==sections.length-1||finished;
+ refresh();
+}
+function refresh(){const completed=counts();state.textContent=completed+' de '+TOTAL+' respuestas · '+Math.round(completed/TOTAL*100)+' %'+(live?' · guardado en Campus':' (vista previa)');
+ document.getElementById('progress').style.width=(completed/TOTAL*100)+'%';updateButtons();
+}
+document.getElementById('prev').onclick=()=>{if(active>0){active--;show()}};
+document.getElementById('next').onclick=()=>{if(active<sections.length-1){active++;show()}};
+
+document.getElementById('finish').onclick=async()=>{
+ if(!live){
+  if(!window.confirm('Finalizar vista previa sin envío de respuestas?'))return;
+  finished=true;show();setMessage('Vista previa finalizada. Ninguna respuesta fue enviada.');return;
+ }
+ if(busy||finished||uncertain||counts()<1)return;
+ if(!window.confirm('¿ENTREGAR QUIZ '+pcNumber+'? Las respuestas no podrán modificarse después.'))return;
+ clearTimeout(lastSave);busy=true;updateButtons();
+ try{
+  const r=await api('qzProgressSubmit',{respuestas:{...answers}});
+  if(r.quiz_id!==expected||!['ENTREGADO','REVISADO'].includes(r.estado))throw Error('Sin confirmación');
+  const check=await api('qzProgressMyAttempt');
+  if(check.quiz_id!==expected||!['ENTREGADO','REVISADO'].includes(check.estado))throw Error('Lectura posterior falló');
+  finished=true;quizState=check.estado;dirty=false;show();setMessage('✓ QUIZ ENTREGADO · Pendiente de revisión del profesor');
+  alert('✓ Quiz '+pcNumber+' entregado. Podés cerrar la ventana; se registró tu envío.');
+ }catch(_){uncertain=true;setMessage('Entrega incierta: NO reenvíes. Abrí nuevamente Evaluaciones y verificá el estado antes de repetir.')}
+ finally{busy=false;updateButtons()}
+};
+async function initialize(){
+ if(review){
+  finished=true;saveBtn.hidden=true;document.getElementById('finish').hidden=true;
+  setMessage('Revisión docente: esperando respuesta del expediente seleccionado.');
+  window.addEventListener('message',event=>{
+   if(event.origin!==location.origin||event.source!==window.parent||
+      event.data?.type!=='F111_PC23_TEACHER_REVIEW'||event.data.leccion!==lesson||
+      event.data.grupo!==group||!event.data.respuestas)return;
+   for(const s of sections)for(const q of s.items)
+    if(Object.prototype.hasOwnProperty.call(event.data.respuestas,q[0]))
+     answers[q[0]]=String(event.data.respuestas[q[0]]??'').slice(0,500);
+   show();setMessage('Respuesta archivada · Solo lectura · Quiz '+pcNumber);
+  });show();return;
+ }
+ if(!live){saveBtn.hidden=true;show();
+  if(teacherPreview&&lesson===13){token=sessionToken();if(token&&group)void loadVoice();}
+  return;}
+ token=sessionToken();
+ try{
+  if(!token||!group)throw Error('Entrá al Campus desde tu cuenta de estudiante.');
+  const meta=await api('qzProgressGet');
+  if(meta.quiz_id!==expected||meta.nivel!=='B1'||Number(meta.leccion)!==lesson||
+    meta.peso_oficial!==0||meta.disponible_hoy!==true)throw Error('La prueba no está habilitada para tu matrícula.');
+  const own=await api('qzProgressMyAttempt');
+  if(own.quiz_id!==expected||!['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(own.estado))throw Error('Expediente individual no verificado.');
+  for(const s of sections)for(const q of s.items)
+   if(typeof own.respuestas?.[q[0]]==='string')answers[q[0]]=own.respuestas[q[0]];
+  quizState=own.estado;finished=['ENTREGADO','REVISADO'].includes(own.estado);
+  setMessage(finished?own.estado==='REVISADO'?'✓ REVISADO · Nota diagnóstica: '+String(own.nota??'—')+'/100 · '+String(own.comentario_docente||''):
+   '✓ ENTREGADO · Esperando revisión docente.':'Cuestionario digital activo. Guardá tu avance o entregá desde la última sección.');
+  show();
+  if(lesson===13)void loadVoice();
+ }catch(e){finished=true;setMessage('No se pudo abrir el examen: '+String(e.message||e));show();}
+}
+window.addEventListener('beforeunload',()=>{if(lastAudioUrl)URL.revokeObjectURL(lastAudioUrl);clearTimeout(lastSave)});
+initialize();
+</script></body></html>

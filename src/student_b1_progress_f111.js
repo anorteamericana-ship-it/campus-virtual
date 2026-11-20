@@ -52,9 +52,12 @@ function openQuiz(item){
  document.addEventListener('keydown',onKey);
  bar.append(close);pane.append(bar);
  const frame=make('iframe');frame.title='Progress Check B1: respuestas y entrega';
- const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
+ const digital=Number(item.leccion)===8||Number(item.leccion)===13;
+ const url=new URL(digital?'modulos/qz_b1_pc02_pc03_digital.html':'modulos/quiz_progress.html',
+   new URL('./',location.href));
  url.searchParams.set('grupo',item.grupo);url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(item.leccion));
+ if(digital){url.searchParams.set('live','1');url.searchParams.set('v','F111R63DIGITAL20261119');}
  frame.src=url.href;frame.setAttribute('referrerpolicy','same-origin');
  pane.append(frame);modal.append(pane);document.body.append(modal);
  close.focus();
