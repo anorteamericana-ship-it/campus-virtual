@@ -132,13 +132,12 @@ const banks={
  ['c','they might text each other on smartphones.'],['d','they often meet in a public place, such as a coffee shop.']],
  items:[['D1','Before a young man and woman speak ...'],['D2','Before they meet for the first time ...'],
  ['D3','When they have their first date ...'],['D4','After they meet for the first time ...']]},
-{id:'E',title:'Join with when',points:4,type:'compound',
- help:'Match each phrase and write a complete sentence with when.',items:[
-['E','Write four complete sentences using when.',
- [['Fall is the season ...',['a. some people stay up all night','b. people celebrate Valentine’s Day','c. students often go back to school','d. many families take summer vacations']],
- ['July and August are the months ...',null],
- ['New Year’s Eve is a night ...',null],
- ['February 14 is the day ...',null]]]]},
+{id:'E',title:'Join with when',points:4,type:'compound',help:'For each prompt select the matching phrase and rewrite the complete sentence using when.',items:[
+['E1','Fall is the season ...',[['Match with phrase',[['a','some people stay up all night'],['b','people celebrate Valentine’s Day'],['c','students often go back to school'],['d','many families take summer vacations']].map(x=>x[1])],['Complete sentence with when',null]]],
+['E2','July and August are the months ...',[['Match with phrase',[['a','some people stay up all night'],['b','people celebrate Valentine’s Day'],['c','students often go back to school'],['d','many families take summer vacations']].map(x=>x[1])],['Complete sentence with when',null]]],
+['E3','New Year’s Eve is a night ...',[['Match with phrase',[['a','some people stay up all night'],['b','people celebrate Valentine’s Day'],['c','students often go back to school'],['d','many families take summer vacations']].map(x=>x[1])],['Complete sentence with when',null]]],
+['E4','February 14 is the day ...',[['Match with phrase',[['a','some people stay up all night'],['b','people celebrate Valentine’s Day'],['c','students often go back to school'],['d','many families take summer vacations']].map(x=>x[1])],['Complete sentence with when',null]]]
+]},
 {id:'F',title:'Reading · Festival of the Flowers',points:4,type:'multi',maxSelections:4,
  help:'Read the article and choose FOUR true statements.',
  reading:"FESTIVAL OF THE FLOWERS\nFestival de las Flores in Medellín, Colombia, celebrates the country’s beautiful flowers. The festival takes place every August and lasts about ten days. There are parades, a pageant and amazing flower arrangements.\nColombians first celebrated the festival on May 1, 1957, when forty peasants formed a parade with flowers they carried from town to town. In 1958 officials moved it to August to celebrate independence from Spain in the summer as well.\nA popular event is the parade of silletas, huge flower arrangements, and the sillateros who create flower art. Over 7,000 horses and riders participate in a three-hour parade. Horses and riders wear the blue, red and yellow colors of the Colombian flag, and the parade holds the Guinness World Record as the largest horse parade.",
