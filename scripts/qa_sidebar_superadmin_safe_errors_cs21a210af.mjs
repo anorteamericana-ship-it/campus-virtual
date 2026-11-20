@@ -13,7 +13,7 @@ const NEW=`      if (!data.ok) {
 function blobSha(text){const b=Buffer.from(text,'utf8');return crypto.createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');}
 function must(cond,msg){if(!cond) throw new Error(msg);}
 
-const src=fs.readFileSync(FILE,'utf8');
+const src=fs.readFileSync(FILE,'utf8').replace(/\r\n/g,'\n');
 must(src.includes(NEW),'Falta la frontera segura CS21A210AF.');
 must(!src.includes(OLD),'Permanece el sink raw histórico.');
 must(!/setErrMsg\s*\(\s*data\.error/.test(src),'data.error todavía llega directamente a errMsg.');
@@ -36,7 +36,11 @@ must(src.split(attendanceMenu).length===2,'Entrada de asistencia debe existir un
 const hiddenStudentOnly="        ...(false && mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []), // F111 student demo: hidden, teacher/admin unaffected.";
 const studentMenuOriginal="        ...(mostrarICAN ? [{ id: 'ican', label: 'Club I CAN', icon: 'ican' }] : []),";
 must(src.split(hiddenStudentOnly).length-1===1,'Only the student I CAN menu is hidden for the demo.');
-const restored=src.replace(hiddenStudentOnly,studentMenuOriginal).replace(attendanceMenu,'').replace(NEW,OLD);
+// Extensión autorizada E1: exactamente un nuevo menú para rol REAL Superadmin.
+// La prueba NO ignora cambios: revierte esta única línea y exige el blob histórico exacto.
+const examPrepMenu="        ...(esSuperadmin ? [{ id: 'exam_prep_lab', label: 'Exam Prep Lab · TOEIC', icon: 'check', badge: 'Revisión' }] : []),\n";
+must(src.split(examPrepMenu).length===2,'El menú TOEIC debe existir solo una vez y con gate Superadmin exacto.');
+const restored=src.replace(examPrepMenu,'').replace(hiddenStudentOnly,studentMenuOriginal).replace(attendanceMenu,'').replace(NEW,OLD);
 must(restored!==src,'No se pudo revertir AF en memoria.');
 // F111 i18n review: permit ONLY the exact known sidebar preview blob after AF reversal.
  // This is a hash allowlist, not a broad exception: any unrelated byte change still fails.
