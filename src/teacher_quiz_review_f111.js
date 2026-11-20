@@ -476,7 +476,8 @@ async function openTeacherQuizModelF111(lesson,group,level){
 window.F111_QZ_openTeacherModel=openTeacherQuizModelF111;
 function previewPC02(){
  // Vista editorial histórica, nunca concede acceso de estudiantes.
- const url=new URL('modulos/qz_b1_pc02_preview.html',new URL('./',location.href));
+ const url=new URL('modulos/qz_b1_pc02_pc03_digital.html',new URL('./',location.href));
+ url.searchParams.set('leccion','8');
  url.searchParams.set('preview','1');
  window.open(url.href,'_blank','noopener,noreferrer');
 }
