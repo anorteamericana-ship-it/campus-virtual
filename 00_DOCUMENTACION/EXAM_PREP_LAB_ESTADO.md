@@ -133,3 +133,17 @@ Riesgos: contenido sin revisar; voces sintéticas; despliegue CORE (mitigado: ap
 ## 9. Referencias y marca (resumen)
 
 ETS (muestras oficiales, TOEIC Test App), Sample Test del Centro Cultural y British Council: **enlazar**, no copiar. H5P: descartado en v1. `kdeppaei/toeic-question-ocean` (MIT): ideas de validación, sin importar banco. `seikaikyo/toeic-practice`: código propietario, descartado. Marca: nombre *Exam Prep Lab*, TOEIC® con aviso “no respaldado ni aprobado por ETS”, sin logos de ETS ni del Centro Cultural. Voz: Web Speech API descartada para examen; Kokoro para borradores; grabación docente recomendada para lo publicado.
+
+## 10. Integración local controlada — 20 de noviembre de 2026
+
+**Corte E1 local Windows, sin despliegue ni datos reales.** Esta sección actualiza el estado de integración sin reemplazar la matriz editorial anterior.
+
+- Equipo autorizado mediante Remote Desktop Commander: `DESKTOP-9U2RJRG`; trabajo aislado dentro de `C:\Users\leodr\Documents\CampusVirtual`.
+- Se validó el ZIP `exam_prep_lab_entrega_20261119.zip` (13.571.111 bytes, SHA-256 `4463608CBAE875A79C8B3FE018C3A1DB20F670F61654A712A3A8ED8384C7CDA5`) y ambos bundles de Git.
+- **Frontend local:** `F111_HIST_FRONT_20261117`, rama `feat/exam-prep-lab-integration-20261120` sobre `main fea9caa6401b5741495c97cc7734c44cceeefd55`; cherry-pick del paquete: `b74844529cb4e63f2b4b4a0828fb0fbfdf405287`, que agregó 151 archivos sin modificar los existentes de `main`.
+- **Backend local:** `F111_HIST_BACK_20261117`, misma rama de integración sobre `main 7ef0f88c8558a1c963346f6919cdafab1ff43c5b`; cherry-pick `b211996e22c1cb4a4add1033b21e350ecd61f134` (7 archivos nuevos; `prod/` intacto); corrección de portabilidad QA Windows: `c4f39f787b0df49e43d78ee6fb4d5c6f65cd49ff`.
+- Incidencia Windows: `tests/qa_cert_prep_lab_e1.mjs` construía una ruta inválida `C:\C:\...` usando `new URL(import.meta.url).pathname`. Se cambió solo esa resolución por `fileURLToPath(import.meta.url)` y la suite backend pasó sin variar exigencias.
+- Incidencia del frontend E1: navegación asíncrona concurrente tras recargar podía dejar visible una pantalla anterior y ocultar «Continuar». Se serializaron los cambios de ruta, priorizando el destino más reciente, en `prototipos/exam_prep_lab/epl_app.js`. El test Reading conserva la misma validación de respuestas y tiempo, esperando primero el render de pantalla. Las pruebas 06 y 12 se repitieron **5/5 cada una**, sin fallos.
+- **QA final local con usuarios ficticios: 116/116 PASS (100 %)** — motor 28/28, multimedia 15/15, servidor 26/26, navegador 23/23 (corrida completa final), integración en navegador 4/4, backend 20/20. Los 112 audios se comprobaron con ffprobe, sin escucha humana. Chromium/Playwright instalado solo como dependencia de desarrollo local.
+- **Pendientes reales**: 400 preguntas `DRAFT`, 0 revisadas, 0 aprobadas o publicadas; 112 audios sin revisión auditiva humana; E2/E3/E4 y sesiones/hojas reales no probadas; `F96_LAZY` y menú del Campus no conectados; propiedades `CERT_PREP_*`, hoja nueva y router de Apps Script no liberados.
+- **Gobernanza**: cero `git push`, cero PR remoto, cero `clasp push`, cero merge, cero deploy, cero cambios en `prod/`, APOLLO, F111 o datos de estudiantes. El siguiente hito es revisar el diff local y preparar PR en borrador cuando se autorice publicarlo a GitHub; posteriormente, revisión editorial de contenido y liberación controlada, sin depender de una fecha de examen.

@@ -108,7 +108,9 @@ await t('12 simulacro Reading: reloj del servidor (75 min), mapa, marcas, recarg
   await page.waitForSelector('.palette', { state: 'attached' }); assert.match(await page.textContent('#timer'), /^1:15:00|^1:14:5\d/);
   await (await page.$$('.q .opt'))[1].click(); await page.waitForTimeout(400); await page.click('[data-act=flag]'); await page.click('[data-act=sim-move][data-d="1"]'); await page.click('[data-act=sim-move][data-d="-1"]');
   assert.equal(await page.$$eval('.palette button.flag', x => x.length), 1);
-  await page.reload(); await page.goto(BASE + '#simulacros'); await page.waitForSelector('[data-act=open-attempt]'); await page.click('[data-act=open-attempt]'); await page.waitForSelector('.palette', { state: 'attached' });
+  await page.reload(); await page.goto(BASE + '#simulacros');
+  await page.waitForSelector('main h1:has-text("Simulacros")', { timeout: 20000 }); // esperar render de navegación tras recarga, sin debilitar la aserción de reanudación
+  await page.waitForSelector('[data-act=open-attempt]'); await page.click('[data-act=open-attempt]'); await page.waitForSelector('.palette', { state: 'attached' });
   assert.equal(await page.$$eval('.palette button.done', x => x.length), 1, 'la respuesta no sobrevivió');
   await page.clock.fastForward('01:16:00'); await page.waitForSelector('text=Terminado por tiempo', { timeout: 15000 }); assert.match(await main(page), /Manejo del tiempo/);
 });

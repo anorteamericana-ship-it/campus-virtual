@@ -87,7 +87,21 @@
       if (A.embedded) return route();
       const h = '#' + view + (arg ? '-' + arg : ''); if (location.hash === h || (h === '#' && !location.hash)) route(); else location.hash = h;
     }
+    // Serializar rutas asíncronas: si cambia el hash durante una consulta, la última ruta
+    // siempre vuelve a renderizarse. Evita que una respuesta anterior tape la navegación actual.
+    let routeRunning = false;
+    let routeRequested = false;
     async function route() {
+      if (routeRunning) { routeRequested = true; return; }
+      routeRunning = true;
+      try {
+        do {
+          routeRequested = false;
+          await renderRoute();
+        } while (routeRequested);
+      } finally { routeRunning = false; }
+    }
+    async function renderRoute() {
       if (!A.embedded) { const h = (location.hash || '#').slice(1); const i = h.indexOf('-'); A.view = i < 0 ? h : h.slice(0, i); A.arg = i < 0 ? '' : h.slice(i + 1); if (A.view === 'mis') { A.view = 'mis-candidatos'; A.arg = ''; } }
       const v = A.view;
       if (v === 'activar') return viewActivate(A.arg);
