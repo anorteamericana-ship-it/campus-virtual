@@ -32,6 +32,7 @@
     // Rutas de audio e imágenes relativas a la carpeta del laboratorio; en el Campus se antepone opts.assetBase.
     const asset = u => (!u || /^(?:[a-z]+:|\/)/i.test(String(u))) ? u : (opts.assetBase || '') + u;
     const A = { el, api: opts.api, user: opts.user || null, embedded: !!opts.embedded, view: '', arg: '', me: null, audio: null, timers: [], att: null, live: {}, flags: {} };
+    const publicQA = opts.publicQA === true;
     const $ = (s, x) => (x || el).querySelector(s);
     const live = msg => { const r = document.getElementById('epl-live'); if (r) { r.textContent = ''; setTimeout(() => { r.textContent = msg; }, 30); } };
     const role = () => (A.user && A.user.rol) || '';
@@ -67,7 +68,7 @@
     function tabs() {
       if (!A.user) return [];
       const r = role(); const t = [];
-      if (isCand()) t.push(['panel', 'Panel'], ['orientacion', 'Orientación'], ['entrenar', 'Entrenar'], ['simulacros', 'Simulacros'], ['errores', 'Errores'], ['reportes', 'Reportes']);
+      if (isCand()) t.push(['panel', 'Panel'], ...(publicQA ? [['ruta', 'Mis 400 preguntas']] : []), ['orientacion', 'Orientación'], ['entrenar', 'Entrenar'], ['simulacros', 'Simulacros'], ['errores', 'Errores'], ['reportes', 'Reportes']);
       if (['superadmin', 'admin'].includes(r)) t.push(['candidatos', 'Candidatos'], ['auditoria', 'Auditoría']);
       if (r === 'teacher') t.push(['mis-candidatos', 'Mis candidatos']);
       if (A.editor && !isCand()) t.push(['banco', 'Banco y revisión']);
@@ -109,12 +110,12 @@
       if (!A.user) return opts.loginView ? opts.loginView(A) : frame('', '<h1>Exam Prep Lab</h1><p>Iniciá sesión en el Campus para continuar.</p>');
       if (A.editor === undefined) { if (isCand()) A.editor = false; else { const r = await call('editorItems', { form: 'A', part: 1, status: '__ninguno__' }, { quiet: true }); A.editor = !!(r && r.ok); if (r && r.ok) A.formsList = r.forms; } }
       const def = isCand() ? 'panel' : ['superadmin', 'admin'].includes(role()) ? 'candidatos' : role() === 'teacher' ? 'mis-candidatos' : 'sin-acceso';
-      const cand = ['panel', 'orientacion', 'entrenar', 'sesion', 'simulacros', 'simulacro', 'resultado', 'errores', 'reportes'];
+      const cand = ['panel', 'orientacion', 'entrenar', 'sesion', 'simulacros', 'simulacro', 'resultado', 'errores', 'reportes', ...(publicQA ? ['ruta'] : [])];
       const staff = { candidatos: viewAdmin, candidato: () => viewCandidate(A.arg), auditoria: viewAudit, config: viewConfig, 'mis-candidatos': viewTeacher, banco: () => viewBank(A.arg) };
       if (v === '' ) return go(def);
       if (cand.includes(v)) {
         if (!isCand() && !['sesion', 'resultado'].includes(v)) return go(def);
-        return ({ panel: viewPanel, orientacion: viewWelcome, entrenar: viewTrain, sesion: () => viewSession(A.arg), simulacros: viewSims, simulacro: () => viewSim(A.arg), resultado: () => viewResult(A.arg), errores: viewErrors, reportes: viewReport })[v]();
+        return ({ panel: viewPanel, orientacion: viewWelcome, entrenar: viewTrain, sesion: () => viewSession(A.arg), simulacros: viewSims, simulacro: () => viewSim(A.arg), resultado: () => viewResult(A.arg), errores: viewErrors, reportes: viewReport, ...(publicQA ? {ruta:viewPublicRoute}: {}) })[v]();
       }
       if (staff[v] && !isCand()) return staff[v]();
       if (v === 'sin-acceso') return frame('', '<h1>Sin acceso</h1><p>Tu rol no tiene funciones en Exam Prep Lab.</p>');
@@ -133,13 +134,13 @@
       const L = rep.bySkill.listening, R = rep.bySkill.reading;
       const open = rep.open.map(o => `<div class="note" style="margin-bottom:10px"><b>Actividad sin terminar:</b> ${e(o.title)} · ${fmtDT(o.created)} <button class="btn" data-act="open-attempt" data-id="${o.attempt_id}" data-tipo="${o.tipo}" style="margin-left:8px">Continuar</button></div>`).join('');
       let sug;
-      if (!rep.diagnostic) sug = { t: 'Empezá con el diagnóstico equilibrado: 20 preguntas de las 7 partes, unos 25 minutos.', b: '<button class="btn red" data-act="start" data-tipo="diagnostic">Hacer diagnóstico</button>' };
+      if (!rep.diagnostic) sug = { t: publicQA ? 'Empezá con 25 preguntas de Listening y Reading. Después tendrás acceso a las 400 preguntas del programa.' : 'Empezá con el diagnóstico equilibrado: 20 preguntas de las 7 partes, unos 25 minutos.', b: '<button class="btn red" data-act="start" data-tipo="diagnostic">Hacer diagnóstico</button>' };
       else if (rep.srs.due) sug = { t: `Tenés ${rep.srs.due} ${rep.srs.due === 1 ? 'error' : 'errores'} para repasar hoy.`, b: '<button class="btn red" data-act="start" data-tipo="review" data-due="1">Repasar ahora</button>' };
       else { let w = null; for (let p = 1; p <= 7; p++) { const r = rep.byPart[p]; const sc = r.n ? r.ok / r.n : -1; if (!w || sc < w.sc) w = { p, sc, n: r.n }; } sug = { t: w.n ? `Tu parte más débil es la ${w.p} (${EPL.PART_NAMES[w.p]}): ${pct(rep.byPart[w.p].ok, rep.byPart[w.p].n)} % en ${w.n} respuestas.` : `Todavía no practicás la Parte ${w.p} (${EPL.PART_NAMES[w.p]}).`, b: `<button class="btn red" data-act="start" data-tipo="practice" data-part="${w.p}">Practicar Parte ${w.p}</button>` }; }
       const card = (lbl, s) => `<div class="card"><div class="mute small">${lbl}</div><div class="kpi">${s.n ? pct(s.ok, s.n) + ' %' : '—'} <small>${s.n ? `${s.ok}/${s.n}` : 'sin práctica'}</small></div>${s.n ? `<div class="bar"><i style="width:${pct(s.ok, s.n)}%"></i></div>` : ''}</div>`;
       const ach = [['Punto de partida', 'Completaste el diagnóstico.', rep.diagnostic], ['Las siete partes', 'Respondiste preguntas de las 7 partes.', Object.values(rep.byPart).every(p => p.n > 0)], ['Constancia', 'Practicaste en 3 días distintos.', rep.days >= 3],
         ['Error corregido', 'Dominaste una pregunta que antes fallaste.', rep.srs.mastered > 0], ['Bajo reloj', 'Terminaste una sección completa de simulacro.', rep.history.some(h => isSim(h.tipo))], ['Forma completa', 'Terminaste un simulacro integral de 200.', rep.history.some(h => h.tipo === 'sim_full')]];
-      frame('panel', `<h1>Hola, ${e((me.candidate.nombre || '').split(' ')[0])}</h1>${me.env === 'DEMO' ? '<div class="note warn small" style="margin-bottom:12px">Entorno de demostración: el material es BORRADOR sin revisión docente. En producción solo verás preguntas publicadas.</div>' : ''}${open}
+      frame('panel', `<h1>Hola, ${e((me.candidate.nombre || '').split(' ')[0])}</h1>${publicQA ? '<div class="note"><b>Tu recorrido:</b> 1. Diagnóstico de 25 preguntas · 2. Todas las preguntas de las formas A y B · 3. Reportá cualquier error que encontrés. <a href="#ruta" data-go="ruta" data-arg="">Ver mi avance y seguir</a></div>' : ''}${me.env === 'DEMO' ? '<div class="note warn small" style="margin-bottom:12px">Entorno de demostración: el material es BORRADOR sin revisión docente. En producción solo verás preguntas publicadas.</div>' : ''}${open}
         <div class="grid g2"><div class="card"><h2>Actividad sugerida</h2><p>${e(sug.t)}</p>${sug.b}</div>
           <div class="card"><h2>Tu acceso</h2><p class="small">Práctica: forma ${e(me.access.forms.join(', ') || '—')} · Simulacros: forma ${e(me.access.sim_forms.join(', ') || '—')}${me.access.hasta ? ` · disponible hasta ${e(me.access.hasta)}` : ''}</p>
             ${me.forms.map(f => `<div class="small">Forma ${f.form}: ${f.exposure.seen}/${f.total} preguntas ya vistas${f.sim && f.exposure.seen ? ' <span class="pill draft">el simulacro no será “en frío”</span>' : ''}</div>`).join('')}</div></div>
@@ -149,6 +150,33 @@
         <div class="grid g2" style="margin-top:14px"><div class="card"><h2>Últimas actividades</h2>${rep.history.slice(0, 5).map(h => `<div class="small" style="margin:4px 0"><a href="#resultado-${h.attempt_id}" data-go="resultado" data-arg="${h.attempt_id}">${e(h.title)}</a> · ${fmtDT(h.finished)} · ${h.ok}/${h.n}</div>`).join('') || '<p class="mute">Todavía no terminaste ninguna actividad.</p>'}</div>
           <div class="card"><h2>Logros</h2>${ach.map(([l, dsc, ok]) => `<div class="ach ${ok ? 'done' : ''}" style="margin:6px 0"><span class="ic" aria-hidden="true">${ok ? '✓' : '·'}</span><div><b>${l}</b><div class="small mute">${dsc}</div></div><span class="sr">${ok ? 'conseguido' : 'pendiente'}</span></div>`).join('')}</div></div>
         <p class="small mute" style="margin-top:14px">Los porcentajes son aciertos de práctica en este laboratorio. <b>No son puntajes TOEIC</b> ni predicen el resultado oficial.</p>`);
+    }
+    async function viewPublicRoute() {
+      const cv = await call('publicCoverage');
+      if (!cv.ok) return frame('ruta', '<h1>Mis 400 preguntas</h1>' + notice(cv));
+      const d = await call('dashboard');
+      const h = d.ok ? d.report.history.find(x => x.tipo === 'diagnostic') : null;
+      const level = !h ? null : h.ok / (h.n || 1) >= .8 ? 'Reto avanzado (orientativo)' : h.ok / (h.n || 1) >= .6 ? 'Intermedio orientativo' : h.ok / (h.n || 1) >= .4 ? 'En desarrollo' : 'Fundamentos';
+      const next = cv.rows.find(x => x.seen < x.total);
+      const openAttempt = d.ok && Array.isArray(d.report.open) ? d.report.open.find(x => !isSim(x.tipo)) : null;
+      const percentage = Math.round(cv.seen_total / Math.max(1, cv.total) * 100);
+      if (publicQA && typeof opts.onProgress === 'function') opts.onProgress({coverage:{seen_total:cv.seen_total,total:cv.total,rows:cv.rows},diagnostic:h ? {ok:h.ok,n:h.n} : null});
+      frame('ruta', `<h1>Tu recorrido completo</h1>
+        <div class="card"><h2>${e((A.user.nombre || '').split(' ')[0])}, ya revisaste ${cv.seen_total} de ${cv.total} preguntas únicas</h2>
+          <div class="bar" aria-label="${percentage}% completado"><i style="width:${percentage}%"></i></div>
+          <p class="small mute">No se repiten preguntas contestadas al elegir «Continuar con la siguiente sección». Puedes detenerte y seguir después.</p>
+          ${h ? `<p><b>Tu diagnóstico de 25 preguntas:</b> ${h.ok}/${h.n} · ${e(level)}. No equivale a un nivel MCER/CEFR validado ni a un puntaje TOEIC.</p>` : '<p>Primero completá el diagnóstico de 25 preguntas.</p>'}
+          <button class="btn red" data-act="${openAttempt ? 'open-attempt' : h ? 'start-next-qa' : 'start'}" ${openAttempt ? `data-id="${e(openAttempt.attempt_id)}" data-tipo="${e(openAttempt.tipo)}"` : h ? '' : 'data-tipo="diagnostic"'} ${!next && h && !openAttempt ? 'disabled' : ''}>${openAttempt ? 'Retomar actividad pendiente' : !h ? 'Empezar diagnóstico (25)' : next ? 'Continuar con la siguiente sección' : 'Completaste las 400 preguntas'}</button>
+          <p class="small">Al terminar un bloque, volvé aquí para continuar. También podés abrir los simulacros completos de 100 y 200 preguntas cuando quieras.</p></div>
+        <div class="grid g2" style="margin-top:14px">${['A','B'].map(f => `<div class="card"><h2>Forma ${f} · 200 preguntas</h2>${cv.rows.filter(r => r.form === f).map(x => `<div class="row" style="justify-content:space-between;margin:5px 0"><span>Parte ${x.part} · ${e(EPL.PART_NAMES[x.part])}</span><span><b>${x.seen}/${x.total}</b> ${x.seen === x.total ? '✓' : ''}</span></div>`).join('')}</div>`).join('')}</div>
+        <div class="note warn small" style="margin-top:12px">Banco de revisión: 400/400 preguntas todavía BORRADOR. Si encontrás un fallo de audio, imagen, traducción o respuesta, tocá «Reportar problema» junto a la pregunta.</div>`);
+    }
+    async function startNextPublicBlock() {
+      const cv = await call('publicCoverage');
+      if (!cv.ok) return live(cv.mensaje || cv.error);
+      const next = cv.rows.find(x => x.seen < x.total);
+      if (!next) return go('ruta');
+      return startAttempt({ tipo:'practice', form:next.form, part:next.part, size:15, only_unseen:true });
     }
     function viewWelcome() {
       frame('orientacion', `<h1>Orientación</h1><div class="grid g2">
@@ -265,7 +293,7 @@
           ${!f.ok ? `<details class="more"><summary>Por qué fallan las otras opciones</summary>${order.filter(x => x !== f.correct).map(x => `<p class="small"><b>${LETTERS[order.indexOf(x)]}.</b> ${e((f.distractors[x] || {}).why)}</p>`).join('')}</details>` : ''}
           ${f.strategy ? `<div class="small" style="margin-top:6px"><b>Estrategia:</b> ${e(f.strategy)}</div>` : ''}<div class="small mute" style="margin-top:4px">Habilidad: ${e(f.subskill || '')}</div></div>`;
       }
-      return `<div class="q" role="group" aria-labelledby="st-${it.item_id}"><div class="stem" id="st-${it.item_id}">${num}${e(stem).replace(/\n/g, '<br>')}</div><div class="opts ${lettersOnly ? 'letters' + (order.length === 3 ? ' n3' : '') : ''}">${btns}</div>${fbh}</div>`;
+      return `<div class="q" data-item-id="${e(it.item_id)}" role="group" aria-labelledby="st-${it.item_id}"><div class="stem" id="st-${it.item_id}">${num}${e(stem).replace(/\n/g, '<br>')}</div><div class="opts ${lettersOnly ? 'letters' + (order.length === 3 ? ' n3' : '') : ''}">${btns}</div>${fbh}${publicQA ? `<button type="button" class="btn ghost qa-report" data-act="qa-report" data-item="${e(it.item_id)}" data-part="${it.part}" data-form="${e(it.item_id.split('-')[0])}">¿Algo está mal? Reportalo</button>` : ''}</div>`;
     }
     function afterHTML(f) {
       let h = '';
@@ -378,12 +406,21 @@
         <div class="grid g3"><div class="card"><div class="mute small">${e(s.title)}</div><div class="kpi">${s.ok}/${s.n} <small>${s.n ? pct(s.ok, s.n) + ' % de aciertos' : ''}</small></div><div class="small mute">${fmtDT(s.finished)} · ${fmtDur(s.seconds)}</div>${s.timeout ? '<div class="pill bad">Terminado por tiempo</div>' : ''}${s.unanswered ? `<div class="small">Sin responder: ${s.unanswered}</div>` : ''}${s.interrupted ? `<div class="small">Interrumpidas (no cuentan): ${s.interrupted}</div>` : ''}</div>
           <div class="card"><h2>Por parte</h2><div class="bars">${parts.map(([p, v]) => `<div class="r"><span>Parte ${p}</span><div class="bar"><i style="width:${pct(v.ok, v.n) || 0}%"></i></div><span>${v.ok}/${v.n}</span></div>`).join('')}</div></div>
           <div class="card"><h2>Tipos de error</h2>${cats.length ? cats.map(([c, n]) => `<div class="small">${e(CAT[c] || c)}: <b>${n}</b></div>`).join('') : '<p class="mute small">Sin errores.</p>'}${subs.length ? `<h3 style="margin-top:10px">Habilidades más débiles</h3>${subs.map(([k, v]) => `<div class="small">${e(k)}: ${v.ok}/${v.n}</div>`).join('')}` : ''}</div></div>
-        ${s.tipo === 'diagnostic' ? '<div class="note" style="margin-top:14px">El diagnóstico muestra por dónde empezar. Con 20 preguntas <b>no equivale a un nivel MCER ni a un puntaje TOEIC</b>, y no usa tus notas del programa de la Academia.</div>' : ''}
+        ${s.tipo === 'diagnostic' ? `<div class="note" style="margin-top:14px">${publicQA ? 'Diagnóstico de 25 preguntas: ' : 'Diagnóstico de 20 preguntas: '}${publicQA ? (s.n && s.ok / s.n >= .8 ? 'Reto avanzado (orientativo).' : s.n && s.ok / s.n >= .6 ? 'Intermedio orientativo.' : s.n && s.ok / s.n >= .4 ? 'En desarrollo.' : 'Fundamentos.') : ''} Este resultado <b>no equivale a un nivel MCER/CEFR ni a un puntaje TOEIC</b>, y no afecta el historial de la Academia.</div>` : ''}
         <h2 style="margin-top:18px">Revisión pregunta por pregunta</h2>
         ${[1, 2, 3, 4, 5, 6, 7].filter(p => review.some(x => x.unit.part === p)).map(p => `<details class="card" style="margin-bottom:8px" ${review.length <= 12 ? 'open' : ''}><summary><b>Parte ${p} · ${EPL.PART_NAMES[p]}</b> · ${(s.byPart[p] || { ok: 0 }).ok}/${(s.byPart[p] || { n: 0 }).n}</summary>
           ${review.filter(x => x.unit.part === p).map(x => `<div style="margin-top:10px">${x.unit.passages ? passagesHTML(x.unit, {}) : ''}${x.unit.graphic ? graphicHTML(x.unit.graphic) : ''}${x.unit.part === 1 ? `<div class="photo" style="max-width:320px"><img src="${e(asset(x.unit.image))}" alt="${e(x.feedback.image_desc || '')}"></div>` : ''}
             ${x.unit.items.map((it, j) => questionHTML(it, null, x.feedback.items.find(f => f.item_id === it.item_id), j, x.unit.items.length, sim ? { number: numOf(it.item_id) } : {})).join('')}${afterHTML(x.feedback)}</div>`).join('')}</details>`).join('')}
         <p>${isCand() ? '<a class="btn" href="#panel" data-go="panel">Volver al panel</a> <a class="btn ghost" href="#errores" data-go="errores">Repaso de errores</a>' : '<a class="btn" href="#banco" data-go="banco">Volver al banco</a>'}</p>`);
+      if (publicQA && isCand()) {
+        const area = document.createElement('div');
+        area.className = 'card';
+        area.style.margin = '10px 0 16px';
+        area.innerHTML = '<h2>' + (s.tipo === 'diagnostic' ? '¡Bien! Ahora podés revisar las 400 preguntas' : '¿Seguimos con la siguiente sección?') + '</h2>' +
+          '<p>Las formas A y B tienen 200 preguntas cada una. Avanzá por bloques y reportá cualquier problema.</p>' +
+          '<button class="btn red" data-act="start-next-qa">Continuar con el siguiente bloque</button> <a class="btn ghost" href="#ruta" data-go="ruta" data-arg="">Ver mi avance</a>';
+        el.prepend(area);
+      }
     }
     async function viewErrors() {
       const q = await call('reviewQueue'); if (!q.ok) return frame('errores', `<h1>Repaso de errores</h1>${notice(q)}`);
@@ -495,6 +532,8 @@
       if (g && (A.embedded || g.dataset.arg !== undefined)) { ev.preventDefault(); return go(g.dataset.go, g.dataset.arg); }
       const t = ev.target.closest('[data-act]'); if (!t || !el.contains(t) || t.disabled || t.getAttribute('aria-disabled') === 'true') return;
       const act = t.dataset.act; const out = $('#act-out');
+      if (act === 'start-next-qa' && publicQA) return startNextPublicBlock();
+      if (act === 'qa-report' && publicQA && typeof opts.onReport === 'function') return opts.onReport({ item_id: t.dataset.item, part: Number(t.dataset.part), attempt_id: A.att && A.att.attempt_id || null, form: t.dataset.form || (A.att && A.att.form) || null });
       if (act === 'start') { if (t.dataset.tipo === 'sim_listening' || t.dataset.tipo === 'sim_full') unlockAudio(); return startAttempt({ tipo: t.dataset.tipo, part: t.dataset.part, form: t.dataset.form, only_due: !!t.dataset.due }); }
       if (act === 'start-train') return startAttempt({ tipo: 'practice', part: $('#t-part').value, size: Number($('#t-size').value), difficulty: $('#t-diff').value, topic: $('#t-topic').value });
       if (act === 'open-attempt') { A.att = null; A.live = {}; return go(isSim(t.dataset.tipo) ? 'simulacro' : 'sesion', t.dataset.id); }

@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   const EPL = root.EPL, EPLServer = root.EPLServer;
-  const NS = 'epl_mock_v2_';
+  const NS = root.EPL_PUBLIC_MODE === true ? 'epl_public_v1_' : 'epl_mock_v2_';
   const store = (() => { try { const ls = root.localStorage; ls.setItem(NS + 'probe', '1'); ls.removeItem(NS + 'probe'); return ls; } catch (_) { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
   const tables = {};
   const load = t => { if (!tables[t]) { try { tables[t] = JSON.parse(store.getItem(NS + t) || '[]'); } catch (_) { tables[t] = []; } } return tables[t]; };
@@ -71,6 +71,31 @@
     ready() { seed(); return true; },
     demoLogins: DEMO_LOGINS.map(x => ({ id: x.id, label: x.label })),
     loginDemo(id) { seed(); const x = DEMO_LOGINS.find(d => d.id === id); if (!x) return { ok: false, error: 'demo_inexistente' }; if (x.cert) return Mock.loginCert(x.cert.usuario, x.cert.clave); return { ok: true, token: openSession(x.identity), user: x.identity }; },
+    // Invitados de QA pública, sin cédula, correo ni cuentas del Campus. Siempre formas A y B.
+    loginPublicGuest(id, name) {
+      if (root.EPL_PUBLIC_MODE !== true) return { ok: false, error: 'modo_incorrecto' };
+      seed();
+      const key = String(id || '').toLowerCase();
+      const clean = String(name || '').trim().replace(/\s+/g, ' ');
+      if (!/^[a-f0-9-]{32,36}$/.test(key) || clean.length < 2 || clean.length > 60) {
+        return { ok: false, error: 'perfil_invalido', mensaje: 'Ingresá un nombre válido.' };
+      }
+      const codigo = 'QA-' + key.replace(/-/g, '').slice(0, 24).toUpperCase();
+      let candidate = db.read('CERT_CANDIDATES').find(c => c.CODIGO === codigo);
+      if (!candidate) {
+        const made = core.handle(STAFF['leo.demo'], 'adminRegister', { nombre: clean, codigo });
+        if (!made.ok) return made;
+        candidate = db.read('CERT_CANDIDATES').find(c => c.CODIGO === codigo);
+      }
+      if (!candidate) return { ok: false, error: 'perfil_no_creado' };
+      const access = db.read('CERT_PREP_ACCESS').find(a => a.CANDIDATE_ID === candidate.CANDIDATE_ID);
+      if (!access || !String(access.FORMS).includes('A') || !String(access.FORMS).includes('B')) {
+        const granted = core.handle(STAFF['leo.demo'], 'adminGrant', { candidate_id: candidate.CANDIDATE_ID, forms: ['A', 'B'], sim_forms: ['A', 'B'], motivo: 'Piloto de diagnóstico público' });
+        if (!granted.ok) return granted;
+      }
+      const user = { usuario: 'public.' + key, rol: 'student', codigo, nombre: candidate.NOMBRE };
+      return { ok: true, token: openSession(user), user, candidate_id: candidate.CANDIDATE_ID };
+    },
     loginCert(usuario, clave) { seed(); const r = core.handle(null, 'verifyLogin', { usuario, clave }); if (!r.ok) return r; const id = { usuario: r.usuario, rol: r.rol, codigo: r.codigo, nombre: r.nombre }; return { ok: true, token: openSession(id), user: id }; },
     logout(token) { delete sessions[token]; saveSessions(); },
     whoami(token) { return sessions[token] || null; },
