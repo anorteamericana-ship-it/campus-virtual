@@ -39,7 +39,7 @@ function openQuiz(){
 }
 // El backend decide quién está matriculado y si Diego abrió el quiz.
 // Una notificación nunca se fabrica desde el grupo visible ni desde la URL.
-let active=false, lastToken='', notifiedToken='', lastChecked=0, inFlight=false,attemptState='DESCONOCIDO';
+let active=false, lastToken='', notifiedToken='', inviteVersion='',lastChecked=0, inFlight=false,attemptState='DESCONOCIDO';
 const CHECK_INTERVAL=15000;
 function currentToken(){return window.getSessionToken?String(window.getSessionToken()||''):''}
 function isAvailable(r){
@@ -84,9 +84,10 @@ function syncCard(){
 }
 function showInvite(token){
  // Solo una invitación para SIN_INICIAR confirmado por lectura del propio expediente.
- if(!active||attemptState!=='SIN_INICIAR'||!token||notifiedToken===token||document.querySelector('.f111-pc01-invite'))return;
+ const inviteKey=token+'|'+inviteVersion;
+ if(!active||attemptState!=='SIN_INICIAR'||!token||notifiedToken===inviteKey||document.querySelector('.f111-pc01-invite'))return;
  // Una sola invitación en este ingreso. Cerrar el anuncio NO cierra el quiz.
- notifiedToken=token;
+ notifiedToken=inviteKey;
  const overlay=e('div','f111-pc01-invite');
  overlay.setAttribute('role','alertdialog');
  overlay.setAttribute('aria-modal','true');
@@ -108,7 +109,7 @@ function showInvite(token){
 }
 async function checkActive(force){
  const token=currentToken();
- if(!token){active=false;attemptState='DESCONOCIDO';lastToken='';lastChecked=0;document.querySelectorAll('.f111-pc01-invite').forEach(x=>x.remove());syncCard();return;}
+ if(!token){active=false;attemptState='DESCONOCIDO';lastToken='';inviteVersion='';notifiedToken='';lastChecked=0;document.querySelectorAll('.f111-pc01-invite').forEach(x=>x.remove());syncCard();return;}
  if(inFlight)return;
  const now=Date.now();
  if(!force&&token===lastToken&&now-lastChecked<CHECK_INTERVAL){syncCard();return;}
@@ -117,6 +118,7 @@ async function checkActive(force){
   const r=await api('qzProgressStudentActive',{});
   if(token!==currentToken())return;
   active=isAvailable(r);
+  inviteVersion=String(r?.invitacion_version||'');
   if(active){
    // El mismo servidor devuelve el intento del estudiante autenticado.
    // Nunca usar el anuncio de apertura como prueba de que sigue sin entregar.
