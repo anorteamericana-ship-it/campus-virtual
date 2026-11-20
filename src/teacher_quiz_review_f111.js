@@ -47,7 +47,7 @@ function previewB1Protected(lesson,authorizedGroup){
  const url=new URL(digital?'modulos/qz_b1_pc02_pc03_digital.html':'modulos/quiz_progress.html',
    new URL('./',location.href));
  url.searchParams.set('teacher_preview','1');
- if(digital)url.searchParams.set('v','F111R63DIGITAL20261119');
+ if(digital)url.searchParams.set('v','F111R64PC03COPY20261119');
  url.searchParams.set('grupo',authorizedGroup);
  url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(lesson));
@@ -141,7 +141,7 @@ function openB1TeacherReview(lesson,group){
      frame.style.cssText='height:570px;max-height:65vh;width:100%;border:1px solid #d5e1ef;border-radius:11px;background:white';
      const url=new URL('modulos/qz_b1_pc02_pc03_digital.html',new URL('./',location.href));
      url.searchParams.set('review','1');url.searchParams.set('grupo',group);
-     url.searchParams.set('leccion',String(lesson));url.searchParams.set('v','F111R63DIGITAL20261119');
+     url.searchParams.set('leccion',String(lesson));url.searchParams.set('v','F111R64PC03COPY20261119');
      frame.src=url.href;
      frame.onload=()=>frame.contentWindow?.postMessage({
        type:'F111_PC23_TEACHER_REVIEW',leccion:lesson,grupo,respuestas:obj

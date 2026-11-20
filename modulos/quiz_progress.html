@@ -52,7 +52,7 @@ const qz24TeacherPreview=teacherPreview&&qs.get('qz24_preview')==='1';
 if(level==='B1'&&(lesson===8||lesson===13)&&!qs.has('legacy_editorial')){
  const digital=new URL('qz_b1_pc02_pc03_digital.html',location.href);
  digital.searchParams.set('grupo',group);digital.searchParams.set('leccion',String(lesson));
- digital.searchParams.set('v','F111R63DIGITAL20261119');
+ digital.searchParams.set('v','F111R64PC03COPY20261119');
  if(teacherPreview)digital.searchParams.set('teacher_preview','1');
  else if(preview)digital.searchParams.set('preview','1');
  else if(qs.get('review')==='1')digital.searchParams.set('review','1');
