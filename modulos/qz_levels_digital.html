@@ -53,9 +53,6 @@
  <button type="button" class="btn secondary" id="next">Siguiente sección</button>
  <button type="button" class="btn" id="submit">ENTREGAR QUIZ</button></div>
 </footer></main>
-<script src="../src/f111_qz24_b2_bank.js?v=F111R66QZ24DIGITAL20261119"></script>
-<script src="../src/f111_qz24_i1_bank.js?v=F111R66QZ24DIGITAL20261119"></script>
-<script src="../src/f111_qz24_i2_bank.js?v=F111R66QZ24DIGITAL20261119"></script>
 <script>
 (function(){
 'use strict';
@@ -64,17 +61,24 @@ const level=String(qs.get('nivel')||'B2').trim().toUpperCase(),lesson=Number(qs.
  group=String(qs.get('grupo')||'').trim().toUpperCase();
 const preview=qs.get('preview')==='1'||qs.get('teacher_preview')==='1',teacher=qs.get('teacher_preview')==='1';
 const review=qs.get('review')==='1'&&!preview,live=qs.get('live')==='1'&&!review&&!preview;
-const banks={B2:window.F111_QZ24_B2_BANK,I1:window.F111_QZ24_I1_BANK,I2:window.F111_QZ24_I2_BANK};
 const names={B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
-const data=(banks[level]||{})[lesson]||null;
 const $=id=>document.getElementById(id),create=(tag,t)=>{const e=document.createElement(tag);if(t!==undefined&&t!==null)e.textContent=t;return e};
-const sections=data?.sections||[],quizId='IC5_'+level+'_WQ'+String(data?.quiz||0).padStart(2,'0');
-const total=sections.reduce((n,s)=>n+s.items.length,0),points=sections.reduce((n,s)=>n+s.points,0);
-if(!data||!names[level]||points!==(data.points||25)||![25,26].includes(points)||!sections.length||!group)throw Error('Banco editorial no verificado o grupo ausente.');
-document.title='Quiz '+data.quiz+' · '+names[level]+' · Academia Norteamericana';
-$('heading').textContent='Quiz '+data.quiz+' · '+names[level];
-$('subtitle').textContent='Lección '+lesson+' · Unidades '+data.units+' · '+points+' puntos de referencia · 0% oficial';
-$('pill').textContent=live?'CUESTIONARIO DIGITAL':review?'REVISIÓN DOCENTE':'VISTA PREVIA SIN ENTREGA';
+let data=null,sections=[],quizId='',total=0,points=0;
+function acceptBank(reply){
+ if(!reply||reply.quiz_id!=='IC5_'+level+'_WQ'+String([4,8,13,16,21,24,28,30].indexOf(lesson)+1).padStart(2,'0')||
+    reply.nivel!==level||Number(reply.leccion)!==lesson||reply.grupo!==group||Number(reply.peso_oficial)!==0)
+   throw Error('El servidor devolvió un banco ajeno al grupo o nivel.');
+ const item=reply.banco;if(!item||!Number.isInteger(item.quiz)||!Array.isArray(item.sections))throw Error('Banco sin datos');
+ const pts=item.sections.reduce((n,sec)=>n+Number(sec.points||0),0),
+       count=item.sections.reduce((n,sec)=>n+(Array.isArray(sec.items)?sec.items.length:0),0);
+ if(!names[level]||!group||!count||count>50||![25,26].includes(pts)||pts!==Number(item.points||25))
+   throw Error('Banco editorial de puntos o preguntas inválido.');
+ data=item;sections=item.sections;quizId=reply.quiz_id;total=count;points=pts;
+ document.title='Quiz '+data.quiz+' · '+names[level]+' · Academia Norteamericana';
+ $('heading').textContent='Quiz '+data.quiz+' · '+names[level];
+ $('subtitle').textContent='Lección '+lesson+' · Unidades '+data.units+' · '+points+' puntos de referencia · 0% oficial';
+ $('pill').textContent=live?'CUESTIONARIO DIGITAL':review?'REVISIÓN DOCENTE':'VISTA PREVIA SIN ENTREGA';
+}
 const answers=Object.create(null);
 let active=0,finished=false,busy=false,uncertain=false,dirty=false,saveTimer=null,token='',audioUrl='',audioLoading=false;
 const context={cod_grupo:group,nivel:level,leccion:lesson};
@@ -237,6 +241,16 @@ $('submit').onclick=async()=>{
  finally{busy=false;controlState()}
 };
 async function start(){
+ token=sessionToken();
+ if(!token||!group||!names[level]||![4,8,13,16,21,24,28,30].includes(lesson)){
+   finished=true;$('save').hidden=true;$('submit').hidden=true;
+   message('Abrí la evaluación desde el Campus con sesión y grupo autorizado.');return;
+ }
+ try{acceptBank(await api('qzProgressQuestionBank'))}
+ catch(e){
+   finished=true;$('save').hidden=true;$('submit').hidden=true;
+   message('Preguntas protegidas: '+String(e.message||e)+'. No hay acceso sin matrícula y autorización.');return;
+ }
  if(review){
   finished=true;token='';$('save').hidden=true;$('submit').hidden=true;
   window.addEventListener('message',evt=>{
@@ -247,7 +261,6 @@ async function start(){
   });
   message('Revisión docente de solo lectura. Esperando expediente autorizado.');render();return;
  }
- token=sessionToken();
  if(preview){$('save').hidden=true;$('submit').hidden=true;
   message('Vista previa docente / editorial · No crea intentos ni notas. '+(!token?'Audio protegido requiere iniciar sesión.':''));
   render();return;}
