@@ -23,7 +23,7 @@
     document.head.appendChild(l);
   }
 
-  function ExamPrepLabView(props) {
+  function ExamPrepLabBackendView(props) {
     const ref = React.useRef(null);
     const [error, setError] = React.useState('');
     React.useEffect(() => {
@@ -61,6 +61,42 @@
         </p>
       </div>
     );
+  }
+  // Revisión E1 dentro del menú Superadmin, reutilizando el prototipo sin copiar contenido.
+  function ExamPrepLabReviewView({ usuario, rolReal }) {
+    const current = (typeof window.getSesion === 'function' && window.getSesion()) || {};
+    const effective = String(rolReal || usuario?.rol || '').trim().toLowerCase();
+    const actual = String(current.rol || '').trim().toLowerCase();
+    if (effective !== 'superadmin' || actual !== 'superadmin') {
+      return <section role="alert" style={{padding:24}}><h2>Acceso restringido</h2><p>Esta revisión es exclusiva de Superadmin.</p></section>;
+    }
+    return <section className="epl-superadmin-review" data-epl-superadmin="true">
+      <div style={{padding:'14px 18px',marginBottom:12,border:'1px solid #d7c8a4',borderRadius:12,background:'#fffaf0',color:'#654915'}}>
+        <div style={{fontWeight:800,fontSize:16}}>Exam Prep Lab · TOEIC — revisión desde Superadmin</div>
+        <p style={{margin:'5px 0 0',fontSize:13,lineHeight:1.5}}>
+          Vista como estudiante ficticia <strong>Ana Demo</strong>. Banco: <strong>400 preguntas DRAFT</strong> y 112 audios
+          sintéticos. No se registran notas, pagos ni estudiantes reales.
+        </p>
+      </div>
+      <iframe
+        title="Exam Prep Lab · revisión como estudiante ficticia"
+        data-epl-preview-frame="true"
+        src="prototipos/exam_prep_lab/index.html?review=superadmin&v=EPL20261120A"
+        loading="eager"
+        sandbox="allow-scripts allow-same-origin"
+        referrerPolicy="no-referrer"
+        style={{width:'100%',minHeight:'min(1000px,85vh)',height:'calc(100vh - 210px)',border:'1px solid #e5e7eb',borderRadius:12,background:'#fff'}}
+      />
+      <p style={{fontSize:12,color:'#6b7280',marginTop:8}}>
+        Modo E1 ficticio. Menú limitado a Superadmin; las preguntas estáticas no están protegidas por autorización backend.
+        No habilitar candidatos reales antes de completar la liberación protegida.
+      </p>
+    </section>;
+  }
+  function ExamPrepLabView(props) {
+    return props.previewMode === 'superadmin'
+      ? <ExamPrepLabReviewView usuario={props.usuario} rolReal={props.rolReal} />
+      : <ExamPrepLabBackendView {...props} />;
   }
   window.ExamPrepLabView = ExamPrepLabView;
 })();

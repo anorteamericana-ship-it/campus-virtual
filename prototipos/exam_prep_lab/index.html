@@ -52,9 +52,30 @@
     };
   }
   function startDemo() {
+    var superadminReview = new URLSearchParams(location.search).get('review') === 'superadmin';
+    var localQA = /^(localhost|127\.0\.0\.1)$/i.test(location.hostname);
+    // En producción, la demo no se abre directamente: únicamente dentro del menú Superadmin
+    // del mismo origen, con sesión de Superadmin. NO reemplaza el control de archivos de backend.
+    var trustedParent = false;
+    try {
+      trustedParent = window.parent !== window &&
+        window.parent.location.origin === location.origin &&
+        typeof window.parent.getSesion === 'function' &&
+        String((window.parent.getSesion() || {}).rol || '').toLowerCase() === 'superadmin' &&
+        !!window.parent.document.querySelector('[data-epl-superadmin="true"] [data-epl-preview-frame="true"]');
+    } catch (_) {}
+    if ((!localQA && (!superadminReview || !trustedParent)) || (superadminReview && window.parent === window)) {
+      document.getElementById('app').innerHTML = '<div class="note warn"><h1>Acceso desde Campus Virtual</h1><p>Ingresá desde el menú de Superadmin: Exam Prep Lab · TOEIC.</p></div>';
+      return;
+    }
     var Mock = window.EPLMock; Mock.ready();
     var TOKEN_KEY = 'epl_demo_token'; var token = null; try { token = sessionStorage.getItem(TOKEN_KEY); } catch (_) {}
     function setToken(t) { token = t; try { if (t) sessionStorage.setItem(TOKEN_KEY, t); else sessionStorage.removeItem(TOKEN_KEY); } catch (_) {} }
+    if (superadminReview) {
+      // En esta pantalla se ingresa directamente como estudiante ficticia; no crea sesiones Campus.
+      var demo = Mock.loginDemo('ana');
+      if (demo && demo.ok) setToken(demo.token);
+    }
     var api = { call: function (a, p) { return Mock.call(token, a, p); }, callPublic: function (a, p) { return Mock.callPublic(a, p); } };
     var app = window.EPLApp.mount(document.getElementById('app'), {
       api: api, user: token ? Mock.whoami(token) : null,
