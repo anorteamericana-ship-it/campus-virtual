@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Exam Prep Lab · Academia Norteamericana (prototipo)</title>
+<link rel="stylesheet" href="epl.css">
+</head>
+<body>
+<a class="skip" href="#app">Saltar al contenido</a>
+<header class="top"><div class="top-in">
+  <div class="mark" aria-hidden="true">AN</div>
+  <div class="brand"><b>EXAM PREP LAB</b><small>Academia Norteamericana · preparación para el test TOEIC® Listening and Reading</small></div>
+  <nav class="tabs" id="epl-tabs" aria-label="Secciones"></nav>
+  <div class="who" id="epl-who"></div>
+</div></header>
+<div class="demo-strip" role="note">PROTOTIPO · backend simulado en este navegador · usuarios ficticios · contenido BORRADOR sin revisión docente</div>
+<div id="epl-offline" class="offline" role="status" hidden></div>
+<main id="app" tabindex="-1"></main>
+<div id="epl-live" class="sr" aria-live="polite"></div>
+<footer class="legal">
+  TOEIC® es una marca registrada de ETS. Este producto no está respaldado ni aprobado por ETS. Academia Norteamericana no tiene relación de patrocinio ni certificación con ETS ni con el Centro Cultural Costarricense Norteamericano.
+  Preguntas, textos, imágenes y audios son originales de la Academia (borradores generados con IA, pendientes de revisión docente). Voces sintéticas generadas localmente con Kokoro-82M (Apache-2.0); revisión auditiva humana pendiente.
+  Los resultados de práctica no son puntajes oficiales y no afectan notas, asistencia ni expedientes del programa académico.
+  <span class="row" id="demo-tools" style="margin-top:6px"><label class="small"><input type="checkbox" id="sim-offline"> Simular pérdida de conexión (prueba)</label> <button class="btn ghost" id="reset-demo" style="padding:3px 8px;font-size:12px">Reiniciar datos de demostración</button></span>
+</footer>
+<script src="audio_manifest.js"></script>
+<script src="epl_engine.js"></script>
+<script src="epl_app.js"></script>
+<script>
+/* Dos modos con la MISMA interfaz:
+ *  - demo (por defecto): backend simulado en este navegador, usuarios ficticios. Carga el banco completo (solo para la demo).
+ *  - ?backend=apps-script: servidor real (fn=certprepapi). NO carga el banco ni el núcleo en el navegador; las claves viven en el servidor.
+ *    La dirección del servidor sale de config/apps-script-production.json (fuente única); no se acepta desde la URL. */
+(function () {
+  'use strict';
+  var MODE = /[?&]backend=apps-script(?:&|$)/.test(location.search) ? 'apps-script' : 'demo';
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function load(src) { return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function () { rej(new Error(src)); }; document.head.appendChild(s); }); }
+  function certForm(A, onLogin, extra) {
+    document.getElementById('epl-tabs').innerHTML = ''; document.getElementById('epl-who').innerHTML = '';
+    var el = document.getElementById('app');
+    el.innerHTML = '<h1 tabindex="-1">Exam Prep Lab</h1><div class="grid g2">' + (extra || '') +
+      '<div class="card"><h2>Cuenta de preparación</h2><p class="small">Para egresados sin cuenta del Campus, activada con un enlace de un solo uso que entrega la Academia.' + (MODE === 'demo' ? ' Demo: <b>bruno.demo</b> / <b>Demo2026x</b>.' : ' Si tenés usuario del Campus, entrá desde el Campus.') + '</p><label>Usuario<br><input id="lu" autocomplete="username" style="width:100%"></label><label>Clave<br><input id="lp" type="password" autocomplete="current-password" style="width:100%"></label><p><button class="btn" id="lcert">Entrar</button></p><div id="lmsg" role="status"></div></div></div>';
+    el.querySelector('h1').focus();
+    document.getElementById('lcert').onclick = async function () {
+      var b = this; b.disabled = true;
+      try { var r = await onLogin(document.getElementById('lu').value, document.getElementById('lp').value); if (!r.ok) { document.getElementById('lmsg').innerHTML = '<div class="note bad">' + esc(r.mensaje || 'Usuario o clave incorrectos.') + '</div>'; return; } A.setUser(r.user); A.go(''); }
+      catch (e) { document.getElementById('lmsg').innerHTML = '<div class="note bad">Sin conexión con el servidor.</div>'; }
+      finally { b.disabled = false; }
+    };
+  }
+  function startDemo() {
+    var Mock = window.EPLMock; Mock.ready();
+    var TOKEN_KEY = 'epl_demo_token'; var token = null; try { token = sessionStorage.getItem(TOKEN_KEY); } catch (_) {}
+    function setToken(t) { token = t; try { if (t) sessionStorage.setItem(TOKEN_KEY, t); else sessionStorage.removeItem(TOKEN_KEY); } catch (_) {} }
+    var api = { call: function (a, p) { return Mock.call(token, a, p); }, callPublic: function (a, p) { return Mock.callPublic(a, p); } };
+    var app = window.EPLApp.mount(document.getElementById('app'), {
+      api: api, user: token ? Mock.whoami(token) : null,
+      onLogout: function () { Mock.logout(token); setToken(null); },
+      loginView: function (A) {
+        var demo = '<div class="card"><h2>Entrar con un usuario ficticio</h2><p class="small">Cada usuario tiene un rol real del Campus y se valida en el servidor simulado. Sus datos no se mezclan.</p>' +
+          Mock.demoLogins.map(function (d) { return '<p><button class="btn ghost" style="width:100%;justify-content:flex-start" data-demo="' + d.id + '">' + esc(d.label) + '</button></p>'; }).join('') + '</div>';
+        certForm(A, function (u, c) { var r = Mock.loginCert(u, c); if (r.ok) setToken(r.token); return Promise.resolve(r); }, demo);
+        document.querySelectorAll('[data-demo]').forEach(function (b) { b.onclick = function () { var r = Mock.loginDemo(b.dataset.demo); if (!r.ok) return; setToken(r.token); A.setUser(r.user); A.go(''); }; });
+      }
+    });
+    document.getElementById('sim-offline').addEventListener('change', function (e) { Mock.setOffline(e.target.checked); });
+    document.getElementById('reset-demo').addEventListener('click', function () { Mock.reset(); setToken(null); try { Object.keys(localStorage).forEach(function (k) { if (/^epl_/.test(k)) localStorage.removeItem(k); }); } catch (_) {} location.hash = ''; location.reload(); });
+    app.route();
+  }
+  async function startAppsScript() {
+    document.querySelector('.demo-strip').textContent = 'Material BORRADOR: solo se muestra lo publicado por la Academia · resultados de práctica, no oficiales';
+    document.getElementById('demo-tools').hidden = true;
+    var cfg = await fetch('../../config/apps-script-production.json', { cache: 'no-store' }).then(function (r) { return r.json(); });
+    if (!cfg || !/^AKfycb[\w-]+$/.test(cfg.deploymentId || '')) throw new Error('config');
+    window.APPS_SCRIPT_URL = 'https://script.google.com/macros/s/' + cfg.deploymentId + '/exec';
+    await load('epl_apps_script_adapter.js');
+    var AS = window.EPLAppsScript; var s = AS.certSession();
+    var app = window.EPLApp.mount(document.getElementById('app'), {
+      api: AS.api(function () { return AS.certToken(); }), user: AS.certToken() && s ? s.user : null,
+      activationBase: location.href.split('#')[0],
+      onLogout: function () { AS.logout(); },
+      loginView: function (A) { certForm(A, function (u, c) { return AS.login(u, c); }); }
+    });
+    app.route();
+  }
+  (MODE === 'demo'
+    ? ['forms/form_a.js', 'forms/form_b.js', 'epl_server_core.js', 'epl_mock_backend.js'].reduce(function (p, f) { return p.then(function () { return load(f); }); }, Promise.resolve()).then(startDemo)
+    : startAppsScript()
+  ).catch(function (e) { document.getElementById('app').innerHTML = '<div class="note bad">No se pudo iniciar Exam Prep Lab (' + esc(e.message) + ').</div>'; });
+})();
+</script>
+</body>
+</html>

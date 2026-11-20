@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph">
+  <!-- Ilustración original · Academia Norteamericana · Exam Prep Lab (borrador). Mujer caminando por un pasillo de aeropuerto halando una maleta con rueditas. -->
+  <rect width="600" height="400" fill="#e4e7ea"/>
+  <rect x="0" y="40" width="600" height="190" fill="#b6c4cf"/>
+  <path d="M0 40 L600 40 M150 40 L150 230 M300 40 L300 230 M450 40 L450 230" stroke="#7b8792" stroke-width="6"/>
+  <path d="M330 130 L470 118 L480 124 L340 140 Z M400 122 L380 100 L392 100 L420 120 M400 132 L384 152 L396 152 L424 130" fill="#8e9aa4"/>
+  <rect x="0" y="230" width="600" height="170" fill="#b1b5b9"/><path d="M0 300 L600 300" stroke="#9ca1a6" stroke-width="2"/>
+  <!-- maleta -->
+  <rect x="330" y="270" width="60" height="90" rx="8" fill="#56606a"/><path d="M342 285 L342 345 M360 285 L360 345 M378 285 L378 345" stroke="#47505a" stroke-width="3"/>
+  <circle cx="342" cy="366" r="6" fill="#2b2f33"/><circle cx="378" cy="366" r="6" fill="#2b2f33"/><path d="M345 270 L318 205" stroke="#3a4046" stroke-width="5"/>
+  <!-- mujer -->
+  <path d="M248 270 L232 372 M270 270 L292 370" stroke="#3a4047" stroke-width="15" stroke-linecap="round"/>
+  <path d="M234 168 Q258 156 282 168 L288 280 L230 280 Z" fill="#7d6f8a"/><circle cx="258" cy="138" r="21" fill="#8c7a6c"/>
+  <path d="M236 138 Q236 108 260 112 Q284 114 282 140 Q284 172 270 176 Q276 150 266 126 Q250 122 246 150 Q240 160 236 138 Z" fill="#2c2724"/>
+  <path d="M282 180 L314 206" stroke="#7d6f8a" stroke-width="13" stroke-linecap="round"/><circle cx="318" cy="208" r="7" fill="#8c7a6c"/>
+  <path d="M236 182 L222 240" stroke="#7d6f8a" stroke-width="13" stroke-linecap="round"/>
+</svg>

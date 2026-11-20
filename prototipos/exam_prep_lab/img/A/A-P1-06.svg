@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph">
+  <!-- Ilustración original · Lanchas amarradas a un muelle. -->
+  <rect width="600" height="400" fill="#e3e6e9"/>
+  <path d="M0 150 Q80 90 170 130 Q260 80 360 125 Q470 70 600 120 L600 180 L0 180 Z" fill="#a3aaa4"/>
+  <rect x="0" y="175" width="600" height="225" fill="#9fb0bc"/>
+  <path d="M0 220 h600 M0 260 h600 M0 300 h600 M0 345 h600" stroke="#b7c5cf" stroke-width="2"/>
+  <!-- pier -->
+  <path d="M260 175 L340 175 L420 400 L180 400 Z" fill="#7b6a59"/>
+  <path d="M248 205 h104 M236 240 h128 M222 280 h156 M206 325 h188 M190 370 h220" stroke="#5f5245" stroke-width="3"/>
+  <g fill="#4e4337"><rect x="252" y="170" width="8" height="40"/><rect x="340" y="170" width="8" height="40"/><rect x="214" y="290" width="10" height="50"/><rect x="376" y="290" width="10" height="50"/></g>
+  <!-- boats -->
+  <g><path d="M70 250 L190 250 L176 282 L86 282 Z" fill="#f2f2f2" stroke="#5c646b" stroke-width="3"/><rect x="110" y="228" width="40" height="22" fill="#c9d0d6" stroke="#5c646b" stroke-width="2"/><path d="M190 256 L218 300" stroke="#5c646b" stroke-width="2"/></g>
+  <g><path d="M420 240 L540 240 L526 270 L436 270 Z" fill="#f2f2f2" stroke="#5c646b" stroke-width="3"/><rect x="462" y="218" width="40" height="22" fill="#c9d0d6" stroke="#5c646b" stroke-width="2"/><path d="M420 246 L386 300" stroke="#5c646b" stroke-width="2"/></g>
+  <g><path d="M30 330 L170 330 L154 366 L46 366 Z" fill="#e6e6e6" stroke="#5c646b" stroke-width="3"/><path d="M170 336 L206 346" stroke="#5c646b" stroke-width="2"/></g>
+</svg>
