@@ -1,5 +1,28 @@
 # F111 — Exámenes Docente: auditoría canónica, simplificación y continuidad
 
+## ESTADO VIGENTE — R63 · 19-nov-2026 · Quiz 2 y 3 DIGITALES LIVE
+
+**Única referencia actual**: [Campus oficial](https://anorteamerican.com/campus-virtual/campus.html) y repositorio `main`. Implementaciones verificadas por lectura posterior: **CORE @509** (`AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`) y **QUIZ B1 @510** (`AKfycbwT4nYpH2MqxgP-ydwndWW7OdSkDXRCiI-l4qxBdsqq0IXuTNSKIvogvpj-1PgtsNjZhw`). Las referencias a @507/@504 contenidas abajo son **históricas** y NO deben usarse para desplegar.
+
+### R60–R61: oral docente
+- [#789](https://github.com/anorteamericana-ship-it/campus-virtual/pull/789) + CORE @509: oral para docente autorizado sin bloqueo por fecha/estado de lección, protegiendo notas previas, matrícula única y asistencia. Corregida auditoría de guardado con fecha no declarada; nunca desplegar la versión intermedia @508.
+- [#790](https://github.com/anorteamericana-ship-it/campus-virtual/pull/790) y [#791](https://github.com/anorteamericana-ship-it/campus-virtual/pull/791): banco oral debajo del formulario, unidades plegables y lista externa de alumnos con estado y nota cuando exista, cache R61.
+- E2 oral: **pendiente** cierre/guardado real con sesión Diego. No inferir E2 de pruebas visuales.
+
+### R62: invitaciones B1
+- [#792](https://github.com/anorteamericana-ship-it/campus-virtual/pull/792) + **QUIZ @510**: el docente autorizado puede abrir cualquier Quiz B1 PC01–08 en fechas pasadas/futuras, mantenerlo abierto y **reenviar invitación interna sin cambiar a CERRADO**. La nueva versión de invitación aparece en Evaluaciones del estudiante matriculado y en el aviso emergente solo si pendiente/borrador; entregados/revisados protegidos contra reenvío/doble entrega.
+- El docente puede actualizar el padrón del Quiz con **SIN_INICIAR, BORRADOR, ENTREGADO, REVISADO** y alertas de matrícula. No confundir apertura ABIERTO con recepción confirmada de invitación: exigir lectura del expediente estudiante.
+
+### R63: Quiz 2 y Quiz 3 como Quiz 1, sin PDF
+- [#793](https://github.com/anorteamericana-ship-it/campus-virtual/pull/793), squash `68ca8f46bc322e40852e06d97be58a7f00a6c88e` en `main`: reemplaza la interfaz estudiante **PDF + campos genéricos** para PC02 y PC03 por cuestionarios íntegramente digitales con preguntas transcritas, alternativas, selectores, texto, audio listening, navegación, progreso, borrador, entrega idempotente, lectura posterior y estado revisado. La ruta heredada `modulos/quiz_progress.html` redirige específicamente B1 L8/L13 al módulo canónico `modulos/qz_b1_pc02_pc03_digital.html`, sin PDF.
+- **Quiz 2, L8, U3–4:** cinco apartados, **25 campos / 25 puntos**; fuente el modelo editorial ya validado `modulos/qz_b1_pc02_preview.html`. 
+- **Quiz 3, L13, U5–6:** seis apartados, **26 campos / 25 puntos impresos**. El apartado E tiene 7 reactivos aunque Cambridge imprime 6 puntos. No omitir respuesta ni inventar distribución automática; docente califica diagnóstico final **0–100** y registra comentario de progreso individual. Fuente: PDF, clave y guion originales en Drive institucional.
+- La revisión docente de PC02/PC03 presenta **preguntas y respuestas archivadas**, evita PDF en el examen estudiantil, y mantiene la clave histórica como material privado solamente para profesor autorizado. No se alteran intentos antiguos, PROGRESS_CHECK ni la nota oficial del curso (peso Quiz = 0%).
+- **Pruebas**: PASS estructura PC02 5 secciones/25 campos, PC03 6 secciones/26 campos, sin PDF; PASS E1 sintético para ambos (lectura borrador, edición, guardar, entrega, readback), PASS compilación JSX + JS y cachés; **7/7** archivos oficiales HTTP 200 con marcador R63; Chromium en **dominio oficial** PASS para ambos previews y para redirección del modelo viejo.
+- **Aceptación E2 pendiente**: docente Diego y alumno matriculado deben verificar acceso en Campus, reenvío de invitación, audio, guardado/entrega real, revisión con comentario y resultado por alumno. No afirmar E2 ni entrega real producida por las pruebas sintéticas. **PC04–PC08 todavía NO tienen el formato completo de Quiz 1** y quedan en trabajo posterior. B2/I1/I2 QZ24 tampoco están liberados para alumnos. No hacer otra activación de QA ni despliegue indiscriminado.
+- No se crearon notas ni entregas reales en R63; cinco automatizaciones F111 continúan pausadas. PR legados #778 y backend #145 permanecen excluidos.
+
+---
 ## ESTADO VIGENTE — R58/R59 · 19-nov-2026 · Entrega única LIVE
 
 **Fuente única de verdad operativa**: Campus público `https://anorteamerican.com/campus-virtual/campus.html`; frontend `main` de `campus-virtual`; Apps Script CORE desplegado `@507` en el deployment original `AKfycbx8O8dxCNhHQQLdRFd4vqOY_yIzE0KUG7ljk7vkieHf9hKWeund_WC0ZpuKU-Toj8sYHQ`. Los informes anteriores de esta misma página son históricos; las instrucciones que difieran quedan reemplazadas por esta sección.
