@@ -35,14 +35,19 @@ function previewB1Protected(lesson,authorizedGroup){
  const ttl=make('div');
  ttl.append(make('small','PROGRESS CHECK · BÁSICO I · ACCESO DOCENTE'),
    make('h2','Vista previa del Quiz '+(LESSONS.findIndex(x=>x[0]===lesson)+1)),
-   make('p','Cuestionario y MP3 originales · sin guardado, entrega ni activación de estudiantes'));
+   make('p',[8,13].includes(Number(lesson))?
+    'Cuestionario DIGITAL con preguntas y opciones · sin PDF · no habilita alumnos':
+    'Modelo protegido · no habilita estudiantes'));
  const close=make('button','CERRAR','f111-tqr-close');close.type='button';
  header.append(ttl,close);
  const frame=make('iframe');frame.className='f111-tqr-exam-frame';
  frame.style.cssText='flex:1;min-height:0;max-height:none;height:100%;width:100%;border:0';
  frame.title='Progress Check B1 · vista privada docente';
- const url=new URL('modulos/quiz_progress.html',new URL('./',location.href));
+ const digital=Number(lesson)===8||Number(lesson)===13;
+ const url=new URL(digital?'modulos/qz_b1_pc02_pc03_digital.html':'modulos/quiz_progress.html',
+   new URL('./',location.href));
  url.searchParams.set('teacher_preview','1');
+ if(digital)url.searchParams.set('v','F111R63DIGITAL20261119');
  url.searchParams.set('grupo',authorizedGroup);
  url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(lesson));
@@ -130,7 +135,19 @@ function openB1TeacherReview(lesson,group){
    let obj={};try{obj=JSON.parse(String(row.RESPUESTAS_JSON||'{}'))||{}}catch(_){}
    if(!obj||typeof obj!=='object'||Array.isArray(obj))obj={};
    const items=Object.keys(obj).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-   if(!items.length)answers.append(make('p','No hay respuestas archivadas.'));
+   if(number===2||number===3){
+     const frame=make('iframe');
+     frame.title='Cuestionario digital con respuestas archivadas · Quiz '+number;
+     frame.style.cssText='height:570px;max-height:65vh;width:100%;border:1px solid #d5e1ef;border-radius:11px;background:white';
+     const url=new URL('modulos/qz_b1_pc02_pc03_digital.html',new URL('./',location.href));
+     url.searchParams.set('review','1');url.searchParams.set('grupo',group);
+     url.searchParams.set('leccion',String(lesson));url.searchParams.set('v','F111R63DIGITAL20261119');
+     frame.src=url.href;
+     frame.onload=()=>frame.contentWindow?.postMessage({
+       type:'F111_PC23_TEACHER_REVIEW',leccion:lesson,grupo,respuestas:obj
+     },location.origin);
+     answers.append(frame);
+   }else if(!items.length)answers.append(make('p','No hay respuestas archivadas.'));
    else for(const key of items){
      const val=String(obj[key]==null?'':obj[key]).slice(0,4000);
      answers.append(make('div',key+' · '+val));
@@ -234,7 +251,8 @@ function buildB1TeacherOpenControls(lesson,preferredGroup){
  select.hidden=true;
  const status=make('small','Consultando grupos docentes…','f111-tqr-feedback');
  status.setAttribute('role','status');
- const previewBtn=make('button','VER PDF + AUDIO DEL GRUPO','f111-tqr-open');
+ const previewBtn=make('button',([8,13].includes(Number(lesson))?
+   'VER CUESTIONARIO DIGITAL':'VER MODELO DEL GRUPO'),'f111-tqr-open');
  const toggle=make('button','CONSULTANDO…','f111-tqr-activate');
  const reviewBtn=make('button','REVISAR ENTREGAS','f111-tqr-open');
  const resendBtn=make('button','REENVIAR INVITACIÓN','f111-tqr-activate');
