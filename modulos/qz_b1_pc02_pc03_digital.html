@@ -140,7 +140,8 @@ const pc03Sections=[
 const params=new URLSearchParams(location.search);
 const lesson=Number(params.get('leccion')||8),group=String(params.get('grupo')||'').trim();
 const pcNumber=lesson===8?2:lesson===13?3:0;
-const live=params.get('live')==='1',review=params.get('review')==='1'&&!live;
+const live=params.get('live')==='1',review=params.get('review')==='1'&&!live,
+ teacherPreview=params.get('teacher_preview')==='1';
 const sections=lesson===13?pc03Sections:pc02Sections,matchOptions=lesson===13?pc03MatchOptions:pc02MatchOptions;
 const TOTAL=sections.reduce((a,s)=>a+s.items.length,0);
 const POINTS=sections.reduce((a,s)=>a+s.points,0);
@@ -175,7 +176,7 @@ async function saveReal(){
 }
 function changed(){if(!live||finished||busy)return;dirty=true;updateButtons();clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),1400)}
 async function loadVoice(){
- if(!live||lesson!==13||voiceLoaded)return;
+ if((!live&&!teacherPreview)||lesson!==13||voiceLoaded)return;
  try{
   const r=await api('qzProgressAudio');
   if(r.quiz_id!==expected||r.mime!=='audio/mpeg'||typeof r.audio_base64!=='string')throw Error('Audio no disponible');
@@ -220,7 +221,9 @@ function show(){
   audioBox.append(player,audioError);
   panel.append(audioBox);
  }
- if(finished)panel.append(el('p','Vista previa finalizada. Esta simulación no envía respuestas ni notas.','done'));
+ if(finished)panel.append(el('p',review?'Revisión del docente · intento archivado, solo lectura.':
+  live?'PRUEBA ENTREGADA · No se pueden modificar respuestas.':
+  'Vista previa finalizada. Esta simulación no envía respuestas.','done'));
  s.items.forEach(q=>{
  const box=el('fieldset',null,'item'),legend=el('legend',q[0]+' · '+q[1]);box.append(legend);
  if(s.type==='radio'||s.type==='multi'){q[2].forEach((opt,k)=>{
@@ -288,7 +291,9 @@ async function initialize(){
    show();setMessage('Respuesta archivada · Solo lectura · Quiz '+pcNumber);
   });show();return;
  }
- if(!live){saveBtn.hidden=true;show();return;}
+ if(!live){saveBtn.hidden=true;show();
+  if(teacherPreview&&lesson===13){token=sessionToken();if(token&&group)void loadVoice();}
+  return;}
  token=sessionToken();
  try{
   if(!token||!group)throw Error('Entrá al Campus desde tu cuenta de estudiante.');
