@@ -130,14 +130,14 @@ const banks={
 ['Paolo · Weather',['windy','sunny','warm','cool']]]]]},
 {id:'B',title:'Simple past in a conversation',points:8,type:'compound',
  help:'Complete the dialogue using the correct past form of the verbs.',items:[
-['B','Complete all eight blanks in the conversation.',
- [['A: _____ you _____ (stay) home last night? · Write both words',null],
- ['A: What _____ you _____ (do)? · Write both words',null],
+['B',"A: Did you stay home last night? B: No, I didn't. Complete the EIGHT remaining answers in the conversation (the first exchange is the example, not a graded item).",
+ [['A: What _____ you _____ (do)? · Write both words',null],
  ['B: I _____ (go) dancing at the new club on Eighth Street.',null],
  ['Suzie and Mike _____ (be) there, too.',null],
  ['Yes, we _____ (have) a great time!',null],
  ['But where _____ (be) you?',null],
  ['I _____ (be) in the laundromat all evening.',null],
+ ['I _____ (meet) my girlfriend there.',null],
  ['We _____ (spend) the evening laughing and talking.',null]]]]},
 {id:'C',title:'Find the correct place',points:4,type:'text',
  help:'Correct the wrong place in each statement.',items:[
@@ -190,10 +190,10 @@ const banks={
  help:'Read each story and choose the most suitable title. Do not repeat titles.',
  options:[['Amazing Summer School','Amazing Summer School'],['Globe-Trotting Twosome','Globe-Trotting Twosome'],['Never Too Old','Never Too Old'],['The Risk Taker','The Risk Taker']],
  items:[
-['G1','Keith enjoys dangerous sports, has long wanted to go ice climbing and now takes climbing lessons.'],
-['G2','Sisters Maria and Eva have traveled widely, seen pyramids and eaten unusual foods; they recently wrote a travel guide.'],
-['G3','Take an educational boat trip in China from Beijing to Shanghai in July, with lectures and tour guides.'],
-['G4','Larry and Pauline have traveled in their truck across 48 states; Pauline is 80 and Larry is 82.']]}
+['G1','Keith has always done dangerous sports. He enjoys wingsuit flying and kiteboarding. Ever since he was a little boy, he has wanted to go ice climbing. He’s now been taking climbing lessons for six months, and he loves it! Who knows what he’ll try next?'],
+['G2','Sisters Maria and Eva have traveled since they were teenagers. They’ve seen some fantastic places in the world. Maria has visited many pyramids in Africa and South America, and Eva has tried many unusual foods around the world. They’ve recently written a travel guide for single women.'],
+['G3','Have you ever taken a boat trip? Do you like taking classes? Well, here’s the trip for you! Take an educational boat trip in China for the month of July. You start in Beijing and finish in Shanghai. All lectures are on the boat, and the teachers are also your tour guides in the cities.'],
+['G4','Since 2001, Larry and Pauline Richards have taken their truck all over the United States. They’ve visited 48 of the 50 states and hope to drive to Alaska this summer. Pauline, 80, has been a photographer since she was very young. Larry, 82, has always enjoyed meeting people and hiking in national parks.']]}
 ]},
 24:{quiz:6,units:'11–12',sections:[
 {id:'A',title:'Listening · Travel advice',points:4,type:'radio',help:'Listen and check the correct information.',items:[
@@ -263,7 +263,7 @@ const banks={
 ['F3','What is _____ river in the world: the Amazon, the Danube, or the Nile? (long)']]},
 {id:'G',title:'Reading · Hawaii, the Big Island',points:4,type:'radio',
  help:'Read the article and check the correct answer.',
- reading:"VISIT HAWAII · THE BIG ISLAND\nEveryone knows that Hawaii is a beautiful group of islands in the middle of the Pacific Ocean. But did you know that Hawaii is both the name of the state and the name of the biggest island in the state? Most people call it the Big Island.\nThe geography and weather on the Big Island are very interesting. There are towns by the ocean with beaches, and there are volcanoes, waterfalls and forests on the island. The weather is different in different parts of the island.\nOn the west side, the weather in sunny Kailua Kona is almost perfect. It gets up to about 27°C in the winter and 30°C in the summer. It only goes down to 19°C in the winter and 23°C in the summer. The Kohala area in the north is the driest part of the island with about 56 centimeters of rain per year. On the east side, Hilo gets around 320 centimeters of rain per year: one of the wettest cities in the United States. All that rain makes for some amazing waterfalls near Hilo.\nWater temperatures are the coldest in February and warmest in September and October. There is good snorkeling, great scuba diving, and wonderful fishing year-round. That makes the Big Island popular any time of year.",
+ reading:"VISIT HAWAII · THE BIG ISLAND\nEveryone knows that Hawaii is a beautiful group of islands in the middle of the Pacific Ocean. But did you know that “Hawaii” is both the name of the state and the name of the biggest island in the state? Yes, it’s confusing, so most people call the island of Hawaii the “Big Island.”\nThe geography and weather on the Big Island are very interesting. There are towns by the ocean with beaches, and there are volcanoes, waterfalls, and forests on the island. The weather is different in different parts of the island.\nOn the west side of the island, the weather in sunny Kailua Kona is almost perfect. It gets up to about 27°C (80°F) in the winter and 30°C (86°F) in the summer. It only goes down to 19°C (66°F) in the winter and 23°C (73°F) in the summer. The Kohala area in the north is the driest part of the island with about 56 centimeters (22 inches) of rain a year.\nOn the east side, Hilo gets around 320 centimeters (126 inches) of rain per year. It is one of the wettest cities in the United States! All that rain makes for some amazing waterfalls near Hilo.\nWater temperatures are the coldest in February and warmest in September and October. There is good snorkeling, great scuba diving, and wonderful fishing year-round. That makes the Big Island popular with people from all over the world any time of the year.",
  items:[
 ['G1','What is Hawaii?',['a city','a city and a state','an island and a country','a state and an island']],
 ['G2','How hot does it get in Kailua Kona in the winter?',['30°C (86°F)','27°C (80°F)','23°C (73°F)','19°C (66°F)']],
