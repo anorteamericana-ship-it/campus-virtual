@@ -1,6 +1,6 @@
 // F111 R69 · QZ24 B2/I1/I2: navegación estudiantil preparada, BLOQUEADA por bandera.
 // No habilitar hasta validar audio original, endpoint de matrícula, autorizaciones y E2.
-// Nunca modificar la experiencia ni los intentos de B2/I1/I2.
+// Nunca modificar la experiencia ni los intentos existentes de Básico I.
 (function(){
 'use strict';
 const LESSONS={4:['01','1–2'],8:['02','3–4'],13:['03','5–6'],16:['04','7–8'],21:['05','9–10'],24:['06','11–12'],28:['07','13–14'],30:['08','15–16']};
