@@ -179,9 +179,9 @@ const banks={
 {id:'E',title:'Present perfect conversations',points:4,type:'compound',
  help:'Complete each conversation using the present perfect.',items:[
 ['E1',"A: _____ you _____ to any good movies lately? (be)\nB: Yes, I _____ already _____ three great movies this month. (see)",
- [['A question (have / been)',null],['B answer (have / seen)',null]]],
+ [['A · Pregunta completa en presente perfecto',null],['B · Respuesta completa en presente perfecto',null]]],
 ['E2',"A: _____ he ever _____ Thai food before? (eat)\nB: No, he _____ never _____ it in his life. (have)",
- [['A question (has / eaten)',null],['B answer (has / had)',null]]]]},
+ [['A · Pregunta completa en presente perfecto',null],['B · Respuesta completa en presente perfecto',null]]]]},
 {id:'F',title:'For or Since',points:3,type:'radio',help:'Select the correct word.',items:[
 ['F1','I lived in Boston _____ five years. I loved every minute I was there!',['for','since']],
 ['F2','My wife and I have gone to Costa Rica every year _____ 2001.',['for','since']],
