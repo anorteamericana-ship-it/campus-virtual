@@ -588,6 +588,7 @@ function Sidebar({ role, rolReal, active, setActive, usuario, onLogout }) {
       items: [
         ...(esSuperadmin ? [{ id: 'diagnostico_interno', label: 'Diagnóstico interno', icon: 'settings' }] : []),
         ...(esSuperadmin ? [{ id: 'permisos_roles', label: 'Permisos y roles', icon: 'settings' }] : []),
+        ...(esSuperadmin ? [{ id: 'exam_prep_lab', label: 'Exam Prep Lab · TOEIC', icon: 'check', badge: 'Revisión' }] : []),
         { id: 'docentes', label: 'Docentes', icon: 'graduation', proximamente: true },
         { id: 'horas', label: 'Horas docentes', icon: 'chart', proximamente: true },
         { id: 'ican', label: 'Club I CAN', icon: 'ican', proximamente: true },

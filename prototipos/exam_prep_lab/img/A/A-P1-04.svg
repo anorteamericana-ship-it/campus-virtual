@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph">
+  <!-- Ilustración original · Sala de reuniones vacía con sillas alrededor de una mesa. -->
+  <rect width="600" height="400" fill="#e2e4e7"/>
+  <rect x="190" y="40" width="220" height="120" fill="#f7f8f9" stroke="#8e949a" stroke-width="4"/><rect x="290" y="160" width="20" height="10" fill="#8e949a"/>
+  <rect x="0" y="230" width="600" height="170" fill="#b6babe"/>
+  <ellipse cx="300" cy="280" rx="210" ry="58" fill="#6d6155"/><ellipse cx="300" cy="272" rx="210" ry="58" fill="#86796b"/>
+  <g fill="#3e444a">
+    <rect x="70" y="214" width="46" height="56" rx="6"/><rect x="484" y="214" width="46" height="56" rx="6"/>
+    <rect x="150" y="186" width="44" height="46" rx="6"/><rect x="230" y="178" width="44" height="46" rx="6"/><rect x="326" y="178" width="44" height="46" rx="6"/><rect x="406" y="186" width="44" height="46" rx="6"/>
+    <rect x="140" y="320" width="54" height="64" rx="7"/><rect x="230" y="332" width="54" height="64" rx="7"/><rect x="316" y="332" width="54" height="64" rx="7"/><rect x="406" y="320" width="54" height="64" rx="7"/>
+  </g>
+</svg>

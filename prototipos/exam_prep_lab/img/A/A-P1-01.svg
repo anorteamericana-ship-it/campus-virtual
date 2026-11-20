@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph 1">
+  <!-- Ilustración original · Academia Norteamericana · Exam Prep Lab (borrador). Escala de grises tipo fotografía de examen. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9ecef"/><stop offset="1" stop-color="#d7dbdf"/></linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9bdc1"/><stop offset="1" stop-color="#a3a8ad"/></linearGradient>
+    <g id="bike">
+      <circle cx="0" cy="0" r="34" fill="none" stroke="#2f3337" stroke-width="5"/>
+      <circle cx="0" cy="0" r="4" fill="#2f3337"/>
+      <circle cx="92" cy="0" r="34" fill="none" stroke="#2f3337" stroke-width="5"/>
+      <circle cx="92" cy="0" r="4" fill="#2f3337"/>
+      <path d="M0 0 L32 -46 L72 -46 L92 0 M32 -46 L46 0 L72 -46 M0 0 L46 0" fill="none" stroke="#4a5056" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M28 -46 L24 -60 M14 -62 L36 -62" stroke="#2f3337" stroke-width="5" stroke-linecap="round"/>
+      <path d="M72 -46 L76 -64 L64 -70" fill="none" stroke="#2f3337" stroke-width="5" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <rect width="600" height="400" fill="url(#sky)"/>
+  <!-- building -->
+  <rect x="0" y="40" width="600" height="220" fill="#c9cdd1"/>
+  <rect x="0" y="40" width="600" height="14" fill="#9fa4a9"/>
+  <g fill="#8e949a" opacity=".85">
+    <rect x="30" y="80" width="80" height="100"/><rect x="140" y="80" width="80" height="100"/>
+    <rect x="470" y="80" width="80" height="100"/>
+  </g>
+  <!-- glass door -->
+  <rect x="270" y="90" width="150" height="170" fill="#7c838a"/>
+  <rect x="280" y="100" width="62" height="160" fill="#a9b1b8"/><rect x="348" y="100" width="62" height="160" fill="#a9b1b8"/>
+  <rect x="336" y="170" width="6" height="26" fill="#4a5056"/><rect x="348" y="170" width="6" height="26" fill="#4a5056"/>
+  <!-- trees -->
+  <g>
+    <rect x="548" y="150" width="12" height="120" fill="#6b5f55"/>
+    <circle cx="554" cy="140" r="46" fill="#7d8a7e"/><circle cx="524" cy="160" r="30" fill="#8a978b"/>
+  </g>
+  <!-- ground -->
+  <rect x="0" y="260" width="600" height="140" fill="url(#ground)"/>
+  <path d="M0 300 L600 300" stroke="#9aa0a5" stroke-width="2"/>
+  <!-- bench -->
+  <g fill="#5d6268"><rect x="440" y="250" width="110" height="10"/><rect x="440" y="232" width="110" height="8"/><rect x="448" y="260" width="8" height="26"/><rect x="534" y="260" width="8" height="26"/></g>
+  <!-- rack -->
+  <rect x="20" y="318" width="400" height="8" fill="#5d6268"/>
+  <!-- four bicycles in a row -->
+  <use href="#bike" x="40" y="310"/>
+  <use href="#bike" x="135" y="314"/>
+  <use href="#bike" x="230" y="310"/>
+  <use href="#bike" x="325" y="314"/>
+</svg>

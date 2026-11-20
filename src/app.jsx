@@ -69,6 +69,7 @@ const F96_LAZY = {
   student_dashboard: ['src/student_dashboard.jsx?v=F111HERO20261103B&demo=F111STUDENTDEMO20261104&calendar=F111STUDENTCALEN20261104A&support=F111SUPPORTEN20261104A&crday=F111CRDAY20261104A'],
   free_student: ['src/prospect_free_student.jsx?v=F98.4Z6CS7B_LITE'],
   academia_play: ['src/academia_play.jsx?v=F98.4Z6CS12_PLAY22'],
+  exam_prep_lab: ['src/exam_prep_lab.jsx?v=EPLSUPERADMIN20261120A'],
   free_user_admin: ['src/free_user_admin.jsx?v=F98.4Z6CS7B_LITE'],
   student_modules: ['src/panel_suspensiones.jsx?v=F99TEACHERPLAN20261008','src/solicitudes_pago.jsx?v=F98.4A','src/solicitudes_unificadas.jsx?v=F111R57B5PDF20261109C','src/student_modules.jsx?v=F111PROFILECANONICAL20261020&four=F111FOURTABSEN20261104A&orallate=F11120261118&oralui=F111R61N19&quiz23=F111R63DIGITAL20261119&quiz48=F111R65B1DIGITAL20261119'],
   syllabus_views: ['src/syllabus_views.jsx?v=F111WELCOMEMOBILE20261023'],
@@ -1143,6 +1144,9 @@ function App() {
       banco:        <LazyRoute title="Importar Banco" component="ImportadorBancario" files={F96_LAZY.banco} />,
       aplicar_pago: <LazyRoute title="Aplicar Pago" component="AplicarPago" files={F96_LAZY.aplicar_pago} onNavigate={navigateTo} />,
       academia_play: <LazyRoute title="English LAB" component="AcademiaPlayView" files={F96_LAZY.academia_play} usuario={usuario} rolReal={rolReal} role={role} onNavigate={navigateTo} />,
+      exam_prep_lab: rolReal === 'superadmin'
+        ? <LazyRoute title="Exam Prep Lab · TOEIC" component="ExamPrepLabView" files={F96_LAZY.exam_prep_lab} usuario={usuario} rolReal={rolReal} previewMode="superadmin" />
+        : <NoAutorizadoCampus rol={rolReal} />,
       // — Próximamente (sin datos demo) ——————————————————————
       docentes:  <ProximamenteView title="Docentes" />,
       horas:     <ProximamenteView title="Horas docentes" />,

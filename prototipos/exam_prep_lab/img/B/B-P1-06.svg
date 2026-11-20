@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph">
+  <!-- Ilustración original · Academia Norteamericana · Exam Prep Lab (borrador). Cocinero con delantal revolviendo con una cuchara grande una olla sobre la cocina. -->
+  <rect width="600" height="400" fill="#e0e3e6"/>
+  <path d="M0 0 L600 0 L600 120 L0 120 Z" fill="#cdd2d6"/><path d="M0 30 L600 30 M0 60 L600 60 M0 90 L600 90 M60 0 L60 120 M180 0 L180 120 M300 0 L300 120 M420 0 L420 120 M540 0 L540 120" stroke="#b9bfc4" stroke-width="2"/>
+  <!-- cocina y horno -->
+  <rect x="300" y="230" width="240" height="170" fill="#9aa1a8"/><rect x="300" y="222" width="240" height="14" fill="#5e656c"/>
+  <rect x="322" y="268" width="196" height="110" rx="6" fill="#7b838b"/><rect x="342" y="290" width="156" height="60" fill="#4d545b"/><rect x="352" y="276" width="136" height="8" rx="4" fill="#c7ccd1"/>
+  <!-- olla -->
+  <path d="M360 160 L470 160 L462 222 L368 222 Z" fill="#8d959c"/><rect x="352" y="152" width="126" height="12" rx="4" fill="#6d757c"/><path d="M352 170 L338 170 M478 170 L492 170" stroke="#5c646b" stroke-width="8"/>
+  <path d="M380 156 Q392 136 382 118 M420 154 Q430 134 420 116" fill="none" stroke="#b7bec4" stroke-width="4"/>
+  <!-- cuchara -->
+  <path d="M410 150 L338 80" stroke="#7a6a5a" stroke-width="7" stroke-linecap="round"/>
+  <!-- cocinero -->
+  <rect x="180" y="300" width="22" height="100" fill="#3d4349"/><rect x="216" y="300" width="22" height="100" fill="#3d4349"/>
+  <path d="M172 150 Q209 136 246 150 L252 310 L166 310 Z" fill="#f2f2f2" stroke="#9aa0a6" stroke-width="2"/><path d="M186 190 L232 190 L240 310 L178 310 Z" fill="#c4c9ce"/>
+  <circle cx="209" cy="118" r="24" fill="#8a776a"/><path d="M186 104 Q184 70 209 72 Q236 70 232 104 Z" fill="#ffffff" stroke="#9aa0a6" stroke-width="2"/>
+  <path d="M244 166 Q300 150 334 84" fill="none" stroke="#f2f2f2" stroke-width="15" stroke-linecap="round"/><circle cx="336" cy="82" r="8" fill="#8a776a"/>
+  <path d="M176 170 L160 240" stroke="#f2f2f2" stroke-width="15" stroke-linecap="round"/>
+</svg>

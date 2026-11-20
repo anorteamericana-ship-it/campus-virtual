@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph">
+  <!-- Ilustración original · Academia Norteamericana · Exam Prep Lab (borrador). Mujer usando una computadora portátil. -->
+  <rect width="600" height="400" fill="#dfe2e5"/>
+  <rect x="380" y="40" width="180" height="170" fill="#b8c2cb"/><rect x="390" y="50" width="75" height="150" fill="#d6dde3"/><rect x="475" y="50" width="75" height="150" fill="#d6dde3"/>
+  <rect x="0" y="250" width="600" height="150" fill="#a9adb2"/>
+  <rect x="80" y="250" width="440" height="16" fill="#6d5f53"/><rect x="100" y="266" width="12" height="120" fill="#5a4e44"/><rect x="488" y="266" width="12" height="120" fill="#5a4e44"/>
+  <!-- laptop -->
+  <path d="M250 248 L380 248 L392 256 L238 256 Z" fill="#3a3f45"/><path d="M262 248 L270 168 L372 168 L366 248 Z" fill="#4c535a"/><path d="M272 176 L364 176 L359 240 L268 240 Z" fill="#9fb3c4"/>
+  <!-- cup -->
+  <rect x="420" y="222" width="26" height="28" rx="3" fill="#f1f1f1" stroke="#7f858a" stroke-width="2"/><path d="M446 228 q12 6 0 14" fill="none" stroke="#7f858a" stroke-width="3"/>
+  <!-- woman -->
+  <rect x="150" y="268" width="80" height="12" fill="#3f454b"/><rect x="160" y="280" width="10" height="100" fill="#3f454b"/>
+  <path d="M168 160 Q190 148 212 160 L218 250 L160 250 Z" fill="#7a8794"/>
+  <circle cx="190" cy="128" r="24" fill="#8c7b6e"/><path d="M164 128 Q166 96 192 98 Q220 100 216 132 Q212 112 190 112 Q172 114 170 140 Z" fill="#2f2925"/>
+  <path d="M208 176 Q240 210 282 236" stroke="#7a8794" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <path d="M176 182 Q220 222 290 244" stroke="#7a8794" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <circle cx="286" cy="238" r="7" fill="#8c7b6e"/><circle cx="294" cy="245" r="7" fill="#8c7b6e"/>
+</svg>

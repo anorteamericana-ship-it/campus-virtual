@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph 2">
+  <!-- Ilustración original · Academia Norteamericana · Exam Prep Lab (borrador). -->
+  <rect width="600" height="400" fill="#d9dcdf"/>
+  <!-- floor -->
+  <rect x="0" y="300" width="600" height="100" fill="#b3b7bb"/>
+  <!-- shelves -->
+  <g>
+    <rect x="20" y="40" width="10" height="260" fill="#6f757b"/><rect x="250" y="40" width="10" height="260" fill="#6f757b"/>
+    <rect x="20" y="110" width="240" height="8" fill="#6f757b"/><rect x="20" y="190" width="240" height="8" fill="#6f757b"/><rect x="20" y="270" width="240" height="8" fill="#6f757b"/>
+    <g fill="#a99c8c" stroke="#7e7365" stroke-width="2">
+      <rect x="36" y="70" width="60" height="40"/><rect x="104" y="80" width="54" height="30"/><rect x="166" y="66" width="76" height="44"/>
+      <rect x="36" y="150" width="70" height="40"/><rect x="116" y="146" width="58" height="44"/><rect x="182" y="156" width="60" height="34"/>
+      <rect x="36" y="232" width="56" height="38"/><rect x="100" y="226" width="80" height="44"/>
+    </g>
+  </g>
+  <!-- hand cart -->
+  <g>
+    <rect x="370" y="268" width="170" height="12" fill="#3c4146"/>
+    <rect x="530" y="200" width="10" height="80" fill="#3c4146"/>
+    <path d="M540 200 Q556 196 556 182" fill="none" stroke="#3c4146" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="392" cy="296" r="15" fill="#2a2e32"/><circle cx="516" cy="296" r="15" fill="#2a2e32"/>
+    <circle cx="392" cy="296" r="5" fill="#8b9095"/><circle cx="516" cy="296" r="5" fill="#8b9095"/>
+    <!-- box already on cart -->
+    <rect x="384" y="220" width="78" height="48" fill="#a99c8c" stroke="#7e7365" stroke-width="2"/>
+    <path d="M384 236 H462" stroke="#c9bfb2" stroke-width="6"/>
+  </g>
+  <!-- man placing a box -->
+  <g>
+    <!-- legs -->
+    <path d="M318 230 L306 300 M338 230 L352 300" stroke="#3f454b" stroke-width="18" stroke-linecap="round"/>
+    <path d="M296 302 H316 M344 302 H366" stroke="#25292d" stroke-width="10" stroke-linecap="round"/>
+    <!-- torso / vest -->
+    <path d="M304 140 Q328 128 352 140 L350 236 L306 236 Z" fill="#6e7780"/>
+    <path d="M314 142 L326 236 M342 142 L332 236" stroke="#c8cdd2" stroke-width="5"/>
+    <!-- head -->
+    <circle cx="328" cy="112" r="22" fill="#8c7b6e"/>
+    <path d="M306 104 Q328 82 350 104 Z" fill="#3c3530"/>
+    <!-- arms reaching to the box -->
+    <path d="M346 152 Q384 170 406 196" stroke="#6e7780" stroke-width="15" stroke-linecap="round" fill="none"/>
+    <path d="M310 152 Q350 186 400 214" stroke="#6e7780" stroke-width="15" stroke-linecap="round" fill="none"/>
+    <!-- box being placed (above the first) -->
+    <rect x="392" y="172" width="70" height="46" fill="#b9ac9b" stroke="#7e7365" stroke-width="2" transform="rotate(-4 427 195)"/>
+    <path d="M394 186 H462" stroke="#d3c9bc" stroke-width="6" transform="rotate(-4 427 195)"/>
+    <circle cx="404" cy="200" r="7" fill="#8c7b6e"/><circle cx="410" cy="190" r="7" fill="#8c7b6e"/>
+  </g>
+</svg>

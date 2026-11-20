@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="Practice photograph">
+  <!-- Ilustración original · Hombre regando plantas frente a una tienda. -->
+  <rect width="600" height="400" fill="#dde0e3"/>
+  <rect x="0" y="30" width="600" height="250" fill="#c3c8cd"/><rect x="40" y="70" width="300" height="170" fill="#9aa5ae"/><rect x="50" y="80" width="280" height="150" fill="#b4bfc8"/>
+  <rect x="380" y="90" width="110" height="190" fill="#7f878e"/><rect x="0" y="30" width="600" height="20" fill="#8c9298"/>
+  <rect x="0" y="280" width="600" height="120" fill="#aeb2b6"/>
+  <g><rect x="60" y="250" width="56" height="40" fill="#7d6a5a"/><circle cx="76" cy="236" r="18" fill="#7c8b7d"/><circle cx="100" cy="230" r="20" fill="#8b998c"/>
+     <rect x="140" y="250" width="56" height="40" fill="#7d6a5a"/><circle cx="160" cy="232" r="20" fill="#7c8b7d"/><circle cx="182" cy="238" r="16" fill="#8b998c"/>
+     <rect x="220" y="250" width="56" height="40" fill="#7d6a5a"/><circle cx="238" cy="234" r="18" fill="#7c8b7d"/><circle cx="262" cy="232" r="19" fill="#8b998c"/></g>
+  <!-- man with watering can -->
+  <path d="M350 300 L342 380 M372 300 L384 380" stroke="#3f454b" stroke-width="16" stroke-linecap="round"/>
+  <path d="M336 186 Q360 174 384 186 L380 304 L338 304 Z" fill="#5f6b77"/>
+  <circle cx="360" cy="160" r="22" fill="#8c7b6e"/><path d="M338 156 Q360 132 382 156 Z" fill="#3c3530"/>
+  <path d="M340 200 Q318 236 300 244" stroke="#5f6b77" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <path d="M296 238 L262 238 L258 270 L300 270 Z" fill="#6f777f"/><path d="M262 244 L222 222" stroke="#6f777f" stroke-width="7"/>
+  <path d="M220 222 l-6 10 M222 226 l-10 8 M224 230 l-8 12" stroke="#9fb6c8" stroke-width="2"/>
+</svg>
