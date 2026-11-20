@@ -138,7 +138,7 @@ const banks={
  ['Yes, we _____ (have) a great time!',null],
  ['But where _____ (be) you?',null],
  ['I _____ (be) in the laundromat all evening.',null],
- ['We _____ (spend) the evening laughing and talking.',null]]]]]},
+ ['We _____ (spend) the evening laughing and talking.',null]]]]},
 {id:'C',title:'Find the correct place',points:4,type:'text',
  help:'Correct the wrong place in each statement.',items:[
 ['C1','All my clothes were dirty. I wanted to wash them, so I went to the library.'],
