@@ -4,7 +4,7 @@
 (function(){
 'use strict';
 const LESSONS={4:['01','1–2'],8:['02','3–4'],13:['03','5–6'],16:['04','7–8'],21:['05','9–10'],24:['06','11–12'],28:['07','13–14'],30:['08','15–16']};
-const LEVELS={B2:'B2/I1/I2I',I1:'Intermedio I',I2:'Intermedio II'};
+const LEVELS={B2:'Básico II',I1:'Intermedio I',I2:'Intermedio II'};
 const ENABLED=window.F111_QZ24_STUDENT_UI_ENABLED===true&&window.F111_QZ24_RELEASE_READY===true;
 const INTERVAL=30000;
 let current=[],inFlight=false,lastToken='',lastAt=0,signature='',modal=null,studentCode='';
@@ -34,8 +34,8 @@ function host(){
  if(!screen)return null;
  let section=screen.querySelector('[data-f111-student-qz24-pc-extra]');
  if(!section){
-  section=make('section',undefined,'f111-qz24-extra');section.dataset.f111StudentB1PcExtra='true';
-  section.setAttribute('aria-label','Progress Checks de B2/I1/I2I e Intermedios habilitados por tu docente');
+  section=make('section',undefined,'f111-qz24-extra');section.setAttribute('data-f111-student-qz24-pc-extra','true');
+  section.setAttribute('aria-label','Progress Checks de Básico II, Intermedio I e Intermedio II habilitados por tu docente');
   const target=screen.querySelector('[role="tablist"],[role="tabpanel"]');
   if(target)screen.insertBefore(section,target);else screen.append(section);
  }
@@ -75,7 +75,7 @@ function syncMenuBadge(){
  const pending=current.filter(x=>x.state==='SIN_INICIAR'||x.state==='BORRADOR').length;
  let badge=button.querySelector('[data-f111-qz24-menu-badge]');
  if(!pending){if(badge)badge.remove();return;}
- if(!badge){badge=make('span',undefined,'f111-quiz-menu-badge');badge.dataset.f111QZ24MenuBadge='true';button.append(badge);}
+ if(!badge){badge=make('span',undefined,'f111-quiz-menu-badge');badge.setAttribute('data-f111-qz24-menu-badge','true');button.append(badge);}
  badge.textContent=pending+' quiz'+(pending!==1?'zes':'')+' pendiente'+(pending!==1?'s':'');
  badge.setAttribute('role','status');
 }
