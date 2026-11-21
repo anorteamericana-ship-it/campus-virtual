@@ -92,7 +92,7 @@
 
     /* ── selección de unidades ── */
     function unitsOf(f, filter) { return EPL.units(forms()[f].ix, filter); }
-    function seenItems(cid) { const s = new Set(); rows(T.RESP).forEach(r => { if (r.CANDIDATE_ID === cid && r.MODO !== 'preview') s.add(r.ITEM_ID); }); return s; }
+    function seenItems(cid, gradedOnly) { const s = new Set(); rows(T.RESP).forEach(r => { if (r.CANDIDATE_ID === cid && r.MODO !== 'preview' && (!gradedOnly || ['CALIFICADA', 'FUERA_DE_TIEMPO'].includes(r.ESTADO))) s.add(r.ITEM_ID); }); return s; }
     function exposure(cid, f) { const seen = seenItems(cid); const list = forms()[f] ? forms()[f].ix.list : []; return { form: f, seen: list.filter(i => seen.has(i.item_id)).length, total: list.length }; }
     function rngFor(s) { return EPL.rng(parseInt(d.sha256(String(s)).slice(0, 8), 16)); }
 
@@ -114,8 +114,8 @@
         if (!units.length) throw { code: 'sin_material', msg: 'Todavía no hay material publicado para el diagnóstico.' };
         return { form: f, units };
       }
-      const formsAllowed = preview ? Object.keys(fs) : a.forms;
-      const seen = cid ? seenItems(cid) : new Set();
+      const formsAllowed = preview ? Object.keys(fs) : (p.form && a.forms.includes(p.form) ? [p.form] : a.forms);
+      const seen = cid ? seenItems(cid, !!p.only_unseen) : new Set();
       const rand = rngFor(d.uuid());
       if (tipo === 'review') {
         const due = rows(T.SRS).filter(r => r.CANDIDATE_ID === cid && r.ESTADO !== 'DOMINADO' && (!p.only_due || Number(r.DUE) <= now())).map(r => r.ITEM_ID);
@@ -128,10 +128,11 @@
       let pool = [];
       formsAllowed.forEach(f => { if (!fs[f]) return; pool = pool.concat(unitsOf(f, it => allow(it) && (tipo === 'mini' ? [2, 5].includes(it.part) : (!p.part || it.part === Number(p.part))) && (!p.difficulty || it.difficulty === Number(p.difficulty)) && (!p.topic || it.topic === p.topic))); });
       if (!pool.length) throw { code: 'sin_material', msg: 'No hay preguntas disponibles con esos filtros.' };
-      const unseen = pool.filter(u => u.item_ids.every(id => !seen.has(id)));
+      const unseen = pool.filter(u => p.only_unseen ? u.item_ids.some(id => !seen.has(id)) : u.item_ids.every(id => !seen.has(id)));
       const size = tipo === 'mini' ? 5 : Math.min(Math.max(Number(p.size) || 5, 1), 15);
+      if (p.only_unseen && !unseen.length) throw { code: 'parte_completa', msg: 'Ya completaste las preguntas de esta parte.' };
       let picked = EPL.pickUnits(unseen.length ? unseen : pool, size, rand);
-      if (unseen.length && picked.reduce((n, u) => n + u.item_ids.length, 0) < size) {
+      if (!p.only_unseen && unseen.length && picked.reduce((n, u) => n + u.item_ids.length, 0) < size) {
         const more = EPL.pickUnits(pool.filter(u => !picked.includes(u)), size - picked.reduce((n, u) => n + u.item_ids.length, 0), rand);
         picked = picked.concat(more).sort((x, y) => x.part - y.part);
       }
@@ -408,6 +409,18 @@
         return { ok: true, topics, candidate: { id: c.CANDIDATE_ID, nombre: c.NOMBRE, tipo: c.TIPO }, access: { estado: a.ESTADO, forms: a.forms, sim_forms: a.sim_forms, hasta: a.HASTA || null }, env: isProd() ? 'PRODUCCION' : 'DEMO', forms: formInfo };
       },
       dashboard(ctx) { const { c } = requireCandidateAccess(ctx); return { ok: true, report: reportFor(c.CANDIDATE_ID) }; },
+      // Cobertura QA por forma y parte: cada identificador distinto se cuenta una sola vez.
+      publicCoverage(ctx) {
+        const { c } = requireCandidateAccess(ctx);
+        const seen = seenItems(c.CANDIDATE_ID, true), out = [];
+        Object.entries(forms()).forEach(([form, entry]) => {
+          for (let part = 1; part <= 7; part++) {
+            const all = entry.ix.list.filter(i => i.part === part);
+            out.push({ form, part, seen: all.filter(i => seen.has(i.item_id)).length, total: all.length });
+          }
+        });
+        return { ok: true, rows: out, seen_total: out.reduce((s,x) => s+x.seen,0), total: out.reduce((s,x) => s+x.total,0) };
+      },
       start, answer, cursor, startReading, reveal, skip, finish,
       attempt(ctx, p) { return db.lock(() => { const r = ownAttempt(ctx, p.attempt_id); checkTime(r); const rr = attemptRow(p.attempt_id); return rr.ESTADO === 'FINALIZADO' ? Object.assign(resultView(rr), { finished: true }) : viewAttempt(rr); }); },
       result(ctx, p) { return resultView(ownAttempt(ctx, p.attempt_id)); },

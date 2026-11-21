@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102b45"><meta name="robots" content="noindex,nofollow">
+<title>Diagnóstico de inglés · Academia Norteamericana</title>
+<meta name="description" content="Diagnóstico y programa de inglés: 25 preguntas iniciales y las 400 preguntas de Listening y Reading.">
+<link rel="stylesheet" href="../prototipos/exam_prep_lab/epl.css">
+<link rel="stylesheet" href="public.css">
+</head><body>
+<a class="skip" href="#app">Saltar al contenido</a>
+<header class="top"><div class="top-in"><div class="mark" aria-hidden="true">AN</div>
+<div class="brand"><b>ACADEMIA NORTEAMERICANA</b><small>English Diagnostic · Exam Prep Lab</small></div>
+<nav class="tabs" id="epl-tabs" aria-label="Secciones del programa"></nav><div class="who" id="epl-who"></div></div></header>
+<section class="welcome-shell" id="entry" aria-labelledby="entry-title">
+  <div class="welcome-card">
+    <div class="welcome-kicker">Un diagnóstico. Todo un programa para continuar.</div>
+    <h1 id="entry-title">Descubrí qué tanto entendés de inglés.</h1>
+    <p class="welcome-sub">Comenzá con <b>25 preguntas</b> de Listening y Reading. Después seguí, a tu ritmo, con <b>400 preguntas</b>, audios y simulacros. Sin contraseña.</p>
+    <form id="entry-form" autocomplete="off">
+      <label for="guest-name">¿Cómo te llamás?</label>
+      <input id="guest-name" name="guest-name" required minlength="2" maxlength="60" placeholder="Ejemplo: Rebeca" autocomplete="given-name">
+      <button class="btn red large" type="submit">Comenzar mi diagnóstico →</button>
+      <p id="entry-error" class="error-text" role="alert" hidden></p>
+    </form>
+    <div id="saved-profiles" hidden><h2>Continuar desde este navegador</h2><div id="profile-list" class="profile-list"></div><p class="small mute">Si no sos una de estas personas, ingresá tu nombre arriba. Tu avance será independiente.</p></div>
+    <div class="steps"><div><b>1.</b> Diagnóstico de 25</div><div><b>2.</b> Resultado orientativo</div><div><b>3.</b> Las 400 preguntas</div><div><b>4.</b> Reportá errores</div></div>
+    <p class="privacy">Solo pedimos tu nombre para saludarte. Este piloto guarda el avance en este navegador. Si compartís computadora, elegí tu perfil; no ingresés cédulas, correos ni datos sensibles.</p>
+  </div>
+</section>
+<section id="workspace" hidden>
+  <div class="public-controls"><span class="state">● Piloto de revisión · 400 preguntas BORRADOR</span><button type="button" id="change-profile" class="btn ghost">Soy otra persona / Cambiar perfil</button></div>
+  <div id="epl-offline" class="offline" role="status" hidden></div>
+  <main id="app" tabindex="-1"></main><div id="epl-live" class="sr" aria-live="polite"></div>
+</section>
+<div class="modal-cover" id="qa-modal" hidden><section class="qa-dialog" role="dialog" aria-modal="true" aria-labelledby="qa-title"><form id="qa-form">
+  <h2 id="qa-title">Reportar algo que encontraste</h2><p>Gracias por ayudar a mejorar la Academia. Se guardará con la pregunta exacta.</p>
+  <p class="small" id="qa-item-label"></p>
+  <label for="qa-type">¿Qué notaste?</label>
+  <select id="qa-type" required>
+    <option value="">Elegí una opción</option><option value="audio">El audio no funciona o no se entiende</option>
+    <option value="respuesta">La respuesta correcta parece incorrecta</option>
+    <option value="texto">El texto está mal escrito o confuso</option>
+    <option value="imagen">Falta la imagen o está equivocada</option>
+    <option value="traduccion">La traducción o explicación falla</option>
+    <option value="usabilidad">No supe qué botón tocar</option><option value="otro">Otro problema</option>
+  </select>
+  <label for="qa-comment">Contanos qué pasó (opcional)</label>
+  <textarea id="qa-comment" rows="3" maxlength="600" placeholder="Ej.: al escuchar la pregunta se corta el audio..."></textarea>
+  <p id="qa-feedback" role="status" class="small"></p>
+  <div class="row"><button type="button" id="qa-cancel" class="btn ghost">Cancelar</button><button type="submit" class="btn red">Enviar observación</button></div>
+</form></section></div>
+<footer class="legal">
+ <p><b>Piloto académico de revisión.</b> Todo el material sigue BORRADOR. Los resultados no equivalen a certificaciones MCER/CEFR ni a puntajes TOEIC oficiales.</p>
+ <p>TOEIC® es marca registrada de ETS. Academia Norteamericana no está respaldada por ETS. Audios con voces sintéticas. Sin datos de matrícula.</p>
+</footer>
+<script>window.EPL_PUBLIC_MODE = true;</script>
+<script src="../prototipos/exam_prep_lab/audio_manifest.js"></script>
+<script src="../prototipos/exam_prep_lab/epl_engine.js"></script>
+<script src="../prototipos/exam_prep_lab/forms/form_a.js"></script>
+<script src="../prototipos/exam_prep_lab/forms/form_b.js"></script>
+<script>window.EPL.DIAG_PLAN = [[1,'item',2],[2,'item',4],[3,'group',1],[4,'group',1],[5,'item',5],[6,'group',1],[7,'group4',1]];</script>
+<script src="../prototipos/exam_prep_lab/epl_server_core.js"></script>
+<script src="../prototipos/exam_prep_lab/epl_mock_backend.js"></script>
+<script src="../prototipos/exam_prep_lab/epl_app.js"></script>
+<script>window.EPL_PUBLIC_REVIEW_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxZbLBU7ocWPufrwDeskGo5BjFYfOTYqqYuhM0Es3icYH93nvfRKSQ0_6tsNJfkIR7S0A/exec';</script>
+<script src="public.js"></script>
+</body></html>

@@ -316,6 +316,7 @@
     EPL.DIAG_PLAN.forEach(([part, kind, n]) => {
       let pool = units.filter(u => u.part === part && (kind === 'item' ? u.kind === 'item' : u.kind === 'group'));
       if (kind === 'single2') pool = pool.filter(u => u.item_ids.length === 2 && !(ix.groups[u.id].passages));
+      if (kind === 'group4') pool = pool.filter(u => u.kind === 'group' && u.item_ids.length === 4);
       pool.sort((a, b) => Math.abs(avgD(a) - 2) - Math.abs(avgD(b) - 2) || (a.id < b.id ? -1 : 1));
       // reparte temas: no repite el mismo tema dentro de la parte si hay alternativa
       const chosen = [], topics = new Set();
