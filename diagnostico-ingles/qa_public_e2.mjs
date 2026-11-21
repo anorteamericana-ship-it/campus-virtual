@@ -104,6 +104,15 @@ try{
    const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,win:innerWidth}));
    assert.ok(dims.scroll<=dims.win+4,JSON.stringify(dims));
  });
+ page.once('dialog',dialog=>dialog.accept());
+ await page.locator('#change-profile').click();
+ await page.locator('#entry').waitFor({state:'visible'});
+ await page.locator('#guest-name').fill('Sof\u00eda');
+ await page.locator('#entry-form button').click();
+ await pass('13 nombres con tilde y perfiles nuevos',async()=>{
+   await page.getByText('Hola, Sof\u00eda',{exact:true}).waitFor();
+   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('epl_public_people_v1')).length),3);
+ });
  console.log('PASS_TOTAL='+checks+'/'+checks);
  if(errors.length){console.error('PAGE_ERRORS '+JSON.stringify(errors.slice(0,5)));process.exitCode=1;}
 }catch(err){console.log('FAIL '+String(err.stack).slice(0,1600));console.log('PAGE_ERRORS '+JSON.stringify(errors.slice(0,5)));process.exitCode=1;}
