@@ -66,6 +66,12 @@ try{
    await page.locator('#entry').waitFor({state:'visible'});
    assert.equal(await page.locator('#profile-list .profile-card').count(),1);
  });
+ await page.locator('#guest-name').fill('Rebeca');
+ await page.locator('#entry-form button').click();
+ await pass('08b no duplicar silenciosamente un nombre existente',async()=>{
+   assert.match(await page.locator('#entry-error').innerText(),/Ya existe un perfil/);
+   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('epl_public_people_v1')).length),1);
+ });
  await page.locator('#guest-name').fill('Juan');
  await page.locator('#entry-form button').click();
  await pass('09 segundo participante independiente en mismo dispositivo',async()=>{
