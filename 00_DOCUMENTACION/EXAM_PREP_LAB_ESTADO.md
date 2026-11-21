@@ -205,3 +205,22 @@ ETS (muestras oficiales, TOEIC Test App), Sample Test del Centro Cultural y Brit
 
 **LÍMITES IMPORTANTES:** 400/400 ítems continúan DRAFT, 0 aprobados editorialmente; 112 audios sintéticos no revisados humanamente; banco y claves consultables en JS estático público, aceptado solo para QA familiar, jamás examen oficial/proctored ni puntaje TOEIC ni CEFR acreditado. No hay cuentas ni contraseñas; el identificador y el progreso se recuperan únicamente desde el mismo navegador (sin recuperación entre dispositivos). No pedir cédulas ni correos de menores. Cada voluntario debe poder empezar con su primer nombre, completar 25, ver resultado orientativo, continuar a las 400, y reportar problemas en contexto. La publicación está APTA PARA COMPARTIR como piloto interno/familiar, NO como evaluación certificada. No repetir suites cerradas salvo cambios funcionales.
 
+
+
+## 15. Pasada editorial y multimedia previa a revisión familiar — 21-nov-2026
+
+**Estado:** realizada auditoría interna del banco completo antes de compartirlo. **400/400 ítems rastreados a sus formas, textos, diálogos y respuestas indicadas; 612/612 controles automáticos de integridad PASS** con el nuevo test reproducible `prototipos/exam_prep_lab/tools/qa_editorial_400.mjs`. Se revisaron los contextos y las respuestas claves en ambas formas, pero esto **NO acredita revisión independiente por un docente ni validación por hablantes reales**; conservar `review_status:DRAFT` para los 400 y `human_review:PENDIENTE` para los 112 audios.
+
+**Correcciones editoriales localizadas en archivos fuente (FORMA B, compilado regenerado por `tools/build_bank.mjs B`):**
+- `B-P2-18`: explicación de «It was a gift from my brother» corregida: es respuesta indirecta porque no lo compró; no presumir que desconoce la tienda.
+- `B-P5-14`: ejercicio de contables «few seats» casi equivalente al A-P5-17 sustituido por cuantificador **incontable** «a great deal of information»; nuevas opciones, clave y análisis de distractores.
+- `B-P5-15`: primer condicional de envío casi equivalente a A-P5-28 sustituido por ejercicio autónomo de `professional references`, con clave y distractores nuevos.
+- `B-G7-12-Q5`: «regularly» ajustado a «routinely», no necesariamente «frequently»; explicación más precisa.
+
+**Audios:** 112/112 MP3 referenciados e íntegros por SHA-256, duración y guion `text_sha` según `qa_media.mjs` 15/15 PASS; los 112 se decodificaron y analizaron por volumen (≈67 min en conjunto). Un pico aislado en `B-G3-04`: en decodificación a tasa original apareció **1 muestra / 1.452.048** apenas por encima de amplitud 1.0 (máx. 1,0186), sin una sección prolongada de saturación; no se re-encodeó el audio ni se modificó su SHA. **No se hizo escucha perceptiva integral**, por lo que la naturalidad, acentos, inteligibilidad, pronunciación y acople temporal fino siguen pendientes de oyentes reales.
+
+**Imágenes:** 12/12 ilustraciones vectoriales de la Parte 1 inspeccionadas en hoja de contacto, comparadas con la respuesta indicada. Son ilustraciones, **no fotografías realistas**; por lo tanto el material es piloto preparatorio, no una reproducción oficial de TOEIC.
+
+**QA regresión tras las cuatro correcciones:** `qa_editorial_400.mjs` 612/612, `qa_media.mjs` 15/15, `qa_engine.mjs` 28/28, `qa_server.mjs` 26/26, `diagnostico-ingles/qa_400_coverage.mjs` 400/400 cobertura (25 + 375, 14 partes), `diagnostico-ingles/qa_public_e2.mjs` 12/12 perfiles y UX. Son pruebas técnicas, **no 400 aprobaciones académicas**. Las suites heredadas `qa_e1.mjs` y `qa_integration_e1.mjs` fallaron al lanzar el navegador Playwright no instalado en ese entorno; no contarlas como aprobadas ni confundir ese fallo de infraestructura con un defecto del banco. El recorrido Chrome real publicado ya había pasado 25/25 en el corte 14; repetir el punto de regresión B luego del despliegue de esta pasada.
+
+**Pendiente antes de anunciar el curso como examen validado:** escucha humana de 112 clips, revisión docente independiente de las 400 preguntas y distractores, evaluación de calidad de ilustraciones vs fotografías. La evaluación de la familia debe registrar esas observaciones **sin modificar las calificaciones de estudiantes reales**. No elevar automáticamente los 400 a `APPROVED`; los cambios de esta pasada se limitan a contenido, QA y documentación. Mantener el enlace WordPress público como **piloto interno de control de calidad**, no compartirlo aún con los familiares hasta terminar publicación y QA en URL real de las modificaciones.
