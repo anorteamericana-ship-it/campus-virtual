@@ -9,7 +9,7 @@
   const put = (k,v) => {try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}};
   const allPeople = () => getJSON(KEY, []).filter(x => x && /^[a-f0-9-]{32,36}$/.test(x.id) && typeof x.name === 'string').slice(-40);
   const id = () => crypto.randomUUID ? crypto.randomUUID() : [...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
-  let person = null, token = null, app = null, reportCtx = null, busy = false, sendingReport = false, reportReturnFocus = null;
+  let person = null, token = null, app = null, reportCtx = null, busy = false, sendingReport = false, reportSubmitted = false, reportReturnFocus = null;
 
   function showEntry() {
     person = null; token = null; app = null;
@@ -85,6 +85,8 @@
   function openReport(ctx) {
     if (!person) return;
     reportCtx = ctx;
+    reportSubmitted = false;
+    $('#qa-form button[type=submit]').disabled = false;
     reportReturnFocus = document.activeElement;
     $('#qa-item-label').textContent = 'Pregunta: ' + ctx.item_id + ' · Parte ' + ctx.part;
     $('#qa-feedback').textContent = '';
@@ -97,7 +99,7 @@
   document.addEventListener('keydown',ev=>{if(ev.key==='Escape' && !$('#qa-modal').hidden)closeReport()});
   $('#qa-form').addEventListener('submit',async ev=>{
     ev.preventDefault();
-    if(sendingReport||!reportCtx||!person)return;
+    if(sendingReport||reportSubmitted||!reportCtx||!person)return;
     const category=$('#qa-type').value;
     if(!['audio','respuesta','texto','imagen','traduccion','usabilidad','otro'].includes(category))return;
     const msg=$('#qa-comment').value.trim().slice(0,600);
@@ -111,10 +113,11 @@
     try {
       const list=allReports();
       if(!put(REVIEWS,[...list,report])){$('#qa-feedback').textContent='No se pudo guardar esta observación.';return}
+      reportSubmitted=true; // ya quedó guardado: nunca crear un segundo ID por doble toque.
       const sent=await syncOne(report);
       $('#qa-feedback').textContent=sent?'Observación enviada. ¡Gracias!':'Observación guardada en este navegador; se enviará cuando vuelva la conexión.';
       setTimeout(closeReport,1200);
-    } finally {sendingReport=false;submit.disabled=false;}
+    } finally {sendingReport=false;submit.disabled=reportSubmitted;}
   });
   async function syncOne(data) {
     const url = typeof window.EPL_PUBLIC_REVIEW_ENDPOINT === 'string' ? window.EPL_PUBLIC_REVIEW_ENDPOINT : '';
