@@ -38,6 +38,9 @@ for (const [form,bank] of Object.entries(banks)) {
     if(!opts.some(o=>o.id===item.correct))fail(id,'CORRECT_NOT_FOUND');
     if(new Set(opts.map(o=>norm(o.text))).size!==opts.length||opts.some(o=>!o.text?.trim()))fail(id,'DUPLICATE_OR_EMPTY_OPTIONS');
     if(!item.explanation?.trim())fail(id,'NO_EXPLANATION');
+    // Antes sólo comprobábamos que existiera una explicación, no si su UTF-8 estaba dañado.
+    const visibleText=[item.stem,item.explanation,...opts.map(o=>o.text)].filter(Boolean);
+    if(visibleText.some(s=>/[\p{L}]\?[\p{L}]|^\?[\p{L}]/u.test(s)))fail(id,'BROKEN_TEXT_ENCODING');
     if(Object.keys(item.distractors||{}).length!==opts.length-1)fail(id,'DISTRACTOR_COUNT');
     for(const o of opts.filter(x=>x.id!==item.correct))if(!item.distractors?.[o.id]?.why||!item.distractors?.[o.id]?.cat)fail(id,'DISTRACTOR_MISSING_'+o.id);
     if(item.part<=2){
@@ -82,10 +85,12 @@ for (const [form,bank] of Object.entries(banks)) {
       }
     }
   }
-  const b14=ids.get('B-P5-14'),b15=ids.get('B-P5-15'),b218=ids.get('B-P2-18'),b712=ids.get('B-G7-12-Q5');
+  const b14=ids.get('B-P5-14'),b15=ids.get('B-P5-15'),b218=ids.get('B-P2-18'),b712=ids.get('B-G7-12-Q5'),b29=ids.get('B-P5-29');
   if(form==='B'){
     if(b14.correct!=='a'||!b14.stem.includes('information about'))fail('B-P5-14','REGRESSION');
-    if(b15.correct!=='a'||!b15.stem.includes('two professional'))fail('B-P5-15','REGRESSION');
+    if(b15.correct!=='a'||!b15.stem.includes('two professional')||!b15.stem.includes('résumé')||!b15.explanation.includes('después'))fail('B-P5-15','REGRESSION');
+    if(b14.explanation.includes('?')||b14.topic.includes('?'))fail('B-P5-14','BROKEN_COPY_REGRESSION');
+    if(b29.correct!=='a'||!b29.stem.includes('expected to begin in March'))fail('B-P5-29','SEMANTIC_CONSTRUCTION_REGRESSION');
     if(!b218.explanation.includes('se lo regaló'))fail('B-P2-18','EXPLANATION_REGRESSION');
     if(b712.correct!=='b'||b712.options[1].text!=='routinely')fail('B-G7-12-Q5','VOCABULARY_REGRESSION');
   }
