@@ -64,6 +64,7 @@ try{
  await page.locator('#change-profile').click();
  await pass('08 cambio de participante sin borrar el avance anterior',async()=>{
    await page.locator('#entry').waitFor({state:'visible'});
+   await page.locator('#profile-list .profile-card').first().waitFor({state:'visible',timeout:15000});
    assert.equal(await page.locator('#profile-list .profile-card').count(),1);
  });
  await page.locator('#guest-name').fill('Rebeca');
