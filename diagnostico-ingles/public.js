@@ -67,6 +67,9 @@
     if (busy) return;
     const name = $('#guest-name').value.normalize('NFC').trim().replace(/\s+/g,' ');
     if (name.length < 2 || name.length > 60 || !/^[\p{L}][\p{L}\p{M}\s.'-]*$/u.test(name)) return entryError('Escribí solo tu nombre, entre 2 y 60 caracteres.');
+    // Si regresó alguien con el mismo nombre, no crearle otro expediente en silencio.
+    const existing=allPeople().find(x=>x.name.toLocaleLowerCase('es-CR')===name.toLocaleLowerCase('es-CR'));
+    if(existing) return entryError('Ya existe un perfil con ese nombre. Para conservar el avance, tocá su tarjeta en «Continuar desde este navegador». Si sos otra persona con el mismo nombre, agregá un apodo para distinguirte.');
     const p = {id:id(),name,created:Date.now(),lastSeen:Date.now()};
     const list=allPeople();
     if (!put(KEY,[...list,p])) return entryError('Este navegador no permite guardar tu avance. Activá el almacenamiento del navegador para continuar.');
