@@ -9,7 +9,7 @@
   const put = (k,v) => {try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}};
   const allPeople = () => getJSON(KEY, []).filter(x => x && /^[a-f0-9-]{32,36}$/.test(x.id) && typeof x.name === 'string').slice(-40);
   const id = () => crypto.randomUUID ? crypto.randomUUID() : [...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join('');
-  let person = null, token = null, app = null, reportCtx = null, busy = false;
+  let person = null, token = null, app = null, reportCtx = null, busy = false, sendingReport = false, reportSubmitted = false, reportReturnFocus = null;
 
   function showEntry() {
     person = null; token = null; app = null;
@@ -55,6 +55,8 @@
         onProgress: reportProgress,
       });
       app.route();
+      // Reenviar informes guardados sin conexión incluso tras cerrar y volver a abrir la página.
+      syncPending();
       // El perfil es único por ID, no por nombre. El usuario puede cambiar sin mezclar resultados.
       syncOne({event:'profile',name:person.name,participant_id:person.id});
     } catch (err) {entryError(err.message);$('#entry').hidden=false;$('#workspace').hidden=true;}
@@ -65,6 +67,9 @@
     if (busy) return;
     const name = $('#guest-name').value.normalize('NFC').trim().replace(/\s+/g,' ');
     if (name.length < 2 || name.length > 60 || !/^[\p{L}][\p{L}\p{M}\s.'-]*$/u.test(name)) return entryError('Escribí solo tu nombre, entre 2 y 60 caracteres.');
+    // Si regresó alguien con el mismo nombre, no crearle otro expediente en silencio.
+    const existing=allPeople().find(x=>x.name.toLocaleLowerCase('es-CR')===name.toLocaleLowerCase('es-CR'));
+    if(existing) return entryError('Ya existe un perfil con ese nombre. Para conservar el avance, tocá su tarjeta en «Continuar desde este navegador». Si sos otra persona con el mismo nombre, agregá un apodo para distinguirte.');
     const p = {id:id(),name,created:Date.now(),lastSeen:Date.now()};
     const list=allPeople();
     if (!put(KEY,[...list,p])) return entryError('Este navegador no permite guardar tu avance. Activá el almacenamiento del navegador para continuar.');
@@ -83,18 +88,21 @@
   function openReport(ctx) {
     if (!person) return;
     reportCtx = ctx;
+    reportSubmitted = false;
+    $('#qa-form button[type=submit]').disabled = false;
+    reportReturnFocus = document.activeElement;
     $('#qa-item-label').textContent = 'Pregunta: ' + ctx.item_id + ' · Parte ' + ctx.part;
     $('#qa-feedback').textContent = '';
     $('#qa-type').value = '';$('#qa-comment').value = '';
     $('#qa-modal').hidden = false;$('#qa-type').focus();
   }
-  function closeReport(){ $('#qa-modal').hidden=true; reportCtx=null; }
+  function closeReport(){ $('#qa-modal').hidden=true; reportCtx=null; if (reportReturnFocus?.isConnected) reportReturnFocus.focus(); reportReturnFocus=null; }
   $('#qa-cancel').addEventListener('click',closeReport);
   $('#qa-modal').addEventListener('click',ev=>{if(ev.target===$('#qa-modal'))closeReport()});
   document.addEventListener('keydown',ev=>{if(ev.key==='Escape' && !$('#qa-modal').hidden)closeReport()});
   $('#qa-form').addEventListener('submit',async ev=>{
     ev.preventDefault();
-    if(!reportCtx||!person)return;
+    if(sendingReport||reportSubmitted||!reportCtx||!person)return;
     const category=$('#qa-type').value;
     if(!['audio','respuesta','texto','imagen','traduccion','usabilidad','otro'].includes(category))return;
     const msg=$('#qa-comment').value.trim().slice(0,600);
@@ -102,11 +110,17 @@
     const report={event:'issue',event_id:id(),participant_id:person.id,name:person.name,
       item_id:reportCtx.item_id,part:reportCtx.part,form:reportCtx.form,
       attempt_id:reportCtx.attempt_id,category,comment:msg,at:new Date().toISOString(),synced:false};
-    const list=allReports();
-    if(!put(REVIEWS,[...list,report])){$('#qa-feedback').textContent='No se pudo guardar esta observación.';return}
-    const sent=await syncOne(report);
-    $('#qa-feedback').textContent=sent?'Observación enviada. ¡Gracias!':'Observación guardada en este navegador; se enviará cuando vuelva la conexión.';
-    setTimeout(closeReport,1200);
+    // Evitar dos reportes distintos al tocar dos veces «Enviar» en conexiones lentas.
+    sendingReport=true;
+    const submit=$('#qa-form button[type=submit]'); submit.disabled=true;
+    try {
+      const list=allReports();
+      if(!put(REVIEWS,[...list,report])){$('#qa-feedback').textContent='No se pudo guardar esta observación.';return}
+      reportSubmitted=true; // ya quedó guardado: nunca crear un segundo ID por doble toque.
+      const sent=await syncOne(report);
+      $('#qa-feedback').textContent=sent?'Observación enviada. ¡Gracias!':'Observación guardada en este navegador; se enviará cuando vuelva la conexión.';
+      setTimeout(closeReport,1200);
+    } finally {sendingReport=false;submit.disabled=reportSubmitted;}
   });
   async function syncOne(data) {
     const url = typeof window.EPL_PUBLIC_REVIEW_ENDPOINT === 'string' ? window.EPL_PUBLIC_REVIEW_ENDPOINT : '';
