@@ -33,6 +33,8 @@
     const asset = u => (!u || /^(?:[a-z]+:|\/)/i.test(String(u))) ? u : (opts.assetBase || '') + u;
     const A = { el, api: opts.api, user: opts.user || null, embedded: !!opts.embedded, view: '', arg: '', me: null, audio: null, timers: [], att: null, live: {}, flags: {} };
     const publicQA = opts.publicQA === true;
+    // Serializar respuestas del piloto público antes de revelar la corrección.
+    let publicAnswerWrites = Promise.resolve();
     const $ = (s, x) => (x || el).querySelector(s);
     const live = msg => { const r = document.getElementById('epl-live'); if (r) { r.textContent = ''; setTimeout(() => { r.textContent = msg; }, 30); } };
     const role = () => (A.user && A.user.rol) || '';
@@ -545,11 +547,43 @@
         const pb = el.querySelector(`.palette [data-item="${iid}"]`); if (pb) pb.classList.add('done');
         const c0 = $('[data-act=check]'); if (c0) { const u = at.units.find(x => x.unit_id === c0.dataset.unit); c0.disabled = !u.items.every(i => at.answers[i.item_id]); }
         const cnt = $('#ans-count'); if (cnt) { const RU = at.units.filter(u => u.part >= 5); cnt.textContent = `${RU.flatMap(x => x.items).filter(it => at.answers[it.item_id]).length} de ${RU.reduce((s, x) => s + x.items.length, 0)} respondidas`; }
-        const r = await call('answer', { attempt_id: at.attempt_id, item_id: iid, option: t.dataset.opt });
+        const saveAnswer = () => call('answer', { attempt_id: at.attempt_id, item_id: iid, option: t.dataset.opt });
+        const r = await (publicQA ? (publicAnswerWrites = publicAnswerWrites.then(saveAnswer, saveAnswer)) : saveAnswer());
         if (!r.ok) { if (prev) at.answers[iid] = { opt: prev }; else delete at.answers[iid]; t.setAttribute('aria-pressed', 'false'); live(r.mensaje || r.error); const box = $('#msg'); if (box) box.innerHTML = notice(r); if (r.error === 'tiempo_agotado' || r.error === 'intento_cerrado') { A.att = null; setTimeout(() => go('resultado', at.attempt_id), 1200); } }
         return;
       }
-      if (act === 'check') { const r = await call('reveal', { attempt_id: A.att.attempt_id, unit_id: t.dataset.unit }); if (!r.ok) { const box = $('#msg'); if (box) box.innerHTML = notice(r); return live(r.mensaje); } A.att.feedback = (A.att.feedback || []).concat([r.feedback]); A.showFeedback = t.dataset.unit; await viewSession(A.att.attempt_id); const ok = r.feedback.items.filter(i => i.ok).length; return live(`${ok} de ${r.feedback.items.length} correctas. Las explicaciones están debajo de cada pregunta.`); }
+      if (act === 'check') {
+        const originalLabel = t.textContent;
+        const choiceButtons = publicQA ? [...el.querySelectorAll('.q .opt')] : [];
+        if (publicQA) {
+          t.disabled = true;
+          t.textContent = 'Guardando respuestas…';
+          choiceButtons.forEach(button => { button.disabled = true; });
+          await publicAnswerWrites;
+          await flushQueue();
+          if (readQ().some(item => item.attempt_id === A.att.attempt_id)) {
+            t.disabled = false;
+            t.textContent = originalLabel;
+            choiceButtons.forEach(button => { button.disabled = false; });
+            return live('Hay respuestas pendientes de guardar. Revisá la conexión e intentá otra vez.');
+          }
+          t.textContent = originalLabel;
+        }
+        const r = await call('reveal', { attempt_id: A.att.attempt_id, unit_id: t.dataset.unit });
+        if (!r.ok) {
+          if (publicQA) {
+            t.disabled = false;
+            choiceButtons.forEach(button => { button.disabled = false; });
+          }
+          const box = $('#msg'); if (box) box.innerHTML = notice(r);
+          return live(r.mensaje);
+        }
+        A.att.feedback = (A.att.feedback || []).concat([r.feedback]);
+        A.showFeedback = t.dataset.unit;
+        await viewSession(A.att.attempt_id);
+        const ok = r.feedback.items.filter(i => i.ok).length;
+        return live(`${ok} de ${r.feedback.items.length} correctas. Las explicaciones están debajo de cada pregunta.`);
+      }
       if (act === 'next') { A.showFeedback = null; return viewSession(A.att.attempt_id); }
       if (act === 'skip-unit') { const r = await call('skip', { attempt_id: A.att.attempt_id, unit_id: t.dataset.unit, motivo: 'audio_no_carga' }); if (r.ok) A.att = r.attempt; return viewSession(A.att.attempt_id); }
       if (act === 'play') return play();
