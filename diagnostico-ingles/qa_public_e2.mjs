@@ -5,6 +5,9 @@ const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chr
 const page=await browser.newPage();
 const errors=[];page.on('pageerror',err=>errors.push(String(err.message)));
 let checks=0;
+let inboundOnline=false;
+// Interceptamos el receptor real: QA offline/online sin escribir nombres ficticios en producción.
+await page.route('https://script.google.com/macros/s/**', route => inboundOnline ? route.fulfill({status:200,headers:{'content-type':'application/json','access-control-allow-origin':'*'},body:JSON.stringify({ok:true,received:'issue'})}) : route.abort());
 async function pass(label,run){await run();checks++;console.log('PASS '+label)}
 try{
  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:25000});
@@ -31,6 +34,12 @@ try{
    const total=await page.locator('.qhead').innerText();
    assert.match(total,/de 25\b/);
  });
+ await pass('04b diagnóstico reparte las 25 preguntas en siete partes',async()=>{
+   const plan=await page.evaluate(()=>EPL.DIAG_PLAN);
+   const parts=plan.map(([part,kind,n])=>n*(kind==='item'?1:part===6?4:kind==='group4'?4:3));
+   assert.deepEqual(parts,[1,3,6,3,4,4,4]);
+   assert.equal(parts.reduce((s,n)=>s+n,0),25);
+ });
  await pass('05 reporte por pregunta se abre con contexto',async()=>{
    await page.locator('.q .qa-report').first().click();
    await page.locator('#qa-modal').waitFor({state:'visible'});
@@ -43,6 +52,10 @@ try{
    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('epl_public_issues_v1')||'[]').length===1);
    const r=await page.evaluate(()=>JSON.parse(localStorage.getItem('epl_public_issues_v1'))[0]);
    assert.equal(r.category,'audio');assert.equal(r.synced,false);
+ });
+ await page.locator('#qa-form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ await pass('06b doble envío no crea otro evento',async()=>{
+   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('epl_public_issues_v1')).length),1);
  });
  await pass('07 perfil único persistente',async()=>{
    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('epl_public_people_v1')).length),1);
@@ -60,10 +73,14 @@ try{
    const people=await page.evaluate(()=>JSON.parse(localStorage.getItem('epl_public_people_v1')));
    assert.equal(people.length,2);assert.notEqual(people[0].id,people[1].id);
  });
+ inboundOnline=true;
  await page.reload();
  await pass('10 recordar a Juan tras recargar sin pedir su nombre',async()=>{
    await page.getByText('Hola, Juan',{exact:true}).waitFor({timeout:15000});
    assert.equal(await page.locator('#entry').isVisible(),false);
+ });
+ await pass('10b reenviar tras reconexión y recarga',async()=>{
+   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('epl_public_issues_v1')||'[]')[0]?.synced===true,{timeout:12000});
  });
  page.once('dialog',dialog=>dialog.accept());
  await page.locator('#change-profile').click();
