@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulacro TOEIC 4-Skills · Academia Norteamericana</title><meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#092944"><link rel="stylesheet" href="style.css"></head>
+<body><header><div class="head"><span class="logo" aria-hidden="true">AN</span><div><b>ACADEMIA NORTEAMERICANA</b><small>Exam Prep Lab · Simulacro integrado 4-Skills</small></div><a href="../diagnostico-ingles/">Mis 400 ejercicios</a></div></header>
+<main id="main"><section class="welcome" id="welcome"><p class="eyebrow">LISTENING · READING · SPEAKING · WRITING</p>
+<h1>Simulacro integrado de cuatro habilidades</h1>
+<p>109 preguntas/tareas originales en ~2 h 22 min: Listening 45, Reading 45, Speaking 11 y Writing 8. Las dos primeras habilidades usan dos etapas con una ruta pedagógica basada en aciertos, <b>no la calibración adaptativa ni los puntajes de ETS</b>.</p>
+<div class="stats"><div><b>45</b>Listening · 25 min</div><div><b>45</b>Reading · 37 min</div><div><b>11</b>Speaking · 20 min</div><div><b>8</b>Writing · 60 min</div></div>
+<div class="notice">Este piloto conserva respuestas escritas y progreso solo en este navegador. Los audios orales permanecen en memoria y debés descargarlos antes de recargar. <b>Nadie recibe tus grabaciones o escritos automáticamente.</b> No es una evaluación oficial, y el banco académico todavía requiere revisión docente independiente. Si sos menor, pedí autorización antes de activar el micrófono.</div>
+<div class="buttons"><button id="begin" class="primary" type="button">Comenzar simulacro</button><button id="resume" type="button" hidden>Continuar intento guardado</button><button id="reset" type="button" hidden>Empezar de cero</button></div>
+<p class="small">Usá Chrome o Safari actualizado, HTTPS, auriculares y micrófono si querés grabar. Este simulacro usa audios sintéticos y contenido original, no preguntas oficiales.</p></section>
+<section id="exam" hidden><div class="bar"><span id="phase-label">Listening</span><span id="timer" role="timer" aria-live="off">--:--</span></div>
+<div class="progress"><span id="question-index"></span><div class="meter"><div id="meter-fill"></div></div></div>
+<h1 id="question-title"></h1><div id="question-context"></div><div id="question-body"></div>
+<div id="response-area"></div><p id="status" role="status" aria-live="polite"></p>
+<div class="buttons"><button id="prev" type="button">Anterior</button><button id="next" class="primary" type="button">Siguiente</button><button id="finish-stage" type="button">Terminar unidad</button></div></section>
+<section id="done" hidden><p class="eyebrow">RESULTADO FORMATIVO</p><h1>Simulacro terminado</h1><div id="results"></div><div class="buttons"><button id="export" class="primary" type="button">Exportar resumen y Writing (.txt)</button><button id="reset-done" type="button">Nuevo intento</button></div><p>Las grabaciones son archivos separados que debiste descargar durante Speaking. No existe todavía una entrega automática a docentes.</p></section>
+</main><footer>Material original de práctica · TOEIC® es marca de ETS. Esta herramienta no está aprobada, respaldada ni calificada por ETS.</footer>
+<script src="../prototipos/exam_prep_lab/forms/form_a.js"></script>
+<script src="../prototipos/exam_prep_lab/forms/form_b.js"></script>
+<script src="../toeic-4-skills/tasks.js"></script>
+<script src="core.js"></script><script src="app.js"></script>
+</body></html>
