@@ -28,15 +28,15 @@ Speaking: 2 lectura, 2 descripción, 3 preguntas, 3 información, 1 opinión. Wr
 | G1 | Conservar e inventariar A/B 200+200, 112 audios y 11/8 tareas originales | PASS, documentación y fuente |
 | G2 | Construir motor L&R integrado, 45/45, 25+20, cuotas por parte, rutas diferenciadas, grupos íntegros y sin repetición | PASS 9/9 QA local |
 | G3 | Construir navegación única S/W, grabación real MediaRecorder, textos, temporizadores, retomar intento local, exportación TXT, móvil | PASS 10/10 QA Chrome emulado |
-| G4 | Publicar ruta HTTPS estática y probar en dominio final; revisar regresiones L&R y S/W ya publicadas | PENDIENTE; no afirmar URL nueva publicada |
+| G4 | Publicar ruta HTTPS estática y probar en dominio final; revisar regresiones L&R y S/W ya publicadas | PASS · PR #812, main b08f04a, HTTPS 200, E2E en dominio real 10/10, regresión editorial 612/612 y cobertura 400/400 |
 | G5 | Validar material original: 400 L&R + 19 S/W con docente independiente, escucha de 112 audios e inspección de imágenes | PENDIENTE; 0 aprobaciones humanas acreditadas |
 | G6 | Backend separado, seguro, con cuentas o acceso individual, carga cifrada de audios/textos, consentimiento/retención/borrado, datos personales mínimos, rúbrica docente y tablero; E2E con estudiantes ficticios | PENDIENTE (requiere proyecto de release controlado, no escribir en producción F111) |
 | G7 | QA real multi-dispositivo (Windows Chrome, Android, iOS/Safari), micrófono, red caída, recuperación y privacidad; aprobación académica y administrativa, distribución enlace definitivo | PENDIENTE |
 
-Indicador estrictamente técnico de la **versión formativa local**: G1–G3 3/3 cerrados = 100 % de esa etapa, 3/7 gates de la entrega institucional = 42.9 %. NO extrapolar a "43% del código" ni confundir pilotos publicados anteriores con certificado. QA es con Chrome móvil emulado y micrófono falso, NO prueba humana de grabación en iPhone. E2E institucional = NO.
+Indicador **gates de la entrega institucional**: G1–G4 4/7 cerrados = 57.1 % de las puertas (NO 57.1 % del código). G5–G7 pendientes: revisión humana, backend privado y QA multidispositivo. NO confundir piloto publicado con certificado ni con flujo docente completo. QA es con Chrome móvil emulado y micrófono falso, NO prueba humana de grabación en iPhone. E2E institucional = NO.
 
 ## Entregable temporal
-La ruta canónica propuesta es /campus-virtual/toeic-integrado/. Existe únicamente al publicarse en GitHub Pages y verificarse HTTP200 en https://anorteamerican.com/campus-virtual/toeic-integrado/. No enviar enlace a estudiantes mientras G4–G7 sigan pendientes; compartir solo a revisores para QA formativa con todos los avisos.
+La ruta canónica verificada de **piloto formativo** es https://anorteamerican.com/campus-virtual/toeic-integrado/ (HTTP 200 en dominio principal y GitHub Pages, E2E Chromium 390px 10/10, 0 errores JS, 0 POST de contenido). No distribuir como evaluación institucional a estudiantes mientras G5–G7 sigan pendientes. Se puede compartir con revisores/familias QA explicando que audios y textos NO llegan al docente.
 
 ## Pasos siguientes sin duplicar trabajo
 1. Ejecutar regresión de código fuente, Playwright local y contraste contra distribución oficial. No rehacer los 400 ejercicios.
@@ -49,3 +49,12 @@ La ruta canónica propuesta es /campus-virtual/toeic-integrado/. Existe únicame
 Git remote origin/main 32a568c5f487f72ed6b970cb2077fc6e75619405; nueva rama feat/toeic-integrated-4-skills-20261122 creada desde ese HEAD; no cambios en backend/Apollo/F111.
 QA local node toeic-integrado/qa_integrado.cjs: 9/9 PASS, selección upper/foundation, sin duplicados y grupos íntegros.
 QA local node toeic-integrado/qa_browser.cjs: 10/10 PASS (end-to-end 90 L/R, 11 S, 8 W, MediaRecorder falso, texto persistente, TXT, móvil 390px, 0 POST, 0 excepciones JS). No interpretar micrófono falso como grabación real del estudiante.
+
+## Cierre G4 en el dominio real — 22-nov-2026
+PR #812 fusionado: https://github.com/anorteamericana-ship-it/campus-virtual/pull/812 , main `b08f04abd26c736b6c23cd3291b9ae95783b746d`. Esta versión añadió archivos independientes únicamente, sin reemplazar preguntas ni introducir endpoints, credenciales o escritura de estudiantes.
+
+Se comprobó HTTPS 200 con 3571 bytes del HTML en la ruta principal, index.html, y origen GitHub Pages. `toeic-integrado/qa_live.cjs` recorrió por el dominio público las 90 respuestas L/R y rutas, 11 tareas S, 8 W, audio MP3 de producción decodificado, MediaRecorder con micrófono simulado, persistencia de textos tras reload, exportación TXT, viewport 390px sin overflow, cero errores JS, cero errores 4xx de recursos y cero POST de contenido; total 10/10 PASS. POST /cdn-cgi/rum de Cloudflare es telemetría de infraestructura y se excluyó explícitamente del control de envíos del contenido.
+
+Regresión independiente de banco previo: `tools/qa_editorial_400.mjs` 612 verificaciones estructurales, 400/400 ítems y 112/112 MP3 referenciados sin problemas técnicos; `diagnostico-ingles/qa_400_coverage.mjs` 400/400 PASS con 25 iniciales + 375 restantes. `humanReviewed:0` en reporte: esta verificación NO es revisión docente ni audición perceptiva. La liberación fue un piloto formativo, no examen oficial.
+
+El indicador actualizado de gates se mantiene 4/7 PASS. Las pendientes G5 (editorial), G6 (entrega privada y corrección docente), G7 (QA físico y aprobación de distribución) siguen bloqueando una campaña estudiantil institucional.
