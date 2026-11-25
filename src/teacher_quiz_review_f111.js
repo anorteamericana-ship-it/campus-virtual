@@ -1078,7 +1078,7 @@ function buildTeacherWrittenApplicationPanel(){
   convocatoria_escrita_incompatible:'Hay una convocatoria previa que Administración debe revisar.'
  };
  const explain=(error,fallback)=>commonErrors[String(error?.message||'')]||fallback;
- let request=0, current=null, busy=false;
+ let request=0, current=null, busy=false, requested=null;
 
  function target(){
   const course=courses.get(group.value), entry=entries[Number(assessment.value)];
@@ -1131,6 +1131,33 @@ function buildTeacherWrittenApplicationPanel(){
  });
  group.addEventListener('change',()=>void refresh());
  assessment.addEventListener('change',()=>void refresh());
+ function selectRequested(){
+  if(!requested)return false;
+  const {key,lesson}=requested;
+  requested=null;
+  const index=entries.findIndex(entry=>entry[0]===lesson);
+  if(index<0||!courses.has(key)){
+   current=null;action.disabled=true;
+   status.textContent='El servidor no confirmó este grupo y nivel para aplicar el escrito.';
+   return true;
+  }
+  group.value=key;
+  assessment.value=String(index);
+  assessment.focus();
+  void refresh();
+  return true;
+ }
+ section.focusExam=context=>{
+  const code=String(context?.grupo||context?.cod_grupo||'').trim().toUpperCase();
+  const level=String(context?.nivel||'').trim().toUpperCase();
+  const lesson=Number(context?.leccion);
+  if(!code||!level||!entries.some(entry=>entry[0]===lesson))return false;
+  requested={key:code+'|'+level,lesson};
+  section.scrollIntoView({behavior:'smooth',block:'center'});
+  if(courses.size)selectRequested();
+  else status.textContent='Verificando tu grupo antes de preparar el escrito…';
+  return true;
+ };
  postQuiz('getDocenteGruposActuales',{}).then(data=>{
   if(!section.isConnected)return;
   const rows=Array.isArray(data.grupos)?data.grupos:[];
@@ -1145,7 +1172,8 @@ function buildTeacherWrittenApplicationPanel(){
    option.value=key;group.append(option);
   }
   if(!courses.size){status.textContent='No hay grupos en curso asignados a tu cuenta.';return;}
-  group.disabled=false;assessment.disabled=false;void refresh();
+  group.disabled=false;assessment.disabled=false;
+  if(!selectRequested())void refresh();
  }).catch(()=>{status.textContent='No se pudieron verificar tus grupos.';});
  return section;
 }
@@ -1165,6 +1193,11 @@ function attach(){
  if(!details.dataset.f111QuizAttach){details.dataset.f111QuizAttach='true';details.addEventListener('toggle',mount);}
  mount();
 }
+window.F111_QZ_focusWrittenApplication=context=>{
+ attach();
+ const panel=document.querySelector('section[data-screen-label="Docente · Exámenes"] [data-f111-teacher-application]');
+ return !!(panel&&typeof panel.focusExam==='function'&&panel.focusExam(context));
+};
 function installStyle(){
  if(document.getElementById(STYLE))return;
  const s=make('style');s.id=STYLE;
