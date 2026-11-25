@@ -1050,141 +1050,54 @@ function buildTeacherExamsF111(){
  return section;
 }
 
-function buildTeacherWrittenApplicationPanel(){
- const section=make('section',null,'f111-teacher-exam-card');
- section.dataset.f111TeacherApplication='true';
- section.append(make('h3','Aplicar examen escrito'));
- const controls=make('div',null,'f111-teacher-exam-controls');
- const group=make('select'), assessment=make('select'), action=make('button','Abrir','f111-tqr-activate');
- group.setAttribute('aria-label','Grupo y nivel en curso');
- assessment.setAttribute('aria-label','Evaluación');
- group.disabled=true; assessment.disabled=true; action.disabled=true; action.type='button';
- controls.append(group,assessment,action);
- const status=make('p','Consultando tus grupos en curso…','f111-tqr-feedback');
- status.setAttribute('role','status');
- section.append(controls,status);
- const entries=[[18,'Escrito 1 · Modelo A'],[32,'Escrito 2 · Modelo A']];
- entries.forEach(([lesson,label],i)=>{
-  const option=make('option',label); option.value=String(i); assessment.append(option);
- });
- const courses=new Map();
- const commonErrors={
-  endpoint_no_declarado:'La apertura de esta evaluación aún no está disponible en la versión publicada.',
-  grupo_nivel_no_autorizado_o_no_en_curso:'El servidor no confirmó tu asignación al nivel en curso.',
-  no_autorizado_grupo_nivel:'El servidor no confirmó tu asignación al grupo y nivel.',
-  requiere_clase_activa:'Aplicá este examen desde la clase activa.',
-  grupo_no_habilitado_manual:'La apertura manual no est\u00e1 habilitada para este grupo.',
-  test2_antes_leccion_25:'El Escrito 2 se habilita despu\u00e9s de cerrar la lecci\u00f3n 25.',
-  ordinario_ya_aplicado:'El escrito ordinario ya se aplicó. Quien no participó debe reponer con B.',
-  otro_escrito_abierto:'Cerrá el otro escrito del grupo antes de abrir este.',
-  convocatoria_escrita_incompatible:'Hay una convocatoria previa que Administración debe revisar.'
- };
- const explain=(error,fallback)=>commonErrors[String(error?.message||'')]||fallback;
- let request=0, current=null, busy=false, requested=null;
-
- function target(){
-  const course=courses.get(group.value), entry=entries[Number(assessment.value)];
-  if(!course||!entry)return null;
-  const [leccion,label]=entry;
-  return {label,context:{cod_grupo:course.group,nivel:course.level,leccion}};
- }
-
+// Card-local written controls; the server remains the source of authorization.
+function buildTeacherWrittenCardAction(slot){
+ const context={cod_grupo:String(slot.dataset.group||'').trim().toUpperCase(),
+  nivel:String(slot.dataset.level||'').trim().toUpperCase(),leccion:Number(slot.dataset.lesson)};
+ const en=slot.dataset.lang==='en',tr=(es,english)=>en?english:es;
+ const root=make('span',null,'f111-written-card-action');root.dataset.f111WrittenCardAction='true';
+ root.style.cssText='display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px;max-width:100%';
+ const action=make('button',tr('Abrir para estudiantes','Open for students'),'f111-tqr-activate');action.type='button';action.disabled=true;
+ const status=make('small',tr('Verificando disponibilidad.','Checking availability.'),'f111-tqr-feedback');status.setAttribute('role','status');
+ root.append(action,status);
+ const errors={grupo_no_habilitado_manual:tr('Apertura manual no habilitada para este grupo.','Manual opening is not enabled for this group.'),
+  grupo_nivel_no_autorizado_o_no_en_curso:tr('Grupo o nivel no autorizado.','Group or level not authorized.'),
+  test2_antes_leccion_25:tr('Disponible al cerrar la lecci\u00f3n 25.','Available after lesson 25 is closed.'),
+  ordinario_ya_aplicado:tr('Ordinario aplicado.','Regular exam already used.'),
+  otro_escrito_abierto:tr('Cerr\u00e1 el otro escrito primero.','Close the other written exam first.')};
+ let current=null, busy=false, seq=0;
  async function refresh(message=''){
-  const id=++request, selected=target();
-  current=null;action.disabled=true;
-  if(!selected)return;
-  const {context}=selected;
-  status.textContent='Consultando disponibilidad…';
+  const id=++seq;current=null;action.disabled=true;
   try{
-   const response=await postQuiz('examTeacherWrittenActivationF111',{...context,accion:'estado'});
-   if(id!==request)return;
-   if(!['OPEN','CLOSED','DRAFT'].includes(response.estado)||response.opcion!=='A'){
-    status.textContent='El servidor no confirmó la disponibilidad del escrito A.';return;
-   }
-   const opened=response.estado==='OPEN',closed=response.estado==='CLOSED';
-   current={...selected,opened};
-   action.textContent=opened?'Cerrar para estudiantes':'Abrir para estudiantes';
-   action.disabled=closed||(!opened&&response.modo_manual!==true);
-   status.textContent=message||(opened?'Abierto para estudiantes':closed
-     ?'Ordinario cerrado. Ausentes reponen con B.'
-     :action.disabled?(commonErrors[response.motivo]||'La evaluación no se puede abrir con la configuración actual.'):'Listo para abrir.');
-  }catch(error){
-   if(id===request)status.textContent=explain(error,'No se pudo verificar la disponibilidad.');
-  }
+   const r=await postQuiz('examTeacherWrittenActivationF111',{...context,accion:'estado'});
+   if(id!==seq||!root.isConnected)return;
+   if(!['OPEN','CLOSED','DRAFT'].includes(r.estado)||r.opcion!=='A')throw Error('estado_no_confirmado');
+   const open=r.estado==='OPEN',closed=r.estado==='CLOSED';current={open};
+   action.textContent=open?tr('Cerrar para estudiantes','Close for students'):tr('Abrir para estudiantes','Open for students');
+   action.disabled=closed||(!open&&r.modo_manual!==true);
+   status.textContent=message||(open?tr('Abierto.','Open.'):closed?tr('Ordinario cerrado.','Regular exam closed.'):
+    action.disabled?(errors[r.motivo]||tr('Apertura no habilitada.','Opening not enabled.')):'');
+  }catch(e){if(id===seq&&root.isConnected)status.textContent=errors[e.message]||tr('No se pudo verificar.','Could not verify availability.');}
  }
-
  action.addEventListener('click',async()=>{
-  if(busy||action.disabled||!current)return;
-  const {label,context,opened}=current;
-  if(!window.confirm((opened?'¿Cerrar ':'¿Abrir ')+label+' para '+context.cod_grupo+' ('+context.nivel+')?'))return;
-  busy=true; group.disabled=true; assessment.disabled=true; action.disabled=true;
-  status.textContent=opened?'Cerrando la evaluación…':'Abriendo la evaluación…';
-  let failure='';
-  try{
-   const response=await postQuiz('examTeacherWrittenActivationF111',{...context,accion:opened?'cerrar':'abrir'});
-   if(response.estado!==(opened?'CLOSED':'OPEN')||response.opcion!=='A')throw Error('cambio_no_confirmado');
-   await refresh();
-  }catch(error){
-   failure=explain(error,'El cambio no fue confirmado. Se volvió a consultar el estado.');
-   await refresh(failure);
-  }finally{
-   busy=false;group.disabled=false;assessment.disabled=false;
-  }
+  if(busy||action.disabled||!current||!root.isConnected)return;
+  const open=current.open, name=tr('Escrito ','Written exam ')+(context.leccion===18?'1':'2');
+  if(!window.confirm((open?tr('\u00bfCerrar ','Close '):tr('\u00bfAbrir ','Open '))+name+' ('+context.cod_grupo+')?'))return;
+  busy=true;action.disabled=true;status.textContent=tr('Procesando.','Processing.');let message='';
+  try{const r=await postQuiz('examTeacherWrittenActivationF111',{...context,accion:open?'cerrar':'abrir'});
+   if(r.estado!==(open?'CLOSED':'OPEN')||r.opcion!=='A')throw Error('cambio_no_confirmado');
+  }catch(e){message=errors[e.message]||tr('Cambio no confirmado.','Change not confirmed.');}
+  finally{busy=false;await refresh(message);}
  });
- group.addEventListener('change',()=>void refresh());
- assessment.addEventListener('change',()=>void refresh());
- function selectRequested(){
-  if(!requested)return false;
-  const {key,lesson}=requested;
-  requested=null;
-  const index=entries.findIndex(entry=>entry[0]===lesson);
-  if(index<0||!courses.has(key)){
-   current=null;action.disabled=true;
-   status.textContent='El servidor no confirmó este grupo y nivel para aplicar el escrito.';
-   return true;
-  }
-  group.value=key;
-  assessment.value=String(index);
-  assessment.focus();
-  void refresh();
-  return true;
- }
- section.focusExam=context=>{
-  const code=String(context?.grupo||context?.cod_grupo||'').trim().toUpperCase();
-  const level=String(context?.nivel||'').trim().toUpperCase();
-  const lesson=Number(context?.leccion);
-  if(!code||!level||!entries.some(entry=>entry[0]===lesson))return false;
-  requested={key:code+'|'+level,lesson};
-  section.scrollIntoView({behavior:'smooth',block:'center'});
-  if(courses.size)selectRequested();
-  else status.textContent='Verificando tu grupo antes de preparar el escrito…';
-  return true;
- };
- postQuiz('getDocenteGruposActuales',{}).then(data=>{
-  if(!section.isConnected)return;
-  const rows=Array.isArray(data.grupos)?data.grupos:[];
-  for(const row of rows){
-   if(!row||row.puede_curso===false||row.permisos_riel?.curso===false)continue;
-   const code=String(row.cod_grupo||row.code||'').trim().toUpperCase(), level=String(row.nivelId||row.nivel||'').toUpperCase();
-   if(!code||!LEVELS.some(x=>x[0]===level))continue;
-   const key=code+'|'+level;
-   if(courses.has(key))continue;
-   courses.set(key,{group:code,level});
-   const option=make('option',code+' · '+LEVELS.find(x=>x[0]===level)[1]);
-   option.value=key;group.append(option);
-  }
-  if(!courses.size){status.textContent='No hay grupos en curso asignados a tu cuenta.';return;}
-  group.disabled=false;assessment.disabled=false;
-  if(!selectRequested())void refresh();
- }).catch(()=>{status.textContent='No se pudieron verificar tus grupos.';});
- return section;
+ queueMicrotask(()=>{if(root.isConnected&&context.cod_grupo&&context.nivel&&[18,32].includes(context.leccion))void refresh();});
+ return root;
 }
 
 function attach(){
  const screen=document.querySelector('section[data-screen-label="Docente · Exámenes"]');
- const application=screen&&screen.querySelector('[data-f111-exams-apply-slot]');
- if(application&&!application.querySelector('[data-f111-teacher-application]'))
-  application.append(buildTeacherWrittenApplicationPanel());
+ if(screen)for(const slot of screen.querySelectorAll('[data-f111-written-card-slot]')){
+  if(!slot.querySelector('[data-f111-written-card-action]'))slot.append(buildTeacherWrittenCardAction(slot));
+ }
  const slot=screen&&screen.querySelector('[data-f111-exams-tool-slot]');
  const details=slot&&slot.closest('details');
  if(!details)return;
@@ -1195,11 +1108,6 @@ function attach(){
  if(!details.dataset.f111QuizAttach){details.dataset.f111QuizAttach='true';details.addEventListener('toggle',mount);}
  mount();
 }
-window.F111_QZ_focusWrittenApplication=context=>{
- attach();
- const panel=document.querySelector('section[data-screen-label="Docente · Exámenes"] [data-f111-teacher-application]');
- return !!(panel&&typeof panel.focusExam==='function'&&panel.focusExam(context));
-};
 function installStyle(){
  if(document.getElementById(STYLE))return;
  const s=make('style');s.id=STYLE;
