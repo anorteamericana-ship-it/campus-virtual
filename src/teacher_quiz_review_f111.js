@@ -1073,6 +1073,8 @@ function buildTeacherWrittenApplicationPanel(){
   grupo_nivel_no_autorizado_o_no_en_curso:'El servidor no confirmó tu asignación al nivel en curso.',
   no_autorizado_grupo_nivel:'El servidor no confirmó tu asignación al grupo y nivel.',
   requiere_clase_activa:'Aplicá este examen desde la clase activa.',
+  grupo_no_habilitado_manual:'La apertura manual no est\u00e1 habilitada para este grupo.',
+  test2_antes_leccion_25:'El Escrito 2 se habilita despu\u00e9s de cerrar la lecci\u00f3n 25.',
   ordinario_ya_aplicado:'El escrito ordinario ya se aplicó. Quien no participó debe reponer con B.',
   otro_escrito_abierto:'Cerrá el otro escrito del grupo antes de abrir este.',
   convocatoria_escrita_incompatible:'Hay una convocatoria previa que Administración debe revisar.'
@@ -1105,7 +1107,7 @@ function buildTeacherWrittenApplicationPanel(){
    action.disabled=closed||(!opened&&response.modo_manual!==true);
    status.textContent=message||(opened?'Abierto para estudiantes':closed
      ?'Ordinario cerrado. Ausentes reponen con B.'
-     :action.disabled?'La evaluación no se puede abrir con la configuración actual.':'Listo para abrir.');
+     :action.disabled?(commonErrors[response.motivo]||'La evaluación no se puede abrir con la configuración actual.'):'Listo para abrir.');
   }catch(error){
    if(id===request)status.textContent=explain(error,'No se pudo verificar la disponibilidad.');
   }
