@@ -2392,6 +2392,18 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                         groupCode+'|'+nivel+'|'+d.lesson?
                         'Verificando…':tr('Aplicar oral pendiente','Apply pending oral')}
                     </button>}
+                  {d.kind==='written'&&total>0&&count<total&&
+                    <button className="btn btn-ghost" type="button"
+                      onClick={()=>{
+                        const focus=window.F111_QZ_focusWrittenApplication;
+                        if(typeof focus!=='function'||focus({grupo:groupCode,nivel,leccion:d.lesson})!==true)
+                          window.alert(tr('El control de escritos no está disponible.','Written exam controls are unavailable.'));
+                      }}
+                      title={tr('Preparar el escrito A del grupo en curso sin cerrar el oral pendiente. El servidor valida la autorización.',
+                        'Prepare written exam A for the current course while the oral remains pending. The server checks access.')}
+                      style={{fontSize:11,borderColor:'#B67D2B',color:'#805019'}}>
+                      {tr('Aplicar escrito pendiente','Apply pending written exam')}
+                    </button>}
                   {d.kind==='written'&&<button className="btn btn-ghost" type="button"
                     onClick={()=>openModel(d,'B')} title="El audio de la opción B no está certificado para aplicación."
                     style={{fontSize:11,borderColor:'#AA7530',color:'#805019'}}>

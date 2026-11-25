@@ -274,7 +274,7 @@ function StudentLiveLoading() {
     <div style={{ maxWidth:620, margin:'72px auto', padding:'30px 32px', borderRadius:18, background:'#fff', border:'1px solid #E2D8C8', boxShadow:'0 18px 60px rgba(0,0,0,0.10)', fontFamily:'Poppins, system-ui, sans-serif', textAlign:'center', color:'#001E47' }}>
       <div style={{ fontSize:11, fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase', color:'#7A1E2C', marginBottom:12 }}>Consultando cronograma</div>
       <h2 style={{ margin:'0 0 8px', fontSize:26 }}>Buscando examen disponible…</h2>
-      <p style={{ color:'#5A6472', fontSize:14 }}>El sistema valida tu grupo, la lección activa y la activación oficial.</p>
+      <p style={{ color:'#5A6472', fontSize:14 }}>El sistema valida tu grupo, nivel y la apertura oficial del examen.</p>
     </div>
   );
 }
@@ -414,7 +414,7 @@ function StudentLiveExamApp() {
   if (live && live.preparing) return <StudentLiveStatusCard title="Preparando tu examen" badge="Reintento automático" tone="blue" onRefresh={load}>{live.mensaje || 'La clase está abierta. El sistema está creando una única activación y volverá a consultar en unos segundos.'}</StudentLiveStatusCard>;
   if (!live || live.assigned !== true || !activation) {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
-    return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'No hay una sesión docente abierta de la lección 18 o 32 para tu matrícula activa.'}</StudentLiveStatusCard>;
+    return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'El escrito aparecerá cuando tu docente lo habilite para tu grupo y nivel.'}</StudentLiveStatusCard>;
   }
   if (!f111ExamPublicContractSafe(publicExam, activation)) {
     return <StudentLiveStatusCard title="Contenido de examen no disponible" badge="Protección de examen" tone="red" onRefresh={load}>

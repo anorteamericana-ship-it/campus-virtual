@@ -423,7 +423,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
 
 function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart, starting }) {
   const cron = assignment && (assignment.CRONOGRAMA || assignment.availability) || null;
-  const liveLabel = cron && cron.dia ? `${cron.dia}${cron.turno ? ' · ' + cron.turno : ''}` : 'cronograma activo';
+  const liveLabel = cron && cron.dia ? `${cron.dia}${cron.turno ? ' · ' + cron.turno : ''}` : 'apertura vigente';
   const intentoTxt = backend && backend.attemptId ? `Intento activo: ${backend.attemptId}` : 'Se creará un intento oficial al iniciar.';
   return (
     <div className="ascard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
@@ -441,7 +441,7 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
         <div><span>Puntos</span><b>{exam.puntos_totales}</b></div>
       </div>
       <div className="ascard-note">
-        Este examen fue asignado automáticamente según tu grupo y la lección correspondiente.
+        Este examen está habilitado para tu grupo y nivel.
         Al iniciarlo comienza un contador único de 90 minutos. Solo puede enviarse una vez y, después del envío, no admite correcciones. {intentoTxt}
       </div>
       <button className="btn-primary ascard-go" onClick={onStart} disabled={!!starting}>{starting ? 'Preparando intento…' : 'Iniciar examen'}</button>
