@@ -599,6 +599,7 @@ function ExamenesTeacherPanel({ activeState, pendingOral, onNavigate, activeSess
   :esEscrito?<WrittenSessionCardF929 session={s}/>
   :<div style={{padding:'15px 17px',border:'1px solid var(--line)',borderRadius:14,background:'#fff'}}><div style={{fontSize:10,fontWeight:900,letterSpacing:'.13em',color:'#7A1E2C'}}>SESIÓN ACTIVA</div><div style={{fontSize:18,fontWeight:900,marginTop:3}}>Exámenes de la clase</div><div style={{fontSize:12.5,color:'var(--ink-3)',marginTop:4}}>No hay un examen oral o escrito activo en este momento.</div></div>;
   const top=onWrittenFocus=><>
+    <div data-f111-exams-apply-slot="true"/>
     <LazyRoute title="Mis exámenes" component="TeacherExamsWorkspaceF111"
       files={F96_LAZY.teacher_views} onNavigate={onNavigate} onWrittenFocus={onWrittenFocus}
       activeSession={s} activeSessionReady={activeSessionReady} activeSessionError={activeSessionError}/>
