@@ -16,6 +16,7 @@ function exNorm(s) {
 // revisión docente) | 'empty' (sin responder)
 function evalQuestion(section, q, val) {
   const has = val != null && String(val).trim() !== '';
+  if (q.manualRequired || q.correct === undefined || q.correct === null) return { verdict:'review', key:exKeyText(section,q) };
   if (!has) return { verdict:'empty', key: exKeyText(section, q) };
   const key = exKeyText(section, q);
   const accepts = exAccepted(section, q).map(exNorm);
@@ -226,7 +227,7 @@ function SectionBody({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 
 // ── Review affordance (pregunta por pregunta) ─────────────────────────────
 function ReviewBar({ id, section, q, val, review }) {
-  const ev = q.correct !== undefined || q.opts ? evalQuestion(section, q, val) : { verdict:'empty', key:'' };
+  const ev = review.evidence && review.evidence[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
   const verdictMeta = {
     ok:    { t:'Auto: correcta',  c:'rev-ok'   },
     bad:   { t:'Auto: incorrecta',c:'rev-bad'  },
@@ -235,12 +236,12 @@ function ReviewBar({ id, section, q, val, review }) {
   }[ev.verdict];
   const mark = review.marks[id];
   const auto = ev.verdict === 'ok' ? 1 : 0;
-  const cur = mark == null ? auto : mark;
+  const cur = mark == null ? (ev.verdict==='review' ? null : auto) : mark;
   const open = review.openComment === id;
   return (
     <div className="exrev">
       <span className={`exrev-v ${verdictMeta.c}`}>{verdictMeta.t}</span>
-      <span className="exrev-key">Clave: <b>{ev.key || '—'}</b></span>
+      <span className="exrev-key">{ev.verdict==='review'&&mark==null?'PENDIENTE DE CALIFICAR: ':''}Clave: <b>{ev.key || 'No verificada'}</b></span>
       <div className="exrev-pts">
         {[0, 0.5, 1].map(p => (
           <button key={p} disabled={!!review.locked} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
@@ -525,6 +526,11 @@ function VerbFill({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
 // ── Dialog verb (A/B response) ────────────────────────────────────────────
 function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
+  if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
+    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
+    <div className="exrow-rev"><b>Respuesta original guardada:</b> {val||'Sin respuesta'}</div>
+    <div className="exrow-rev" style={{color:'#895d09'}}>Incidencia del formulario: evaluar manualmente, no asumir que el texto se ingreso en cada espacio.</div></div>
+    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review}/></div></div>;
   const ph = q.hint ? `(${q.hint})` : 'forma verbal…';
   // Renderiza una línea que puede contener uno o varios ____ (la respuesta es
   // única, q.id); el blank puede estar en la línea A o en la B.
