@@ -33,7 +33,7 @@ function host(){
   section=make('section',undefined,'f111-b1-extra');section.dataset.f111StudentB1PcExtra='true';
   section.setAttribute('aria-label','Progress Checks de Básico I habilitados por tu docente');
   const target=screen.querySelector('[role="tablist"],[role="tabpanel"]');
-  if(target)screen.insertBefore(section,target);else screen.append(section);
+  if(target&&target.parentNode===screen)screen.insertBefore(section,target);else screen.append(section);
  }
  return section;
 }
@@ -72,8 +72,9 @@ function syncMenuBadge(){
  let badge=button.querySelector('[data-f111-quiz-menu-badge]');
  if(!pending){if(badge)badge.remove();return;}
  if(!badge){badge=make('span',undefined,'f111-quiz-menu-badge');badge.dataset.f111QuizMenuBadge='true';button.append(badge);}
- badge.textContent=pending+' quiz'+(pending!==1?'zes':'')+' pendiente'+(pending!==1?'s':'');
- badge.setAttribute('role','status');
+ const label=pending+' quiz'+(pending!==1?'zes':'')+' pendiente'+(pending!==1?'s':'');
+ if(badge.textContent!==label)badge.textContent=label;
+ if(badge.getAttribute('role')!=='status')badge.setAttribute('role','status');
 }
 function maybeInvite(){
  if(modal||!token()||!studentCode||document.querySelector('.f111-b1-extra-invite'))return;
@@ -116,10 +117,12 @@ function invitationWasSeen(x){
 function render(){
  syncMenuBadge();
  const section=host();if(!section)return;
- section.hidden=current.length===0;
+ const empty=current.length===0;
+ if(section.hidden!==empty)section.hidden=empty;
  const next=JSON.stringify(current);
- if(signature===next&&section.querySelector('.f111-b1-extra-list'))return;
- signature=next;section.replaceChildren();
+ if(signature===next&&(empty?!section.hasChildNodes():!!section.querySelector('.f111-b1-extra-list')))return;
+ signature=next;
+ if(section.hasChildNodes())section.replaceChildren();
  if(!current.length)return;
  section.append(make('small','EVALUACIONES · PROGRESS CHECK BÁSICO I'));
  section.append(make('h3','Quizzes e invitaciones de tu profesor'));
@@ -166,7 +169,7 @@ async function check(force){
    }catch(_){const old=current.find(y=>y.quiz_id===x.quiz_id&&y.grupo===x.grupo);x.state=old?.state||'DESCONOCIDO'}
   }));
   if(t!==token())return;
-  current=items;signature='';render();maybeInvite();
+  current=items;render();maybeInvite();
  }catch(_){if(t===token()){render()}}
  finally{inFlight=false}
 }
