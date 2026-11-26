@@ -97,7 +97,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
   // prefiere el payload público recibido desde Apps Script; si no existe,
   // se usa el banco local solo como respaldo visual controlado.
-  const exam = examOverride || getExam(nivel, test, opcion);
+  const model=examOverride||getExam(nivel,test,opcion);
+  const exam=useMemo(()=>model&&backend&&model.dialog_blank_schema!=='ordered_v2'?{...model,dialogBlankLegacy:true}:model,[model,!!backend]);
   const tema = NIVEL_TEMA[nivel] || NIVEL_TEMA['I2'];
   const initialAttemptStatus = String((backend && backend.initialStatus) || '').toUpperCase();
   const [stage, setStage] = useState(
@@ -306,6 +307,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       const value = getMatchVal(answers, q.n, section.letter);
       return value == null || String(value).trim() === '';
     }
+    if(section.type==='dialog-verb'&&!exam.dialogBlankLegacy)return !dialogBlankComplete(answers[q.id],q);
     return answers[q.id] == null || String(answers[q.id]).trim() === '';
   }), [all, answers]);
   const missingIds = useMemo(() => missingQuestions.map(({ q, kind, section }) =>

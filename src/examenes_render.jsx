@@ -162,7 +162,7 @@ function Section({ sec, exam, answers, onAnswer, ro, mode, showKey, review, onOp
         <ListeningMedia exam={exam} sec={sec} showKey={showKey} onOpenScript={onOpenScript} />
       )}
 
-      <SectionBody sec={sec} answers={answers} onAnswer={onAnswer} ro={ro} mode={mode} showKey={showKey} review={review} />
+      <SectionBody sec={exam.dialogBlankLegacy?{...sec,dialogBlankLegacy:true}:sec} answers={answers} onAnswer={onAnswer} ro={ro} mode={mode} showKey={showKey} review={review} />
     </section>
   );
 }
@@ -524,7 +524,18 @@ function VerbFill({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
 }
 
 // ── Dialog verb (A/B response) ────────────────────────────────────────────
-function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
+// Each numbered item retains its point and id. Multiple slots store an ordered array.
+function dialogBlankCount(q){return [q.a,q.b].reduce((n,text)=>n+(String(text||'').match(/____/g)||[]).length,0);}
+function dialogBlankValues(raw,count){
+  if(Array.isArray(raw))return Array.from({length:count},(_,i)=>String(raw[i]??''));
+  const text=String(raw??'');
+  if(count===1)return [text];
+  const parts=text.split('/');
+  if(parts.length===count)return parts.map(x=>x.trim());
+  return Array.from({length:count},(_,i)=>i===0?text:'');
+}
+function dialogBlankComplete(raw,q){const count=dialogBlankCount(q);return count>0&&dialogBlankValues(raw,count).every(x=>x.trim()!=='');}
+function DialogVerbLegacy({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
     <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
@@ -553,6 +564,52 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
         <div className="exdlg-a"><b>A:</b> {renderLine(q.a)}</div>
         <div className="exdlg-b">
           <b>B:</b> {renderLine(q.b)}
+          {showKey && <span className="exkey exkey-inline">{exKeyText(sec, q)}</span>}
+        </div>
+      </div>
+      {mode==='review' && <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review} /></div>}
+    </div>
+  );
+}
+
+// ── Transform (rewrite the sentence — e.g. active → passive) ──────────────
+function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
+  if(sec.dialogBlankLegacy===true&&mode!=='review')return <DialogVerbLegacy {...{sec,q,answers,onAnswer,ro,mode,showKey,review}}/>;
+  const val = answers[q.id] || '';
+  if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
+    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
+    <div className="exrow-rev"><b>Respuesta original guardada:</b> {val||'Sin respuesta'}</div>
+    <div className="exrow-rev" style={{color:'#895d09'}}>Incidencia del formulario: evaluar manualmente, no asumir que el texto se ingreso en cada espacio.</div></div>
+    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review}/></div></div>;
+  const ph = q.hint ? `(${q.hint})` : 'forma verbal';
+  const count=dialogBlankCount(q),raw=answers[q.id],values=dialogBlankValues(raw,count);
+  const offsetA=dialogBlankCount({a:q.a});
+  const renderLine = (text,offset) => {
+    const parts = String(text||'').split('____');
+    return parts.map((p, i) => (
+      <React.Fragment key={i}>
+        {p}
+        {i < parts.length - 1 && (
+          <input className={'exfill ' + exInCls(sec,q,val,showKey)} value={values[offset+i]||''} disabled={ro}
+                 data-blank-index={offset+i} aria-label={q.id+' blank '+(offset+i+1)}
+                 placeholder={ph} title={q.hint||''} onChange={e=>{
+                   if(!onAnswer)return;const next=values.slice();next[offset+i]=e.target.value;
+                   onAnswer(q.id,count===1?next[0]:next);
+                 }}/>
+        )}
+      </React.Fragment>
+    ));
+  };
+  if(mode==='review'&&count>1&&!Array.isArray(raw)&&raw!=null)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
+    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}<div><b>Respuesta original guardada:</b> {String(raw)}</div><small>Formato historico; no se reconstruyen respuestas no guardadas.</small></div>
+    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={{...q,manualRequired:true}} val={raw} review={review}/></div></div>;
+  return (
+    <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
+      <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
+      <div className="exdlg">
+        <div className="exdlg-a"><b>A:</b> {renderLine(q.a,0)}</div>
+        <div className="exdlg-b">
+          {q.b&&<><b>B:</b> {renderLine(q.b,offsetA)}</>}
           {showKey && <span className="exkey exkey-inline">{exKeyText(sec, q)}</span>}
         </div>
       </div>
