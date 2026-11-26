@@ -174,7 +174,7 @@ function ListeningMedia({ exam, sec, showKey, onOpenScript }) {
     <div className="exs-listen">
       <div className="exl-row">
         <span className="exl-tag">Listening · Sección {sec.listening}</span>
-        {showKey && <button className="exl-script" onClick={()=>onOpenScript && onOpenScript(sec.listening)}>Ver guion (docente)</button>}
+        {showKey && exam.audioScript && exam.audioScript[sec.listening] && <button className="exl-script" onClick={()=>onOpenScript && onOpenScript(sec.listening)}>Ver guion (docente)</button>}
       </div>
       {id
         ? <div className="exl-video">

@@ -35,7 +35,7 @@ function themedExam(nivel) {
 // ════════════════════════════════════════════════════════════════════════
 function ScriptModal({ section, exam, onClose }) {
   if (!section) return null;
-  const lines = exam.audioScript[section] || [];
+  const lines = (exam.audioScript && exam.audioScript[section]) || [];
   return (
     <div className="exov" onClick={onClose}>
       <div className="exov-card" onClick={e=>e.stopPropagation()}>
