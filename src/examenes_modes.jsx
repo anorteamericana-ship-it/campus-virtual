@@ -35,7 +35,7 @@ function themedExam(nivel) {
 // ════════════════════════════════════════════════════════════════════════
 function ScriptModal({ section, exam, onClose }) {
   if (!section) return null;
-  const lines = exam.audioScript[section] || [];
+  const lines = (exam.audioScript && exam.audioScript[section]) || [];
   return (
     <div className="exov" onClick={onClose}>
       <div className="exov-card" onClick={e=>e.stopPropagation()}>
@@ -97,7 +97,8 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
   // El sistema YA decidió qué examen le toca (no lo escoge). En F27 se
   // prefiere el payload público recibido desde Apps Script; si no existe,
   // se usa el banco local solo como respaldo visual controlado.
-  const exam = examOverride || getExam(nivel, test, opcion);
+  const model=examOverride||getExam(nivel,test,opcion);
+  const exam=useMemo(()=>model&&backend&&model.dialog_blank_schema!=='ordered_v2'?{...model,dialogBlankLegacy:true}:model,[model,!!backend]);
   const tema = NIVEL_TEMA[nivel] || NIVEL_TEMA['I2'];
   const initialAttemptStatus = String((backend && backend.initialStatus) || '').toUpperCase();
   const [stage, setStage] = useState(
@@ -306,6 +307,7 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
       const value = getMatchVal(answers, q.n, section.letter);
       return value == null || String(value).trim() === '';
     }
+    if(section.type==='dialog-verb'&&!exam.dialogBlankLegacy)return !dialogBlankComplete(answers[q.id],q);
     return answers[q.id] == null || String(answers[q.id]).trim() === '';
   }), [all, answers]);
   const missingIds = useMemo(() => missingQuestions.map(({ q, kind, section }) =>
@@ -612,6 +614,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [attempt, setAttempt] = useState(null);
+  const [privateReview,setPrivateReview]=useState(null);
   const [reviewData, setReviewData] = useState(null);
   const [marks, setMarks] = useState({});
   const [comments, setComments] = useState({});
@@ -638,6 +641,8 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
       return;
     }
     setAttempt(attRes.attempt);
+    const protectedReview=attRes.review_private;
+    setPrivateReview(protectedReview&&protectedReview.exam&&protectedReview.exam.id===attRes.attempt.EXAM_ID&&protectedReview.total===50?protectedReview:null);
 
     let revRes = null;
     if (row && row.REVIEW_ID) {
@@ -663,7 +668,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const exam = attempt ? ((window.EXAMS || {})[attempt.EXAM_ID] || null) : null;
+  const exam = attempt ? (privateReview?.exam || (window.EXAMS || {})[attempt.EXAM_ID] || null) : null;
   const answers = useMemo(() => {
     if (!attempt) return {};
     return parseJsonMaybe(attempt.ANSWERS_JSON) || {};
@@ -671,10 +676,14 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const all = useMemo(() => exam ? examQuestions(exam) : [], [exam]);
   const autoRows = useMemo(() => all.map(({ section, q, kind }) => {
     const value = kind === 'match' ? getMatchVal(answers, q.n, section.letter) : answers[q.id];
-    return { id:kind === 'match' ? section.letter + q.n : q.id, ev:evalQuestion(section, q, value) };
-  }), [all, answers]);
+    const id=kind==='match'?section.letter+q.n:q.id;
+    const evidence=privateReview?.rows?.[id];
+    return {id,ev:evidence||evalQuestion(section,q,value)};
+  }), [all, answers, privateReview]);
   const autoCorrect = autoRows.filter(x => x.ev.verdict === 'ok').length;
   const needManual = autoRows.filter(x => x.ev.verdict === 'review').length;
+  const unresolved=autoRows.filter(x=>x.ev.verdict==='review'&&!Object.prototype.hasOwnProperty.call(marks,x.id));
+  const canClose=all.length>0&&unresolved.length===0&&(!attempt||attempt.ACTIVATION_ID!=='ACT-DOCENTE-20261125-175752-FE84494C'||!!privateReview);
   const finalPoints = autoRows.reduce((sum, x) => {
     const mark = marks[x.id];
     return sum + (mark == null ? (x.ev.verdict === 'ok' ? 1 : 0) : Number(mark));
@@ -698,7 +707,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   const setMark = (id, value) => { if (!closed) setMarks(m => Object.assign({}, m, { [id]:value })); };
   const setComment = (id, value) => { if (!closed) setComments(c => Object.assign({}, c, { [id]:value })); };
-  const reviewApi = { marks, setMark, comments, setComment, openComment, setOpenComment:(id)=>{ if (!closed) setOpenComment(id); }, locked:closed };
+  const reviewApi = { evidence:privateReview?.rows, marks, setMark, comments, setComment, openComment, setOpenComment:(id)=>{ if (!closed) setOpenComment(id); }, locked:closed };
 
   const payload = () => ({
     review_id: reviewData && reviewData.REVIEW_ID,
@@ -722,6 +731,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   const closeAndPush = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || closed || busy) return;
+    if(!canClose){setErr('Faltan calificaciones manuales o la clave protegida no se verifico.');return;}
     const feedback = String(studentFeedback || '').trim();
     if (!feedback) {
       setMsg('');
@@ -816,6 +826,8 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
           <div className="rev-prelim-h">Cálculo de la revisión</div>
           <div className="rev-prelim-row"><span>Auto correctas</span><b>{autoCorrect}/{all.length}</b></div>
           <div className="rev-prelim-row warn"><span>Revisión manual</span><b>{needManual}</b></div>
+          <div className="rev-prelim-row warn"><span>Pendientes por calificar</span><b>{unresolved.length}</b></div>
+          <div className="rev-note">{privateReview?'Clave Cambridge verificada - 50 puntos. H1, H2 y H5 requieren revision por incidencia.':'Sin clave verificada: calificacion manual; no se presume que una respuesta sea incorrecta.'}</div>
           <div className="rev-prelim-row"><span>Ajustes realizados</span><b>{Object.keys(marks).length}</b></div>
           <div className="rev-note">Revisá cada respuesta marcada en amarillo. La nota no llega a Mis Notas hasta cerrar.</div>
         </div>
@@ -840,7 +852,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
         {msg && <div className="rev-live-ok">✓ {msg}</div>}
         {err && <div className="rev-live-err">⚠ {err}</div>}
-        {!closed && <button type="button" className="btn-close" disabled={!!busy} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
+        {!closed && <button type="button" className="btn-close" disabled={!!busy||!canClose} onClick={closeAndPush}>{busy === 'close' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && !pushed && <button type="button" className="btn-close" disabled={!!busy} onClick={pushToNotas}>{busy === 'push' ? 'Enviando nota…' : 'Enviar Nota'}</button>}
         {closed && pushed && <div className="rev-closed">✓ Revisión cerrada y nota registrada en <b>Mis Notas</b>.</div>}
         {closed && pushed && pdfState && (
