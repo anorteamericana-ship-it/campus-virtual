@@ -294,6 +294,15 @@ window.EXAM_CSS = `
   .exs-h{ break-after:avoid; }
   input,textarea,select{ border:1px solid #8E9AAA!important; background:#fff!important; }
 }
+
+/* Teacher review colors: use result, never academic level color. */
+.tchrev-live .exrev[data-review-state]{border:1px solid var(--review-border);border-left:4px solid var(--review-ink);background:var(--review-bg);color:var(--review-ink);padding:9px;scroll-margin:24px;outline-offset:3px}
+.tchrev-live .exrev-state-ok,.tchrev-live .rev-state-ok{--review-bg:#e9f7ed;--review-border:#acd5b5;--review-ink:#196b3e}
+.tchrev-live .exrev-state-bad,.tchrev-live .rev-state-bad{--review-bg:#fcecea;--review-border:#efb8b0;--review-ink:#a52a22}
+.tchrev-live .exrev-state-review,.tchrev-live .rev-state-review{--review-bg:#fff3cd;--review-border:#e8c85e;--review-ink:#805700}
+.tchrev-live .exrev-state-partial,.tchrev-live .rev-state-partial{--review-bg:#eef2f8;--review-border:#c6d1df;--review-ink:#425872}
+.tchrev-live .exrev-v{background:var(--review-bg);color:var(--review-ink);padding:3px 5px;border-radius:4px;font-weight:800}.tchrev-live .exrev-earned{font-size:11px;font-weight:800;color:var(--review-ink);margin-left:auto}.tchrev-live .exrev-key{flex-basis:100%;color:#334155}.tchrev-live .exrev-key b{color:#196b3e}.tchrev-live .exrev-p.on{background:var(--review-ink);border-color:var(--review-ink);color:#fff}.tchrev-live .exrev-p{min-width:34px;height:30px}.tchrev-live .exrev-line{gap:6px;flex-direction:column;align-items:stretch}.tchrev-live .exrev-line .exrev{width:100%;box-sizing:border-box}.tchrev-live .exrev-stud{font-size:12px;overflow-wrap:anywhere}.tchrev-live .exrev-id{align-self:flex-start}.tchrev-live .exrev:focus{outline:3px solid #d6a926}
+.tchrev-live .exopt.is-correct{background:#e9f7ed;border-color:#69a97b}.tchrev-live .exopt.is-correct .exbox{background:#196b3e;border-color:#196b3e}.tchrev-live .exopt.chosen-wrong{background:#fcecea;border-color:#c94b40}.tchrev-live .exopt.chosen-wrong .exbox{background:#a52a22;border-color:#a52a22}.tchrev-live .extf-b.tf-key{background:#196b3e;border-color:#196b3e;color:white}.tchrev-live .extf-b.tf-wrong{background:#a52a22;border-color:#a52a22;color:white}.tchrev-live .exin.in-ok{background:#e9f7ed;border-color:#196b3e}.tchrev-live .exin.in-bad{background:#fcecea;border-color:#a52a22}.tchrev-live .exin.in-rev{background:#fff3cd;border-color:#c09215}
 `;
 
 // ===== examenes_appcss.jsx =====
@@ -954,6 +963,19 @@ body:has(.d1-master),.exapp:has(.d1-master){background:#F4F6FA!important}
  .d1-inspector h2{font-size:19px}
 }
 
+
+/* F111 REVIEW WORKSPACE: independent document scroll, fixed grading sidebar. */
+.tchrev-live{grid-template-columns:minmax(238px,292px) minmax(0,1fr);gap:14px;align-items:stretch;min-height:0}
+.tchrev-live .rev-side{top:0;position:relative;min-width:0;min-height:0;gap:8px;padding:12px;overflow:auto;overscroll-behavior:contain;box-sizing:border-box}
+.tchrev-live .rev-stud h3{font-size:14px;line-height:1.35;margin:0 0 3px;overflow-wrap:anywhere}
+.tchrev-live .rev-meta{padding:3px 0;font-size:11px}.rev-details{font-size:11px;color:#43546b}.rev-details summary{cursor:pointer;font-weight:700;padding:3px 0}
+.tchrev-live .rev-score{background:#e9f1fb;padding:9px 5px;color:#0b3567}.tchrev-live .rev-score-num{font-size:38px}.rev-score-num small{font-size:16px;font-weight:600}.tchrev-live .rev-score-lbl{font-size:10px}
+.rev-overview{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0;background:transparent;border:0}.rev-stat{padding:6px 8px;border:1px solid;border-radius:8px;display:flex;flex-direction:column;gap:1px;line-height:1.15}.rev-stat b{font-size:20px}.rev-stat span{font-size:10px;font-weight:600}.rev-stat-ok{background:#e8f6eb;border-color:#b4dabb;color:#17633a}.rev-stat-bad{background:#fcebe8;border-color:#efb4aa;color:#a12621}.rev-stat-warn{background:#fff1c9;border-color:#e9cb68;color:#765200}.rev-stat-partial{background:#eff2f6;border-color:#cdd7e2;color:#40546d}
+.rev-next{width:100%;background:#f6cd42;color:#193858;border:1px solid #cfac36;border-radius:8px;padding:8px 6px;font-weight:800;font-size:11px;cursor:pointer}.rev-next:disabled{background:#e7f5eb;border-color:#b4dabb;color:#17633a;cursor:default}.rev-pending-ids{display:flex;gap:4px;flex-wrap:wrap;max-height:55px;overflow:auto;margin-top:5px}.rev-pending-ids button{border:1px solid #e9cb68;border-radius:5px;background:#fff5d6;color:#765200;padding:4px 6px;font-weight:700;font-size:10px;cursor:pointer}
+.tchrev-live .rev-field{margin-top:0;gap:4px}.tchrev-live .rev-field>span{font-size:10px;letter-spacing:0;text-transform:none}.tchrev-live .rev-fb{min-height:72px;height:85px;box-sizing:border-box;resize:vertical}.tchrev-live .btn-close{padding:10px;flex-shrink:0}.tchrev-live .btn-close:disabled{opacity:.58}.tchrev-live .rev-main{min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;padding:0 4px 10px 0;scrollbar-gutter:stable;scroll-behavior:smooth}
+@media(min-width:761px){.exmain:has(.tchrev-live){padding:8px!important;max-width:none!important}.tchrev-live{height:calc(100dvh - 18px);overflow:hidden}.tchrev-live .rev-main{height:100%;box-sizing:border-box}.tchrev-live .rev-side{height:100%}}
+@media(max-width:760px){.tchrev-live{display:flex;flex-direction:column}.tchrev-live .rev-main{overflow:visible}.tchrev-live .rev-side{height:auto;overflow:visible;position:static}.rev-pending-ids{max-height:90px}}
+@media print{.tchrev-live{display:block;height:auto;overflow:visible}.tchrev-live .rev-main{height:auto;overflow:visible}}
 `;
 (function(){
   if (!document.getElementById('exam-app-css')) {
@@ -1529,7 +1551,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
           <h1 className="exh-title">{exam.titulo}</h1>
           <div className="exh-sub">{exam.subtitulo}</div>
           <div className="exh-official">Documento oficial de evaluación · Campus Virtual</div>
-          {exam.ponderacion_por_plan && (
+          {mode!=='review' && exam.ponderacion_por_plan && (
             <div className="exh-pond">{window.ponderacionTexto(exam.ponderacion_por_plan, plan)}</div>
           )}
           {/* Atribución del material: mínima y SOLO en admin/preview/profesor. */}
@@ -1650,25 +1672,28 @@ function SectionBody({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 }
 
 // ── Review affordance (pregunta por pregunta) ─────────────────────────────
+function reviewDisplayState(ev,mark){return mark!=null?(Number(mark)===1?'ok':Number(mark)===0.5?'partial':'bad'):ev.verdict==='review'?'review':ev.verdict==='ok'?'ok':'bad';}
 function ReviewBar({ id, section, q, val, review }) {
   const ev = review.evidence && review.evidence[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
+  const mark = review.marks[id];
+  const state=reviewDisplayState(ev,mark);
   const verdictMeta = {
     ok:    { t:'Auto: correcta',  c:'rev-ok'   },
     bad:   { t:'Auto: incorrecta',c:'rev-bad'  },
     review:{ t:'Requiere revisión',c:'rev-rev' },
-    empty: { t:'Sin responder',   c:'rev-empty'},
+    empty: { t:'Sin responder',   c:'rev-bad'},
   }[ev.verdict];
-  const mark = review.marks[id];
+  const label=mark!=null?(mark===1?'Correcta ? docente':mark===0.5?'Parcial ? docente':'Incorrecta ? docente'):verdictMeta.t;
   const auto = ev.verdict === 'ok' ? 1 : 0;
   const cur = mark == null ? (ev.verdict==='review' ? null : auto) : mark;
   const open = review.openComment === id;
   return (
-    <div className="exrev">
-      <span className={`exrev-v ${verdictMeta.c}`}>{verdictMeta.t}</span>
+    <div className={`exrev exrev-state-${state}`} data-review-id={id} data-review-state={state} tabIndex={-1}>
+      <span className={`exrev-v rev-state-${state}`}>{state==='ok'?'? ':state==='bad'?'? ':state==='review'?'! ':'? '}{label}</span><span className="exrev-earned">{cur==null?'?':cur}/1 pt</span>
       <span className="exrev-key">{ev.verdict==='review'&&mark==null?'PENDIENTE DE CALIFICAR: ':''}Clave: <b>{ev.key || 'No verificada'}</b></span>
       <div className="exrev-pts">
         {[0, 0.5, 1].map(p => (
-          <button key={p} disabled={!!review.locked} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
+          <button key={p} disabled={!!review.locked} aria-pressed={cur===p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
         ))}
       </div>
       <button disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>
@@ -1720,7 +1745,7 @@ function ErrQ({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
       <span className="exrow-txt" dangerouslySetInnerHTML={{ __html: q.html }} />
       <span className="exrow-arrow">→</span>
       <span className="exrow-ans">
-        <input className={exInCls(sec,q,val,showKey)} value={val} disabled={ro}
+        <input className={exInCls(sec,q,val,showKey, review)} value={val} disabled={ro}
                placeholder="palabra correcta…" onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
         {showKey && <span className="exkey">{q.correct}</span>}
       </span>
@@ -1741,7 +1766,7 @@ function ParaFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
           const b = byId[node.b]; const val = answers[b.id] || '';
           return (
             <span key={i} className="exfill-wrap" data-question-id={b.id}>
-              <input className={`exfill ${exInCls(sec,b,val,showKey)}`} value={val} disabled={ro}
+              <input className={`exfill ${exInCls(sec,b,val,showKey, review)}`} value={val} disabled={ro}
                      placeholder={`(${b.hint})`} title={b.hint} onChange={e=>onAnswer && onAnswer(b.id, e.target.value)} />
               <span className="exfill-n">{b.id.replace(/^[A-Z]/,'')}</span>
               {showKey && <span className="exkey exkey-inline">{exKeyText(sec,b)}</span>}
@@ -1852,7 +1877,7 @@ function TableFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
                   <td>
                     {row.fixed
                       ? <span className="extable-fixed">{row.fixed}</span>
-                      : <input className={'extable-in ' + exInCls(sec, q, val, showKey)} value={val} disabled={ro}
+                      : <input className={'extable-in ' + exInCls(sec, q, val, showKey, review)} value={val} disabled={ro}
                                placeholder="respuesta…" onChange={e=>onAnswer && onAnswer(row.id, e.target.value)} />}
                     {showKey && !row.fixed && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
                   </td>
@@ -1879,7 +1904,7 @@ function ShortWrite({ sec, answers, onAnswer, ro, mode, showKey, review }) {
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exshort-body">
               {q.prompt && <div className="exshort-prompt" dangerouslySetInnerHTML={{ __html:q.prompt }} />}
-              <input className={'exshort-in ' + exInCls(sec, q, val, showKey)} value={val} disabled={ro}
+              <input className={'exshort-in ' + exInCls(sec, q, val, showKey, review)} value={val} disabled={ro}
                      placeholder={q.placeholder || 'Escribe la respuesta…'} onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
               {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
               {mode==='review' && <ReviewBar id={q.id} section={sec} q={q} val={val} review={review} />}
@@ -1937,7 +1962,7 @@ function VerbFill({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <span className="exrow-txt">
         {q.pre}{' '}
-        <input className={`exfill ${exInCls(sec,q,val,showKey)}`} value={val} disabled={ro}
+        <input className={`exfill ${exInCls(sec,q,val,showKey, review)}`} value={val} disabled={ro}
                placeholder={`(${q.hint})`} title={q.hint} onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
         {' '}{q.post}
         {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
@@ -1975,7 +2000,7 @@ function DialogVerbLegacy({ sec, q, answers, onAnswer, ro, mode, showKey, review
       <React.Fragment key={i}>
         {p}
         {i < parts.length - 1 && (
-          <input className={'exfill ' + exInCls(sec, q, val, showKey)} value={val} disabled={ro}
+          <input className={'exfill ' + exInCls(sec, q, val, showKey, review)} value={val} disabled={ro}
                  placeholder={ph} title={q.hint || ''} onChange={e => onAnswer && onAnswer(q.id, e.target.value)} />
         )}
       </React.Fragment>
@@ -2014,7 +2039,7 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
       <React.Fragment key={i}>
         {p}
         {i < parts.length - 1 && (
-          <input className={'exfill ' + exInCls(sec,q,val,showKey)} value={values[offset+i]||''} disabled={ro}
+          <input className={'exfill ' + exInCls(sec,q,val,showKey, review)} value={values[offset+i]||''} disabled={ro}
                  data-blank-index={offset+i} aria-label={q.id+' blank '+(offset+i+1)}
                  placeholder={ph} title={q.hint||''} onChange={e=>{
                    if(!onAnswer)return;const next=values.slice();next[offset+i]=e.target.value;
@@ -2062,7 +2087,7 @@ function Transform({ sec, answers, onAnswer, ro, mode, showKey, review }) {
               <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
               <div className="extrans-body">
                 <div className="extrans-prompt">{q.prompt}</div>
-                <input className={`extrans-in ${exInCls(sec,q,val,showKey)}`} value={val} disabled={ro}
+                <input className={`extrans-in ${exInCls(sec,q,val,showKey, review)}`} value={val} disabled={ro}
                        placeholder="Escribe la oración en voz pasiva…" onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
                 {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
                 {mode==='review' && <ReviewBar id={q.id} section={sec} q={q} val={val} review={review} />}
@@ -2087,7 +2112,7 @@ function Arrange({ sec, answers, onAnswer, ro, mode, showKey, review }) {
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exarr-body">
               <div className="exarr-prompt">{q.prompt}</div>
-              <input className={`exarr-in ${exInCls(sec,q,val,showKey)}`} value={val} disabled={ro}
+              <input className={`exarr-in ${exInCls(sec,q,val,showKey, review)}`} value={val} disabled={ro}
                      placeholder="Ordena las palabras y escribe la oración…"
                      onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
               {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
@@ -2101,9 +2126,11 @@ function Arrange({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 }
 
 // input visual class in review/key mode
-function exInCls(section, q, val, showKey) {
-  if (!showKey || !val) return 'exin';
-  const ev = evalQuestion(section, q, val);
+function exInCls(section, q, val, showKey, review) {
+  if (!showKey) return 'exin';
+  const ev = review?.evidence?.[q.id] || evalQuestion(section,q,val);
+  if(review){const state=reviewDisplayState(ev,review.marks?.[q.id]);return 'exin in-'+(state==='review'?'rev':state==='partial'?'rev':state);}
+  if(!val)return 'exin';
   if (ev.verdict==='ok') return 'exin in-ok';
   if (ev.verdict==='bad') return 'exin in-bad';
   if (ev.verdict==='review') return 'exin in-rev';
@@ -2801,6 +2828,13 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const autoCorrect = autoRows.filter(x => x.ev.verdict === 'ok').length;
   const needManual = autoRows.filter(x => x.ev.verdict === 'review').length;
   const unresolved=autoRows.filter(x=>x.ev.verdict==='review'&&!Object.prototype.hasOwnProperty.call(marks,x.id));
+  const mainRef=React.useRef(null);
+  const effectiveRows=autoRows.map(x=>({...x,state:reviewDisplayState(x.ev,marks[x.id])}));
+  const correctCount=effectiveRows.filter(x=>x.state==='ok').length;
+  const incorrectCount=effectiveRows.filter(x=>x.state==='bad').length;
+  const partialCount=effectiveRows.filter(x=>x.state==='partial').length;
+  const jumpTo=(id)=>{const el=Array.from(mainRef.current?.querySelectorAll('[data-review-id]')||[]).find(x=>x.dataset.reviewId===id);if(el){el.scrollIntoView({block:'center',behavior:'smooth'});el.focus({preventScroll:true});}};
+
   const canClose=all.length>0&&unresolved.length===0&&(!attempt||attempt.ACTIVATION_ID!=='ACT-DOCENTE-20261125-175752-FE84494C'||!!privateReview);
   const finalPoints = autoRows.reduce((sum, x) => {
     const mark = marks[x.id];
@@ -2930,31 +2964,30 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
       <ScriptModal section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
       <aside className="rev-side">
         <button type="button" className="rev-back" onClick={onBack}>← Entregas del grupo</button>
-        <div className="rev-live-tag">REVISIÓN OFICIAL</div>
         <div className="rev-stud">
           <h3>{attempt.NOMBRE || row.NOMBRE || 'Estudiante'}</h3>
-          <div className="rev-meta"><span>Código</span>{attempt.CODIGO || '—'}</div>
-          <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
-          <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '—'}</div>
-          <div className="rev-meta"><span>Enviado</span>{normalizeBackendDate(attempt.SUBMITTED_AT) || '—'}</div>
-          <div className="rev-meta"><span>Tiempo</span>{examTeacherDurationF940(attempt.TIME_SPENT_SEC)}</div>
+          <div className="rev-meta"><span>C?digo</span>{attempt.CODIGO || '-'}</div>
+          <details className="rev-details"><summary>Datos de la entrega</summary>
+            <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
+            <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '-'}</div>
+            <div className="rev-meta"><span>Enviado</span>{normalizeBackendDate(attempt.SUBMITTED_AT) || '-'}</div>
+            <div className="rev-meta"><span>Tiempo</span>{examTeacherDurationF940(attempt.TIME_SPENT_SEC)}</div>
+          </details>
         </div>
-
-        <div className="rev-prelim">
-          <div className="rev-prelim-h">Cálculo de la revisión</div>
-          <div className="rev-prelim-row"><span>Auto correctas</span><b>{autoCorrect}/{all.length}</b></div>
-          <div className="rev-prelim-row warn"><span>Revisión manual</span><b>{needManual}</b></div>
-          <div className="rev-prelim-row warn"><span>Pendientes por calificar</span><b>{unresolved.length}</b></div>
-          <div className="rev-note">{privateReview?'Clave Cambridge verificada - 50 puntos. H1, H2 y H5 requieren revision por incidencia.':'Sin clave verificada: calificacion manual; no se presume que una respuesta sea incorrecta.'}</div>
-          <div className="rev-prelim-row"><span>Ajustes realizados</span><b>{Object.keys(marks).length}</b></div>
-          <div className="rev-note">Revisá cada respuesta marcada en amarillo. La nota no llega a Mis Notas hasta cerrar.</div>
-        </div>
-
         <div className="rev-score">
-          <div className="rev-score-num" style={{ color:tema.ink }}>{displayScore}</div>
-          <div className="rev-score-lbl">Nota actual · {closed ? 'cerrada' : `${finalPoints}/${all.length} pts`}</div>
+          <div className="rev-score-num">{displayScore}<small> /100</small></div>
+          <div className="rev-score-lbl">{closed?'Nota final':unresolved.length?'Nota provisional':'Nota lista para enviar'} ? {finalPoints}/{all.length} pts</div>
         </div>
-
+        <div className="rev-prelim rev-overview" aria-label="Estado de correcci?n">
+          <div className="rev-stat rev-stat-ok"><b>{correctCount}</b><span>Correctas</span></div>
+          <div className="rev-stat rev-stat-bad"><b>{incorrectCount}</b><span>Incorrectas / vac?as</span></div>
+          <div className="rev-stat rev-stat-warn"><b>{unresolved.length}</b><span>Por revisar</span></div>
+          <div className="rev-stat rev-stat-partial"><b>{partialCount}</b><span>Medio punto</span></div>
+        </div>
+        <div className="rev-pending-nav">
+          <button type="button" className="rev-next" disabled={!unresolved.length} onClick={()=>jumpTo(unresolved[0]?.id)}>{unresolved.length?'Ir a la siguiente pendiente ('+unresolved.length+')':'? Sin pendientes manuales'}</button>
+          {unresolved.length>0&&<div className="rev-pending-ids" aria-label="Preguntas pendientes">{unresolved.map(x=><button type="button" key={x.id} onClick={()=>jumpTo(x.id)}>{x.id}</button>)}</div>}
+        </div>
         <label className="rev-field">
           <span>Retroalimentación para el estudiante · obligatoria</span>
           <textarea
@@ -2991,9 +3024,9 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         {pdfError && <div className="rev-live-err">⚠ {pdfError}</div>}
       </aside>
 
-      <div className="rev-main">
+      <div className="rev-main" ref={mainRef}>
         <ExamShell exam={exam} answers={answers} mode="review" showKey={true}
-          shell="premium" density="compact" review={reviewApi}
+          shell="premium" density="compact" review={reviewApi} plan={attempt.PLAN||''}
           onOpenScript={setScriptSec}
           meta={{ nombre:attempt.NOMBRE || '', fecha:normalizeBackendDate(attempt.SUBMITTED_AT), grupo:attempt.COD_GRUPO || '', opcion:String(exam.opcion || '').toUpperCase(), scoreLabel:`${displayScore} / 100` }} />
       </div>

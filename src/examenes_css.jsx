@@ -289,4 +289,13 @@ window.EXAM_CSS = `
   .exs-h{ break-after:avoid; }
   input,textarea,select{ border:1px solid #8E9AAA!important; background:#fff!important; }
 }
+
+/* Teacher review colors: use result, never academic level color. */
+.tchrev-live .exrev[data-review-state]{border:1px solid var(--review-border);border-left:4px solid var(--review-ink);background:var(--review-bg);color:var(--review-ink);padding:9px;scroll-margin:24px;outline-offset:3px}
+.tchrev-live .exrev-state-ok,.tchrev-live .rev-state-ok{--review-bg:#e9f7ed;--review-border:#acd5b5;--review-ink:#196b3e}
+.tchrev-live .exrev-state-bad,.tchrev-live .rev-state-bad{--review-bg:#fcecea;--review-border:#efb8b0;--review-ink:#a52a22}
+.tchrev-live .exrev-state-review,.tchrev-live .rev-state-review{--review-bg:#fff3cd;--review-border:#e8c85e;--review-ink:#805700}
+.tchrev-live .exrev-state-partial,.tchrev-live .rev-state-partial{--review-bg:#eef2f8;--review-border:#c6d1df;--review-ink:#425872}
+.tchrev-live .exrev-v{background:var(--review-bg);color:var(--review-ink);padding:3px 5px;border-radius:4px;font-weight:800}.tchrev-live .exrev-earned{font-size:11px;font-weight:800;color:var(--review-ink);margin-left:auto}.tchrev-live .exrev-key{flex-basis:100%;color:#334155}.tchrev-live .exrev-key b{color:#196b3e}.tchrev-live .exrev-p.on{background:var(--review-ink);border-color:var(--review-ink);color:#fff}.tchrev-live .exrev-p{min-width:34px;height:30px}.tchrev-live .exrev-line{gap:6px;flex-direction:column;align-items:stretch}.tchrev-live .exrev-line .exrev{width:100%;box-sizing:border-box}.tchrev-live .exrev-stud{font-size:12px;overflow-wrap:anywhere}.tchrev-live .exrev-id{align-self:flex-start}.tchrev-live .exrev:focus{outline:3px solid #d6a926}
+.tchrev-live .exopt.is-correct{background:#e9f7ed;border-color:#69a97b}.tchrev-live .exopt.is-correct .exbox{background:#196b3e;border-color:#196b3e}.tchrev-live .exopt.chosen-wrong{background:#fcecea;border-color:#c94b40}.tchrev-live .exopt.chosen-wrong .exbox{background:#a52a22;border-color:#a52a22}.tchrev-live .extf-b.tf-key{background:#196b3e;border-color:#196b3e;color:white}.tchrev-live .extf-b.tf-wrong{background:#a52a22;border-color:#a52a22;color:white}.tchrev-live .exin.in-ok{background:#e9f7ed;border-color:#196b3e}.tchrev-live .exin.in-bad{background:#fcecea;border-color:#a52a22}.tchrev-live .exin.in-rev{background:#fff3cd;border-color:#c09215}
 `;
