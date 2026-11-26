@@ -24,3 +24,11 @@ La validacion local separada lee los bytes de exportaciones exactas y un manifie
 ## Fases futuras
 
 La fase de publicacion no forma parte de esta entrega. Requiere un canal oficialmente permitido, autorizacion y revision de seguridad por separado; el CI de validacion no recibe credenciales ni permisos de escritura. Mantener la separacion entre pruebas, autorizacion, publicacion y lectura posterior.
+
+## P2 - expediente de revision (sin autorizacion ni despliegue)
+
+`scripts/f111_release_review.py` coteja los dos reportes locales de integridad con los bytes del manifiesto privado. Verifica motor, version, conteo, huella, alcance y ausencia de aprobacion o despliegue. Produce un expediente nuevo y privado. No autentica el origen de los reportes, no firma, no concede permisos, no ejecuta codigo ni publica. Si existe un bloqueo registrado, conserva estado BLOCKED; sin bloqueo, el estado sigue AWAITING_INDEPENDENT_REVIEW. Nunca se convierte en un permiso operativo.
+
+Revision humana independiente: confirmar procedencia de snapshots, alcance autorizado, pruebas funcionales, seguridad y disponibilidad de canal oficial. Un bloqueo previo no puede levantarse desde el expediente ni mediante un workflow alternativo. Tras un release oficialmente autorizado se exige readback y aceptacion funcional separados.
+
+CI ejecuta solo 21 pruebas sinteticas de integridad y 15 de consistencia del expediente, sin secretos ni snapshots reales. El expediente real queda fuera de Git.

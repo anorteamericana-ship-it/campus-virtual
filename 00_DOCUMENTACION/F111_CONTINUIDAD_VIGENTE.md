@@ -11,3 +11,5 @@
 ## Corte pipeline F111
 - Fase 1: validador local de integridad, 21/21 pruebas sinteticas; CORE 53/53 y QUIZ 38/38 verificados contra manifiesto privado, un archivo cambiado por motor. Workflow GitHub de validacion sin credenciales ni despliegue. Ver F111_PIPELINE_RELEASE.md.
 - Frontend #819/#820 fusionado, main d2128a8c antes del pipeline, Pages y R48/R50 CI PASS. CORE/QUIZ permanecen @512/@510 al ultimo readback. Bloqueo de publicacion sigue vigente. No escribir notas ni abrir/cerrar quizzes para probar.
+
+- P1: PR #821 fusionado, CI main 45754117939 SUCCESS. P2: expediente local de revision coteja reportes de ambos motores con manifiesto privado; 15 pruebas sinteticas nuevas. Caso real: LOCAL_REPORTS_MATCH, BLOCKED, NOT_GRANTED, NOT_PERFORMED. No se autoriza ni despliega nada. Pendiente revision independiente y canal permitido; ver F111_PIPELINE_RELEASE.md.

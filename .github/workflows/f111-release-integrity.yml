@@ -7,6 +7,8 @@ on:
       - '.github/workflows/f111-release-integrity.yml'
       - 'scripts/f111_release_integrity.py'
       - 'scripts/test_f111_release_integrity.py'
+      - 'scripts/f111_release_review.py'
+      - 'scripts/test_f111_release_review.py'
       - '00_DOCUMENTACION/F111_PIPELINE_RELEASE.md'
   push:
     branches: [main]
@@ -14,6 +16,8 @@ on:
       - '.github/workflows/f111-release-integrity.yml'
       - 'scripts/f111_release_integrity.py'
       - 'scripts/test_f111_release_integrity.py'
+      - 'scripts/f111_release_review.py'
+      - 'scripts/test_f111_release_review.py'
       - '00_DOCUMENTACION/F111_PIPELINE_RELEASE.md'
   workflow_dispatch:
 
@@ -37,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -B scripts/test_f111_release_integrity.py 2>&1 | tee release-integrity-test.log
+          { python3 -B scripts/test_f111_release_integrity.py && python3 -B scripts/test_f111_release_review.py; } 2>&1 | tee release-integrity-test.log
       - name: Evidence summary (synthetic only)
         if: success()
         shell: bash
