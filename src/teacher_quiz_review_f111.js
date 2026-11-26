@@ -36,8 +36,8 @@ function previewB1Protected(lesson,authorizedGroup){
  ttl.append(make('small','PROGRESS CHECK · BÁSICO I · ACCESO DOCENTE'),
    make('h2','Vista previa del Quiz '+(LESSONS.findIndex(x=>x[0]===lesson)+1)),
    make('p',[8,13].includes(Number(lesson))?
-    'Cuestionario DIGITAL con preguntas, opciones y audio · sin PDF · no habilita alumnos':
-    'Modelo protegido · no habilita estudiantes'));
+    'Modelo digital':
+    'Modelo de examen'));
  const close=make('button','CERRAR','f111-tqr-close');close.type='button';
  header.append(ttl,close);
  const frame=make('iframe');frame.className='f111-tqr-exam-frame';
@@ -610,7 +610,6 @@ function openReviewWorkspace(group){
   const top=make('div',null,'f111-tqr-detail-top');
   top.append(make('h3',studentLabel(code)),make('small','Quiz 1 · '+String(row.ESTADO||'ENTREGADO')+' · 25 preguntas · peso oficial 0%'));
   detail.append(top);
-  detail.append(make('p','Cada pregunta muestra la respuesta del estudiante y la clave privada de Cambridge. Podés ajustar 0, 0,5 o 1 punto; el resultado es diagnóstico y no modifica las notas oficiales.','f111-tqr-info'));
   const gradePanel=make('div',String(row.ESTADO)==='REVISADO'?'Revisión cerrada · el resultado definitivo aparece debajo.':'Cargando la clave privada del docente…','f111-tqr-score-banner');
   gradePanel.setAttribute('role','status');detail.append(gradePanel);
   const frame=make('iframe');frame.className='f111-tqr-exam-frame';frame.title='Examen del estudiante y corrección por pregunta';

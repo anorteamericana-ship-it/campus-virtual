@@ -358,13 +358,7 @@ function StudentLiveExamApp() {
         setPublicExam(r.public_exam || null);
       })
       .catch(e => {
-        const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
-        const txt = String(raw);
-        if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend de evaluaciones está actualizado, pero el Apps Script publicado no reconoce sus endpoints. Reemplazá el Code.gs completo de esta entrega y creá una nueva implementación. Detalle: ' + txt);
-        } else {
-          setError(txt);
-        }
+        setError('No se pudo cargar el examen. Actualizá o contactá a la Academia.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -410,15 +404,15 @@ function StudentLiveExamApp() {
 
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
-  if (live && live.enabled === false) return <StudentLiveStatusCard title="Exámenes aún deshabilitados" badge="Configuración pendiente" tone="blue" onRefresh={load}>{live.mensaje || 'El backend está instalado, pero la configuración STUDENT_EXAMS_ENABLED todavía no está activa.'}</StudentLiveStatusCard>;
-  if (live && live.preparing) return <StudentLiveStatusCard title="Preparando tu examen" badge="Reintento automático" tone="blue" onRefresh={load}>{live.mensaje || 'La clase está abierta. El sistema está creando una única activación y volverá a consultar en unos segundos.'}</StudentLiveStatusCard>;
+  if (live && live.enabled === false) return <StudentLiveStatusCard title="Exámenes aún deshabilitados" badge="Configuración pendiente" tone="blue" onRefresh={load}>Examen no disponible.</StudentLiveStatusCard>;
+  if (live && live.preparing) return <StudentLiveStatusCard title="Preparando tu examen" badge="Reintento automático" tone="blue" onRefresh={load}>Cargando examen.</StudentLiveStatusCard>;
   if (!live || live.assigned !== true || !activation) {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
     return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'El escrito aparecerá cuando tu docente lo habilite para tu grupo y nivel.'}</StudentLiveStatusCard>;
   }
   if (!f111ExamPublicContractSafe(publicExam, activation)) {
     return <StudentLiveStatusCard title="Contenido de examen no disponible" badge="Protección de examen" tone="red" onRefresh={load}>
-      El servidor no entregó un cuestionario oficial seguro para esta activación. No se mostrará ningún banco de respaldo ni se iniciará el intento. Contactá a la Academia.
+      Contactá a la Academia.
     </StudentLiveStatusCard>;
   }
   return <StudentMode
@@ -774,7 +768,7 @@ class ExamRuntimeBoundaryF950 extends React.Component {
     if (!this.state.error) return this.props.children;
     const msg = this.state.error && this.state.error.message ? this.state.error.message : String(this.state.error || 'Error desconocido');
     const stamp = new Date().toLocaleString();
-    return <div className="exapp"><main className="exmain"><StudentLiveStatusCard title="No fue posible cargar el módulo de exámenes" badge="Soporte" tone="red" onRefresh={()=>window.location.reload()}>El sistema evitó una pantalla en blanco. Presioná actualizar. Si continúa, enviá captura con tu nombre, grupo y hora. <details style={{marginTop:10}}><summary>Detalle técnico para soporte</summary><pre style={{whiteSpace:'pre-wrap',fontSize:11,marginTop:8}}>Hora: {stamp}{'\n'}{msg}</pre></details></StudentLiveStatusCard></main></div>;
+    return <div className="exapp"><main className="exmain"><StudentLiveStatusCard title="No fue posible cargar el módulo de exámenes" badge="Soporte" tone="red" onRefresh={()=>window.location.reload()}>El sistema evitó una pantalla en blanco. Presioná actualizar. Si continúa, enviá captura con tu nombre, grupo y hora. </StudentLiveStatusCard></main></div>;
   }
 }
 
