@@ -146,13 +146,13 @@ const sections=lesson===13?pc03Sections:pc02Sections,matchOptions=lesson===13?pc
 const TOTAL=sections.reduce((a,s)=>a+s.items.length,0);
 const POINTS=sections.reduce((a,s)=>a+s.points,0);
 if(!pcNumber||POINTS!==25||(TOTAL!==25&&!(lesson===13&&TOTAL===26)))throw Error('Banco Quiz inválido');
-let ready=false,loading=false;let token='',busy=false,uncertain=false,dirty=false,lastSave=null,lastAudioUrl='',quizState='SIN_INICIAR',voiceLoaded=false;
+let ready=false,loading=false;let token='',busy=false,uncertain=false,dirty=false,saveDelay=2500,lastSave=null,lastAudioUrl='',quizState='SIN_INICIAR',voiceLoaded=false;
 const context={cod_grupo:group,nivel:'B1',leccion:lesson},expected='IC5_B1_WQ0'+pcNumber;
 function sessionToken(){try{if(window.parent!==window&&typeof window.parent.getSessionToken==='function')return String(window.parent.getSessionToken()||'')}catch(_){}
  try{return String(JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||'')}catch(_){return ''}}
 async function api(fn,data={}){
  const base=String((window.parent!==window&&window.parent.F111_QZ_API_URL)||window.F111_QZ_API_URL||'');
- token=sessionToken();if(!token||!base)throw Error('Abrí el quiz desde Evaluaciones con tu sesión');
+ const currentToken=sessionToken();if(!token||currentToken!==token||!base)throw Error('Abrí el quiz desde Evaluaciones con tu sesión');
  const r=await fetch(base+'?fn='+encodeURIComponent(fn),{method:'POST',
   headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token,...context,...data})});
  let j;try{j=await r.json()}catch(_){throw Error('Respuesta del servidor inválida')}
@@ -169,10 +169,10 @@ async function saveReal(){
  busy=true;updateButtons();const snapshot={...answers};dirty=false;
  try{const r=await api('qzProgressSaveDraft',{respuestas:snapshot});
   if(r.quiz_id!==expected||!['BORRADOR','ENTREGADO','REVISADO'].includes(r.estado))throw Error('No se confirmó el borrador');
-  if(r.estado!=='BORRADOR')finished=true;
+  saveDelay=2500;if(r.estado!=='BORRADOR')finished=true;
   setMessage(finished?'Prueba ya entregada: no se pueden modificar respuestas.':'✓ Borrador guardado en el Campus.');
- }catch(_){dirty=true;setMessage('No se confirmó el guardado. Podés reintentar Guardar borrador.')}
- finally{busy=false;updateButtons();if(dirty&&!finished){clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),2500)}}
+ }catch(_){saveDelay=Math.min(saveDelay*2,30000);dirty=true;setMessage('No se confirmó el guardado. Podés reintentar Guardar borrador.')}
+ finally{busy=false;updateButtons();if(dirty&&!finished&&sessionToken()===token){clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),saveDelay)}}
 }
 function changed(){if(!live||!ready||finished)return;dirty=true;updateButtons();clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),1400)}
 async function loadVoice(){
