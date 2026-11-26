@@ -2,6 +2,15 @@
 
 Estas instrucciones aplican a todo el repositorio. Su objetivo es producir cambios y auditorías reproducibles, seguros y trazables sin redescubrir en cada sesión la arquitectura, el runtime o los errores ya resueltos.
 
+## Estandar de entregas y continuidad F111 (25-nov-2026)
+
+- Trabajar sobre el sistema autorizado, por incidencias reales y bloques cerrables. No repetir verificaciones historicas sin evidencia de regresion.
+- Cada corte: metricas con denominador fijo, estado por correccion y colores: PASS/PUBLICADO VERIFICADO verde, IMPLEMENTADO azul, PENDIENTE amarillo, ERROR/BLOQUEADO rojo. Diferenciar pruebas simuladas, autenticadas y escrituras reales.
+- Registrar evidencia, PR/SHA, CORE/QUIZ, datos tocados, riesgos, rollback y siguiente paso en `00_DOCUMENTACION/F111_CONTINUIDAD_VIGENTE.md`. No declarar publicado sin readback.
+- Prohibidas notas tecnicas internas en pantallas docente/estudiante sin autorizacion de Direccion. Solo informacion academica, controles e instrucciones indispensables.
+- Revision docente compacta: respuestas grandes y comparables, verde/rojo/amarillo, nota y retroalimentacion visibles, puntuacion/comentario por pregunta. Preservar entregas y notas.
+- Quiz asignado sin vencimiento ni cierre de asistencia, pendientes ordenados, borrador recuperable y entrega idempotente. Mantener permisos y alcance certificado; no confundir con escrito de 90 minutos.
+
 ## Fuente de verdad y línea base
 
 - Empezar desde el `main` remoto vigente y registrar repositorio, rama, SHA, fecha y entorno.

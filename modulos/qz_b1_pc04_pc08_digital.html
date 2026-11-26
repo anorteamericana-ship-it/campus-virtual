@@ -78,13 +78,13 @@ const TOTAL=sections.reduce((a,s)=>a+s.items.length,0);
 const POINTS=sections.reduce((a,s)=>a+s.points,0);
 const REQUIRED_FIELDS={16:23,21:25,24:25,28:25,30:25};
 if(!pcNumber||POINTS!==25||TOTAL!==REQUIRED_FIELDS[lesson])throw Error('Banco Quiz inválido');
-let token='',busy=false,uncertain=false,dirty=false,lastSave=null,lastAudioUrl='',quizState='SIN_INICIAR',voiceLoaded=false;
+let ready=false,loading=false;let token='',busy=false,uncertain=false,dirty=false,lastSave=null,lastAudioUrl='',quizState='SIN_INICIAR',voiceLoaded=false;
 const context={cod_grupo:group,nivel:'B1',leccion:lesson},expected='IC5_B1_WQ0'+pcNumber;
 function sessionToken(){try{if(window.parent!==window&&typeof window.parent.getSessionToken==='function')return String(window.parent.getSessionToken()||'')}catch(_){}
  try{return String(JSON.parse(sessionStorage.getItem('an_usuario')||'{}').token||'')}catch(_){return ''}}
 async function api(fn,data={}){
  const base=String((window.parent!==window&&window.parent.F111_QZ_API_URL)||window.F111_QZ_API_URL||'');
- if(!token||!base)throw Error('Abrí el quiz desde Evaluaciones con tu sesión');
+ token=sessionToken();if(!token||!base)throw Error('Abrí el quiz desde Evaluaciones con tu sesión');
  const r=await fetch(base+'?fn='+encodeURIComponent(fn),{method:'POST',
   headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,token,...context,...data})});
  let j;try{j=await r.json()}catch(_){throw Error('Respuesta del servidor inválida')}
@@ -93,20 +93,20 @@ async function api(fn,data={}){
 }
 function setMessage(t){document.querySelector('.notice[role=status]').textContent=t}
 function updateButtons(){
- if(saveBtn)saveBtn.disabled=!live||finished||busy||uncertain;
- document.getElementById('finish').disabled=!live||finished||busy||uncertain||counts()===0;
+ if(saveBtn)saveBtn.disabled=!live||!ready||finished||busy||uncertain;
+ document.getElementById('finish').disabled=!live||!ready||finished||busy||uncertain||counts()===0;
 }
 async function saveReal(){
- if(!live||finished||uncertain||busy||!dirty)return;
+ if(!live||!ready||finished||uncertain||busy||!dirty)return;
  busy=true;updateButtons();const snapshot={...answers};dirty=false;
  try{const r=await api('qzProgressSaveDraft',{respuestas:snapshot});
   if(r.quiz_id!==expected||!['BORRADOR','ENTREGADO','REVISADO'].includes(r.estado))throw Error('No se confirmó el borrador');
   if(r.estado!=='BORRADOR')finished=true;
   setMessage(finished?'Prueba ya entregada: no se pueden modificar respuestas.':'✓ Borrador guardado en el Campus.');
  }catch(_){dirty=true;setMessage('No se confirmó el guardado. Podés reintentar Guardar borrador.')}
- finally{busy=false;updateButtons()}
+ finally{busy=false;updateButtons();if(dirty&&!finished){clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),2500)}}
 }
-function changed(){if(!live||finished||busy)return;dirty=true;updateButtons();clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),1400)}
+function changed(){if(!live||!ready||finished)return;dirty=true;updateButtons();clearTimeout(lastSave);lastSave=setTimeout(()=>void saveReal(),1400)}
 async function loadVoice(){
  if((!live&&!teacherPreview)||voiceLoaded)return;
  try{
@@ -191,7 +191,7 @@ function show(){
   const label=el('label'),input=el('input');
   input.type=s.type==='multi'?'checkbox':'radio';input.name=q[0];input.value=String(k+1);
   input.checked=s.type==='multi'?String(answers[q[0]]||'').split(',').includes(String(k+1)):answers[q[0]]===String(k+1);
-  input.disabled=finished||review;
+  input.disabled=finished||review||(live&&!ready);
   input.onchange=()=>{if(s.type==='multi'){
    const chosen=Array.from(box.querySelectorAll('input:checked')).map(i=>i.value);
    if(chosen.length>Number(s.maxSelections||2)){input.checked=false;return}
@@ -201,10 +201,10 @@ function show(){
  else if(s.type==='select'){
   const sel=el('select');sel.setAttribute('aria-label',q[0]);const blank=el('option','Elegir la letra…');blank.value='';sel.append(blank);
   (s.matchOptions||matchOptions).forEach(([letter,answer])=>{const option=el('option',letter+' · '+answer);option.value=letter;sel.append(option)});
-  sel.value=answers[q[0]]||'';sel.disabled=finished||review;sel.onchange=()=>{answers[q[0]]=sel.value;refresh()};box.append(sel);
+  sel.value=answers[q[0]]||'';sel.disabled=finished||review||(live&&!ready);sel.onchange=()=>{answers[q[0]]=sel.value;refresh()};box.append(sel);
  } else {
   const input=el('input');input.type='text';input.autocomplete='off';input.maxLength=240;input.placeholder='Respuesta para revisar el diseño';
-  input.setAttribute('aria-label',q[0]);input.value=answers[q[0]]||'';input.disabled=finished||review;
+  input.setAttribute('aria-label',q[0]);input.value=answers[q[0]]||'';input.disabled=finished||review||(live&&!ready);
   input.oninput=()=>{answers[q[0]]=input.value;refresh()};box.append(input);
  }
  panel.append(box);
@@ -225,7 +225,7 @@ document.getElementById('finish').onclick=async()=>{
   if(!window.confirm('Finalizar vista previa sin envío de respuestas?'))return;
   finished=true;show();setMessage('Vista previa finalizada. Ninguna respuesta fue enviada.');return;
  }
- if(busy||finished||uncertain||counts()<1)return;
+ if(!ready||busy||finished||uncertain||counts()<1)return;
  if(!window.confirm('¿ENTREGAR QUIZ '+pcNumber+'? Las respuestas no podrán modificarse después.'))return;
  clearTimeout(lastSave);busy=true;updateButtons();
  try{
@@ -235,9 +235,16 @@ document.getElementById('finish').onclick=async()=>{
   if(check.quiz_id!==expected||!['ENTREGADO','REVISADO'].includes(check.estado))throw Error('Lectura posterior falló');
   finished=true;quizState=check.estado;dirty=false;show();setMessage('✓ QUIZ ENTREGADO · Pendiente de revisión del profesor');
   alert('✓ Quiz '+pcNumber+' entregado. Podés cerrar la ventana; se registró tu envío.');
- }catch(_){uncertain=true;setMessage('Entrega incierta: NO reenvíes. Abrí nuevamente Evaluaciones y verificá el estado antes de repetir.')}
+ }catch(_){uncertain=true;retryBtn.textContent='COMPROBAR ENTREGA';retryBtn.hidden=false;setMessage('No se pudo confirmar la entrega. Comprobá el estado.')}
  finally{busy=false;updateButtons()}
 };
+async function recoverSubmission(){
+ if(!uncertain||busy)return;busy=true;updateButtons();retryBtn.disabled=true;
+ try{const own=await api('qzProgressMyAttempt');if(own.quiz_id!==expected||!['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(own.estado))throw Error('Estado no confirmado');
+  uncertain=false;retryBtn.hidden=true;retryBtn.textContent='REINTENTAR CARGA';finished=['ENTREGADO','REVISADO'].includes(own.estado);quizState=own.estado;
+  if(finished){dirty=false;show();setMessage('Quiz entregado.');}else{dirty=true;show();setMessage('Respuestas conservadas. Podés entregar nuevamente.');}
+ }catch(_){setMessage('No se pudo confirmar el estado. Reintentá.');}finally{busy=false;retryBtn.disabled=false;updateButtons();}
+}
 async function initialize(){
  if(review){
   finished=true;saveBtn.hidden=true;document.getElementById('finish').hidden=true;
@@ -255,7 +262,7 @@ async function initialize(){
  if(!live){saveBtn.hidden=true;show();
   if(teacherPreview){token=sessionToken();if(token&&group)void loadVoice();}
   return;}
- token=sessionToken();
+ if(loading||ready)return;loading=true;token=sessionToken();
  try{
   if(!token||!group)throw Error('Entrá al Campus desde tu cuenta de estudiante.');
   const meta=await api('qzProgressGet');
@@ -265,13 +272,13 @@ async function initialize(){
   if(own.quiz_id!==expected||!['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(own.estado))throw Error('Expediente individual no verificado.');
   for(const s of sections)for(const q of s.items)
    if(typeof own.respuestas?.[q[0]]==='string')answers[q[0]]=own.respuestas[q[0]];
-  quizState=own.estado;finished=['ENTREGADO','REVISADO'].includes(own.estado);
+  ready=true;retryBtn.hidden=true;quizState=own.estado;finished=['ENTREGADO','REVISADO'].includes(own.estado);
   setMessage(finished?own.estado==='REVISADO'?'✓ REVISADO · Nota diagnóstica: '+String(own.nota??'—')+'/100 · '+String(own.comentario_docente||''):
    '✓ ENTREGADO · Esperando revisión docente.':'Cuestionario digital activo. Guardá tu avance o entregá desde la última sección.');
   show();
   void loadVoice();
- }catch(e){finished=true;setMessage('No se pudo abrir el examen: '+String(e.message||e));show();}
+ }catch(e){ready=false;retryBtn.hidden=false;setMessage('No se pudo cargar el quiz. Reintentá.');show();}finally{loading=false;updateButtons();}
 }
 window.addEventListener('beforeunload',()=>{if(lastAudioUrl)URL.revokeObjectURL(lastAudioUrl);clearTimeout(lastSave)});
-initialize();
+const retryBtn=el('button','REINTENTAR CARGA');retryBtn.type='button';retryBtn.hidden=true;retryBtn.onclick=()=>void (uncertain?recoverSubmission():initialize());document.querySelector('.actions').prepend(retryBtn);window.addEventListener('online',()=>{if(uncertain)void recoverSubmission();else if(live&&!ready)void initialize();else if(dirty)void saveReal()});initialize();
 </script></body></html>
