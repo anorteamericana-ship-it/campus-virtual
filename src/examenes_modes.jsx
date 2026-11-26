@@ -426,7 +426,6 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
 function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart, starting }) {
   const cron = assignment && (assignment.CRONOGRAMA || assignment.availability) || null;
   const liveLabel = cron && cron.dia ? `${cron.dia}${cron.turno ? ' · ' + cron.turno : ''}` : 'apertura vigente';
-  const intentoTxt = backend && backend.attemptId ? `Intento activo: ${backend.attemptId}` : 'Se creará un intento oficial al iniciar.';
   return (
     <div className="ascard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
       <div className="ascard-top">
@@ -435,7 +434,7 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
       </div>
       <h2 className="ascard-title">{exam.titulo}</h2>
       <p className="ascard-sub">{exam.subtitulo}</p>
-      <div className="ascard-pond">{window.ponderacionTexto(exam.ponderacion_por_plan, plan)}</div>
+
       <div className="ascard-grid">
         <div><span>Unidades</span><b>{exam.unidades}</b></div>
         <div><span>Lección</span><b>{exam.leccion} · {liveLabel}</b></div>
@@ -443,8 +442,7 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
         <div><span>Puntos</span><b>{exam.puntos_totales}</b></div>
       </div>
       <div className="ascard-note">
-        Este examen está habilitado para tu grupo y nivel.
-        Al iniciarlo comienza un contador único de 90 minutos. Solo puede enviarse una vez y, después del envío, no admite correcciones. {intentoTxt}
+        Duración: 90 minutos. Un solo envío.
       </div>
       <button className="btn-primary ascard-go" onClick={onStart} disabled={!!starting}>{starting ? 'Preparando intento…' : 'Iniciar examen'}</button>
     </div>
@@ -460,11 +458,6 @@ function PendingCard({ tema, opcion }) {
         <span className={`ascard-opt opt-${opcion}`}>Opción {opcion} {opcion==='B' && '· reposición'}</span>
       </div>
       <h2 className="ascard-title">Opción {opcion} pendiente de publicar</h2>
-      <p className="ascard-sub">Esta variante se usará para reposición o casos autorizados por docente/administración.</p>
-      <div className="ascard-note">
-        El contenido de la Opción {opcion} aún no está disponible. No carga el examen de otra opción.
-        Cuando esté publicado, el sistema lo asignará automáticamente según el cronograma.
-      </div>
       <button className="btn-primary ascard-go" disabled>Examen pendiente</button>
     </div>
   );
@@ -476,7 +469,7 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
         <div className="sent-check" style={{ background:tema.color }}>✓</div>
         <h2 className="ascard-title">Examen enviado</h2>
-        <p className="sent-msg">Tu examen fue recibido. El envío es único y tus respuestas ya no pueden modificarse.</p>
+        <p className="sent-msg">Entrega recibida.</p>
         {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
           <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
         </div>}
@@ -488,10 +481,9 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
           <div><span>Nota</span><b className="sent-pending">Pendiente</b></div>
           {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
         </div>
-        <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
       </div>
       <div className="sent-summary">
-        <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>
+        <div className="sent-summary-head"><b>Respuestas enviadas</b></div>
         <ExamShell exam={exam} answers={answers} mode="preview" showKey={false}
           shell="premium" density="compact" plan={plan}
           meta={{ nombre:meta.nombre || 'Estudiante', fecha:meta.fecha || '', grupo:meta.grupo || '', opcion, scoreLabel:'Enviado' }} />
@@ -738,7 +730,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   const closeAndPush = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || closed || busy) return;
-    if(!canClose){setErr('Faltan calificaciones manuales o la clave protegida no se verifico.');return;}
+    if(!canClose){setErr('Revisá las preguntas pendientes.');return;}
     const feedback = String(studentFeedback || '').trim();
     if (!feedback) {
       setMsg('');
@@ -811,7 +803,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   if (loading) return <div className="tch-review-loading"><div className="exam-boot-spinner" /><b>Abriendo entrega y preparando revisión…</b></div>;
   if (err && !attempt) return <div className="tch-review-error"><b>No se pudo abrir la entrega.</b><span>{err}</span><div><button className="btn-sm" onClick={onBack}>Volver</button><button className="ad-meta-btn" onClick={load}>Reintentar</button></div></div>;
-  if (!exam) return <div className="tch-review-error"><b>El examen de esta entrega no existe en el catálogo publicado.</b><span>{attempt && attempt.EXAM_ID || 'EXAM_ID no disponible'}</span><button className="btn-sm" onClick={onBack}>Volver</button></div>;
+  if (!exam) return <div className="tch-review-error"><b>Examen no disponible.</b><button className="btn-sm" onClick={onBack}>Volver</button></div>;
 
   const tema = NIVEL_TEMA[exam.nivel];
   return (
@@ -821,7 +813,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         <button type="button" className="rev-back" onClick={onBack}>← Entregas del grupo</button>
         <div className="rev-stud">
           <h3>{attempt.NOMBRE || row.NOMBRE || 'Estudiante'}</h3>
-          <div className="rev-meta"><span>C?digo</span>{attempt.CODIGO || '-'}</div>
+          <div className="rev-meta"><span>Código</span>{attempt.CODIGO || '-'}</div>
           <details className="rev-details"><summary>Datos de la entrega</summary>
             <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
             <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '-'}</div>
@@ -833,18 +825,18 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
           <div className="rev-score-num">{displayScore}<small> /100</small></div>
           <div className="rev-score-lbl">{closed?'Nota final':unresolved.length?'Nota provisional':'Nota lista para enviar'} ? {finalPoints}/{all.length} pts</div>
         </div>
-        <div className="rev-prelim rev-overview" aria-label="Estado de correcci?n">
+        <div className="rev-prelim rev-overview" aria-label="Estado de corrección">
           <div className="rev-stat rev-stat-ok"><b>{correctCount}</b><span>Correctas</span></div>
-          <div className="rev-stat rev-stat-bad"><b>{incorrectCount}</b><span>Incorrectas / vac?as</span></div>
+          <div className="rev-stat rev-stat-bad"><b>{incorrectCount}</b><span>Incorrectas / vacías</span></div>
           <div className="rev-stat rev-stat-warn"><b>{unresolved.length}</b><span>Por revisar</span></div>
           <div className="rev-stat rev-stat-partial"><b>{partialCount}</b><span>Medio punto</span></div>
         </div>
         <div className="rev-pending-nav">
-          <button type="button" className="rev-next" disabled={!unresolved.length} onClick={()=>jumpTo(unresolved[0]?.id)}>{unresolved.length?'Ir a la siguiente pendiente ('+unresolved.length+')':'? Sin pendientes manuales'}</button>
+          <button type="button" className="rev-next" disabled={!unresolved.length} onClick={()=>jumpTo(unresolved[0]?.id)}>{unresolved.length?'Ir a la siguiente pendiente ('+unresolved.length+')':'Sin pendientes'}</button>
           {unresolved.length>0&&<div className="rev-pending-ids" aria-label="Preguntas pendientes">{unresolved.map(x=><button type="button" key={x.id} onClick={()=>jumpTo(x.id)}>{x.id}</button>)}</div>}
         </div>
         <label className="rev-field">
-          <span>Retroalimentación para el estudiante · obligatoria</span>
+          <span>Retroalimentación (obligatoria)</span>
           <textarea
             className="rev-fb"
             disabled={closed}
@@ -868,7 +860,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
                 {busy === 'download' ? 'Recuperando PDF…' : 'Descargar PDF escrito'}
               </button>
             ) : pdfState.requiere_preparacion ? (
-              <span>PDF escrito pendiente de habilitación administrativa.</span>
+              <span>PDF no disponible.</span>
             ) : (
               <button type="button" className="btn-close" disabled={!!busy} onClick={generateWrittenPdf}>
                 {busy === 'pdf' ? 'Generando PDF…' : 'Generar PDF escrito'}
@@ -969,10 +961,10 @@ function TeacherWrittenLiveInbox() {
       }
       setRows(scoped);
       setSummary(r.summary || null);
-      if (!silent) setMsg(`Actualizado · ${scoped.length} entrega(s) en la bandeja autorizada.`);
+      if (!silent) setMsg(`${scoped.length} entregas`);
     } else {
       setRows([]); setSummary(null);
-      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo verificar la bandeja de este grupo. No se muestran entregas.', 'review_inbox'));
+      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudieron consultar las entregas.', 'review_inbox'));
     }
   }, [grupo]);
 
@@ -1011,7 +1003,6 @@ function TeacherWrittenLiveInbox() {
         <div>
           <div className="tch-kicker">ENTREGAS DEL ESTUDIANTE</div>
           <h2 className="tch-title">Exámenes escritos entregados</h2>
-          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. La bandeja se actualiza automáticamente cada 15 segundos y al volver a esta ventana.</p>
         </div>
         <div className="tch-stats">
           <div className="tch-stat"><b>{pendingCount}</b><span>requieren atención</span></div>
@@ -1021,7 +1012,7 @@ function TeacherWrittenLiveInbox() {
 
       <div className="tch-groups-panel">
         <div className="tch-groups-label">
-          {scopedFocus?'GRUPO SELECCIONADO EN MIS EXÁMENES':'ELEGÍ EL GRUPO CON UNA TARJETA'}
+          {scopedFocus?'GRUPO SELECCIONADO EN MIS EXÁMENES':'GRUPOS'}
         </div>
         {!scopedFocus&&<div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
           {panelGroups.length ? panelGroups.map(g => (
@@ -1031,12 +1022,12 @@ function TeacherWrittenLiveInbox() {
               <span>{examTeacherGroupLabelF88(g)}</span>
               <small>{examTeacherShortGroupF940(g)}</small>
             </button>
-          )) : <div className="tch-group-empty">Sin grupos asignados en la sesión.</div>}
+          )) : <div className="tch-group-empty">Sin grupos asignados.</div>}
           <button type="button" className="tch-refresh" disabled={loading || !grupo} onClick={()=>load(false)}>{loading ? 'Actualizando…' : 'Actualizar entregas'}</button>
         </div>}
         {scopedFocus&&<div data-f111-written-focus="true" role="status"
           style={{padding:'10px 12px',marginTop:10,border:'1px solid #C9D7E6',borderRadius:8,background:'#F3F7FC',fontSize:12}}>
-          <b>Consulta contextual:</b> {scopedFocus.grupo} · {scopedFocus.nivel} ·
+          <b>Grupo:</b> {scopedFocus.grupo} · {scopedFocus.nivel} ·
           lección {scopedFocus.leccion}
           {scopedFocus.cod_estudiante?' · estudiante '+scopedFocus.cod_estudiante:''}
           <button type="button" className="tch-refresh"
@@ -1050,9 +1041,6 @@ function TeacherWrittenLiveInbox() {
             onClick={()=>load(false)} style={{marginLeft:8}}>
             {loading?'Actualizando…':'Actualizar entregas'}
           </button>
-          <div style={{fontSize:11,marginTop:5}}>
-            Solo se muestran entregas que el servidor autorizó para el grupo. Consultar aquí no habilita ni crea exámenes.
-          </div>
         </div>}
         {msg && <div className="ex-okmsg">✓ {msg}</div>}
         {err && <div className="ex-errmsg">⚠ {err}</div>}
@@ -1066,9 +1054,6 @@ function TeacherWrittenLiveInbox() {
             {!visibleRows.length && <tr><td colSpan="5"><div className="tch-empty-state">
               <b>{loading?'Verificando entregas autorizadas…':err?'No se pueden mostrar entregas.':
                 scopedFocus?'Sin entregas pendientes para esta selección.':'No hay exámenes enviados que requieran atención.'}</b>
-              <span>{scopedFocus?
-                'Esta bandeja solo contiene entregas enviadas que requieren atención. No significa que el estudiante esté ausente, tenga nota cero ni que no exista un expediente histórico.':
-                'Que el examen esté activo no significa que ya haya entregas. La lista cambia cuando el estudiante termina y presiona “Enviar examen”.'}</span>
             </div></td></tr>}
             {visibleRows.map((r, i) => (
               <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>

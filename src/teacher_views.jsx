@@ -2279,7 +2279,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
            {pcReal.delivered} de {roster.length}
            {' estudiantes tienen una entrega consultable; '+pcReal.reviewed+
              ' revisadas y '+pcReal.waiting+' entregadas por revisar.'}
-           {' Los borradores de estudiantes no forman parte de esta consulta.'}
+
          </span>
          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
            <button className="btn btn-ghost" type="button"
@@ -2295,10 +2295,6 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
       {next&&<div role="status" style={{padding:'12px 14px',background:pal.light,
         border:'1px solid '+pal.dark,borderRadius:12,color:pal.dark,fontWeight:800,fontSize:13}}>
         {tr('Próxima evaluación según cronograma','Next assessment in the timetable')}: {next.title} · L{String(next.lesson).padStart(2,'0')}
-        <span style={{fontWeight:500,fontSize:11,display:'block',marginTop:3}}>
-          {tr('Esto identifica la siguiente evaluación, no concede permiso para abrirla.',
-            'This identifies the next assessment; it does not grant permission to open it.')}
-        </span>
       </div>}
       {loading?<div role="status" style={{padding:14}}>{tr('Consultando lecciones y notas…','Loading lessons and grades…')}</div>:<>
         {[
@@ -2386,7 +2382,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                     <button className="btn btn-ghost" type="button"
                       disabled={lateOralStatus.busy}
                       onClick={()=>openLateOralF111(d)}
-                      title="Aplicar el examen oral en cualquier fecha o estado de lección; el CORE valida permiso y notas previas."
+                      title="Aplicar examen oral"
                       style={{fontSize:12,borderColor:'#ceab36',background:'#f2c83d',color:'#193858',fontWeight:900}}>
                       {lateOralStatus.busy&&lateOralStatus.key===
                         groupCode+'|'+nivel+'|'+d.lesson?
@@ -2397,7 +2393,7 @@ function TeacherExamsWorkspaceF111({onNavigate,onWrittenFocus,activeSession,acti
                       data-f111-written-card-slot="true" data-group={groupCode} data-level={nivel}
                       data-lesson={d.lesson} data-lang={en?'en':'es'}/>}
                   {d.kind==='written'&&<button className="btn btn-ghost" type="button"
-                    onClick={()=>openModel(d,'B')} title="El audio de la opción B no está certificado para aplicación."
+                    onClick={()=>openModel(d,'B')} title="Ver modelo B"
                     style={{fontSize:11,borderColor:'#AA7530',color:'#805019'}}>
                     {tr('Ver escrito B · solo consulta','View written B · review only')}
                   </button>}

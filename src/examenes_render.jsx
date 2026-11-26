@@ -228,37 +228,20 @@ function SectionBody({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 // ── Review affordance (pregunta por pregunta) ─────────────────────────────
 function reviewDisplayState(ev,mark){return mark!=null?(Number(mark)===1?'ok':Number(mark)===0.5?'partial':'bad'):ev.verdict==='review'?'review':ev.verdict==='ok'?'ok':'bad';}
 function ReviewBar({ id, section, q, val, review }) {
-  const ev = review.evidence && review.evidence[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
-  const mark = review.marks[id];
-  const state=reviewDisplayState(ev,mark);
-  const verdictMeta = {
-    ok:    { t:'Auto: correcta',  c:'rev-ok'   },
-    bad:   { t:'Auto: incorrecta',c:'rev-bad'  },
-    review:{ t:'Requiere revisión',c:'rev-rev' },
-    empty: { t:'Sin responder',   c:'rev-bad'},
-  }[ev.verdict];
-  const label=mark!=null?(mark===1?'Correcta ? docente':mark===0.5?'Parcial ? docente':'Incorrecta ? docente'):verdictMeta.t;
-  const auto = ev.verdict === 'ok' ? 1 : 0;
-  const cur = mark == null ? (ev.verdict==='review' ? null : auto) : mark;
-  const open = review.openComment === id;
-  return (
-    <div className={`exrev exrev-state-${state}`} data-review-id={id} data-review-state={state} tabIndex={-1}>
-      <span className={`exrev-v rev-state-${state}`}>{state==='ok'?'? ':state==='bad'?'? ':state==='review'?'! ':'? '}{label}</span><span className="exrev-earned">{cur==null?'?':cur}/1 pt</span>
-      <span className="exrev-key">{ev.verdict==='review'&&mark==null?'PENDIENTE DE CALIFICAR: ':''}Clave: <b>{ev.key || 'No verificada'}</b></span>
-      <div className="exrev-pts">
-        {[0, 0.5, 1].map(p => (
-          <button key={p} disabled={!!review.locked} aria-pressed={cur===p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
-        ))}
-      </div>
-      <button disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>
-        {review.comments[id] ? '✎ comentario' : '+ comentario'}
-      </button>
-      {open && (
-        <textarea className="exrev-c" disabled={!!review.locked} autoFocus placeholder="Comentario para el estudiante…"
-          value={review.comments[id]||''} onChange={e=>review.setComment(id, e.target.value)} />
-      )}
-    </div>
-  );
+  const ev=review.evidence?.[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
+  const mark=review.marks[id],state=reviewDisplayState(ev,mark);
+  const cur=mark==null?(ev.verdict==='review'?null:ev.verdict==='ok'?1:0):Number(mark);
+  const label=state==='ok'?'Correcta':state==='bad'?(ev.verdict==='empty'&&mark==null?'Sin respuesta':'Incorrecta'):state==='partial'?'Parcial':'Revisar';
+  const raw=Array.isArray(val)?val.join(' / '):String(val??'');
+  const shown=q.opts?.find(o=>String(o[0])===raw)?.[1]||raw;
+  const expected=ev.key==null||ev.key===''?'Sin clave':String(ev.key);
+  const open=review.openComment===id;
+  return <div className={`exrev exrev-state-${state}`} data-review-id={id} data-review-state={state} tabIndex={-1}>
+    <div className="exrev-top"><span className="exrev-id">{id}</span><span className={`exrev-v rev-state-${state}`}>{label}</span><span className="exrev-earned">{cur==null?'\u2014':cur}/1 pt</span></div>
+    <div className="exrev-compare"><div className="exrev-answer"><span>{q.legacyMultiBlank?'Respuesta original guardada:':'Estudiante'}</span><strong>{shown||'\u2014'}</strong></div><div className="exrev-expected"><span>Respuesta esperada</span><strong>{expected}</strong></div></div>
+    <div className="exrev-actions"><div className="exrev-pts" aria-label="Puntuacion">{[0,0.5,1].map(p=><button type="button" key={p} disabled={!!review.locked} aria-pressed={cur===p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id,p)}>{p}</button>)}</div><button type="button" disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>{review.comments[id]?'Ver comentario':'+ Comentario'}</button></div>
+    {open&&<textarea className="exrev-c" disabled={!!review.locked} autoFocus placeholder="Comentario para el estudiante" value={review.comments[id]||''} onChange={e=>review.setComment(id,e.target.value)}/>}
+  </div>;
 }
 
 // ── Multiple choice (listening + inline) ──────────────────────────────────
@@ -542,8 +525,8 @@ function DialogVerbLegacy({ sec, q, answers, onAnswer, ro, mode, showKey, review
   const val = answers[q.id] || '';
   if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
     <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
-    <div className="exrow-rev"><b>Respuesta original guardada:</b> {val||'Sin respuesta'}</div>
-    <div className="exrow-rev" style={{color:'#895d09'}}>Incidencia del formulario: evaluar manualmente, no asumir que el texto se ingreso en cada espacio.</div></div>
+
+    </div>
     <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review}/></div></div>;
   const ph = q.hint ? `(${q.hint})` : 'forma verbal…';
   // Renderiza una línea que puede contener uno o varios ____ (la respuesta es
@@ -581,8 +564,8 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
     <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
-    <div className="exrow-rev"><b>Respuesta original guardada:</b> {val||'Sin respuesta'}</div>
-    <div className="exrow-rev" style={{color:'#895d09'}}>Incidencia del formulario: evaluar manualmente, no asumir que el texto se ingreso en cada espacio.</div></div>
+
+    </div>
     <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review}/></div></div>;
   const ph = q.hint ? `(${q.hint})` : 'forma verbal';
   const count=dialogBlankCount(q),raw=answers[q.id],values=dialogBlankValues(raw,count);
@@ -604,8 +587,8 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
     ));
   };
   if(mode==='review'&&count>1&&!Array.isArray(raw)&&raw!=null)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
-    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}<div><b>Respuesta original guardada:</b> {String(raw)}</div><small>Formato historico; no se reconstruyen respuestas no guardadas.</small></div>
-    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={{...q,manualRequired:true}} val={raw} review={review}/></div></div>;
+    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}</div>
+    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={{...q,manualRequired:true,legacyMultiBlank:true}} val={raw} review={review}/></div></div>;
   return (
     <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>

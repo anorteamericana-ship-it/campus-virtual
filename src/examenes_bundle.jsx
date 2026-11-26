@@ -303,6 +303,13 @@ window.EXAM_CSS = `
 .tchrev-live .exrev-state-partial,.tchrev-live .rev-state-partial{--review-bg:#eef2f8;--review-border:#c6d1df;--review-ink:#425872}
 .tchrev-live .exrev-v{background:var(--review-bg);color:var(--review-ink);padding:3px 5px;border-radius:4px;font-weight:800}.tchrev-live .exrev-earned{font-size:11px;font-weight:800;color:var(--review-ink);margin-left:auto}.tchrev-live .exrev-key{flex-basis:100%;color:#334155}.tchrev-live .exrev-key b{color:#196b3e}.tchrev-live .exrev-p.on{background:var(--review-ink);border-color:var(--review-ink);color:#fff}.tchrev-live .exrev-p{min-width:34px;height:30px}.tchrev-live .exrev-line{gap:6px;flex-direction:column;align-items:stretch}.tchrev-live .exrev-line .exrev{width:100%;box-sizing:border-box}.tchrev-live .exrev-stud{font-size:12px;overflow-wrap:anywhere}.tchrev-live .exrev-id{align-self:flex-start}.tchrev-live .exrev:focus{outline:3px solid #d6a926}
 .tchrev-live .exopt.is-correct{background:#e9f7ed;border-color:#69a97b}.tchrev-live .exopt.is-correct .exbox{background:#196b3e;border-color:#196b3e}.tchrev-live .exopt.chosen-wrong{background:#fcecea;border-color:#c94b40}.tchrev-live .exopt.chosen-wrong .exbox{background:#a52a22;border-color:#a52a22}.tchrev-live .extf-b.tf-key{background:#196b3e;border-color:#196b3e;color:white}.tchrev-live .extf-b.tf-wrong{background:#a52a22;border-color:#a52a22;color:white}.tchrev-live .exin.in-ok{background:#e9f7ed;border-color:#196b3e}.tchrev-live .exin.in-bad{background:#fcecea;border-color:#a52a22}.tchrev-live .exin.in-rev{background:#fff3cd;border-color:#c09215}
+
+/* Compact teacher grading: the two answers are the focal point. */
+.tchrev-live .exrev[data-review-state]{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:7px 10px;margin-top:5px;border-radius:7px;min-width:0;max-width:100%;box-sizing:border-box;scroll-margin:15px}
+.tchrev-live .exrev-top{display:flex;align-items:center;gap:7px}.tchrev-live .exrev-id{font-size:10px;padding:2px 5px}.tchrev-live .exrev-v{font-size:11px;padding:0;background:transparent}.tchrev-live .exrev-earned{font-size:12px}
+.tchrev-live .exrev-compare{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start}.tchrev-live .exrev-compare>div{min-width:0;display:flex;flex-direction:column;gap:1px}.tchrev-live .exrev-compare span{font-size:10px;font-weight:700;color:#526172}.tchrev-live .exrev-compare strong{font-size:clamp(17px,2.15vw,22px);font-weight:750;line-height:1.18;letter-spacing:-.025em;overflow-wrap:anywhere;white-space:pre-wrap;color:var(--review-ink)}.tchrev-live .exrev-expected{border-left:1px solid var(--review-border);padding-left:10px}.tchrev-live .exrev-expected strong{color:#196b3e}
+.tchrev-live .exrev-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end}.tchrev-live .exrev-pts{margin:0;gap:3px}.tchrev-live .exrev-p{min-width:30px;height:26px;font-size:12px}.tchrev-live .exrev-cbtn{font-size:11px;padding:4px 7px}.tchrev-live .exrev-line{padding:0;background:transparent;border:0;gap:0}.tchrev-live .exrev-line .exrev{margin:0}.tchrev-live .exq-rows{gap:5px}.tchrev-live .exrev-c{box-sizing:border-box;min-height:46px}.tchrev-live .exrow-rev{min-width:0}.tchrev-live .exrev:focus{outline:2px solid #b88b16;outline-offset:1px}
+@media(min-width:1050px){.tchrev-live .exrev[data-review-state]{grid-template-columns:minmax(0,1fr) auto;align-items:center}.tchrev-live .exrev-top{grid-column:1/-1}.tchrev-live .exrev-compare{grid-column:1}.tchrev-live .exrev-actions{grid-column:2}.tchrev-live .exrev-c{grid-column:1/-1}}
 `;
 
 // ===== examenes_appcss.jsx =====
@@ -1674,37 +1681,20 @@ function SectionBody({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 // ── Review affordance (pregunta por pregunta) ─────────────────────────────
 function reviewDisplayState(ev,mark){return mark!=null?(Number(mark)===1?'ok':Number(mark)===0.5?'partial':'bad'):ev.verdict==='review'?'review':ev.verdict==='ok'?'ok':'bad';}
 function ReviewBar({ id, section, q, val, review }) {
-  const ev = review.evidence && review.evidence[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
-  const mark = review.marks[id];
-  const state=reviewDisplayState(ev,mark);
-  const verdictMeta = {
-    ok:    { t:'Auto: correcta',  c:'rev-ok'   },
-    bad:   { t:'Auto: incorrecta',c:'rev-bad'  },
-    review:{ t:'Requiere revisión',c:'rev-rev' },
-    empty: { t:'Sin responder',   c:'rev-bad'},
-  }[ev.verdict];
-  const label=mark!=null?(mark===1?'Correcta ? docente':mark===0.5?'Parcial ? docente':'Incorrecta ? docente'):verdictMeta.t;
-  const auto = ev.verdict === 'ok' ? 1 : 0;
-  const cur = mark == null ? (ev.verdict==='review' ? null : auto) : mark;
-  const open = review.openComment === id;
-  return (
-    <div className={`exrev exrev-state-${state}`} data-review-id={id} data-review-state={state} tabIndex={-1}>
-      <span className={`exrev-v rev-state-${state}`}>{state==='ok'?'? ':state==='bad'?'? ':state==='review'?'! ':'? '}{label}</span><span className="exrev-earned">{cur==null?'?':cur}/1 pt</span>
-      <span className="exrev-key">{ev.verdict==='review'&&mark==null?'PENDIENTE DE CALIFICAR: ':''}Clave: <b>{ev.key || 'No verificada'}</b></span>
-      <div className="exrev-pts">
-        {[0, 0.5, 1].map(p => (
-          <button key={p} disabled={!!review.locked} aria-pressed={cur===p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
-        ))}
-      </div>
-      <button disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>
-        {review.comments[id] ? '✎ comentario' : '+ comentario'}
-      </button>
-      {open && (
-        <textarea className="exrev-c" disabled={!!review.locked} autoFocus placeholder="Comentario para el estudiante…"
-          value={review.comments[id]||''} onChange={e=>review.setComment(id, e.target.value)} />
-      )}
-    </div>
-  );
+  const ev=review.evidence?.[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
+  const mark=review.marks[id],state=reviewDisplayState(ev,mark);
+  const cur=mark==null?(ev.verdict==='review'?null:ev.verdict==='ok'?1:0):Number(mark);
+  const label=state==='ok'?'Correcta':state==='bad'?(ev.verdict==='empty'&&mark==null?'Sin respuesta':'Incorrecta'):state==='partial'?'Parcial':'Revisar';
+  const raw=Array.isArray(val)?val.join(' / '):String(val??'');
+  const shown=q.opts?.find(o=>String(o[0])===raw)?.[1]||raw;
+  const expected=ev.key==null||ev.key===''?'Sin clave':String(ev.key);
+  const open=review.openComment===id;
+  return <div className={`exrev exrev-state-${state}`} data-review-id={id} data-review-state={state} tabIndex={-1}>
+    <div className="exrev-top"><span className="exrev-id">{id}</span><span className={`exrev-v rev-state-${state}`}>{label}</span><span className="exrev-earned">{cur==null?'\u2014':cur}/1 pt</span></div>
+    <div className="exrev-compare"><div className="exrev-answer"><span>{q.legacyMultiBlank?'Respuesta original guardada:':'Estudiante'}</span><strong>{shown||'\u2014'}</strong></div><div className="exrev-expected"><span>Respuesta esperada</span><strong>{expected}</strong></div></div>
+    <div className="exrev-actions"><div className="exrev-pts" aria-label="Puntuacion">{[0,0.5,1].map(p=><button type="button" key={p} disabled={!!review.locked} aria-pressed={cur===p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id,p)}>{p}</button>)}</div><button type="button" disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>{review.comments[id]?'Ver comentario':'+ Comentario'}</button></div>
+    {open&&<textarea className="exrev-c" disabled={!!review.locked} autoFocus placeholder="Comentario para el estudiante" value={review.comments[id]||''} onChange={e=>review.setComment(id,e.target.value)}/>}
+  </div>;
 }
 
 // ── Multiple choice (listening + inline) ──────────────────────────────────
@@ -1988,8 +1978,8 @@ function DialogVerbLegacy({ sec, q, answers, onAnswer, ro, mode, showKey, review
   const val = answers[q.id] || '';
   if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
     <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
-    <div className="exrow-rev"><b>Respuesta original guardada:</b> {val||'Sin respuesta'}</div>
-    <div className="exrow-rev" style={{color:'#895d09'}}>Incidencia del formulario: evaluar manualmente, no asumir que el texto se ingreso en cada espacio.</div></div>
+
+    </div>
     <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review}/></div></div>;
   const ph = q.hint ? `(${q.hint})` : 'forma verbal…';
   // Renderiza una línea que puede contener uno o varios ____ (la respuesta es
@@ -2027,8 +2017,8 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
   const val = answers[q.id] || '';
   if(mode==='review'&&q.legacyMultiBlank)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
     <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}
-    <div className="exrow-rev"><b>Respuesta original guardada:</b> {val||'Sin respuesta'}</div>
-    <div className="exrow-rev" style={{color:'#895d09'}}>Incidencia del formulario: evaluar manualmente, no asumir que el texto se ingreso en cada espacio.</div></div>
+
+    </div>
     <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={q} val={val} review={review}/></div></div>;
   const ph = q.hint ? `(${q.hint})` : 'forma verbal';
   const count=dialogBlankCount(q),raw=answers[q.id],values=dialogBlankValues(raw,count);
@@ -2050,8 +2040,8 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
     ));
   };
   if(mode==='review'&&count>1&&!Array.isArray(raw)&&raw!=null)return <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
-    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}<div><b>Respuesta original guardada:</b> {String(raw)}</div><small>Formato historico; no se reconstruyen respuestas no guardadas.</small></div>
-    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={{...q,manualRequired:true}} val={raw} review={review}/></div></div>;
+    <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span><div className="exdlg"><div>{q.a}</div>{q.b&&<div>{q.b}</div>}</div>
+    <div className="exrow-rev"><ReviewBar id={q.id} section={sec} q={{...q,manualRequired:true,legacyMultiBlank:true}} val={raw} review={review}/></div></div>;
   return (
     <div className="exrow exrow-2 exrow-dlg" data-question-id={q.id}>
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
@@ -2571,7 +2561,6 @@ function StudentMode({ shell, density, nivel='I2', test='TEST1', opcion, plan, e
 function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart, starting }) {
   const cron = assignment && (assignment.CRONOGRAMA || assignment.availability) || null;
   const liveLabel = cron && cron.dia ? `${cron.dia}${cron.turno ? ' · ' + cron.turno : ''}` : 'apertura vigente';
-  const intentoTxt = backend && backend.attemptId ? `Intento activo: ${backend.attemptId}` : 'Se creará un intento oficial al iniciar.';
   return (
     <div className="ascard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
       <div className="ascard-top">
@@ -2580,7 +2569,7 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
       </div>
       <h2 className="ascard-title">{exam.titulo}</h2>
       <p className="ascard-sub">{exam.subtitulo}</p>
-      <div className="ascard-pond">{window.ponderacionTexto(exam.ponderacion_por_plan, plan)}</div>
+
       <div className="ascard-grid">
         <div><span>Unidades</span><b>{exam.unidades}</b></div>
         <div><span>Lección</span><b>{exam.leccion} · {liveLabel}</b></div>
@@ -2588,8 +2577,7 @@ function AssignmentCard({ exam, tema, opcion, plan, assignment, backend, onStart
         <div><span>Puntos</span><b>{exam.puntos_totales}</b></div>
       </div>
       <div className="ascard-note">
-        Este examen está habilitado para tu grupo y nivel.
-        Al iniciarlo comienza un contador único de 90 minutos. Solo puede enviarse una vez y, después del envío, no admite correcciones. {intentoTxt}
+        Duración: 90 minutos. Un solo envío.
       </div>
       <button className="btn-primary ascard-go" onClick={onStart} disabled={!!starting}>{starting ? 'Preparando intento…' : 'Iniciar examen'}</button>
     </div>
@@ -2605,11 +2593,6 @@ function PendingCard({ tema, opcion }) {
         <span className={`ascard-opt opt-${opcion}`}>Opción {opcion} {opcion==='B' && '· reposición'}</span>
       </div>
       <h2 className="ascard-title">Opción {opcion} pendiente de publicar</h2>
-      <p className="ascard-sub">Esta variante se usará para reposición o casos autorizados por docente/administración.</p>
-      <div className="ascard-note">
-        El contenido de la Opción {opcion} aún no está disponible. No carga el examen de otra opción.
-        Cuando esté publicado, el sistema lo asignará automáticamente según el cronograma.
-      </div>
       <button className="btn-primary ascard-go" disabled>Examen pendiente</button>
     </div>
   );
@@ -2621,7 +2604,7 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
       <div className="ascard sentcard" style={{ '--lvl':tema.color, '--lvl-soft':tema.soft, '--lvl-ink':tema.ink }}>
         <div className="sent-check" style={{ background:tema.color }}>✓</div>
         <h2 className="ascard-title">Examen enviado</h2>
-        <p className="sent-msg">Tu examen fue recibido. El envío es único y tus respuestas ya no pueden modificarse.</p>
+        <p className="sent-msg">Entrega recibida.</p>
         {reposicionSyncPending && <div role="status" data-r57-sync-pending="true" style={{margin:'12px 0',padding:'12px 14px',background:'#FFF4D6',border:'1px solid #D3A752',borderRadius:10,color:'#573A0A',fontSize:13}}>
           <b>Entrega confirmada. Actualización de reposición pendiente.</b> Tu examen quedó enviado, pero el estado de la reposición aún se está sincronizando. No volvás a contestarlo. Si el aviso continúa, contactá a la administración e indicá el número de intento mostrado abajo.
         </div>}
@@ -2633,10 +2616,9 @@ function SentCard({ exam, tema, opcion, plan, attemptId, answers = {}, meta = {}
           <div><span>Nota</span><b className="sent-pending">Pendiente</b></div>
           {attemptId && <div><span>Intento</span><b>{attemptId}</b></div>}
         </div>
-        <div className="ascard-note">Abajo podés consultar únicamente el resumen de las respuestas que enviaste. No se muestran claves correctas ni se habilitan correcciones.</div>
       </div>
       <div className="sent-summary">
-        <div className="sent-summary-head"><b>Resumen de respuestas enviadas</b><br/>Vista de solo lectura. La nota final aparecerá cuando el docente termine la revisión y la envíe a Mis Notas.</div>
+        <div className="sent-summary-head"><b>Respuestas enviadas</b></div>
         <ExamShell exam={exam} answers={answers} mode="preview" showKey={false}
           shell="premium" density="compact" plan={plan}
           meta={{ nombre:meta.nombre || 'Estudiante', fecha:meta.fecha || '', grupo:meta.grupo || '', opcion, scoreLabel:'Enviado' }} />
@@ -2883,7 +2865,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   const closeAndPush = async () => {
     if (!reviewData || !reviewData.REVIEW_ID || closed || busy) return;
-    if(!canClose){setErr('Faltan calificaciones manuales o la clave protegida no se verifico.');return;}
+    if(!canClose){setErr('Revisá las preguntas pendientes.');return;}
     const feedback = String(studentFeedback || '').trim();
     if (!feedback) {
       setMsg('');
@@ -2956,7 +2938,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
 
   if (loading) return <div className="tch-review-loading"><div className="exam-boot-spinner" /><b>Abriendo entrega y preparando revisión…</b></div>;
   if (err && !attempt) return <div className="tch-review-error"><b>No se pudo abrir la entrega.</b><span>{err}</span><div><button className="btn-sm" onClick={onBack}>Volver</button><button className="ad-meta-btn" onClick={load}>Reintentar</button></div></div>;
-  if (!exam) return <div className="tch-review-error"><b>El examen de esta entrega no existe en el catálogo publicado.</b><span>{attempt && attempt.EXAM_ID || 'EXAM_ID no disponible'}</span><button className="btn-sm" onClick={onBack}>Volver</button></div>;
+  if (!exam) return <div className="tch-review-error"><b>Examen no disponible.</b><button className="btn-sm" onClick={onBack}>Volver</button></div>;
 
   const tema = NIVEL_TEMA[exam.nivel];
   return (
@@ -2966,7 +2948,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         <button type="button" className="rev-back" onClick={onBack}>← Entregas del grupo</button>
         <div className="rev-stud">
           <h3>{attempt.NOMBRE || row.NOMBRE || 'Estudiante'}</h3>
-          <div className="rev-meta"><span>C?digo</span>{attempt.CODIGO || '-'}</div>
+          <div className="rev-meta"><span>Código</span>{attempt.CODIGO || '-'}</div>
           <details className="rev-details"><summary>Datos de la entrega</summary>
             <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
             <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '-'}</div>
@@ -2978,18 +2960,18 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
           <div className="rev-score-num">{displayScore}<small> /100</small></div>
           <div className="rev-score-lbl">{closed?'Nota final':unresolved.length?'Nota provisional':'Nota lista para enviar'} ? {finalPoints}/{all.length} pts</div>
         </div>
-        <div className="rev-prelim rev-overview" aria-label="Estado de correcci?n">
+        <div className="rev-prelim rev-overview" aria-label="Estado de corrección">
           <div className="rev-stat rev-stat-ok"><b>{correctCount}</b><span>Correctas</span></div>
-          <div className="rev-stat rev-stat-bad"><b>{incorrectCount}</b><span>Incorrectas / vac?as</span></div>
+          <div className="rev-stat rev-stat-bad"><b>{incorrectCount}</b><span>Incorrectas / vacías</span></div>
           <div className="rev-stat rev-stat-warn"><b>{unresolved.length}</b><span>Por revisar</span></div>
           <div className="rev-stat rev-stat-partial"><b>{partialCount}</b><span>Medio punto</span></div>
         </div>
         <div className="rev-pending-nav">
-          <button type="button" className="rev-next" disabled={!unresolved.length} onClick={()=>jumpTo(unresolved[0]?.id)}>{unresolved.length?'Ir a la siguiente pendiente ('+unresolved.length+')':'? Sin pendientes manuales'}</button>
+          <button type="button" className="rev-next" disabled={!unresolved.length} onClick={()=>jumpTo(unresolved[0]?.id)}>{unresolved.length?'Ir a la siguiente pendiente ('+unresolved.length+')':'Sin pendientes'}</button>
           {unresolved.length>0&&<div className="rev-pending-ids" aria-label="Preguntas pendientes">{unresolved.map(x=><button type="button" key={x.id} onClick={()=>jumpTo(x.id)}>{x.id}</button>)}</div>}
         </div>
         <label className="rev-field">
-          <span>Retroalimentación para el estudiante · obligatoria</span>
+          <span>Retroalimentación (obligatoria)</span>
           <textarea
             className="rev-fb"
             disabled={closed}
@@ -3013,7 +2995,7 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
                 {busy === 'download' ? 'Recuperando PDF…' : 'Descargar PDF escrito'}
               </button>
             ) : pdfState.requiere_preparacion ? (
-              <span>PDF escrito pendiente de habilitación administrativa.</span>
+              <span>PDF no disponible.</span>
             ) : (
               <button type="button" className="btn-close" disabled={!!busy} onClick={generateWrittenPdf}>
                 {busy === 'pdf' ? 'Generando PDF…' : 'Generar PDF escrito'}
@@ -3114,10 +3096,10 @@ function TeacherWrittenLiveInbox() {
       }
       setRows(scoped);
       setSummary(r.summary || null);
-      if (!silent) setMsg(`Actualizado · ${scoped.length} entrega(s) en la bandeja autorizada.`);
+      if (!silent) setMsg(`${scoped.length} entregas`);
     } else {
       setRows([]); setSummary(null);
-      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudo verificar la bandeja de este grupo. No se muestran entregas.', 'review_inbox'));
+      setErr(examTeacherSafeUserError(r && (r.mensaje || r.error), 'No se pudieron consultar las entregas.', 'review_inbox'));
     }
   }, [grupo]);
 
@@ -3156,7 +3138,6 @@ function TeacherWrittenLiveInbox() {
         <div>
           <div className="tch-kicker">ENTREGAS DEL ESTUDIANTE</div>
           <h2 className="tch-title">Exámenes escritos entregados</h2>
-          <p className="tch-help">Esta sección no activa el examen. Sirve para <b>corregir lo que los estudiantes ya enviaron</b> y pasar la nota a Mis Notas. La bandeja se actualiza automáticamente cada 15 segundos y al volver a esta ventana.</p>
         </div>
         <div className="tch-stats">
           <div className="tch-stat"><b>{pendingCount}</b><span>requieren atención</span></div>
@@ -3166,7 +3147,7 @@ function TeacherWrittenLiveInbox() {
 
       <div className="tch-groups-panel">
         <div className="tch-groups-label">
-          {scopedFocus?'GRUPO SELECCIONADO EN MIS EXÁMENES':'ELEGÍ EL GRUPO CON UNA TARJETA'}
+          {scopedFocus?'GRUPO SELECCIONADO EN MIS EXÁMENES':'GRUPOS'}
         </div>
         {!scopedFocus&&<div className="tch-groups-row" role="tablist" aria-label="Grupos del docente">
           {panelGroups.length ? panelGroups.map(g => (
@@ -3176,12 +3157,12 @@ function TeacherWrittenLiveInbox() {
               <span>{examTeacherGroupLabelF88(g)}</span>
               <small>{examTeacherShortGroupF940(g)}</small>
             </button>
-          )) : <div className="tch-group-empty">Sin grupos asignados en la sesión.</div>}
+          )) : <div className="tch-group-empty">Sin grupos asignados.</div>}
           <button type="button" className="tch-refresh" disabled={loading || !grupo} onClick={()=>load(false)}>{loading ? 'Actualizando…' : 'Actualizar entregas'}</button>
         </div>}
         {scopedFocus&&<div data-f111-written-focus="true" role="status"
           style={{padding:'10px 12px',marginTop:10,border:'1px solid #C9D7E6',borderRadius:8,background:'#F3F7FC',fontSize:12}}>
-          <b>Consulta contextual:</b> {scopedFocus.grupo} · {scopedFocus.nivel} ·
+          <b>Grupo:</b> {scopedFocus.grupo} · {scopedFocus.nivel} ·
           lección {scopedFocus.leccion}
           {scopedFocus.cod_estudiante?' · estudiante '+scopedFocus.cod_estudiante:''}
           <button type="button" className="tch-refresh"
@@ -3195,9 +3176,6 @@ function TeacherWrittenLiveInbox() {
             onClick={()=>load(false)} style={{marginLeft:8}}>
             {loading?'Actualizando…':'Actualizar entregas'}
           </button>
-          <div style={{fontSize:11,marginTop:5}}>
-            Solo se muestran entregas que el servidor autorizó para el grupo. Consultar aquí no habilita ni crea exámenes.
-          </div>
         </div>}
         {msg && <div className="ex-okmsg">✓ {msg}</div>}
         {err && <div className="ex-errmsg">⚠ {err}</div>}
@@ -3211,9 +3189,6 @@ function TeacherWrittenLiveInbox() {
             {!visibleRows.length && <tr><td colSpan="5"><div className="tch-empty-state">
               <b>{loading?'Verificando entregas autorizadas…':err?'No se pueden mostrar entregas.':
                 scopedFocus?'Sin entregas pendientes para esta selección.':'No hay exámenes enviados que requieran atención.'}</b>
-              <span>{scopedFocus?
-                'Esta bandeja solo contiene entregas enviadas que requieren atención. No significa que el estudiante esté ausente, tenga nota cero ni que no exista un expediente histórico.':
-                'Que el examen esté activo no significa que ya haya entregas. La lista cambia cuando el estudiante termina y presiona “Enviar examen”.'}</span>
             </div></td></tr>}
             {visibleRows.map((r, i) => (
               <tr key={r.ATTEMPT_ID || r.REVIEW_ID || i}>
@@ -5213,13 +5188,7 @@ function StudentLiveExamApp() {
         setPublicExam(r.public_exam || null);
       })
       .catch(e => {
-        const raw = (e && (e.mensaje || e.error)) || 'No se pudo consultar el backend de exámenes.';
-        const txt = String(raw);
-        if (/no reconoc|desconocid/i.test(txt)) {
-          setError('El frontend de evaluaciones está actualizado, pero el Apps Script publicado no reconoce sus endpoints. Reemplazá el Code.gs completo de esta entrega y creá una nueva implementación. Detalle: ' + txt);
-        } else {
-          setError(txt);
-        }
+        setError('No se pudo cargar el examen. Actualizá o contactá a la Academia.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -5265,15 +5234,15 @@ function StudentLiveExamApp() {
 
   if (loading) return <StudentLiveLoading />;
   if (error) return <StudentLiveStatusCard title="No se pudo abrir exámenes" badge="Error de conexión" tone="red" onRefresh={load}>{error}</StudentLiveStatusCard>;
-  if (live && live.enabled === false) return <StudentLiveStatusCard title="Exámenes aún deshabilitados" badge="Configuración pendiente" tone="blue" onRefresh={load}>{live.mensaje || 'El backend está instalado, pero la configuración STUDENT_EXAMS_ENABLED todavía no está activa.'}</StudentLiveStatusCard>;
-  if (live && live.preparing) return <StudentLiveStatusCard title="Preparando tu examen" badge="Reintento automático" tone="blue" onRefresh={load}>{live.mensaje || 'La clase está abierta. El sistema está creando una única activación y volverá a consultar en unos segundos.'}</StudentLiveStatusCard>;
+  if (live && live.enabled === false) return <StudentLiveStatusCard title="Exámenes aún deshabilitados" badge="Configuración pendiente" tone="blue" onRefresh={load}>Examen no disponible.</StudentLiveStatusCard>;
+  if (live && live.preparing) return <StudentLiveStatusCard title="Preparando tu examen" badge="Reintento automático" tone="blue" onRefresh={load}>Cargando examen.</StudentLiveStatusCard>;
   if (!live || live.assigned !== true || !activation) {
     const msg = live && (live.mensaje || (live.availability && live.availability.mensaje));
     return <StudentLiveStatusCard title="No hay examen disponible" onRefresh={load}>{msg || 'El escrito aparecerá cuando tu docente lo habilite para tu grupo y nivel.'}</StudentLiveStatusCard>;
   }
   if (!f111ExamPublicContractSafe(publicExam, activation)) {
     return <StudentLiveStatusCard title="Contenido de examen no disponible" badge="Protección de examen" tone="red" onRefresh={load}>
-      El servidor no entregó un cuestionario oficial seguro para esta activación. No se mostrará ningún banco de respaldo ni se iniciará el intento. Contactá a la Academia.
+      Contactá a la Academia.
     </StudentLiveStatusCard>;
   }
   return <StudentMode
@@ -5629,7 +5598,7 @@ class ExamRuntimeBoundaryF950 extends React.Component {
     if (!this.state.error) return this.props.children;
     const msg = this.state.error && this.state.error.message ? this.state.error.message : String(this.state.error || 'Error desconocido');
     const stamp = new Date().toLocaleString();
-    return <div className="exapp"><main className="exmain"><StudentLiveStatusCard title="No fue posible cargar el módulo de exámenes" badge="Soporte" tone="red" onRefresh={()=>window.location.reload()}>El sistema evitó una pantalla en blanco. Presioná actualizar. Si continúa, enviá captura con tu nombre, grupo y hora. <details style={{marginTop:10}}><summary>Detalle técnico para soporte</summary><pre style={{whiteSpace:'pre-wrap',fontSize:11,marginTop:8}}>Hora: {stamp}{'\n'}{msg}</pre></details></StudentLiveStatusCard></main></div>;
+    return <div className="exapp"><main className="exmain"><StudentLiveStatusCard title="No fue posible cargar el módulo de exámenes" badge="Soporte" tone="red" onRefresh={()=>window.location.reload()}>El sistema evitó una pantalla en blanco. Presioná actualizar. Si continúa, enviá captura con tu nombre, grupo y hora. </StudentLiveStatusCard></main></div>;
   }
 }
 
