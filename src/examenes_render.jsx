@@ -105,7 +105,7 @@ function ExamShell({ exam, answers={}, onAnswer, mode='student', showKey=false,
           <h1 className="exh-title">{exam.titulo}</h1>
           <div className="exh-sub">{exam.subtitulo}</div>
           <div className="exh-official">Documento oficial de evaluación · Campus Virtual</div>
-          {exam.ponderacion_por_plan && (
+          {mode!=='review' && exam.ponderacion_por_plan && (
             <div className="exh-pond">{window.ponderacionTexto(exam.ponderacion_por_plan, plan)}</div>
           )}
           {/* Atribución del material: mínima y SOLO en admin/preview/profesor. */}
@@ -226,25 +226,28 @@ function SectionBody({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 }
 
 // ── Review affordance (pregunta por pregunta) ─────────────────────────────
+function reviewDisplayState(ev,mark){return mark!=null?(Number(mark)===1?'ok':Number(mark)===0.5?'partial':'bad'):ev.verdict==='review'?'review':ev.verdict==='ok'?'ok':'bad';}
 function ReviewBar({ id, section, q, val, review }) {
   const ev = review.evidence && review.evidence[id] ? {...review.evidence[id],key:exKeyText(section,q)} : evalQuestion(section,q,val);
+  const mark = review.marks[id];
+  const state=reviewDisplayState(ev,mark);
   const verdictMeta = {
     ok:    { t:'Auto: correcta',  c:'rev-ok'   },
     bad:   { t:'Auto: incorrecta',c:'rev-bad'  },
     review:{ t:'Requiere revisión',c:'rev-rev' },
-    empty: { t:'Sin responder',   c:'rev-empty'},
+    empty: { t:'Sin responder',   c:'rev-bad'},
   }[ev.verdict];
-  const mark = review.marks[id];
+  const label=mark!=null?(mark===1?'Correcta ? docente':mark===0.5?'Parcial ? docente':'Incorrecta ? docente'):verdictMeta.t;
   const auto = ev.verdict === 'ok' ? 1 : 0;
   const cur = mark == null ? (ev.verdict==='review' ? null : auto) : mark;
   const open = review.openComment === id;
   return (
-    <div className="exrev">
-      <span className={`exrev-v ${verdictMeta.c}`}>{verdictMeta.t}</span>
+    <div className={`exrev exrev-state-${state}`} data-review-id={id} data-review-state={state} tabIndex={-1}>
+      <span className={`exrev-v rev-state-${state}`}>{state==='ok'?'? ':state==='bad'?'? ':state==='review'?'! ':'? '}{label}</span><span className="exrev-earned">{cur==null?'?':cur}/1 pt</span>
       <span className="exrev-key">{ev.verdict==='review'&&mark==null?'PENDIENTE DE CALIFICAR: ':''}Clave: <b>{ev.key || 'No verificada'}</b></span>
       <div className="exrev-pts">
         {[0, 0.5, 1].map(p => (
-          <button key={p} disabled={!!review.locked} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
+          <button key={p} disabled={!!review.locked} aria-pressed={cur===p} className={`exrev-p${cur===p?' on':''}`} onClick={()=>review.setMark(id, p)}>{p}</button>
         ))}
       </div>
       <button disabled={!!review.locked} className={`exrev-cbtn${review.comments[id]?' has':''}`} onClick={()=>review.setOpenComment(open?null:id)}>
@@ -296,7 +299,7 @@ function ErrQ({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
       <span className="exrow-txt" dangerouslySetInnerHTML={{ __html: q.html }} />
       <span className="exrow-arrow">→</span>
       <span className="exrow-ans">
-        <input className={exInCls(sec,q,val,showKey)} value={val} disabled={ro}
+        <input className={exInCls(sec,q,val,showKey, review)} value={val} disabled={ro}
                placeholder="palabra correcta…" onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
         {showKey && <span className="exkey">{q.correct}</span>}
       </span>
@@ -317,7 +320,7 @@ function ParaFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
           const b = byId[node.b]; const val = answers[b.id] || '';
           return (
             <span key={i} className="exfill-wrap" data-question-id={b.id}>
-              <input className={`exfill ${exInCls(sec,b,val,showKey)}`} value={val} disabled={ro}
+              <input className={`exfill ${exInCls(sec,b,val,showKey, review)}`} value={val} disabled={ro}
                      placeholder={`(${b.hint})`} title={b.hint} onChange={e=>onAnswer && onAnswer(b.id, e.target.value)} />
               <span className="exfill-n">{b.id.replace(/^[A-Z]/,'')}</span>
               {showKey && <span className="exkey exkey-inline">{exKeyText(sec,b)}</span>}
@@ -428,7 +431,7 @@ function TableFill({ sec, answers, onAnswer, ro, mode, showKey, review }) {
                   <td>
                     {row.fixed
                       ? <span className="extable-fixed">{row.fixed}</span>
-                      : <input className={'extable-in ' + exInCls(sec, q, val, showKey)} value={val} disabled={ro}
+                      : <input className={'extable-in ' + exInCls(sec, q, val, showKey, review)} value={val} disabled={ro}
                                placeholder="respuesta…" onChange={e=>onAnswer && onAnswer(row.id, e.target.value)} />}
                     {showKey && !row.fixed && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
                   </td>
@@ -455,7 +458,7 @@ function ShortWrite({ sec, answers, onAnswer, ro, mode, showKey, review }) {
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exshort-body">
               {q.prompt && <div className="exshort-prompt" dangerouslySetInnerHTML={{ __html:q.prompt }} />}
-              <input className={'exshort-in ' + exInCls(sec, q, val, showKey)} value={val} disabled={ro}
+              <input className={'exshort-in ' + exInCls(sec, q, val, showKey, review)} value={val} disabled={ro}
                      placeholder={q.placeholder || 'Escribe la respuesta…'} onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
               {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
               {mode==='review' && <ReviewBar id={q.id} section={sec} q={q} val={val} review={review} />}
@@ -513,7 +516,7 @@ function VerbFill({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
       <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
       <span className="exrow-txt">
         {q.pre}{' '}
-        <input className={`exfill ${exInCls(sec,q,val,showKey)}`} value={val} disabled={ro}
+        <input className={`exfill ${exInCls(sec,q,val,showKey, review)}`} value={val} disabled={ro}
                placeholder={`(${q.hint})`} title={q.hint} onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
         {' '}{q.post}
         {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
@@ -551,7 +554,7 @@ function DialogVerbLegacy({ sec, q, answers, onAnswer, ro, mode, showKey, review
       <React.Fragment key={i}>
         {p}
         {i < parts.length - 1 && (
-          <input className={'exfill ' + exInCls(sec, q, val, showKey)} value={val} disabled={ro}
+          <input className={'exfill ' + exInCls(sec, q, val, showKey, review)} value={val} disabled={ro}
                  placeholder={ph} title={q.hint || ''} onChange={e => onAnswer && onAnswer(q.id, e.target.value)} />
         )}
       </React.Fragment>
@@ -590,7 +593,7 @@ function DialogVerb({ sec, q, answers, onAnswer, ro, mode, showKey, review }) {
       <React.Fragment key={i}>
         {p}
         {i < parts.length - 1 && (
-          <input className={'exfill ' + exInCls(sec,q,val,showKey)} value={values[offset+i]||''} disabled={ro}
+          <input className={'exfill ' + exInCls(sec,q,val,showKey, review)} value={values[offset+i]||''} disabled={ro}
                  data-blank-index={offset+i} aria-label={q.id+' blank '+(offset+i+1)}
                  placeholder={ph} title={q.hint||''} onChange={e=>{
                    if(!onAnswer)return;const next=values.slice();next[offset+i]=e.target.value;
@@ -638,7 +641,7 @@ function Transform({ sec, answers, onAnswer, ro, mode, showKey, review }) {
               <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
               <div className="extrans-body">
                 <div className="extrans-prompt">{q.prompt}</div>
-                <input className={`extrans-in ${exInCls(sec,q,val,showKey)}`} value={val} disabled={ro}
+                <input className={`extrans-in ${exInCls(sec,q,val,showKey, review)}`} value={val} disabled={ro}
                        placeholder="Escribe la oración en voz pasiva…" onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
                 {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
                 {mode==='review' && <ReviewBar id={q.id} section={sec} q={q} val={val} review={review} />}
@@ -663,7 +666,7 @@ function Arrange({ sec, answers, onAnswer, ro, mode, showKey, review }) {
             <span className="exrow-n">{q.id.replace(/^[A-Z]/,'')}</span>
             <div className="exarr-body">
               <div className="exarr-prompt">{q.prompt}</div>
-              <input className={`exarr-in ${exInCls(sec,q,val,showKey)}`} value={val} disabled={ro}
+              <input className={`exarr-in ${exInCls(sec,q,val,showKey, review)}`} value={val} disabled={ro}
                      placeholder="Ordena las palabras y escribe la oración…"
                      onChange={e=>onAnswer && onAnswer(q.id, e.target.value)} />
               {showKey && <span className="exkey exkey-inline">{exKeyText(sec,q)}</span>}
@@ -677,9 +680,11 @@ function Arrange({ sec, answers, onAnswer, ro, mode, showKey, review }) {
 }
 
 // input visual class in review/key mode
-function exInCls(section, q, val, showKey) {
-  if (!showKey || !val) return 'exin';
-  const ev = evalQuestion(section, q, val);
+function exInCls(section, q, val, showKey, review) {
+  if (!showKey) return 'exin';
+  const ev = review?.evidence?.[q.id] || evalQuestion(section,q,val);
+  if(review){const state=reviewDisplayState(ev,review.marks?.[q.id]);return 'exin in-'+(state==='review'?'rev':state==='partial'?'rev':state);}
+  if(!val)return 'exin';
   if (ev.verdict==='ok') return 'exin in-ok';
   if (ev.verdict==='bad') return 'exin in-bad';
   if (ev.verdict==='review') return 'exin in-rev';

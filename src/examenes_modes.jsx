@@ -683,6 +683,13 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
   const autoCorrect = autoRows.filter(x => x.ev.verdict === 'ok').length;
   const needManual = autoRows.filter(x => x.ev.verdict === 'review').length;
   const unresolved=autoRows.filter(x=>x.ev.verdict==='review'&&!Object.prototype.hasOwnProperty.call(marks,x.id));
+  const mainRef=React.useRef(null);
+  const effectiveRows=autoRows.map(x=>({...x,state:reviewDisplayState(x.ev,marks[x.id])}));
+  const correctCount=effectiveRows.filter(x=>x.state==='ok').length;
+  const incorrectCount=effectiveRows.filter(x=>x.state==='bad').length;
+  const partialCount=effectiveRows.filter(x=>x.state==='partial').length;
+  const jumpTo=(id)=>{const el=Array.from(mainRef.current?.querySelectorAll('[data-review-id]')||[]).find(x=>x.dataset.reviewId===id);if(el){el.scrollIntoView({block:'center',behavior:'smooth'});el.focus({preventScroll:true});}};
+
   const canClose=all.length>0&&unresolved.length===0&&(!attempt||attempt.ACTIVATION_ID!=='ACT-DOCENTE-20261125-175752-FE84494C'||!!privateReview);
   const finalPoints = autoRows.reduce((sum, x) => {
     const mark = marks[x.id];
@@ -812,31 +819,30 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
       <ScriptModal section={scriptSec} exam={exam} onClose={()=>setScriptSec(null)} />
       <aside className="rev-side">
         <button type="button" className="rev-back" onClick={onBack}>← Entregas del grupo</button>
-        <div className="rev-live-tag">REVISIÓN OFICIAL</div>
         <div className="rev-stud">
           <h3>{attempt.NOMBRE || row.NOMBRE || 'Estudiante'}</h3>
-          <div className="rev-meta"><span>Código</span>{attempt.CODIGO || '—'}</div>
-          <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
-          <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '—'}</div>
-          <div className="rev-meta"><span>Enviado</span>{normalizeBackendDate(attempt.SUBMITTED_AT) || '—'}</div>
-          <div className="rev-meta"><span>Tiempo</span>{examTeacherDurationF940(attempt.TIME_SPENT_SEC)}</div>
+          <div className="rev-meta"><span>C?digo</span>{attempt.CODIGO || '-'}</div>
+          <details className="rev-details"><summary>Datos de la entrega</summary>
+            <div className="rev-meta"><span>Grupo</span>{examTeacherGroupLabelF88(attempt.COD_GRUPO || row.COD_GRUPO)}</div>
+            <div className="rev-meta"><span>Examen</span>{attempt.EXAM_ID || '-'}</div>
+            <div className="rev-meta"><span>Enviado</span>{normalizeBackendDate(attempt.SUBMITTED_AT) || '-'}</div>
+            <div className="rev-meta"><span>Tiempo</span>{examTeacherDurationF940(attempt.TIME_SPENT_SEC)}</div>
+          </details>
         </div>
-
-        <div className="rev-prelim">
-          <div className="rev-prelim-h">Cálculo de la revisión</div>
-          <div className="rev-prelim-row"><span>Auto correctas</span><b>{autoCorrect}/{all.length}</b></div>
-          <div className="rev-prelim-row warn"><span>Revisión manual</span><b>{needManual}</b></div>
-          <div className="rev-prelim-row warn"><span>Pendientes por calificar</span><b>{unresolved.length}</b></div>
-          <div className="rev-note">{privateReview?'Clave Cambridge verificada - 50 puntos. H1, H2 y H5 requieren revision por incidencia.':'Sin clave verificada: calificacion manual; no se presume que una respuesta sea incorrecta.'}</div>
-          <div className="rev-prelim-row"><span>Ajustes realizados</span><b>{Object.keys(marks).length}</b></div>
-          <div className="rev-note">Revisá cada respuesta marcada en amarillo. La nota no llega a Mis Notas hasta cerrar.</div>
-        </div>
-
         <div className="rev-score">
-          <div className="rev-score-num" style={{ color:tema.ink }}>{displayScore}</div>
-          <div className="rev-score-lbl">Nota actual · {closed ? 'cerrada' : `${finalPoints}/${all.length} pts`}</div>
+          <div className="rev-score-num">{displayScore}<small> /100</small></div>
+          <div className="rev-score-lbl">{closed?'Nota final':unresolved.length?'Nota provisional':'Nota lista para enviar'} ? {finalPoints}/{all.length} pts</div>
         </div>
-
+        <div className="rev-prelim rev-overview" aria-label="Estado de correcci?n">
+          <div className="rev-stat rev-stat-ok"><b>{correctCount}</b><span>Correctas</span></div>
+          <div className="rev-stat rev-stat-bad"><b>{incorrectCount}</b><span>Incorrectas / vac?as</span></div>
+          <div className="rev-stat rev-stat-warn"><b>{unresolved.length}</b><span>Por revisar</span></div>
+          <div className="rev-stat rev-stat-partial"><b>{partialCount}</b><span>Medio punto</span></div>
+        </div>
+        <div className="rev-pending-nav">
+          <button type="button" className="rev-next" disabled={!unresolved.length} onClick={()=>jumpTo(unresolved[0]?.id)}>{unresolved.length?'Ir a la siguiente pendiente ('+unresolved.length+')':'? Sin pendientes manuales'}</button>
+          {unresolved.length>0&&<div className="rev-pending-ids" aria-label="Preguntas pendientes">{unresolved.map(x=><button type="button" key={x.id} onClick={()=>jumpTo(x.id)}>{x.id}</button>)}</div>}
+        </div>
         <label className="rev-field">
           <span>Retroalimentación para el estudiante · obligatoria</span>
           <textarea
@@ -873,9 +879,9 @@ function TeacherWrittenBackendReviewF940({ row, onBack, onDone }) {
         {pdfError && <div className="rev-live-err">⚠ {pdfError}</div>}
       </aside>
 
-      <div className="rev-main">
+      <div className="rev-main" ref={mainRef}>
         <ExamShell exam={exam} answers={answers} mode="review" showKey={true}
-          shell="premium" density="compact" review={reviewApi}
+          shell="premium" density="compact" review={reviewApi} plan={attempt.PLAN||''}
           onOpenScript={setScriptSec}
           meta={{ nombre:attempt.NOMBRE || '', fecha:normalizeBackendDate(attempt.SUBMITTED_AT), grupo:attempt.COD_GRUPO || '', opcion:String(exam.opcion || '').toUpperCase(), scoreLabel:`${displayScore} / 100` }} />
       </div>

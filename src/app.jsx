@@ -255,7 +255,7 @@ function TeacherActiveSessionBanner({ state, viewKey }) {
 // El módulo monta su propio React sobre modulos/examenes.html y consulta Apps
 // Script con el token del Campus. El aislamiento evita colisiones de scripts.
 function ExamenesIframePanel({ view, screenLabel, eyebrow, description, badge, iframeTitle, topContent, hideHeader = false }) {
-  const src = `modulos/examenes.html?view=${view}&v=F111R57WRITTENPDF20261109B&exui05c=F111EXUI05C20261111&written=F111WRITTENINVITE20261125&review=F111REVIEWINTEGRITY20261125`;
+  const src = `modulos/examenes.html?view=${view}&v=F111R57WRITTENPDF20261109B&exui05c=F111EXUI05C20261111&written=F111WRITTENINVITE20261125&review=F111REVIEWWORKSPACE20261125`;
   const [teacherBankOpen,setTeacherBankOpen]=React.useState(false);
   const [writtenFocus,setWrittenFocus]=React.useState(null);
   const writtenFrameRef=React.useRef(null),writtenBankRef=React.useRef(null);
