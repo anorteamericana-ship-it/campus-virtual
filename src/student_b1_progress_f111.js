@@ -59,7 +59,7 @@ function openQuiz(item){
    new URL('./',location.href));
  url.searchParams.set('grupo',item.grupo);url.searchParams.set('nivel','B1');
  url.searchParams.set('leccion',String(item.leccion));
- if(digital){url.searchParams.set('live','1');url.searchParams.set('v','F111R65B1DIGITAL20261119');}
+ if(digital){url.searchParams.set('live','1');url.searchParams.set('v','F111QUIZRETRY20261125');}
  frame.src=url.href;frame.setAttribute('referrerpolicy','same-origin');
  pane.append(frame);modal.append(pane);document.body.append(modal);
  close.focus();
@@ -76,7 +76,7 @@ function syncMenuBadge(){
  badge.setAttribute('role','status');
 }
 function maybeInvite(){
- if(!token()||!studentCode||document.querySelector('.f111-b1-extra-invite'))return;
+ if(modal||!token()||!studentCode||document.querySelector('.f111-b1-extra-invite'))return;
  const item=current.find(x=>(x.state==='SIN_INICIAR'||x.state==='BORRADOR')&&
    !notifiedInPage[[studentCode,x.grupo,x.quiz_id,x.invitacion_version||'abierto'].join('|')]&&
    !invitationWasSeen(x));
@@ -91,7 +91,7 @@ function maybeInvite(){
  pane.append(make('small','ACADEMIA NORTEAMERICANA · EVALUACIÓN HABILITADA'),
    make('h2','Tu profesor '+(item.state==='BORRADOR'?'te invita a continuar':'habilitó')+' el Quiz '+Number(item.quiz_id.slice(-2))),
    make('p','Básico I · Lección '+item.leccion+' · Unidades '+LESSONS[item.leccion][1]+
-     '. La fecha original no impide aplicarlo mientras el profesor lo mantenga abierto.'));
+     '.'));
  const actions=make('div',undefined,'f111-b1-extra-invite-actions');
  const later=make('button','VER MÁS TARDE');
  const go=make('button','IR A EVALUACIONES');
@@ -123,18 +123,19 @@ function render(){
  if(!current.length)return;
  section.append(make('small','EVALUACIONES · PROGRESS CHECK BÁSICO I'));
  section.append(make('h3','Quizzes e invitaciones de tu profesor'));
- section.append(make('p','Abrí o continuá cualquier Quiz pendiente aquí. Si la fecha original pasó, la invitación vigente del docente sigue siendo válida.'));
+
  const reload=make('button','ACTUALIZAR INVITACIONES');
  reload.type='button';reload.className='f111-b1-extra-refresh';
  reload.onclick=()=>void check(true);
  section.append(reload);
  const list=make('div',undefined,'f111-b1-extra-list');
+ const firstPending=current.find(x=>['SIN_INICIAR','BORRADOR'].includes(x.state));
  for(const item of current){
   const card=make('div',undefined,'f111-b1-extra-card');
   card.append(make('strong','Quiz '+Number(item.quiz_id.slice(-2))+' · Lección '+item.leccion));
-  card.append(make('p','Unidades '+LESSONS[item.leccion][1]+' · Evaluación formativa, 0% de nota oficial'));
+  card.append(make('p','Unidades '+LESSONS[item.leccion][1]));
   const label=item.state==='BORRADOR'?'CONTINUAR QUIZ':item.state==='SIN_INICIAR'?'INICIAR QUIZ':null;
-  if(label){const b=make('button',label);b.type='button';b.addEventListener('click',()=>openQuiz(item));card.append(b)}
+  if(label){if(firstPending&&item!==firstPending)card.append(make('small','En cola'));const b=make('button',label);b.type='button';b.addEventListener('click',()=>openQuiz(item));card.append(b)}
   else card.append(make('small',item.state==='ENTREGADO'?'Prueba entregada · pendiente de revisión':item.state==='REVISADO'?'Prueba revisada':'Verificando disponibilidad…'));
   list.append(card);
  }
@@ -145,7 +146,7 @@ async function check(force){
  if(!t){current=[];studentCode='';lastToken='';lastAt=0;signature='';render();return;}
  if(inFlight)return;
  if(!force&&t===lastToken&&Date.now()-lastAt<INTERVAL){render();return;}
- inFlight=true;lastToken=t;lastAt=Date.now();
+ if(lastToken&&lastToken!==t){current=[];studentCode='';signature='';}inFlight=true;lastToken=t;lastAt=Date.now();
  try{
   const list=await api('qzProgressStudentB1Active',{});
   if(t!==token())return;
@@ -157,15 +158,16 @@ async function check(force){
    const key=x.grupo+'|'+x.quiz_id;
    if(!dedup.has(key)&&dedup.size<14)dedup.set(key,{...x,state:'DESCONOCIDO'});
   }
-  const items=Array.from(dedup.values());
+  const items=Array.from(dedup.values()).sort((a,b)=>a.grupo.localeCompare(b.grupo)||a.leccion-b.leccion);
   await Promise.all(items.map(async x=>{
+   if(['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(x.estado_intento)){x.state=x.estado_intento;return;}
    try{const r=await api('qzProgressMyAttempt',{cod_grupo:x.grupo,nivel:'B1',leccion:x.leccion});
     if(r.quiz_id===x.quiz_id&&['SIN_INICIAR','BORRADOR','ENTREGADO','REVISADO'].includes(r.estado))x.state=r.estado;
-   }catch(_){x.state='DESCONOCIDO'}
+   }catch(_){const old=current.find(y=>y.quiz_id===x.quiz_id&&y.grupo===x.grupo);x.state=old?.state||'DESCONOCIDO'}
   }));
   if(t!==token())return;
   current=items;signature='';render();maybeInvite();
- }catch(_){if(t===token()){current=[];signature='';render()}}
+ }catch(_){if(t===token()){render()}}
  finally{inFlight=false}
 }
 function install(){
