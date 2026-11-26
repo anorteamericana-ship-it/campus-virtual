@@ -7,3 +7,7 @@
 - Quiz 2 0826: 1 entregado, 2 borradores, 12 sin intento de 15 al corte anterior. @510 ya permite fecha anterior en PROD: causa de expulsion no reproducida en sesion real. Candidato: descubrimiento agrupado, asignacion permanente, orden, recuperacion de carga, guardado y envio incierto. Alcance B1 historico; no habilitar otros niveles ni nuevos PC01 sin certificacion.
 - QA servidor 15/15 simulado. Navegador PC02 y PC04 10/10 simulado. Publicacion y primera nota real pendientes. Cero escrituras academicas. Siguiente paso: readback de frontend y motores, confirmacion de nota por Diego y verificar Quiz2 con estudiante.
 - Formato permanente: AGENTS.md, Estandar de entregas y continuidad F111. Mantener historial en Git y actualizar este corte sin repetir auditorias cerradas.
+
+## Corte pipeline F111
+- Fase 1: validador local de integridad, 21/21 pruebas sinteticas; CORE 53/53 y QUIZ 38/38 verificados contra manifiesto privado, un archivo cambiado por motor. Workflow GitHub de validacion sin credenciales ni despliegue. Ver F111_PIPELINE_RELEASE.md.
+- Frontend #819/#820 fusionado, main d2128a8c antes del pipeline, Pages y R48/R50 CI PASS. CORE/QUIZ permanecen @512/@510 al ultimo readback. Bloqueo de publicacion sigue vigente. No escribir notas ni abrir/cerrar quizzes para probar.

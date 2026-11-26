@@ -1,0 +1,53 @@
+name: F111 Release integrity (validation only)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/f111-release-integrity.yml'
+      - 'scripts/f111_release_integrity.py'
+      - 'scripts/test_f111_release_integrity.py'
+      - '00_DOCUMENTACION/F111_PIPELINE_RELEASE.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/f111-release-integrity.yml'
+      - 'scripts/f111_release_integrity.py'
+      - 'scripts/test_f111_release_integrity.py'
+      - '00_DOCUMENTACION/F111_PIPELINE_RELEASE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: f111-release-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout (read only)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Synthetic integrity regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B scripts/test_f111_release_integrity.py 2>&1 | tee release-integrity-test.log
+      - name: Evidence summary (synthetic only)
+        if: success()
+        shell: bash
+        run: |
+          printf '%s\n' '### F111 release integrity' 'Synthetic regression suite: PASS.' 'No production snapshot checked by CI.' 'No release approval or deployment performed.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain synthetic test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: f111-release-integrity-test
+          path: release-integrity-test.log
+          if-no-files-found: error
+          retention-days: 14

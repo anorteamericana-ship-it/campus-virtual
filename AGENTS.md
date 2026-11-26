@@ -11,6 +11,8 @@ Estas instrucciones aplican a todo el repositorio. Su objetivo es producir cambi
 - Revision docente compacta: respuestas grandes y comparables, verde/rojo/amarillo, nota y retroalimentacion visibles, puntuacion/comentario por pregunta. Preservar entregas y notas.
 - Quiz asignado sin vencimiento ni cierre de asistencia, pendientes ordenados, borrador recuperable y entrega idempotente. Mantener permisos y alcance certificado; no confundir con escrito de 90 minutos.
 
+- Pipeline F111: `00_DOCUMENTACION/F111_PIPELINE_RELEASE.md` y `.github/workflows/f111-release-integrity.yml`. CI sintetico sin credenciales; snapshots y reportes reales privados. PASS de integridad no autoriza publicar. Respetar cualquier bloqueo de herramienta.
+
 ## Fuente de verdad y línea base
 
 - Empezar desde el `main` remoto vigente y registrar repositorio, rama, SHA, fecha y entorno.
