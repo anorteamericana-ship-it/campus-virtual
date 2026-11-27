@@ -68,9 +68,17 @@ function DocsEstudianteVentas({ detalle, demo, onToast, usuario }) {
         return;
       }
       const r = await window.generarDocumentoVentasSeguro({ cedula:d.cedula, codigo, nivel, tipo });
-      if (r && r.ok && r.url) {
-        window.open(r.url, '_blank', 'noopener');
-        onToast && onToast({ tipo:'ok', msg:'Documento generado correctamente.' });
+      if (r?.ok && r.private_delivery && r.blob) {
+        const localUrl = URL.createObjectURL(r.blob);
+        const link = document.createElement('a');
+        link.href = localUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(localUrl), 60000);
+        onToast && onToast({ tipo:'ok', msg:'Documento privado generado correctamente.' });
       } else {
         const m = vxSafeUserError(r && (r.mensaje || r.error), msgFalla, 'documento:' + tipo);
         setErr(m); onToast && onToast({ tipo:'err', msg:m });

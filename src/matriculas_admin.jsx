@@ -475,31 +475,48 @@
     if (m) return m[1];
     return '';
   }
-  function driveCandidates(url) {
-    const id = extractDriveId(url);
-    const list = [url];
-    if (id) {
-      list.push(`https://drive.google.com/thumbnail?id=${id}&sz=w1000`);
-      list.push(`https://drive.google.com/uc?export=view&id=${id}`);
-      list.push(`https://lh3.googleusercontent.com/d/${id}=w1000`);
-    }
-    return [...new Set(list.filter(Boolean))];
-  }
-  function MatDocPhoto({ cap, src, onOpen }) {
-    const [idx, setIdx] = useState(0);
-    const cands = driveCandidates(src);
-    if (idx >= cands.length) {
-      return (
-        <div className="mat-photo-empty">
-          <span>Foto no disponible</span>
-          <span className="mat-photo-cap">{cap}</span>
-        </div>
-      );
-    }
-    const cur = cands[idx];
+  // F111 L0-3a-2: la imagen ya no se solicita a Drive por enlace directo.
+  // El endpoint privado valida sesión, rol, propiedad y archivo esperado.
+  function MatDocPhoto({ cap, src, cedula, tipo, onOpen }) {
+    const [privateUrl, setPrivateUrl] = useState('');
+    const [failed, setFailed] = useState(false);
+    useEffect(() => {
+      let cancelled = false;
+      let objectUrl = '';
+      setFailed(false);
+      setPrivateUrl('');
+      const download = window.descargarDocumentoProspectoPrivado;
+      if (!src || !cedula || !tipo || typeof download !== 'function') {
+        setFailed(true);
+        return () => { cancelled = true; };
+      }
+      Promise.resolve(download(cedula, tipo, extractDriveId(src)))
+        .then(result => {
+          if (cancelled) return;
+          if (!result?.ok || !result.blob || !/^image\//.test(result.mime_type || '')) {
+            setFailed(true);
+            return;
+          }
+          objectUrl = URL.createObjectURL(result.blob);
+          setPrivateUrl(objectUrl);
+        })
+        .catch(() => { if (!cancelled) setFailed(true); });
+      return () => {
+        cancelled = true;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      };
+    }, [src, cedula, tipo]);
+
+    if (failed) return (
+      <div className="mat-photo-empty">
+        <span>Documento no disponible</span>
+        <span className="mat-photo-cap">{cap}</span>
+      </div>
+    );
+    if (!privateUrl) return <div className="mat-photo-empty">Cargando documento privado…</div>;
     return (
-      <div className="mat-photo" onClick={() => onOpen(cur)}>
-        <img src={cur} alt={cap} onError={() => setIdx(i => i + 1)} />
+      <div className="mat-photo" onClick={() => onOpen(privateUrl)}>
+        <img src={privateUrl} alt={cap} onError={() => setFailed(true)} />
         <div className="mat-photo-cap">{cap}</div>
       </div>
     );
@@ -659,11 +676,11 @@
               <div className="mat-sec-h">Documentos adjuntos</div>
               <div className="mat-photos">
                 {[
-                  ['Cédula · frente', get('foto_ced_frente', 'FOTO_CED_FRENTE')],
-                  ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO')],
-                  ['Título', get('foto_titulo', 'FOTO_TITULO')],
-                ].map(([cap, src]) => src ? (
-                  <MatDocPhoto key={cap} cap={cap} src={src} onOpen={(s) => setLightbox({ src: s, cap })} />
+                  ['Cédula · frente', get('foto_ced_frente', 'FOTO_CED_FRENTE'), 'CED_FRENTE'],
+                  ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO'), 'CED_DORSO'],
+                  ['Título', get('foto_titulo', 'FOTO_TITULO'), 'TITULO'],
+                ].map(([cap, src, tipo]) => src ? (
+                  <MatDocPhoto key={cap} cap={cap} src={src} cedula={cedula} tipo={tipo} onOpen={(s) => setLightbox({ src: s, cap })} />
                 ) : (
                   <div key={cap} className="mat-photo-empty">
                     <span>Sin archivo</span>
@@ -1270,11 +1287,11 @@
               <div className="mat-sec-h">Documentos adjuntos</div>
               <div className="mat-photos">
                 {[
-                  ['Cédula · frente', get('foto_ced_frente', 'FOTO_CED_FRENTE')],
-                  ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO')],
-                  ['Título', get('foto_titulo', 'FOTO_TITULO')],
-                ].map(([cap, src]) => src ? (
-                  <MatDocPhoto key={cap} cap={cap} src={src} onOpen={(s) => setLightbox({ src: s, cap })} />
+                  ['Cédula · frente', get('foto_ced_frente', 'FOTO_CED_FRENTE'), 'CED_FRENTE'],
+                  ['Cédula · dorso', get('foto_ced_dorso', 'FOTO_CED_DORSO'), 'CED_DORSO'],
+                  ['Título', get('foto_titulo', 'FOTO_TITULO'), 'TITULO'],
+                ].map(([cap, src, tipo]) => src ? (
+                  <MatDocPhoto key={cap} cap={cap} src={src} cedula={cedula} tipo={tipo} onOpen={(s) => setLightbox({ src: s, cap })} />
                 ) : (
                   <div key={cap} className="mat-photo-empty">
                     <span>Sin archivo</span>
