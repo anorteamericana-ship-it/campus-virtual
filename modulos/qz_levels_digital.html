@@ -259,7 +259,7 @@ async function start(){
       evt.data.leccion!==lesson||evt.data.nivel!==level||!evt.data.respuestas)return;
    for(const s of sections)for(const q of s.items){if(Object.prototype.hasOwnProperty.call(evt.data.respuestas,q[0]))answers[q[0]]=String(evt.data.respuestas[q[0]]??'').slice(0,4000)}
    render();message('Respuestas archivadas; vista docente de solo lectura.');
-   window.parent.postMessage({type:'F111_QZ24_REVIEW_LOADED',grupo:group,nivel:level,leccion:lesson},location.origin);
+   window.parent.postMessage({type:'F111_QZ24_REVIEW_LOADED',grupo:group,nivel:level,leccion:lesson,quiz_id:quizId,puntos_total:points},location.origin);
   });
   message('Revisión docente de solo lectura. Esperando expediente autorizado.');render();
   window.parent.postMessage({type:'F111_QZ24_REVIEW_READY',grupo:group,nivel:level,leccion:lesson},location.origin);return;
