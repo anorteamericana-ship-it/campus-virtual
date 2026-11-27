@@ -85,7 +85,7 @@
   if (!document.getElementById(JS_ID)) {
     const script = document.createElement('script');
     script.id = JS_ID;
-    script.src = 'src/mobile_navigation_cs21a111.js?v=F98.4Z6CS21A111';
+    script.src = 'src/mobile_navigation_cs21a111.js?v=F98.4Z6CS21A111&consolidado=F111FRONTEND20261126';
     script.defer = true;
     document.head.appendChild(script);
   }

@@ -720,8 +720,8 @@ function SesionClaseBox({ meta, leccionHoy, sesionClase, onStarted, onClosed }) 
       </div>
     </div>
     <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
-      {!abierta && !cerrada && <button className="btn btn-primary" disabled={busy} onClick={iniciar}>INICIAR SESIÓN</button>}
-      {abierta && <button className="btn btn-primary" disabled={busy} onClick={finalizar}>FINALIZAR SESIÓN</button>}
+      {!abierta && !cerrada && <button className="btn btn-primary" disabled={busy} onClick={iniciar}>{tvF111Translate("INICIAR SESIÓN")}</button>}
+      {abierta && <button className="btn btn-primary" disabled={busy} onClick={finalizar}>{tvF111Translate("FINALIZAR SESIÓN")}</button>}
       {cerrada && <span style={{ padding:'10px 14px', borderRadius:'var(--r-md)', background:'color-mix(in srgb, var(--ok) 12%, white)', color:'#166534', fontWeight:800 }}>✓ Sesión cerrada</span>}
     </div>
   </div>;
@@ -838,7 +838,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
     `}</style>
     <div style={{border:'1px solid #C6D7EA',borderRadius:12,overflow:'clip',background:'#FFF'}}>
       <div style={{padding:'15px 17px',background:'#EAF3FE',borderBottom:'1px solid #D0DEED'}}>
-        <div style={{fontWeight:900,fontSize:16,color:'#0F3972'}}>Asistencia y comentarios · clase abierta</div>
+        <div style={{fontWeight:900,fontSize:16,color:'#0F3972'}}>{tvF111Translate("Asistencia y comentarios · clase abierta")}</div>
         <div style={{fontSize:12,color:'#4B627E',lineHeight:1.5,marginTop:5}}>
           Los cambios se guardan automáticamente como borrador. Para registrar la asistencia oficial, usá «Guardar y cerrar clase».
         </div>
@@ -865,7 +865,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
       {status==='loading'&&<div style={{padding:16,fontSize:12,color:'#64748B'}}>Consultando la lista y el programa oficial…</div>}
       {status==='error'&&<div style={{padding:14,background:'#FFF0EE',color:'#912922',fontSize:12}}>
         No se pudo verificar el programa o recuperar el borrador.
-        <button type="button" onClick={onRetry} style={{marginLeft:9}}>Reintentar</button>
+        <button type="button" onClick={onRetry} style={{marginLeft:9}}>{tvF111Translate("Reintentar")}</button>
       </div>}
       {ready&&<div className="f102-list" aria-label="Listado completo de estudiantes">
         {(roster||[]).map((s,i)=>{
@@ -917,7 +917,7 @@ function LiveAttendancePanelF100({roster,states,comments,programa,counts,status,
             {saveError?'Reintentá guardar; no salgas hasta que se confirme.':summary.canSave?'Lista completa: podés cerrar la clase':summary.ina?'Podés avanzar; el comentario INA se exige al cierre':'Podés ir completando la asistencia'}
           </div>
         </div>
-        {saveError&&<button type="button" className="btn btn-ghost" onClick={onSaveNow} disabled={busy}>Reintentar guardado</button>}
+        {saveError&&<button type="button" className="btn btn-ghost" onClick={onSaveNow} disabled={busy}>{tvF111Translate("Reintentar guardado")}</button>}
         <button type="button" className="btn btn-primary" onClick={onFinalize}
           disabled={!ready||!summary.canSave||dirty||busy||saveError||!canFinalize}
           style={{padding:'12px 21px',fontSize:13,fontWeight:900}}>
@@ -1053,7 +1053,7 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
           aria-label="Cerrar lista" className="btn btn-ghost" style={{fontSize:18}}>×</button>
       </header>
       <div style={{padding:'12px 20px',overflowY:'auto',flex:1,minHeight:100}}>
-        {loading&&<div role="status" style={{padding:12,fontSize:13}}>Cargando lista…</div>}
+        {loading&&<div role="status" style={{padding:12,fontSize:13}}>{tvF111Translate("Cargando lista…")}</div>}
         {error&&<div role="alert" style={{padding:12,borderRadius:9,background:'#FFF0ED',
           color:'#942C25',fontSize:13,marginBottom:12}}>{error}</div>}
         {notice&&<div role="status" style={{padding:12,borderRadius:9,background:'#E9F6EE',
@@ -1136,7 +1136,7 @@ function ClosedAttendanceEditorF111({meta,lesson,riel,onClose,onSaved}) {
         </span>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button type="button" className="btn btn-ghost"
-            disabled={saving||busyVerify} onClick={stop}>Cerrar</button>
+            disabled={saving||busyVerify} onClick={stop}>{tvF111Translate("Cerrar")}</button>
           <button type="button" className="btn btn-ghost"
             disabled={saving||busyVerify}
             onClick={()=>{if(!dirty||window.confirm('¿Descartar cambios sin guardar?'))void load();}}>
@@ -1346,12 +1346,12 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
     if(!activeSessionReady) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE',color:'var(--ink-3)',fontWeight:800,textAlign:'center'}}>VERIFICANDO SI EXISTE OTRA SESIÓN ACTIVA…</div>;
     if(activeSessionError) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',color:'#8B1F1F',fontSize:12,fontWeight:800,lineHeight:1.5}}>No se pudo verificar la sesión docente global. No se muestran acciones para evitar abrir dos clases al mismo tiempo.</div>;
     if(loading||sessionCheck==='loading') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid var(--line)',borderRadius:10,background:'#F8FAFE',color:'var(--ink-3)',fontWeight:800,textAlign:'center'}}>VERIFICANDO ESTADO DE LA CLASE…</div>;
-    if(sessionCheck==='error') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><span style={{fontSize:12,color:'#8B1F1F',fontWeight:750}}>No se pudo verificar si la clase está abierta o cerrada. No hay acciones disponibles por seguridad.</span><button className="btn btn-ghost" type="button" onClick={load}>REINTENTAR</button></div>;
+    if(sessionCheck==='error') return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><span style={{fontSize:12,color:'#8B1F1F',fontWeight:750}}>No se pudo verificar si la clase está abierta o cerrada. No hay acciones disponibles por seguridad.</span><button className="btn btn-ghost" type="button" onClick={load}>{tvF111Translate("REINTENTAR")}</button></div>;
     if(closed||sesionCerrada) return <button className="btn btn-primary" disabled style={{gridColumn:'1/-1',opacity:.7}}>CLASE CERRADA</button>;
     if(otherGlobal) return <div style={{gridColumn:'1/-1',padding:'12px 14px',border:'1px solid #F0B9B9',borderRadius:10,background:'#FDECEA',color:'#8B1F1F',fontSize:12,fontWeight:800,lineHeight:1.5}}>TENÉS OTRA SESIÓN ACTIVA · Lección {String(globalLec).padStart(2,'0')}. Debés cerrarla antes de iniciar esta clase.</div>;
     if(!abierta) return <button className="btn btn-primary" disabled={!!busy} onClick={iniciar} style={{gridColumn:'1/-1'}}>{busy==='start'?'PREPARANDO MENSAJE A ESTUDIANTES…':'INICIAR CLASE'}</button>;
     const bloqueadoPorOral=esOral&&!oralListoParaCerrar;
-    return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>GUARDAR Y CERRAR CLASE</button>;
+    return <button className="btn btn-primary" disabled={bloqueadoPorOral} title={bloqueadoPorOral?'Completá primero el examen oral desde el botón Exámenes.':''} onClick={abrirCierre} style={{gridColumn:'1/-1',opacity:bloqueadoPorOral?.58:1}}>{tvF111Translate("GUARDAR Y CERRAR CLASE")}</button>;
   };
   return <>
     <div style={{position:'fixed',inset:0,zIndex:1850,background:'rgba(5,18,38,.45)',display:'flex',justifyContent:'flex-end'}} onMouseDown={e=>{if(e.target===e.currentTarget)cerrarPanel();}}>
@@ -1401,7 +1401,7 @@ function LessonDrawerF82({ lesson, meta, roster, asistenciaDetalle, comentariosD
                 onMark={marcarAsistencia} onComment={editarComentario} onFinalize={abrirCierre} onSaveNow={guardarBorrador}
                 onRetry={()=>{if(draftDirty&&!window.confirm('Se perderán los cambios sin guardar. ¿Volver a consultar?'))return;setDraftReload(x=>x+1);}}/>:
               <>
-                <div style={{...vdLabelStyle,marginBottom:8}}>Asistencia registrada</div>
+                <div style={{...vdLabelStyle,marginBottom:8}}>{tvF111Translate("Asistencia registrada")}</div>
                 <div style={{display:'grid',gap:7}}>{(roster||[]).map(s=>{const d=detByStudent[s.code],c=d?comByStudent[s.code]:'';return <div key={s.code} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,padding:'9px 11px',border:'1px solid var(--line)',borderRadius:9}}><div><strong style={{fontSize:12}}>{s.name}</strong>{c&&<div style={{fontSize:10,color:'var(--ink-3)',marginTop:3}}>💬 {c}</div>}</div><span style={{fontSize:10,fontWeight:900,color:!d?'var(--ink-3)':d.presente===false?'#B3261E':'#166534'}}>{!d?'Pendiente':d.presente===false?'Ausente':'Presente'}</span></div>;})}</div>
               </>}
           </>}
@@ -1445,12 +1445,12 @@ function NotaDetalleDrawerF79({ estudiante, nota, attendance, commentsSummary, c
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,minmax(0,1fr))', gap:10, marginBottom:16 }}>
           <div style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#F9FBFD' }}>
-            <div style={{ ...vdLabelStyle, marginBottom:6 }}>Asistencia</div>
+            <div style={{ ...vdLabelStyle, marginBottom:6 }}>{tvF111Translate("Asistencia")}</div>
             <div style={{ fontSize:22, fontWeight:900, color:'var(--an-navy)' }}>{Number.isFinite(Number(attendance?.pct)) ? `${Math.round(Number(attendance.pct))}%` : '—'}</div>
             <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>{Number(attendance?.presentes||0)} presentes · {Number(attendance?.ausentes||0)} ausencias</div>
           </div>
           <div style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#F9FBFD' }}>
-            <div style={{ ...vdLabelStyle, marginBottom:6 }}>Comentarios</div>
+            <div style={{ ...vdLabelStyle, marginBottom:6 }}>{tvF111Translate("Comentarios")}</div>
             <div style={{ fontSize:22, fontWeight:900, color:'var(--an-navy)' }}>{Number(commentsSummary?.total||0)}</div>
             <div style={{ fontSize:10, color:'var(--ink-3)', marginTop:2 }}>Retroalimentaciones registradas</div>
           </div>
@@ -1461,7 +1461,7 @@ function NotaDetalleDrawerF79({ estudiante, nota, attendance, commentsSummary, c
           </div>
         </div>
         {!!(commentsByLesson && commentsByLesson.length) && <div style={{ marginBottom:16 }}>
-          <div style={{ ...vdLabelStyle, marginBottom:8 }}>Comentarios del docente</div>
+          <div style={{ ...vdLabelStyle, marginBottom:8 }}>{tvF111Translate("Comentarios del docente")}</div>
           <div style={{ display:'grid', gap:8 }}>
             {commentsByLesson.slice(0,8).map((row, idx) => <div key={`${row.key||idx}-${idx}`} style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'10px 12px', background:'#FFF' }}>
               <div style={{ fontSize:10.5, fontWeight:900, color:row.isIcan?'#6A3D91':row.isPC?'#A45D00':'var(--an-navy)' }}>{row.label}</div>
@@ -1702,14 +1702,14 @@ function RosterAcademicoF79({ roster, contactos={}, lecciones, asistenciaDetalle
                 <div style={{fontSize:10.5,fontWeight:900,color:isIcan?'#57217F':isPC?'#8A5500':undefined}}>{isIcan?`I CAN ${String(l.leccion).padStart(2,'0')}`:isPC?'Progress Check':tvEvalLabelF86(l.tipo,l.leccion)||`Lec ${String(l.leccion).padStart(2,'0')}`}</div>
                 {!isIcan&&(tvEvalLabelF86(l.tipo,l.leccion)||isPC)&&<div style={{fontSize:8,color:'var(--ink-3)',marginTop:1}}>Lec {String(l.leccion).padStart(2,'0')}</div>}
                 <div style={{fontSize:8.5,color:isNext?(isIcan?'#57217F':'#003B7A'):'var(--ink-3)',marginTop:2,fontWeight:isNext?850:500}}>{String(l.fecha||'').slice(5).split('-').reverse().join('/')}</div>
-                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>{isIcan?'PRÓXIMA SESIÓN I CAN':'PRÓXIMA LECCIÓN'}</div>:isPendingClose?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:'#A45D00',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>PENDIENTE DE CIERRE</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
+                {isActive?<div style={{fontSize:7.2,color:'#C62828',fontWeight:900,marginTop:3}}>SESIÓN ACTIVA</div>:isNext?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:isIcan?'#57217F':'#003B7A',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>{isIcan?'PRÓXIMA SESIÓN I CAN':'PRÓXIMA LECCIÓN'}</div>:isPendingClose?<div style={{display:'inline-block',fontSize:7,color:'#FFF',background:'#A45D00',fontWeight:900,marginTop:4,padding:'2px 5px',borderRadius:999,letterSpacing:'.02em'}}>{tvF111Translate("PENDIENTE DE CIERRE")}</div>:isToday?<div style={{fontSize:7.5,color:'#C67100',fontWeight:900,marginTop:3}}>HOY</div>:null}
                 {isExam&&<div style={{fontSize:7.2,color:'#7A1E2C',fontWeight:900,marginTop:2}}>EXAMEN</div>}
               </th>;
             })}</tr></thead>
             <tbody>{filteredRoster.length?filteredRoster.map((r,i)=><tr key={r.code||i}>{lessons.map(l=>{
               const key=tvLessonKeyF97(l),det=asistenciaDetalle?.[key]?.[r.code]||asistenciaDetalle?.[String(l.leccion)]?.[r.code],comment=det?(comentariosDetalle?.[key]?.[r.code]||comentariosDetalle?.[String(l.leccion)]?.[r.code]||''):'',future=String(l.fecha||'')>todayIso,isNext=isRailNext(l),isIcan=tvIsIcanEventF96(l),isPC=tvIsProgressCheckF96(l);
               return <td key={`${r.code}-${key}-${l.fecha}`} onDoubleClick={()=>setSelectedLesson({...l,__isNextDate:isNext})} style={{...bodyCell,minWidth:COL_W,width:COL_W,maxWidth:COL_W,textAlign:'center',padding:'6px 5px',background:isNext?(isIcan?'#F2E8F9':'#F0F7FF'):isIcan?'#FBF7FE':isPC?'#FFFBF2':'#FFF',borderLeft:isNext?`1px solid ${isIcan?'#A985C7':'#8EB9E8'}`:undefined,borderRight:isNext?`1px solid ${isIcan?'#A985C7':'#8EB9E8'}`:undefined}}>
-                {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>Pendiente</span>}
+                {det?<div title={comment||'Sin comentario'}><div style={{display:'inline-flex',minWidth:54,justifyContent:'center',padding:'4px 5px',borderRadius:999,fontSize:9,fontWeight:900,color:det.presente===false?'#B3261E':'#166534',background:det.presente===false?'#FDECEA':'#E8F5E9'}}>{det.presente===false?'Ausente':'Presente'}</div>{comment&&<div style={{fontSize:8.3,color:'var(--ink-3)',marginTop:3}}>💬 comentario</div>}</div>:future?<span style={{color:'var(--ink-3)',fontSize:9}}>Programada</span>:<span style={{color:'var(--ink-3)',fontSize:9}}>{tvF111Translate("Pendiente")}</span>}
               </td>;
             })}</tr>):<tr><td colSpan={Math.max(1,lessons.length)} style={{...bodyCell,height:ROW_H,textAlign:'center',color:'var(--ink-3)',fontSize:10.5,fontWeight:750}}>Ajustá la búsqueda para volver a mostrar estudiantes.</td></tr>}</tbody>
           </table>}
@@ -3588,7 +3588,7 @@ function AsistenciaView({ toast }) {
           <div style={{ fontFamily:'var(--f-serif)', fontSize:42, fontWeight:500, color:'var(--an-navy-ink)' }}>
             {total > 0 ? (((counts.present+counts.late)/total)*100).toFixed(0) : 0}%
           </div>
-          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>Asistencia hoy</div>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>{tvF111Translate("Asistencia hoy")}</div>
         </div>
       </div>
 

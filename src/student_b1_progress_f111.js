@@ -4,10 +4,24 @@
 'use strict';
 const LESSONS={8:['02','3–4'],13:['03','5–6'],16:['04','7–8'],21:['05','9–10'],24:['06','11–12'],28:['07','13–14'],30:['08','15–16']};
 const INTERVAL=30000;
+const en=()=>window.AN_I18N?.getLang()==='en';
+const copy=(es,english)=>en()?english:es;
+const labels=Object.freeze({
+ 'Cerrar':'Close','VER MÁS TARDE':'LATER','IR A EVALUACIONES':'GO TO ASSESSMENTS',
+ 'CONTINUAR QUIZ':'CONTINUE QUIZ','ABRIR QUIZ':'OPEN QUIZ','INICIAR QUIZ':'START QUIZ',
+ 'ACTUALIZAR INVITACIONES':'REFRESH INVITATIONS','En cola':'Queued',
+ 'EVALUACIONES · PROGRESS CHECK BÁSICO I':'ASSESSMENTS · BASIC I PROGRESS CHECK',
+ 'Quizzes e invitaciones de tu profesor':'Quizzes and teacher invitations',
+ 'ACADEMIA NORTEAMERICANA · EVALUACIÓN HABILITADA':'ACADEMIA NORTEAMERICANA · ASSESSMENT AVAILABLE',
+ 'Prueba entregada · pendiente de revisión':'Submitted · awaiting review',
+ 'Prueba revisada':'Reviewed','Verificando disponibilidad…':'Checking availability…'
+});
+const tr=x=>en()?(labels[x]||x):x;
+
 let current=[],inFlight=false,lastToken='',lastAt=0,signature='',modal=null,studentCode='';
 const notifiedInPage=Object.create(null);
 function el(tag,text,className){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className;return e;}
-function make(tag,text,className){const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(className)x.className=className;return x;}
+function make(tag,text,className){const x=document.createElement(tag);if(text!==undefined)x.textContent=tr(text);if(className)x.className=className;return x;}
 const token=()=>window.getSessionToken?String(window.getSessionToken()||''):'';
 async function api(fn,body){
  const t=token(),url=String(window.F111_QZ_API_URL||'');
@@ -31,7 +45,7 @@ function host(){
  let section=screen.querySelector('[data-f111-student-b1-pc-extra]');
  if(!section){
   section=make('section',undefined,'f111-b1-extra');section.dataset.f111StudentB1PcExtra='true';
-  section.setAttribute('aria-label','Progress Checks de Básico I habilitados por tu docente');
+  section.setAttribute('aria-label',copy('Progress Checks de Básico I habilitados por tu docente','Basic I Progress Checks enabled by your teacher'));
   const target=screen.querySelector('[role="tablist"],[role="tabpanel"]');
   if(target&&target.parentNode===screen)screen.insertBefore(section,target);else screen.append(section);
  }
@@ -41,17 +55,17 @@ function openQuiz(item){
  if(modal||!token()||!current.some(x=>x.quiz_id===item.quiz_id&&x.grupo===item.grupo&&x.state==='SIN_INICIAR'||x.quiz_id===item.quiz_id&&x.grupo===item.grupo&&x.state==='BORRADOR'))return;
  modal=make('div',undefined,'f111-b1-extra-modal');
  modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
- modal.setAttribute('aria-label','Quiz de Progress Check Básico I');
+ modal.setAttribute('aria-label',copy('Quiz de Progress Check Básico I','Basic I Progress Check Quiz'));
  const pane=make('div',undefined,'f111-b1-extra-inner');
  const bar=make('div',undefined,'f111-b1-extra-bar');
- bar.append(make('strong','Quiz '+Number(item.quiz_id.slice(-2))+' · Básico I · Lección '+item.leccion));
+ bar.append(make('strong','Quiz '+Number(item.quiz_id.slice(-2))+copy(' · Básico I · Lección ',' · Basic I · Lesson ')+item.leccion));
  const close=make('button','Cerrar');close.type='button';
  const dismiss=()=>{modal?.remove();modal=null;document.removeEventListener('keydown',onKey);void check(true)};
  function onKey(ev){if(ev.key==='Escape'){ev.preventDefault();dismiss()}}
  close.onclick=dismiss;
  document.addEventListener('keydown',onKey);
  bar.append(close);pane.append(bar);
- const frame=make('iframe');frame.title='Progress Check B1: respuestas y entrega';
+ const frame=make('iframe');frame.title=copy('Progress Check B1: respuestas y entrega','Basic I Progress Check: answers and submission');
  const lesson=Number(item.leccion),earlyDigital=lesson===8||lesson===13;
  const digital=earlyDigital||[16,21,24,28,30].includes(lesson);
  const url=new URL(earlyDigital?'modulos/qz_b1_pc02_pc03_digital.html':
@@ -72,7 +86,7 @@ function syncMenuBadge(){
  let badge=button.querySelector('[data-f111-quiz-menu-badge]');
  if(!pending){if(badge)badge.remove();return;}
  if(!badge){badge=make('span',undefined,'f111-quiz-menu-badge');badge.dataset.f111QuizMenuBadge='true';button.append(badge);}
- const label=pending+' quiz'+(pending!==1?'zes':'')+' pendiente'+(pending!==1?'s':'');
+ const label=en()?pending+' pending quiz'+(pending!==1?'zes':''):pending+' quiz'+(pending!==1?'zes':'')+' pendiente'+(pending!==1?'s':'');
  if(badge.textContent!==label)badge.textContent=label;
  if(badge.getAttribute('role')!=='status')badge.setAttribute('role','status');
 }
@@ -87,11 +101,11 @@ function maybeInvite(){
  try{sessionStorage.setItem('f111-invite-v2|'+key,'1')}catch(_){}
  const overlay=make('div',undefined,'f111-b1-extra-invite');
  overlay.setAttribute('role','alertdialog');overlay.setAttribute('aria-modal','true');
- overlay.setAttribute('aria-label','Invitación al Quiz del profesor');
+ overlay.setAttribute('aria-label',copy('Invitación al Quiz del profesor','Teacher quiz invitation'));
  const pane=make('section',undefined,'f111-b1-extra-invite-pane');
  pane.append(make('small','ACADEMIA NORTEAMERICANA · EVALUACIÓN HABILITADA'),
-   make('h2','Tu profesor '+(item.state==='BORRADOR'?'te invita a continuar':'habilitó')+' el Quiz '+Number(item.quiz_id.slice(-2))),
-   make('p','Básico I · Lección '+item.leccion+' · Unidades '+LESSONS[item.leccion][1]+
+   make('h2',(en()?('Your teacher '+(item.state==='BORRADOR'?'invites you to continue':'enabled')+' Quiz '):('Tu profesor '+(item.state==='BORRADOR'?'te invita a continuar':'habilitó')+' el Quiz '))+Number(item.quiz_id.slice(-2))),
+   make('p',copy('Básico I · Lección ','Basic I · Lesson ')+item.leccion+copy(' · Unidades ',' · Units ')+LESSONS[item.leccion][1]+
      '.'));
  const actions=make('div',undefined,'f111-b1-extra-invite-actions');
  const later=make('button','VER MÁS TARDE');
@@ -119,7 +133,7 @@ function render(){
  const section=host();if(!section)return;
  const empty=current.length===0;
  if(section.hidden!==empty)section.hidden=empty;
- const next=JSON.stringify(current);
+ const next=JSON.stringify([en(),current]);
  if(signature===next&&(empty?!section.hasChildNodes():!!section.querySelector('.f111-b1-extra-list')))return;
  signature=next;
  if(section.hasChildNodes())section.replaceChildren();
@@ -135,8 +149,8 @@ function render(){
  const firstPending=current.find(x=>['SIN_INICIAR','BORRADOR'].includes(x.state));
  for(const item of current){
   const card=make('div',undefined,'f111-b1-extra-card');
-  card.append(make('strong','Quiz '+Number(item.quiz_id.slice(-2))+' · Lección '+item.leccion));
-  card.append(make('p','Unidades '+LESSONS[item.leccion][1]));
+  card.append(make('strong','Quiz '+Number(item.quiz_id.slice(-2))+copy(' · Lección ',' · Lesson ')+item.leccion));
+  card.append(make('p',copy('Unidades ','Units ')+LESSONS[item.leccion][1]));
   const label=item.state==='BORRADOR'?'CONTINUAR QUIZ':item.state==='SIN_INICIAR'?'INICIAR QUIZ':null;
   if(label){if(firstPending&&item!==firstPending)card.append(make('small','En cola'));const b=make('button',label);b.type='button';b.addEventListener('click',()=>openQuiz(item));card.append(b)}
   else card.append(make('small',item.state==='ENTREGADO'?'Prueba entregada · pendiente de revisión':item.state==='REVISADO'?'Prueba revisada':'Verificando disponibilidad…'));

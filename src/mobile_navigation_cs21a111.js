@@ -7,6 +7,7 @@
   const media = window.matchMedia(MOBILE_QUERY);
   let currentIconKey = '';
   let mutationQueued = false;
+  const t = (es, en) => window.AN_I18N?.getLang?.() === 'en' ? en : es;
 
   function getSidebar() {
     return document.querySelector('.app > .sb') || document.querySelector('.sb');
@@ -21,9 +22,9 @@
     const label = active && active.querySelector('.sb-label');
     if (label && label.textContent.trim()) return label.textContent.trim();
     const role = String(sidebar && sidebar.dataset && sidebar.dataset.role || '').toLowerCase();
-    if (role === 'teacher') return 'Menú docente';
-    if (role === 'admin') return 'Menú administrativo';
-    return 'Mi Campus';
+    if (role === 'teacher') return t("Menú docente", "Teacher Menu");
+    if (role === 'admin') return t("Menú administrativo", "Administration Menu");
+    return t("Mi Campus", "My Campus");
   }
 
   function updateCurrentIcon(sidebar) {
@@ -58,7 +59,7 @@
     const sidebar = getSidebar();
     if (!sidebar) return;
     if (!sidebar.id) sidebar.id = 'an-campus-navigation';
-    sidebar.setAttribute('aria-label', 'Navegación principal del Campus');
+    sidebar.setAttribute('aria-label', t("Navegación principal del Campus", "Main Campus navigation"));
 
     if (!media.matches) {
       sidebar.removeAttribute('aria-hidden');
@@ -77,11 +78,13 @@
     const toggle = document.querySelector('.an-mobile-nav-toggle');
     if (toggle) {
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      toggle.setAttribute('aria-label', open ? 'Cerrar menú del Campus' : 'Abrir menú del Campus');
+      toggle.setAttribute('aria-label', open ? t("Cerrar menú del Campus", "Close Campus menu") : t("Abrir menú del Campus", "Open Campus menu"));
     }
 
     const overlay = document.querySelector('.an-mobile-nav-overlay');
     if (overlay) overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+    const sidebarBefore = getSidebar();
+    if (!open && media.matches && sidebarBefore?.contains(document.activeElement) && toggle) toggle.focus({ preventScroll: true });
     applyAccessibility(open);
 
     if (open) {
@@ -105,14 +108,14 @@
     if (!document.querySelector('.an-mobile-nav-bar')) {
       const bar = document.createElement('header');
       bar.className = 'an-mobile-nav-bar';
-      bar.setAttribute('aria-label', 'Navegación móvil del Campus');
+      bar.setAttribute('aria-label', t("Navegación móvil del Campus", "Mobile Campus navigation"));
 
       const toggle = document.createElement('button');
       toggle.type = 'button';
       toggle.className = 'an-mobile-nav-toggle';
       toggle.setAttribute('aria-controls', 'an-campus-navigation');
       toggle.setAttribute('aria-expanded', 'false');
-      toggle.setAttribute('aria-label', 'Abrir menú del Campus');
+      toggle.setAttribute('aria-label', t("Abrir menú del Campus", "Open Campus menu"));
       const lines = document.createElement('span');
       lines.className = 'an-mobile-nav-toggle-lines';
       lines.setAttribute('aria-hidden', 'true');
@@ -131,10 +134,10 @@
       copy.className = 'an-mobile-nav-copy';
       const kicker = document.createElement('span');
       kicker.className = 'an-mobile-nav-kicker';
-      kicker.textContent = 'Campus Virtual';
+      kicker.textContent = t("Campus Virtual", "Virtual Campus");
       const title = document.createElement('span');
       title.className = 'an-mobile-nav-title';
-      title.textContent = 'Mi Campus';
+      title.textContent = t("Mi Campus", "My Campus");
       copy.append(kicker, title);
       brand.append(logoWrap, copy);
 
@@ -151,7 +154,7 @@
       const overlay = document.createElement('button');
       overlay.type = 'button';
       overlay.className = 'an-mobile-nav-overlay';
-      overlay.setAttribute('aria-label', 'Cerrar menú del Campus');
+      overlay.setAttribute('aria-label', t("Cerrar menú del Campus", "Close Campus menu"));
       overlay.setAttribute('aria-hidden', 'true');
       overlay.addEventListener('click', function () { setOpen(false); });
       document.body.appendChild(overlay);
@@ -161,7 +164,7 @@
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'an-mobile-nav-close';
-      close.setAttribute('aria-label', 'Cerrar menú del Campus');
+      close.setAttribute('aria-label', t("Cerrar menú del Campus", "Close Campus menu"));
       close.innerHTML = '<span aria-hidden="true">×</span>';
       close.addEventListener('click', function () { setOpen(false); });
       document.body.appendChild(close);

@@ -14,6 +14,18 @@
     try { root.sessionStorage.setItem(INTENT, 'en'); } catch (_) {}
   }
   const DICTIONARY = Object.freeze({
+    "INICIAR SESIÓN":"START SESSION",
+    "FINALIZAR SESIÓN":"END SESSION",
+    "Asistencia y comentarios · clase abierta":"Attendance and comments · class in progress",
+    "Reintentar guardado":"Retry saving",
+    "Cargando lista…":"Loading list…",
+    "Cerrar":"Close",
+    "REINTENTAR":"RETRY",
+    "GUARDAR Y CERRAR CLASE":"SAVE AND CLOSE CLASS",
+    "Asistencia registrada":"Attendance recorded",
+    "Comentarios del docente":"Teacher comments",
+    "PENDIENTE DE CIERRE":"AWAITING CLOSURE",
+    "Asistencia hoy":"Attendance today",
     "Plan de estudio del nivel del docente.": "Study plan for the teacher's assigned level.",
     "Abrir syllabus": "Open Syllabus",
     "Planeamiento por lección correspondiente al nivel.": "Lesson-by-lesson plan for the assigned level.",
@@ -1027,8 +1039,25 @@
     return Object.prototype.hasOwnProperty.call(DICTIONARY, value)
       ? DICTIONARY[value] : value;
   }
+  // Conservative reload policy: academic edits take priority over language changes.
+  // Absence of a verified safe app context is not permission to reload.
+  function canReloadLanguage() {
+    const doc = root.document;
+    if (!doc || typeof doc.querySelector !== 'function') return false;
+    if (!doc.querySelector('.app[data-f111-lang-reload-safe="yes"]')) return false;
+    // The custom student routes may overlay another screen. Do not reload an overlay.
+    if (doc.querySelector('iframe, [role="dialog"], [aria-modal="true"], .f111-b1-extra-modal, .f111-b1-extra-invite, [data-f111-b1-review], [data-f111-pending-save="true"], textarea, input:not([type="hidden"]):not([disabled]):not([readonly]), select:not([disabled]), [contenteditable="true"]')) return false;
+    return true;
+  }
   function setLang(next) {
     if ((next !== 'en' && next !== 'es') || role() === 'other') return false;
+    if (next === getLang()) return true;
+    if (!canReloadLanguage()) {
+      if (typeof root.alert === 'function') root.alert(getLang() === 'en'
+        ? 'Language change paused to protect your work. Finish and save your current activity, close open forms, and return to Program & Documents (student) or Teaching Materials (teacher). Try again there.'
+        : 'Cambio de idioma pausado para proteger tu trabajo. Terminá y guardá la actividad actual, cerrá los formularios y volvé a Programa y documentos (estudiante) o Materiales (docente). Reintentá ahí.');
+      return false;
+    }
     try { root.sessionStorage.setItem(KEY, next); root.sessionStorage.removeItem(INTENT); }
     catch (_) { return false; }
     root.location.reload();

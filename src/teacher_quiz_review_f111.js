@@ -65,11 +65,14 @@ function previewB1Protected(lesson,authorizedGroup){
 // F111 D5: revisión digital compartida para B1 PC02–PC08.
 // Solo profesor autenticado y grupo que ya pasó qzProgressTeacherB1Groups.
 // Nunca altera notas oficiales, asistencia ni contenidos del PDF Cambridge.
-function openB1TeacherReview(lesson,group){
+function openB1TeacherReview(lesson,group,level='B1'){
+ const en=()=>window.AN_I18N?.getLang()==='en';
+ const copy=(es,english)=>en()?english:es;
  const number=LESSONS.findIndex(x=>x[0]===lesson)+1;
- if(number<2||number>8||!group||document.querySelector('[data-f111-b1-review]'))return;
- const previous=document.activeElement,context={cod_grupo:group,nivel:'B1',leccion:lesson};
- const quizId='IC5_B1_WQ'+String(number).padStart(2,'0');
+ const upper=['B2','I1','I2'].includes(level);
+ if((!upper&&level!=='B1')||number<(upper?1:2)||number>8||!group||document.querySelector('[data-f111-b1-review]'))return;
+ const previous=document.activeElement,context={cod_grupo:group,nivel:level,leccion:lesson};
+ const quizId='IC5_'+level+'_WQ'+String(number).padStart(2,'0');
  const backdrop=make('div',null,'f111-tqr-workspace-backdrop');
  backdrop.dataset.f111B1Review='true';
  backdrop.setAttribute('role','dialog');backdrop.setAttribute('aria-modal','true');
@@ -77,23 +80,23 @@ function openB1TeacherReview(lesson,group){
  const layout=make('section',null,'f111-tqr-workspace');
  const header=make('header',null,'f111-tqr-workspace-header');
  const intro=make('div');
- intro.append(make('small','BÁSICO I · PROGRESS CHECK '+String(number).padStart(2,'0')),
-   make('h2','Revisión de entregas · Lección '+lesson),
-   make('p','Grupo '+group+' · diagnóstico 0% oficial · notas y comentarios independientes de asistencia'));
- const close=make('button','CERRAR REVISIÓN','f111-tqr-close');close.type='button';
+ intro.append(make('small',(copy(LEVELS.find(x=>x[0]===level)?.[1]||level,({B1:'Basic I',B2:'Basic II',I1:'Intermediate I',I2:'Intermediate II'})[level]||level).toUpperCase()+' · PROGRESS CHECK ')+String(number).padStart(2,'0')),
+   make('h2',copy('Revisión de entregas · Lección ','Submission Review · Lesson ')+lesson),
+   make('p',copy('Grupo ','Group ')+group+copy(' · diagnóstico 0% oficial · notas y comentarios independientes de asistencia',' · diagnostic, 0% official weight · scores and feedback independent of attendance')));
+ const close=make('button',copy('CERRAR REVISIÓN','CLOSE REVIEW'),'f111-tqr-close');close.type='button';
  header.append(intro,close);layout.append(header);
  const columns=make('div',null,'f111-tqr-workspace-columns');
  const sidebar=make('aside',null,'f111-tqr-students');
- sidebar.append(make('h3','Entregas del grupo'));
- const tally=make('div','Consultando entregas…','f111-tqr-group-average');
+ sidebar.append(make('h3',copy('Entregas del grupo','Group Submissions')));
+ const tally=make('div',copy('Consultando entregas…','Loading submissions…'),'f111-tqr-group-average');
  tally.setAttribute('role','status');sidebar.append(tally);
  const students=make('div',null,'f111-tqr-student-list');sidebar.append(students);
  const detail=make('section',null,'f111-tqr-detail');
- detail.append(make('p','Seleccioná una entrega para revisarla.','f111-tqr-empty'));
+ detail.append(make('p',copy('Seleccioná una entrega para revisarla.','Select a submission to review.'),'f111-tqr-empty'));
  columns.append(sidebar,detail);layout.append(columns);backdrop.append(layout);document.body.append(backdrop);
- let rows=[],selected='',busy=false,uncertain=false,keyUrl=null;
+ let rows=[],selected='',busy=false,uncertain=false,keyUrl=null,reviewCleanup=()=>{};
  function clearKey(){if(keyUrl){URL.revokeObjectURL(keyUrl);keyUrl=null;}}
- function dismiss(){clearKey();backdrop.remove();document.removeEventListener('keydown',onKey);
+ function dismiss(){reviewCleanup();clearKey();backdrop.remove();document.removeEventListener('keydown',onKey);
    if(previous&&previous.isConnected)previous.focus();}
  function onKey(event){if(event.key==='Escape'&&!busy){event.preventDefault();dismiss();}}
  close.onclick=()=>{if(!busy)dismiss();};
@@ -102,14 +105,14 @@ function openB1TeacherReview(lesson,group){
  function code(row){return String(row.COD_ESTUDIANTE||'').trim();}
  function viewList(){
    const done=rows.filter(x=>String(x.ESTADO)==='REVISADO').length;
-   tally.textContent=done+' / '+rows.length+' entregas revisadas. Quizzes diagnósticos: 0% de nota oficial.';
+   tally.textContent=done+' / '+rows.length+copy(' entregas revisadas. Quizzes diagnósticos: 0% de nota oficial.',' submissions reviewed. Diagnostic quizzes: 0% official weight.');
    students.replaceChildren();
-   if(!rows.length){students.append(make('p','No hay entregas registradas para este Quiz.'));return;}
+   if(!rows.length){students.append(make('p',copy('No hay entregas registradas para este Quiz.','No submissions recorded for this quiz.')));return;}
    for(const row of rows){
      const id=code(row),button=make('button',null,'f111-tqr-student-choice');
      button.type='button';button.setAttribute('aria-pressed',String(id===selected));
-     button.append(make('strong','Estudiante '+id),
-       make('small',row.ESTADO==='REVISADO'?'REVISADO · '+String(row.RESULTADO)+' / 100':'ENTREGADO · pendiente'));
+     button.append(make('strong',copy('Estudiante ','Student ')+id),
+       make('small',row.ESTADO==='REVISADO'?copy('REVISADO · ','REVIEWED · ')+String(row.RESULTADO)+' / 100':copy('ENTREGADO · pendiente','SUBMITTED · pending review')));
      button.onclick=()=>{if(busy)return;selected=id;viewList();view(row);};
      students.append(button);
    }
@@ -121,7 +124,7 @@ function openB1TeacherReview(lesson,group){
    const seen=new Set();
    rows=data.intentos.filter(x=>{
      const id=code(x);
-     if(x.QUIZ_ID!==quizId||x.COD_GRUPO!==group||x.NIVEL!=='B1'||
+     if(x.QUIZ_ID!==quizId||x.COD_GRUPO!==group||x.NIVEL!==level||
         Number(x.LECCION)!==lesson||!id||seen.has(id)||
         !['ENTREGADO','REVISADO'].includes(String(x.ESTADO)))return false;
      seen.add(id);return true;
@@ -129,25 +132,34 @@ function openB1TeacherReview(lesson,group){
    viewList();
  }
  function view(row){
-   clearKey();uncertain=false;detail.replaceChildren();
+   reviewCleanup();reviewCleanup=()=>{};clearKey();uncertain=false;detail.replaceChildren();
    const id=code(row);
-   detail.append(make('h3','Estudiante '+id));
-   detail.append(make('p','Respuestas archivadas · sin edición del intento · peso oficial 0%','f111-tqr-info'));
+   detail.append(make('h3',copy('Estudiante ','Student ')+id));
+   detail.append(make('p',copy('Respuestas archivadas · sin edición del intento · peso oficial 0%','Archived answers · read-only attempt · 0% official weight'),'f111-tqr-info'));
    const answers=make('div',null,'f111-tqr-answers');
+   let reviewReady=!upper;
    let obj={};try{obj=JSON.parse(String(row.RESPUESTAS_JSON||'{}'))||{}}catch(_){}
    if(!obj||typeof obj!=='object'||Array.isArray(obj))obj={};
    const items=Object.keys(obj).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-   if(number>=2&&number<=8){
+   if(upper||(number>=2&&number<=8)){
      const frame=make('iframe');
      frame.title='Cuestionario digital con respuestas archivadas · Quiz '+number;
      frame.style.cssText='height:570px;max-height:65vh;width:100%;border:1px solid #d5e1ef;border-radius:11px;background:white';
-     const url=new URL(number<=3?'modulos/qz_b1_pc02_pc03_digital.html':
+     const url=new URL(upper?'modulos/qz_levels_digital.html':number<=3?'modulos/qz_b1_pc02_pc03_digital.html':
        'modulos/qz_b1_pc04_pc08_digital.html',new URL('./',location.href));
-     url.searchParams.set('review','1');url.searchParams.set('grupo',group);
+     url.searchParams.set('review','1');if(upper)url.searchParams.set('nivel',level);url.searchParams.set('grupo',group);
      url.searchParams.set('leccion',String(lesson));url.searchParams.set('v','F111R65B1DIGITAL20261119');
      frame.src=url.href;
-     frame.onload=()=>frame.contentWindow?.postMessage({
-       type:'F111_PC23_TEACHER_REVIEW',leccion:lesson,grupo,respuestas:obj
+     if(upper){
+       const handler=event=>{
+         if(event.origin!==location.origin||event.source!==frame.contentWindow||!frame.isConnected||event.data?.grupo!==group||event.data?.nivel!==level||event.data?.leccion!==lesson)return;
+         if(event.data.type==='F111_QZ24_REVIEW_LOADED'){reviewReady=true;return;}
+         if(event.data.type!=='F111_QZ24_REVIEW_READY')return;
+         frame.contentWindow.postMessage({type:'F111_QZ24_DIGITAL_REVIEW',leccion:lesson,grupo:group,nivel:level,respuestas:obj},location.origin);
+       };
+       window.addEventListener('message',handler);reviewCleanup=()=>window.removeEventListener('message',handler);
+     }else frame.onload=()=>frame.contentWindow?.postMessage({
+       type:'F111_PC23_TEACHER_REVIEW',leccion:lesson,grupo:group,respuestas:obj
      },location.origin);
      answers.append(frame);
    }else if(!items.length)answers.append(make('p','No hay respuestas archivadas.'));
@@ -156,12 +168,12 @@ function openB1TeacherReview(lesson,group){
      answers.append(make('div',key+' · '+val));
    }
    detail.append(answers);
-   const keyBtn=make('button','VER CLAVE CAMBRIDGE (SOLO DOCENTE)','f111-tqr-open');
+   const keyBtn=make('button',copy('VER CLAVE CAMBRIDGE (SOLO DOCENTE)','VIEW CAMBRIDGE ANSWER KEY (TEACHER ONLY)'),'f111-tqr-open');
    keyBtn.type='button';
-   const keyStatus=make('small','La clave se consulta bajo sesión docente; nunca aparece para estudiantes.','f111-tqr-feedback');
+   const keyStatus=make('small',copy('La clave se consulta bajo sesión docente; nunca aparece para estudiantes.','The answer key requires a teacher session and is never shown to students.'),'f111-tqr-feedback');
    detail.append(keyBtn,keyStatus);
    keyBtn.onclick=async()=>{
-     keyBtn.disabled=true;keyStatus.textContent='Cargando clave privada…';
+     keyBtn.disabled=true;keyStatus.textContent=copy('Cargando clave privada…','Loading private answer key…');
      try{
        const r=await postQuiz('qzProgressTeacherMaterials',{...context,material:'clave'});
        if(r.quiz_id!==quizId||r.material!=='clave'||r.mime!=='application/pdf'||
@@ -173,40 +185,41 @@ function openB1TeacherReview(lesson,group){
        const frame=make('iframe');frame.className='f111-tqr-key-frame';
        frame.title='Clave privada de revisión · Quiz '+number;frame.src=keyUrl;
        detail.insertBefore(frame,gradeForm);
-       keyStatus.textContent='Clave Cambridge original (solo profesor).';
+       keyStatus.textContent=copy('Clave Cambridge original (solo profesor).','Original Cambridge answer key (teacher only).');
      }catch(e){keyBtn.disabled=false;keyStatus.textContent='No se pudo consultar la clave: '+String(e.message||e);}
    };
    const gradeForm=make('form',null,'f111-tqr-grade-form');
    gradeForm.addEventListener('submit',e=>e.preventDefault());
    if(row.ESTADO==='REVISADO'){
-     gradeForm.append(make('div','REVISADO · '+String(row.RESULTADO)+' / 100','f111-tqr-reviewed'));
-     gradeForm.append(make('p','Comentario docente: '+String(row.COMENTARIO_DOCENTE||'')));
+     gradeForm.append(make('div',copy('REVISADO · ','REVIEWED · ')+String(row.RESULTADO)+' / 100','f111-tqr-reviewed'));
+     gradeForm.append(make('p',copy('Comentario docente: ','Teacher feedback: ')+String(row.COMENTARIO_DOCENTE||'')));
      detail.append(gradeForm);return;
    }
-   gradeForm.append(make('p','Puntuación diagnóstica manual 0–100. Consultá la clave y las respuestas originales antes de cerrar.'));
-   const gradeLabel=make('label','Nota del Quiz (0–100)');
+   gradeForm.append(make('p',copy('Puntuación diagnóstica manual 0–100. Consultá la clave y las respuestas originales antes de cerrar.','Manual diagnostic score (0–100). Review the answer key and original answers before closing.')));
+   const gradeLabel=make('label',copy('Nota del Quiz (0–100)','Quiz Score (0–100)'));
    const grade=make('input');grade.type='number';grade.min='0';grade.max='100';
-   grade.step='0.01';grade.required=true;grade.setAttribute('aria-label','Nota del Quiz');
+   grade.step='0.01';grade.required=true;grade.setAttribute('aria-label',copy('Nota del Quiz','Quiz Score'));
    gradeLabel.append(grade);
-   const commentLabel=make('label','Comentario de mejora (obligatorio)');
+   const commentLabel=make('label',copy('Comentario de mejora (obligatorio)','Improvement Feedback (required)'));
    const comment=make('textarea');comment.maxLength=1500;comment.minLength=5;comment.required=true;
-   comment.rows=4;comment.setAttribute('aria-label','Comentario de mejora');
+   comment.rows=4;comment.setAttribute('aria-label',copy('Comentario de mejora','Improvement Feedback'));
    commentLabel.append(comment);
-   const save=make('button','GUARDAR REVISIÓN DIAGNÓSTICA','f111-tqr-activate');
+   const save=make('button',copy('GUARDAR REVISIÓN DIAGNÓSTICA','SAVE DIAGNOSTIC REVIEW'),'f111-tqr-activate');
    save.type='submit';
-   const feedback=make('div','Al cerrar la revisión, el intento no podrá editarse.','f111-tqr-feedback');
+   const feedback=make('div',copy('Al cerrar la revisión, el intento no podrá editarse.','After closing the review, the attempt cannot be edited.'),'f111-tqr-feedback');
    gradeForm.append(gradeLabel,commentLabel,save,feedback);
    gradeForm.onsubmit=async e=>{
      e.preventDefault();
      const raw=grade.value.trim(),value=Number(raw),note=comment.value.trim();
      if(busy||uncertain)return;
      if(!/^\d{1,3}(?:\.\d{1,2})?$/.test(raw)||!Number.isFinite(value)||value<0||value>100){
-       feedback.textContent='Ingresá una nota numérica entre 0 y 100.';return;
+       feedback.textContent=copy('Ingresá una nota numérica entre 0 y 100.','Enter a numeric score between 0 and 100.');return;
      }
-     if(note.length<5||note.length>1500){feedback.textContent='Comentario requerido: entre 5 y 1500 caracteres.';return;}
-     if(!window.confirm('¿Cerrar la revisión diagnóstica de '+id+' con '+value+'/100? No cambia la nota oficial.'))return;
+     if(note.length<5||note.length>1500){feedback.textContent=copy('Comentario requerido: entre 5 y 1500 caracteres.','Feedback required: 5 to 1500 characters.');return;}
+     if(upper&&!reviewReady){feedback.textContent=copy('Esperá la confirmación del formulario archivado.','Wait for the archived form to load.');return;}
+     if(!window.confirm(en()?('Close diagnostic review for '+id+' with '+value+'/100? Official grades will not change.'):('¿Cerrar la revisión diagnóstica de '+id+' con '+value+'/100? No cambia la nota oficial.')))return;
      busy=true;save.disabled=true;grade.disabled=true;comment.disabled=true;
-     feedback.textContent='Guardando y comprobando el expediente…';
+     feedback.textContent=copy('Guardando y comprobando el expediente…','Saving and verifying the record…');
      try{
        const r=await postQuiz('qzProgressTeacherReview',{...context,cod_estudiante:id,
          nota:value,comentario_progress_check:note});
@@ -904,6 +917,18 @@ function createQz24RehearsalCard(groupSelector){
     }finally{btn.disabled=false;}
    });
    grid.append(btn);
+   if(level!=='B1'){
+    const reviewButton=make('button','REVISAR ENTREGAS PC'+String(number).padStart(2,'0'),'f111-tqr-open');
+    reviewButton.type='button';reviewButton.dataset.f111Qz24ReviewLesson=String(lesson);
+    reviewButton.onclick=async()=>{
+      if(String(groupSelector.value||'').trim().toUpperCase()!==group||levelPicker.value!==level)return;
+      reviewButton.disabled=true;
+      try{const q=await postQuiz('qzProgressTeacherAvailability',{cod_grupo:group,nivel:level,leccion:lesson});
+       if(q.quiz_id!=='IC5_'+level+'_WQ'+String(number).padStart(2,'0')||q.grupo!==group||Number(q.leccion)!==lesson||q.peso_oficial!==0||q.digital_disponible!==true)throw Error('Revisión digital todavía no habilitada.');
+       if(String(groupSelector.value||'').trim().toUpperCase()===group&&levelPicker.value===level)openB1TeacherReview(lesson,group,level);
+      }catch(e){state.textContent='Revisión no disponible: '+String(e.message||e);}finally{reviewButton.disabled=false;}
+    };grid.append(reviewButton);
+   }
   }
  }
  levelPicker.addEventListener('change',render);
